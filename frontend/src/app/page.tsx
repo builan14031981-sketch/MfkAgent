@@ -305,8 +305,9 @@ export default function Home() {
       <div style={{
         position: "fixed",
         bottom: "16px",
-        left: 0,
-        right: 0,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "min(90%, 720px)",
         textAlign: "center",
         fontSize: "12px",
         color: "var(--text-level-4)",
