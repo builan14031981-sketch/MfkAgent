@@ -322,8 +322,10 @@ async def send_message(chat_id: int, request: SendRequest):
                 max_tokens=request.max_tokens,
             )
             ai_content = ai_response.content
+            api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None
         except Exception as e:
             ai_content = f"[AI回复失败: {str(e)}]"
+            api_usage = None
 
         ai_msg = Message(chat_id=chat_id, role="assistant", content=ai_content)
         db.add(ai_msg)
@@ -332,17 +334,21 @@ async def send_message(chat_id: int, request: SendRequest):
         db.refresh(user_msg)
         db.refresh(ai_msg)
 
-        prompt_tokens = count_tokens(full_prompt) + count_tokens(request.content)
-        completion_tokens = count_tokens(ai_content)
+        if api_usage and isinstance(api_usage, dict) and api_usage.get("total_tokens", 0) > 0:
+            token_usage = api_usage
+        else:
+            prompt_tokens = count_tokens(full_prompt) + count_tokens(request.content)
+            completion_tokens = count_tokens(ai_content)
+            token_usage = {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            }
 
         return SendResponse(
             user_message=MessageResponse.model_validate(user_msg),
             ai_message=MessageResponse.model_validate(ai_msg),
-            token_usage={
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": prompt_tokens + completion_tokens,
-            },
+            token_usage=token_usage,
         )
     finally:
         db.close()
