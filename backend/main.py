@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import models, agents, chat, memory
+from app.api import models, agents, chat, memory, projects
 from app.core.config import settings
 from app.core.database import engine, Base
 
@@ -27,6 +27,7 @@ app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
+app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 
 @app.get("/")
 async def root():
