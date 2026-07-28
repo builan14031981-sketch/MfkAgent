@@ -8,9 +8,11 @@ import {
   Plus,
   ArrowRight,
   Settings,
+  MessageSquare,
 } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
+import { useChat } from "@/hooks/useChat";
 
 const API_BASE = "http://127.0.0.1:8001";
 
@@ -29,6 +31,7 @@ export default function Home() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { projects, loading: projectsLoading } = useProjects();
+  const { chats } = useChat();
   const [welcome, setWelcome] = useState(welcomeMessages[0]);
 
   useEffect(() => {
@@ -158,21 +161,54 @@ export default function Home() {
             textTransform: "uppercase",
             letterSpacing: "0.05em",
           }}>History</p>
-          <div style={{
-            padding: "12px",
-            textAlign: "center",
-          }}>
-            <p style={{
-              fontSize: "13px",
-              color: "var(--text-level-3)",
-              margin: 0,
-            }}>还没有聊天</p>
-            <p style={{
-              fontSize: "12px",
-              color: "var(--text-level-4)",
-              margin: "2px 0 0 0",
-            }}>开始一次新的对话</p>
-          </div>
+          {chats.length === 0 ? (
+            <div style={{
+              padding: "12px",
+              textAlign: "center",
+            }}>
+              <p style={{
+                fontSize: "13px",
+                color: "var(--text-level-3)",
+                margin: 0,
+              }}>还没有聊天</p>
+              <p style={{
+                fontSize: "12px",
+                color: "var(--text-level-4)",
+                margin: "2px 0 0 0",
+              }}>开始一次新的对话</p>
+            </div>
+          ) : (
+            chats.map((chat) => {
+              const chatAgent = agents.find((a) => a.id === chat.agent_id);
+              return (
+                <div
+                  key={chat.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-sm)",
+                    cursor: "pointer",
+                    marginBottom: "2px",
+                  }}
+                  onClick={() => router.push(`/chat/${chat.id}`)}
+                >
+                  {chatAgent ? (
+                    <span style={{ fontSize: "14px", flexShrink: 0 }}>{chatAgent.avatar}</span>
+                  ) : (
+                    <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0 }} />
+                  )}
+                  <span style={{
+                    fontSize: "14px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>{chat.title}</span>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* 设置 */}
