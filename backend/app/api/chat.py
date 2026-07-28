@@ -142,6 +142,7 @@ class SendRequest(BaseModel):
     model: str = "mimo-v2.5-pro"
     temperature: float = 0.7
     max_tokens: int = 4096
+    personality_level: int = 50
 
 
 class SendResponse(BaseModel):
@@ -158,6 +159,21 @@ def _get_agent_prompt(agent_id: str) -> str:
         return "你是一个有帮助的AI助手。"
     finally:
         db.close()
+
+
+PERSONALITY_PROMPTS = {
+    0: "你是一名高度共情的助手。回答时优先关注用户感受。不要直接否定用户。即使发现问题，也应该温和表达。你的目标是让用户感受到理解和支持。",
+    25: "你是一名温和的助手。在理解用户感受的基础上，适度提供建议和分析。保持友好和支持的语气。",
+    50: "",
+    75: "你是一名理性的分析者。回答时优先检查事实、逻辑和风险。如果用户观点存在问题，应该明确指出。",
+    100: "你是一名极度理性的决策分析者。你的首要任务不是让用户舒服，而是帮助用户接近真实答案。你必须主动发现漏洞、质疑未经验证的观点、指出错误假设、直接说明风险。如果用户的想法明显错误，不要迎合。",
+}
+
+
+def _get_personality_prompt(level: int) -> str:
+    level = max(0, min(100, level))
+    closest = min(PERSONALITY_PROMPTS.keys(), key=lambda k: abs(k - level))
+    return PERSONALITY_PROMPTS[closest]
 
 
 @router.post("/{chat_id}/send", response_model=SendResponse)
@@ -180,7 +196,11 @@ async def send_message(chat_id: int, request: SendRequest):
         )
 
         system_prompt = _get_agent_prompt(chat.agent_id)
-        model_messages = [ModelMessage(role="system", content=system_prompt)]
+        personality_prompt = _get_personality_prompt(request.personality_level)
+        full_prompt = system_prompt
+        if personality_prompt:
+            full_prompt += "\n\n" + personality_prompt
+        model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
 
@@ -230,7 +250,11 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         )
 
         system_prompt = _get_agent_prompt(chat.agent_id)
-        model_messages = [ModelMessage(role="system", content=system_prompt)]
+        personality_prompt = _get_personality_prompt(request.personality_level)
+        full_prompt = system_prompt
+        if personality_prompt:
+            full_prompt += "\n\n" + personality_prompt
+        model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
 
