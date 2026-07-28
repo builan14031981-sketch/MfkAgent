@@ -17,7 +17,7 @@ import { useMessages } from "@/hooks/useMessages";
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams();
-  const chatId = Number(params.id);
+  const chatId = params.id ? Number(params.id) : null;
 
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -35,6 +35,35 @@ export default function ChatPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
+
+  if (!chatId) {
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        background: "var(--bg-level-2)",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: "16px", color: "var(--text-level-2)", margin: 0 }}>无效的聊天 ID</p>
+          <button
+            onClick={() => router.push("/")}
+            style={{
+              marginTop: "16px",
+              padding: "8px 16px",
+              borderRadius: "var(--radius-md)",
+              border: "none",
+              background: "var(--color-primary)",
+              color: "white",
+              cursor: "pointer",
+              fontSize: "14px",
+            }}
+          >返回首页</button>
+        </div>
+      </div>
+    );
+  }
 
   const handleSend = async () => {
     if (!input.trim() || isSending) return;
