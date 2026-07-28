@@ -12,6 +12,8 @@ import {
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 
+const API_BASE = "http://127.0.0.1:8001";
+
 const welcomeMessages = [
   "嗨，今天感觉怎么样？",
   "今天想做哪个项目？",
@@ -23,6 +25,7 @@ const welcomeMessages = [
 export default function Home() {
   const router = useRouter();
   const [input, setInput] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { projects, loading: projectsLoading } = useProjects();
@@ -35,9 +38,26 @@ export default function Home() {
 
   const currentAgent = selectedAgent || agents[0] || null;
 
-  const handleSend = () => {
-    if (!input.trim() || !currentAgent) return;
-    router.push(`/chat/${currentAgent.id}?q=${encodeURIComponent(input)}`);
+  const handleSend = async () => {
+    if (!input.trim() || !currentAgent || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent_id: currentAgent.id,
+          title: input.trim().slice(0, 50) || "New Chat",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create chat");
+      const chat = await res.json();
+      router.push(`/chat/${chat.id}`);
+    } catch (err) {
+      console.error("Failed to create chat:", err);
+      setIsCreating(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -293,7 +313,7 @@ export default function Home() {
               {/* 发送按钮 */}
               <button
                 onClick={handleSend}
-                disabled={!input.trim() || !currentAgent}
+                disabled={!input.trim() || !currentAgent || isCreating}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -302,8 +322,8 @@ export default function Home() {
                   height: "40px",
                   borderRadius: "var(--radius-md)",
                   border: "none",
-                  background: input.trim() && currentAgent ? "var(--color-primary)" : "var(--bg-level-4)",
-                  cursor: input.trim() && currentAgent ? "pointer" : "not-allowed",
+                  background: input.trim() && currentAgent && !isCreating ? "var(--color-primary)" : "var(--bg-level-4)",
+                  cursor: input.trim() && currentAgent && !isCreating ? "pointer" : "not-allowed",
                   color: "white",
                   transition: "all var(--transition-fast)",
                 }}
