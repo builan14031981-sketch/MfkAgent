@@ -6,56 +6,38 @@ import { motion } from "framer-motion";
 import {
   Plus,
   ArrowRight,
-  Sparkles,
-  Bot,
+  FolderOpen,
   MessageSquare,
   Settings,
 } from "lucide-react";
+import { useAgents, Agent } from "@/hooks/useAgents";
+import { useProjects } from "@/hooks/useProjects";
 
-const presetAgents = [
-  {
-    id: "warm",
-    name: "小暖",
-    avatar: "🌸",
-    description: "情感理解型助手",
-    tagline: "先理解你，再陪你解决问题。",
-  },
-  {
-    id: "rui",
-    name: "锐",
-    avatar: "⚔️",
-    description: "理性决策型助手",
-    tagline: "不要迎合问题，解决问题。",
-  },
-  {
-    id: "coder",
-    name: "码农",
-    avatar: "💻",
-    description: "编程开发助手",
-    tagline: "代码说话，少废话。",
-  },
-  {
-    id: "writer",
-    name: "笔神",
-    avatar: "✍️",
-    description: "写作创作助手",
-    tagline: "让文字更有力量。",
-  },
-];
-
-const historyItems = [
-  { id: "1", title: "Chat with Warm", agentId: "warm", time: "today" },
-  { id: "2", title: "Code review", agentId: "coder", time: "today" },
-  { id: "3", title: "Write documentation", agentId: "writer", time: "yesterday" },
+const welcomeMessages = [
+  "嗨，今天感觉怎么样？",
+  "今天想做哪个项目？",
+  "有什么新的灵感吗？",
+  "准备好开始工作了吗？",
+  "需要我帮你做什么？",
 ];
 
 export default function Home() {
   const router = useRouter();
   const [input, setInput] = useState("");
-  const [selectedAgent, setSelectedAgent] = useState(presetAgents[0]);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const { agents, loading: agentsLoading } = useAgents();
+  const { projects, loading: projectsLoading } = useProjects();
+  const [welcome] = useState(() => welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]);
+
+  // 设置默认 Agent
+  useState(() => {
+    if (agents.length > 0 && !selectedAgent) {
+      setSelectedAgent(agents[0]);
+    }
+  });
 
   const handleSend = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !selectedAgent) return;
     router.push(`/chat/${selectedAgent.id}?q=${encodeURIComponent(input)}`);
   };
 
@@ -103,7 +85,7 @@ export default function Home() {
           </button>
         </div>
 
-        {/* 项目 */}
+        {/* 项目列表 */}
         <div style={{ padding: "0 16px", marginBottom: "8px" }}>
           <div style={{
             padding: "12px",
@@ -116,11 +98,19 @@ export default function Home() {
               color: "var(--color-primary)",
               margin: 0,
             }}>Project</p>
-            <p style={{
-              fontSize: "14px",
-              fontWeight: "500",
-              margin: "4px 0 0 0",
-            }}>MfkAgent</p>
+            {projectsLoading ? (
+              <p style={{ fontSize: "14px", margin: "4px 0 0 0", color: "var(--text-level-3)" }}>加载中...</p>
+            ) : projects.length > 0 ? (
+              projects.map((project) => (
+                <p key={project.id} style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  margin: "4px 0 0 0",
+                }}>{project.name}</p>
+              ))
+            ) : (
+              <p style={{ fontSize: "14px", margin: "4px 0 0 0", color: "var(--text-level-3)" }}>暂无项目</p>
+            )}
           </div>
         </div>
 
@@ -138,32 +128,12 @@ export default function Home() {
             color: "var(--text-level-4)",
             textTransform: "uppercase",
             letterSpacing: "0.05em",
-          }}>Today</p>
-          {historyItems
-            .filter((item) => item.time === "today")
-            .map((item) => (
-              <button
-                key={item.id}
-                onClick={() => router.push(`/chat/${item.agentId}`)}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "8px 12px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  color: "var(--text-level-3)",
-                  textAlign: "left",
-                }}
-              >
-                <MessageSquare style={{ width: "14px", height: "14px" }} />
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</span>
-              </button>
-            ))}
+          }}>History</p>
+          <p style={{
+            padding: "8px 12px",
+            fontSize: "14px",
+            color: "var(--text-level-3)",
+          }}>暂无聊天记录</p>
         </div>
 
         {/* 设置 */}
@@ -230,7 +200,7 @@ export default function Home() {
               fontSize: "16px",
               color: "var(--text-level-3)",
               marginTop: "12px",
-            }}>和你的AI助手开始工作</p>
+            }}>{welcome}</p>
           </div>
 
           {/* Composer - ChatGPT风格输入框 */}
@@ -275,31 +245,39 @@ export default function Home() {
                 alignItems: "center",
                 gap: "8px",
               }}>
-                {/* Agent 胶囊按钮 */}
-                <button
-                  onClick={() => {}}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "6px 14px",
-                    borderRadius: "var(--radius-full)",
-                    border: "none",
-                    background: "var(--bg-level-2)",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    color: "var(--text-level-3)",
-                  }}
-                >
-                  <span style={{ fontSize: "14px" }}>{selectedAgent.avatar}</span>
-                  <span>{selectedAgent.name}</span>
-                </button>
+                {/* Agent 选择 */}
+                {agentsLoading ? (
+                  <span style={{ fontSize: "13px", color: "var(--text-level-3)" }}>加载中...</span>
+                ) : agents.length > 0 ? (
+                  <button
+                    onClick={() => {
+                      const currentIdx = agents.findIndex((a) => a.id === selectedAgent?.id);
+                      const nextIdx = (currentIdx + 1) % agents.length;
+                      setSelectedAgent(agents[nextIdx]);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 14px",
+                      borderRadius: "var(--radius-full)",
+                      border: "none",
+                      background: "var(--bg-level-2)",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      color: "var(--text-level-3)",
+                    }}
+                  >
+                    <span style={{ fontSize: "14px" }}>{selectedAgent?.avatar || agents[0].avatar}</span>
+                    <span>{selectedAgent?.name || agents[0].name}</span>
+                  </button>
+                ) : null}
               </div>
 
               {/* 发送按钮 */}
               <button
                 onClick={handleSend}
-                disabled={!input.trim()}
+                disabled={!input.trim() || !selectedAgent}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -308,8 +286,8 @@ export default function Home() {
                   height: "40px",
                   borderRadius: "var(--radius-md)",
                   border: "none",
-                  background: input.trim() ? "var(--color-primary)" : "var(--bg-level-4)",
-                  cursor: input.trim() ? "pointer" : "not-allowed",
+                  background: input.trim() && selectedAgent ? "var(--color-primary)" : "var(--bg-level-4)",
+                  cursor: input.trim() && selectedAgent ? "pointer" : "not-allowed",
                   color: "white",
                   transition: "all var(--transition-fast)",
                 }}
@@ -318,16 +296,18 @@ export default function Home() {
               </button>
             </div>
           </div>
-
-          {/* 底部提示 */}
-          <p style={{
-            textAlign: "center",
-            fontSize: "12px",
-            color: "var(--text-level-4)",
-            marginTop: "24px",
-          }}>MfkAgent 可能会犯错，请核实重要信息</p>
         </motion.div>
       </main>
+
+      {/* 底部提示 - 固定在页面底部 */}
+      <p style={{
+        position: "fixed",
+        bottom: "16px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        fontSize: "12px",
+        color: "var(--text-level-4)",
+      }}>MfkAgent 可能会犯错，请核实重要信息</p>
     </div>
   );
 }
