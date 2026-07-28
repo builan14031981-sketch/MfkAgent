@@ -141,6 +141,69 @@ class ModelService:
         else:
             raise ValueError(f"不支持的模型提供商: {config.provider}")
     
+    async def chat_stream(
+        self,
+        model_id: str,
+        messages: List[Message],
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+    ) -> AsyncIterator[Dict[str, Any]]:
+        """流式聊天请求"""
+        config = self.get_model_config(model_id)
+        if not config:
+            raise ValueError(f"模型 {model_id} 不存在")
+
+        if not config.api_key:
+            raise ValueError(f"模型 {model_id} 未配置API Key")
+
+        headers = {
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "model": config.model_name,
+            "messages": [msg.dict() for msg in messages],
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                f"{config.api_base}/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=120.0,
+            ) as response:
+                if response.status_code != 200:
+                    raise Exception(f"API调用失败: {await response.aread()}")
+
+                buffer = ""
+                async for chunk in response.aiter_text():
+                    buffer += chunk
+                    while "\n" in buffer:
+                        line, buffer = buffer.split("\n", 1)
+                        line = line.strip()
+                        if not line or line == "data: [DONE]":
+                            continue
+                        if line.startswith("data: "):
+                            try:
+                                data = json.loads(line[6:])
+                                choices = data.get("choices", [])
+                                if not choices:
+                                    continue
+                                delta = choices[0].get("delta", {})
+                                content = delta.get("content", "")
+                                finish_reason = choices[0].get("finish_reason")
+                                if content:
+                                    yield {"content": content}
+                                if finish_reason:
+                                    yield {"finish_reason": finish_reason}
+                            except (json.JSONDecodeError, IndexError, KeyError):
+                                continue
+
     async def _chat_openai_compatible(
         self,
         config: ModelConfig,
