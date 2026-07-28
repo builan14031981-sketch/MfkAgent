@@ -178,6 +178,7 @@ export default function Home() {
         justifyContent: "flex-start",
         overflow: "auto",
         paddingTop: "120px",
+        position: "relative",
       }}>
         {/* 内容区 - 居中 */}
         <motion.div
@@ -298,16 +299,17 @@ export default function Home() {
               </button>
             </div>
           </div>
-
-          {/* 底部提示 - 在输入框下方，属于主内容区 */}
-          <p style={{
-            textAlign: "center",
-            fontSize: "12px",
-            color: "var(--text-level-4)",
-            marginTop: "48px",
-            pointerEvents: "none",
-          }}>MfkAgent 可能会犯错，请核实重要信息</p>
         </motion.div>
+
+        {/* 底部提示 - 主页面最底部 */}
+        <p style={{
+          textAlign: "center",
+          fontSize: "12px",
+          color: "var(--text-level-4)",
+          marginTop: "auto",
+          paddingBottom: "16px",
+          pointerEvents: "none",
+        }}>MfkAgent 可能会犯错，请核实重要信息</p>
       </main>
     </div>
   );
