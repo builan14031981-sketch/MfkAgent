@@ -188,6 +188,11 @@ async def send_message(chat_id: int, request: SendRequest):
         db.add(user_msg)
         db.flush()
 
+        if chat.title == "New Chat":
+            chat.title = request.content[:50].strip()
+            if len(request.content) > 50:
+                chat.title += "..."
+
         history = (
             db.query(Message)
             .filter(Message.chat_id == chat_id)
@@ -241,6 +246,11 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         user_msg = Message(chat_id=chat_id, role="user", content=request.content)
         db.add(user_msg)
         db.flush()
+
+        if chat.title == "New Chat":
+            chat.title = request.content[:50].strip()
+            if len(request.content) > 50:
+                chat.title += "..."
 
         history = (
             db.query(Message)
