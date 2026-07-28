@@ -115,7 +115,10 @@ export default function Home() {
                 }}>{project.name}</p>
               ))
             ) : (
-              <p style={{ fontSize: "14px", margin: "4px 0 0 0", color: "var(--text-level-3)" }}>暂无项目</p>
+              <div style={{ marginTop: "8px" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-level-3)", margin: 0 }}>打开一个项目</p>
+                <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "2px 0 0 0" }}>让AI帮助你工作</p>
+              </div>
             )}
           </div>
         </div>
@@ -129,17 +132,27 @@ export default function Home() {
           <p style={{
             padding: "0 12px",
             marginBottom: "4px",
-            fontSize: "10px",
+            fontSize: "12px",
             fontWeight: "600",
             color: "var(--text-level-4)",
             textTransform: "uppercase",
             letterSpacing: "0.05em",
           }}>History</p>
-          <p style={{
-            padding: "8px 12px",
-            fontSize: "14px",
-            color: "var(--text-level-3)",
-          }}>暂无聊天记录</p>
+          <div style={{
+            padding: "12px",
+            textAlign: "center",
+          }}>
+            <p style={{
+              fontSize: "13px",
+              color: "var(--text-level-3)",
+              margin: 0,
+            }}>还没有聊天</p>
+            <p style={{
+              fontSize: "12px",
+              color: "var(--text-level-4)",
+              margin: "2px 0 0 0",
+            }}>开始一次新的对话</p>
+          </div>
         </div>
 
         {/* 设置 */}
@@ -232,7 +245,7 @@ export default function Home() {
                   border: "none",
                   outline: "none",
                   resize: "none",
-                  fontSize: "16px",
+                  fontSize: "15px",
                   lineHeight: "1.6",
                   color: "var(--text-level-2)",
                 }}
