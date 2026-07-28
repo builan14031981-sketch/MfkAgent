@@ -8,6 +8,7 @@ from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, Memory
 from app.services.model import model_service, Message as ModelMessage
 from app.core.pagination import paginate
+from app.core.tokens import count_tokens
 
 router = APIRouter()
 
@@ -176,6 +177,7 @@ class SendRequest(BaseModel):
 class SendResponse(BaseModel):
     user_message: MessageResponse
     ai_message: MessageResponse
+    token_usage: dict
 
 
 def _get_agent_prompt(agent_id: str) -> str:
@@ -276,9 +278,17 @@ async def send_message(chat_id: int, request: SendRequest):
         db.refresh(user_msg)
         db.refresh(ai_msg)
 
+        prompt_tokens = count_tokens(full_prompt) + count_tokens(request.content)
+        completion_tokens = count_tokens(ai_content)
+
         return SendResponse(
             user_message=MessageResponse.model_validate(user_msg),
             ai_message=MessageResponse.model_validate(ai_msg),
+            token_usage={
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            },
         )
     finally:
         db.close()
