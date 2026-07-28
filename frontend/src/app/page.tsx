@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -25,7 +26,12 @@ export default function Home() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { projects, loading: projectsLoading } = useProjects();
-  const [welcome] = useState(() => welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]);
+  const [welcome, setWelcome] = useState(welcomeMessages[0]);
+
+  useEffect(() => {
+    setWelcome(welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+  }, []);
 
   const currentAgent = selectedAgent || agents[0] || null;
 
