@@ -298,21 +298,17 @@ export default function Home() {
               </button>
             </div>
           </div>
+
+          {/* 底部提示 - 在输入框下方，属于主内容区 */}
+          <p style={{
+            textAlign: "center",
+            fontSize: "12px",
+            color: "var(--text-level-4)",
+            marginTop: "16px",
+            pointerEvents: "none",
+          }}>MfkAgent 可能会犯错，请核实重要信息</p>
         </motion.div>
       </main>
-
-      {/* 底部提示 - 固定在页面底部 */}
-      <div style={{
-        position: "fixed",
-        bottom: "16px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "min(90%, 720px)",
-        textAlign: "center",
-        fontSize: "12px",
-        color: "var(--text-level-4)",
-        pointerEvents: "none",
-      }}>MfkAgent 可能会犯错，请核实重要信息</div>
     </div>
   );
 }
