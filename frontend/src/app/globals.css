@@ -1,0 +1,323 @@
+/* ========================================
+ * MfkAgent 主题设计规范
+ * 
+ * 设计理念：
+ * - 简洁、柔和、现代、克制、高级
+ * - 长时间阅读舒适
+ * - 参考 Apple、ChatGPT、豆包 的设计理念
+ * - 形成 Agent 平台自己的视觉风格
+ * ======================================== */
+
+/* ========================================
+ * 浅色主题
+ * ======================================== */
+:root {
+  /* 主题色 - 统一使用 */
+  --color-primary: #0071e3;
+  --color-primary-hover: #0077ED;
+  --color-primary-active: #006edb;
+  --color-primary-light: rgba(0, 113, 227, 0.1);
+  --color-primary-lighter: rgba(0, 113, 227, 0.05);
+
+  /* 背景层级 - 4级 */
+  --bg-level-1: #f5f5f7;           /* 侧边栏背景 */
+  --bg-level-2: #ffffff;           /* 主内容背景 */
+  --bg-level-3: #f5f5f7;           /* 卡片、输入框、按钮容器 */
+  --bg-level-4: #e8e8ed;           /* 选中、高亮、交互元素 */
+
+  /* 文字层级 - 4级 */
+  --text-level-1: #1d1d1f;         /* 页面标题 */
+  --text-level-2: #333333;         /* 正文内容 */
+  --text-level-3: #86868b;         /* 辅助信息 */
+  --text-level-4: #aeaeb2;         /* 提示信息、占位文字 */
+
+  /* 边框 */
+  --border-primary: #e8e8ed;       /* 主要边框 */
+  --border-secondary: #f0f0f2;     /* 次要边框 */
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* 毛玻璃 */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(20px) saturate(180%);
+
+  /* 圆角 - 统一规范 */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* 间距 - 统一规范 */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+
+  /* 字体 */
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+
+  /* 动画 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* 状态颜色 */
+  --color-success: #34C759;
+  --color-warning: #FF9500;
+  --color-error: #FF3B30;
+  --color-info: #007AFF;
+}
+
+/* ========================================
+ * 深色主题
+ * 设计理念：柔和炭黑体系，降低视觉压迫感
+ * ======================================== */
+.dark {
+  /* 主题色 - 深色模式下略微调整 */
+  --color-primary: #0a84ff;
+  --color-primary-hover: #409cff;
+  --color-primary-active: #0077ed;
+  --color-primary-light: rgba(10, 132, 255, 0.15);
+  --color-primary-lighter: rgba(10, 132, 255, 0.08);
+
+  /* 背景层级 - 柔和炭黑体系 */
+  --bg-level-1: #1c1c1e;           /* 侧边栏背景 */
+  --bg-level-2: #000000;           /* 主内容背景 */
+  --bg-level-3: #1c1c1e;           /* 卡片、输入框、按钮容器 */
+  --bg-level-4: #2c2c2e;           /* 选中、高亮、交互元素 */
+
+  /* 文字层级 - 深色模式下提高对比度 */
+  --text-level-1: #f5f5f7;         /* 页面标题 */
+  --text-level-2: #e5e5ea;         /* 正文内容 */
+  --text-level-3: #a1a1a6;         /* 辅助信息 */
+  --text-level-4: #636366;         /* 提示信息、占位文字 */
+
+  /* 边框 */
+  --border-primary: #38383a;       /* 主要边框 */
+  --border-secondary: #2c2c2e;     /* 次要边框 */
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  /* 毛玻璃 */
+  --glass-bg: rgba(28, 28, 30, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(20px) saturate(180%);
+
+  /* 状态颜色 - 深色模式下略微调整 */
+  --color-success: #30d158;
+  --color-warning: #ff9f0a;
+  --color-error: #ff453a;
+  --color-info: #0a84ff;
+}
+
+/* ========================================
+ * 全局样式
+ * ======================================== */
+
+/* 重置样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 基础样式 */
+html, body {
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-level-2);
+  background: var(--bg-level-2);
+  line-height: 1.5;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-level-4);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-level-3);
+}
+
+/* ========================================
+ * 动画
+ * ======================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 动画类 */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease forwards;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s ease forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease forwards;
+}
+
+/* 过渡效果 */
+.transition-fast {
+  transition: all var(--transition-fast);
+}
+
+.transition-normal {
+  transition: all var(--transition-normal);
+}
+
+.transition-slow {
+  transition: all var(--transition-slow);
+}
+
+/* 悬停效果 */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* 毛玻璃面板 */
+.glass-panel {
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    var(--shadow-md);
+}
