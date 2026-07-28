@@ -107,6 +107,60 @@ async def delete_chat(chat_id: int):
         db.close()
 
 
+@router.get("/{chat_id}/export")
+async def export_chat(chat_id: int, format: str = "json"):
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+        messages = (
+            db.query(Message)
+            .filter(Message.chat_id == chat_id)
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+
+        if format == "markdown":
+            lines = [f"# {chat.title}\n"]
+            lines.append(f"Agent: {chat.agent_id}\n")
+            lines.append(f"Created: {chat.created_at}\n\n")
+            lines.append("---\n\n")
+            for msg in messages:
+                role = "User" if msg.role == "user" else "Assistant"
+                lines.append(f"**{role}** ({msg.created_at}):\n")
+                lines.append(f"{msg.content}\n\n")
+            return {
+                "format": "markdown",
+                "content": "".join(lines),
+                "filename": f"{chat.title}.md",
+            }
+        else:
+            return {
+                "format": "json",
+                "content": {
+                    "chat": {
+                        "id": chat.id,
+                        "title": chat.title,
+                        "agent_id": chat.agent_id,
+                        "created_at": str(chat.created_at),
+                    },
+                    "messages": [
+                        {
+                            "role": msg.role,
+                            "content": msg.content,
+                            "created_at": str(msg.created_at),
+                        }
+                        for msg in messages
+                    ],
+                },
+                "filename": f"{chat.title}.json",
+            }
+    finally:
+        db.close()
+
+
 class ChatUpdate(BaseModel):
     title: Optional[str] = None
     agent_id: Optional[str] = None
