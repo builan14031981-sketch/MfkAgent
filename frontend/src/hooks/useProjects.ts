@@ -9,27 +9,38 @@ export interface Project {
   updated_at: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 const API_BASE = "http://127.0.0.1:8001";
 
-export function useProjects() {
+export function useProjects(page: number = 1, limit: number = 50) {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/projects`);
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      const res = await fetch(`${API_BASE}/api/projects?${params}`);
       if (!res.ok) throw new Error("Failed to fetch projects");
-      const data = await res.json();
-      setProjects(data);
+      const data: PaginatedResponse<Project> = await res.json();
+      setProjects(data.items);
+      setTotal(data.total);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit]);
 
   useEffect(() => {
     fetchProjects();
@@ -55,5 +66,5 @@ export function useProjects() {
     await fetchProjects();
   }
 
-  return { projects, loading, error, createProject, deleteProject, refetch: fetchProjects };
+  return { projects, total, loading, error, createProject, deleteProject, refetch: fetchProjects };
 }

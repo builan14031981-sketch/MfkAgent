@@ -10,30 +10,39 @@ export interface Chat {
   updated_at: string;
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 const API_BASE = "http://127.0.0.1:8001";
 
-export function useChat(projectId?: number | null) {
+export function useChat(projectId?: number | null, page: number = 1, limit: number = 50) {
   const [chats, setChats] = useState<Chat[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchChats = useCallback(async () => {
     try {
       setLoading(true);
-      const url = projectId
-        ? `${API_BASE}/api/chat?project_id=${projectId}`
-        : `${API_BASE}/api/chat`;
-      const res = await fetch(url);
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (projectId) params.append("project_id", String(projectId));
+      const res = await fetch(`${API_BASE}/api/chat?${params}`);
       if (!res.ok) throw new Error("Failed to fetch chats");
-      const data = await res.json();
-      setChats(data);
+      const data: PaginatedResponse<Chat> = await res.json();
+      setChats(data.items);
+      setTotal(data.total);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, page, limit]);
 
   useEffect(() => {
     fetchChats();
@@ -55,6 +64,16 @@ export function useChat(projectId?: number | null) {
     return data;
   }
 
+  async function updateChat(id: number, updates: { title?: string; agent_id?: string }) {
+    const res = await fetch(`${API_BASE}/api/chat/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error("Failed to update chat");
+    await fetchChats();
+  }
+
   async function deleteChat(id: number) {
     const res = await fetch(`${API_BASE}/api/chat/${id}`, {
       method: "DELETE",
@@ -63,5 +82,5 @@ export function useChat(projectId?: number | null) {
     await fetchChats();
   }
 
-  return { chats, loading, error, createChat, deleteChat, refetch: fetchChats };
+  return { chats, total, loading, error, createChat, updateChat, deleteChat, refetch: fetchChats };
 }

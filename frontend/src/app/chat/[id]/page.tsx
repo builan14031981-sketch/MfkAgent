@@ -26,11 +26,14 @@ export default function ChatPage() {
 
   const { agents } = useAgents();
   useProjects();
-  const { chats, deleteChat } = useChat();
+  const { chats, updateChat, deleteChat } = useChat();
   const { messages, sendMessageStream } = useMessages(chatId);
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -101,6 +104,21 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleStartEditTitle = () => {
+    setEditTitle(currentChat?.title || "");
+    setIsEditingTitle(true);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!chatId || !editTitle.trim()) return;
+    try {
+      await updateChat(chatId, { title: editTitle.trim() });
+      setIsEditingTitle(false);
+    } catch (err) {
+      console.error("Failed to update title:", err);
     }
   };
 
@@ -278,12 +296,41 @@ export default function ChatPage() {
             {currentAgent && (
               <span style={{ fontSize: "18px" }}>{currentAgent.avatar}</span>
             )}
-            <h1 style={{
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "var(--text-level-1)",
-              margin: 0,
-            }}>{currentChat?.title || "Chat"}</h1>
+            {isEditingTitle ? (
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveTitle();
+                  if (e.key === "Escape") setIsEditingTitle(false);
+                }}
+                autoFocus
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: "var(--text-level-1)",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  padding: 0,
+                  margin: 0,
+                  width: "200px",
+                }}
+              />
+            ) : (
+              <h1
+                onClick={handleStartEditTitle}
+                style={{
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: "var(--text-level-1)",
+                  margin: 0,
+                  cursor: "pointer",
+                }}
+              >{currentChat?.title || "Chat"}</h1>
+            )}
           </div>
           {currentAgent && (
             <span style={{
