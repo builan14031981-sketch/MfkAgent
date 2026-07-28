@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 import json
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message, Agent
+from app.models.agent import Chat, Message, Agent, Memory
 from app.services.model import model_service, Message as ModelMessage
 from app.core.pagination import paginate
 
@@ -204,6 +204,24 @@ def _get_personality_prompt(level: int) -> str:
     return PERSONALITY_PROMPTS[closest]
 
 
+def _get_memory_prompt(agent_id: str, user_id: str = "default") -> str:
+    db = SessionLocal()
+    try:
+        memories = (
+            db.query(Memory)
+            .filter(Memory.agent_id == agent_id, Memory.user_id == user_id)
+            .all()
+        )
+        if not memories:
+            return ""
+        lines = ["用户偏好和记忆："]
+        for m in memories:
+            lines.append(f"- {m.key}: {m.value}")
+        return "\n".join(lines)
+    finally:
+        db.close()
+
+
 @router.post("/{chat_id}/send", response_model=SendResponse)
 async def send_message(chat_id: int, request: SendRequest):
     db = SessionLocal()
@@ -230,9 +248,12 @@ async def send_message(chat_id: int, request: SendRequest):
 
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = _get_personality_prompt(request.personality_level)
+        memory_prompt = _get_memory_prompt(chat.agent_id)
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
+        if memory_prompt:
+            full_prompt += "\n\n" + memory_prompt
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
@@ -289,9 +310,12 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = _get_personality_prompt(request.personality_level)
+        memory_prompt = _get_memory_prompt(chat.agent_id)
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
+        if memory_prompt:
+            full_prompt += "\n\n" + memory_prompt
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
