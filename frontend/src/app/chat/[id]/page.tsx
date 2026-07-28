@@ -21,19 +21,20 @@ export default function ChatPage() {
 
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [streamingContent, setStreamingContent] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { agents } = useAgents();
   useProjects();
   const { chats, deleteChat } = useChat();
-  const { messages, sendMessage, getAIReply } = useMessages(chatId);
+  const { messages, sendMessageStream } = useMessages(chatId);
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
   const handleSend = async () => {
     if (!input.trim() || isSending) return;
@@ -41,14 +42,29 @@ export default function ChatPage() {
     const userMessage = input.trim();
     setInput("");
     setIsSending(true);
+    setStreamingContent("");
 
     try {
-      await sendMessage(userMessage);
-      await getAIReply();
+      await sendMessageStream(
+        userMessage,
+        "mimo-v2.5-pro",
+        (chunk) => {
+          setStreamingContent((prev) => prev + chunk);
+        },
+        () => {
+          setStreamingContent("");
+          setIsSending(false);
+        },
+        (error) => {
+          console.error("Stream error:", error);
+          setStreamingContent("");
+          setIsSending(false);
+        }
+      );
     } catch (err) {
       console.error("Failed to send message:", err);
-    } finally {
       setIsSending(false);
+      setStreamingContent("");
     }
   };
 
@@ -250,7 +266,7 @@ export default function ChatPage() {
           overflowY: "auto",
           padding: "24px",
         }}>
-          {messages.length === 0 ? (
+          {messages.length === 0 && !streamingContent ? (
             <div style={{
               display: "flex",
               flexDirection: "column",
@@ -295,6 +311,34 @@ export default function ChatPage() {
                   </div>
                 </div>
               ))}
+              {streamingContent && (
+                <div style={{
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  marginBottom: "16px",
+                }}>
+                  <div style={{
+                    maxWidth: "70%",
+                    padding: "12px 16px",
+                    borderRadius: "var(--radius-lg)",
+                    background: "var(--bg-level-3)",
+                    color: "var(--text-level-2)",
+                    fontSize: "14px",
+                    lineHeight: "1.6",
+                    whiteSpace: "pre-wrap",
+                  }}>
+                    {streamingContent}
+                    <span style={{
+                      display: "inline-block",
+                      width: "2px",
+                      height: "14px",
+                      background: "var(--text-level-2)",
+                      marginLeft: "2px",
+                      animation: "pulse 1s infinite",
+                    }} />
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
           )}
