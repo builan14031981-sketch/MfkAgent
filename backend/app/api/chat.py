@@ -5,9 +5,8 @@ from typing import List, Optional
 from datetime import datetime
 import json
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message
+from app.models.agent import Chat, Message, Agent
 from app.services.model import model_service, Message as ModelMessage
-from app.api.agents import PRESET_AGENTS
 
 router = APIRouter()
 
@@ -151,10 +150,14 @@ class SendResponse(BaseModel):
 
 
 def _get_agent_prompt(agent_id: str) -> str:
-    for agent in PRESET_AGENTS:
-        if agent["id"] == agent_id:
-            return agent["system_prompt"]
-    return "你是一个有帮助的AI助手。"
+    db = SessionLocal()
+    try:
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+        if agent:
+            return agent.system_prompt
+        return "你是一个有帮助的AI助手。"
+    finally:
+        db.close()
 
 
 @router.post("/{chat_id}/send", response_model=SendResponse)

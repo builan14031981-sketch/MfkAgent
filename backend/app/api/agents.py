@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
+from app.core.database import SessionLocal
+from app.models.agent import Agent
 
 router = APIRouter()
 
@@ -12,47 +14,42 @@ class AgentInfo(BaseModel):
     avatar: str
     system_prompt: str
 
-
-PRESET_AGENTS = [
-    {
-        "id": "warm",
-        "name": "小暖",
-        "description": "情感理解型助手",
-        "avatar": "🌸",
-        "system_prompt": "你是一名温暖的AI伙伴。你的目标不是立即解决问题，而是在理解用户情绪和需求后，提供陪伴和帮助。",
-    },
-    {
-        "id": "rational",
-        "name": "锐",
-        "description": "理性决策型助手",
-        "avatar": "⚔️",
-        "system_prompt": "你是一名严格的决策分析者。你的职责是发现问题、分析风险、指出逻辑漏洞。",
-    },
-    {
-        "id": "coder",
-        "name": "码农",
-        "description": "编程开发助手",
-        "avatar": "💻",
-        "system_prompt": "你是一名专业软件工程师。你需要关注：代码质量、架构合理性、长期维护成本。",
-    },
-    {
-        "id": "writer",
-        "name": "笔神",
-        "description": "写作创作助手",
-        "avatar": "✍️",
-        "system_prompt": "你是一名专业写作助手。你的目标是帮助用户提升文字表达力和创作质量。",
-    },
-]
+    class Config:
+        from_attributes = True
 
 
 @router.get("", response_model=List[AgentInfo])
 async def list_agents():
-    return PRESET_AGENTS
+    db = SessionLocal()
+    try:
+        agents = db.query(Agent).all()
+        return [
+            AgentInfo(
+                id=a.agent_id,
+                name=a.name,
+                description=a.description,
+                avatar=a.avatar,
+                system_prompt=a.system_prompt,
+            )
+            for a in agents
+        ]
+    finally:
+        db.close()
 
 
 @router.get("/{agent_id}", response_model=AgentInfo)
 async def get_agent(agent_id: str):
-    for agent in PRESET_AGENTS:
-        if agent["id"] == agent_id:
-            return agent
-    raise HTTPException(status_code=404, detail="Agent not found")
+    db = SessionLocal()
+    try:
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        return AgentInfo(
+            id=agent.agent_id,
+            name=agent.name,
+            description=agent.description,
+            avatar=agent.avatar,
+            system_prompt=agent.system_prompt,
+        )
+    finally:
+        db.close()
