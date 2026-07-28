@@ -129,3 +129,126 @@ async def list_project_files(project_id: int, subpath: str = ""):
 
     items.sort(key=lambda x: (not x.is_dir, x.name.lower()))
     return items
+
+
+class FileContent(BaseModel):
+    path: str
+    content: str
+    size: int
+    encoding: str
+
+
+MAX_FILE_SIZE = 100 * 1024  # 100KB
+BINARY_EXTENSIONS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg",
+    ".mp3", ".mp4", ".avi", ".mov", ".wav",
+    ".zip", ".rar", ".7z", ".tar", ".gz",
+    ".exe", ".dll", ".so", ".dylib",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+    ".db", ".sqlite", ".sqlite3",
+}
+
+
+@router.get("/{project_id}/file")
+async def read_file(project_id: int, path: str):
+    db = SessionLocal()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+    finally:
+        db.close()
+
+    base_path = project.path
+    file_path = os.path.join(base_path, path)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail="Not a file")
+
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in BINARY_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Binary file not supported")
+
+    file_size = os.path.getsize(file_path)
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 100KB)")
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        encoding = "utf-8"
+    except UnicodeDecodeError:
+        try:
+            with open(file_path, "r", encoding="gbk") as f:
+                content = f.read()
+            encoding = "gbk"
+        except UnicodeDecodeError:
+            raise HTTPException(status_code=400, detail="Unable to decode file")
+
+    return FileContent(
+        path=path,
+        content=content,
+        size=file_size,
+        encoding=encoding,
+    )
+
+
+class SearchResult(BaseModel):
+    name: str
+    path: str
+    is_dir: bool
+    size: int
+
+
+@router.get("/{project_id}/search")
+async def search_files(project_id: int, q: str, limit: int = 20):
+    db = SessionLocal()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+    finally:
+        db.close()
+
+    base_path = project.path
+    results = []
+    query = q.lower()
+
+    for root, dirs, files in os.walk(base_path):
+        dirs[:] = [d for d in dirs if not d.startswith(".")]
+
+        for name in dirs:
+            if query in name.lower():
+                full_path = os.path.join(root, name)
+                rel_path = os.path.relpath(full_path, base_path)
+                results.append(SearchResult(
+                    name=name,
+                    path=rel_path,
+                    is_dir=True,
+                    size=0,
+                ))
+                if len(results) >= limit:
+                    return results
+
+        for name in files:
+            if name.startswith("."):
+                continue
+            if query in name.lower():
+                full_path = os.path.join(root, name)
+                rel_path = os.path.relpath(full_path, base_path)
+                try:
+                    size = os.path.getsize(full_path)
+                except OSError:
+                    size = 0
+                results.append(SearchResult(
+                    name=name,
+                    path=rel_path,
+                    is_dir=False,
+                    size=size,
+                ))
+                if len(results) >= limit:
+                    return results
+
+    return results

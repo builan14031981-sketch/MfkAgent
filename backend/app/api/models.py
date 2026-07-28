@@ -121,3 +121,10 @@ async def list_providers():
             },
         ]
     }
+
+
+@router.post("/reload")
+async def reload_models():
+    """重新加载模型配置（当API Key更新后调用）"""
+    model_service.reload_models()
+    return {"status": "reloaded", "models": len(model_service.get_available_models())}

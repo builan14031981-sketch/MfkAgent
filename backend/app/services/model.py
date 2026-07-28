@@ -45,49 +45,56 @@ class ChatResponse(BaseModel):
 class ModelService:
     def __init__(self):
         self.models = self._init_models()
-    
+
+    def _get_api_key(self, env_key: str, setting_key: str) -> str:
+        from app.core.database import SessionLocal
+        from app.models.agent import Setting
+        db = SessionLocal()
+        try:
+            setting = db.query(Setting).filter(Setting.key == setting_key).first()
+            if setting and setting.value:
+                return setting.value
+        finally:
+            db.close()
+        return env_key
+
     def _init_models(self) -> Dict[str, ModelConfig]:
         """初始化所有模型配置"""
         return {
-            # 小米MiMo模型
             "mimo-v2.5-pro": ModelConfig(
                 provider=ModelProvider.MIMO,
                 model_name="mimo-v2.5-pro",
-                api_key=settings.MIMO_API_KEY,
+                api_key=self._get_api_key(settings.MIMO_API_KEY, "api_key_mimo"),
                 api_base=settings.MIMO_API_BASE,
             ),
             "mimo-v2.5": ModelConfig(
                 provider=ModelProvider.MIMO,
                 model_name="mimo-v2.5",
-                api_key=settings.MIMO_API_KEY,
+                api_key=self._get_api_key(settings.MIMO_API_KEY, "api_key_mimo"),
                 api_base=settings.MIMO_API_BASE,
             ),
-            # DeepSeek模型
             "deepseek-chat": ModelConfig(
                 provider=ModelProvider.DEEPSEEK,
                 model_name="deepseek-chat",
-                api_key=settings.DEEPSEEK_API_KEY,
+                api_key=self._get_api_key(settings.DEEPSEEK_API_KEY, "api_key_deepseek"),
                 api_base="https://api.deepseek.com/v1",
             ),
-            # 通义千问模型
             "qwen-turbo": ModelConfig(
                 provider=ModelProvider.QWEN,
                 model_name="qwen-turbo",
-                api_key=settings.QWEN_API_KEY,
+                api_key=self._get_api_key(settings.QWEN_API_KEY, "api_key_qwen"),
                 api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
             ),
-            # 智谱AI模型
             "glm-4": ModelConfig(
                 provider=ModelProvider.GLM,
                 model_name="glm-4",
-                api_key=settings.GLM_API_KEY,
+                api_key=self._get_api_key(settings.GLM_API_KEY, "api_key_glm"),
                 api_base="https://open.bigmodel.cn/api/paas/v4",
             ),
-            # Moonshot模型
             "moonshot-v1-8k": ModelConfig(
                 provider=ModelProvider.MOONSHOT,
                 model_name="moonshot-v1-8k",
-                api_key=settings.MOONSHOT_API_KEY,
+                api_key=self._get_api_key(settings.MOONSHOT_API_KEY, "api_key_moonshot"),
                 api_base="https://api.moonshot.cn/v1",
             ),
         }
@@ -108,7 +115,11 @@ class ModelService:
     def get_model_config(self, model_id: str) -> Optional[ModelConfig]:
         """获取模型配置"""
         return self.models.get(model_id)
-    
+
+    def reload_models(self):
+        """重新加载模型配置（当设置更新时调用）"""
+        self.models = self._init_models()
+
     async def chat(
         self,
         model_id: str,
