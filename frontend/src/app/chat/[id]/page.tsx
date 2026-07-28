@@ -165,59 +165,66 @@ export default function ChatPage() {
             textTransform: "uppercase",
             letterSpacing: "0.05em",
           }}>Chats</p>
-          {chats.map((chat) => (
-            <div
-              key={chat.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 12px",
-                borderRadius: "var(--radius-sm)",
-                background: chat.id === chatId ? "var(--bg-level-3)" : "transparent",
-                cursor: "pointer",
-                marginBottom: "2px",
-              }}
-              onClick={() => router.push(`/chat/${chat.id}`)}
-            >
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                flex: 1,
-                overflow: "hidden",
-              }}>
-                <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0 }} />
-                <span style={{
-                  fontSize: "14px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>{chat.title}</span>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteChat(chat.id);
-                }}
+          {chats.map((chat) => {
+            const chatAgent = agents.find((a) => a.id === chat.agent_id);
+            return (
+              <div
+                key={chat.id}
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "var(--radius-xs)",
-                  border: "none",
-                  background: "transparent",
+                  justifyContent: "space-between",
+                  padding: "8px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  background: chat.id === chatId ? "var(--bg-level-3)" : "transparent",
                   cursor: "pointer",
-                  color: "var(--text-level-4)",
-                  flexShrink: 0,
+                  marginBottom: "2px",
                 }}
+                onClick={() => router.push(`/chat/${chat.id}`)}
               >
-                <Trash2 style={{ width: "12px", height: "12px" }} />
-              </button>
-            </div>
-          ))}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flex: 1,
+                  overflow: "hidden",
+                }}>
+                  {chatAgent ? (
+                    <span style={{ fontSize: "14px", flexShrink: 0 }}>{chatAgent.avatar}</span>
+                  ) : (
+                    <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0 }} />
+                  )}
+                  <span style={{
+                    fontSize: "14px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}>{chat.title}</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteChat(chat.id);
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "var(--radius-xs)",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    color: "var(--text-level-4)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Trash2 style={{ width: "12px", height: "12px" }} />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* 设置 */}
