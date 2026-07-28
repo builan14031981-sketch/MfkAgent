@@ -304,7 +304,7 @@ export default function Home() {
             textAlign: "center",
             fontSize: "12px",
             color: "var(--text-level-4)",
-            marginTop: "16px",
+            marginTop: "48px",
             pointerEvents: "none",
           }}>MfkAgent 可能会犯错，请核实重要信息</p>
         </motion.div>
