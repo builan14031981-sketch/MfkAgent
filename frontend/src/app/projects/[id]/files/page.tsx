@@ -25,10 +25,6 @@ export default function ProjectFilesPage() {
 
   const pathParts = currentPath ? currentPath.split("/").filter(Boolean) : [];
 
-  const handleNavigate = (path: string) => {
-    setCurrentPath(path);
-  };
-
   const handleFileClick = (file: FileEntry) => {
     if (file.is_dir) {
       setCurrentPath(file.path);
