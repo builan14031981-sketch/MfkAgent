@@ -302,14 +302,16 @@ export default function Home() {
       </main>
 
       {/* 底部提示 - 固定在页面底部 */}
-      <p style={{
+      <div style={{
         position: "fixed",
         bottom: "16px",
-        left: "50%",
-        transform: "translateX(-50%)",
+        left: 0,
+        right: 0,
+        textAlign: "center",
         fontSize: "12px",
         color: "var(--text-level-4)",
-      }}>MfkAgent 可能会犯错，请核实重要信息</p>
+        pointerEvents: "none",
+      }}>MfkAgent 可能会犯错，请核实重要信息</div>
     </div>
   );
 }
