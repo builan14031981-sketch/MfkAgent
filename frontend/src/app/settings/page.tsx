@@ -11,6 +11,7 @@ import {
   Cpu,
   Sliders,
   Type,
+  Key,
 } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
 
@@ -343,6 +344,65 @@ export default function SettingsPage() {
             <option value="16">大 (16px)</option>
             <option value="18">特大 (18px)</option>
           </select>
+        </section>
+
+        {/* API Key 配置 */}
+        <section id="api-keys" style={{ marginBottom: "48px" }}>
+          <h2 style={{
+            fontSize: "18px",
+            fontWeight: "600",
+            color: "var(--text-level-1)",
+            margin: "0 0 16px 0",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <Key style={{ width: "20px", height: "20px" }} />
+            API Key 配置
+          </h2>
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+          }}>
+            {[
+              { key: "api_key_mimo", label: "小米 MiMo", placeholder: "sk-..." },
+              { key: "api_key_deepseek", label: "DeepSeek", placeholder: "sk-..." },
+              { key: "api_key_qwen", label: "通义千问", placeholder: "sk-..." },
+              { key: "api_key_glm", label: "智谱 AI", placeholder: "sk-..." },
+              { key: "api_key_moonshot", label: "Moonshot", placeholder: "sk-..." },
+            ].map((apiKey) => (
+              <div key={apiKey.key} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}>
+                <label style={{
+                  fontSize: "14px",
+                  color: "var(--text-level-2)",
+                  minWidth: "120px",
+                }}>{apiKey.label}</label>
+                <input
+                  type="password"
+                  value={settings?.[apiKey.key as keyof typeof settings] || ""}
+                  onChange={(e) => handleUpdate(apiKey.key, e.target.value)}
+                  disabled={saving === apiKey.key}
+                  placeholder={apiKey.placeholder}
+                  style={{
+                    flex: 1,
+                    padding: "10px 12px",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border-primary)",
+                    background: "var(--bg-level-2)",
+                    fontSize: "14px",
+                    color: "var(--text-level-2)",
+                    outline: "none",
+                    opacity: saving === apiKey.key ? 0.7 : 1,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
         </section>
       </main>
     </div>
