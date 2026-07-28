@@ -6,8 +6,6 @@ import { motion } from "framer-motion";
 import {
   Plus,
   ArrowRight,
-  FolderOpen,
-  MessageSquare,
   Settings,
 } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
@@ -29,16 +27,11 @@ export default function Home() {
   const { projects, loading: projectsLoading } = useProjects();
   const [welcome] = useState(() => welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]);
 
-  // 设置默认 Agent
-  useState(() => {
-    if (agents.length > 0 && !selectedAgent) {
-      setSelectedAgent(agents[0]);
-    }
-  });
+  const currentAgent = selectedAgent || agents[0] || null;
 
   const handleSend = () => {
-    if (!input.trim() || !selectedAgent) return;
-    router.push(`/chat/${selectedAgent.id}?q=${encodeURIComponent(input)}`);
+    if (!input.trim() || !currentAgent) return;
+    router.push(`/chat/${currentAgent.id}?q=${encodeURIComponent(input)}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -46,6 +39,13 @@ export default function Home() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleAgentSwitch = () => {
+    if (agents.length === 0) return;
+    const currentIdx = agents.findIndex((a) => a.id === currentAgent?.id);
+    const nextIdx = (currentIdx + 1) % agents.length;
+    setSelectedAgent(agents[nextIdx]);
   };
 
   return (
@@ -250,11 +250,7 @@ export default function Home() {
                   <span style={{ fontSize: "13px", color: "var(--text-level-3)" }}>加载中...</span>
                 ) : agents.length > 0 ? (
                   <button
-                    onClick={() => {
-                      const currentIdx = agents.findIndex((a) => a.id === selectedAgent?.id);
-                      const nextIdx = (currentIdx + 1) % agents.length;
-                      setSelectedAgent(agents[nextIdx]);
-                    }}
+                    onClick={handleAgentSwitch}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -268,8 +264,8 @@ export default function Home() {
                       color: "var(--text-level-3)",
                     }}
                   >
-                    <span style={{ fontSize: "14px" }}>{selectedAgent?.avatar || agents[0].avatar}</span>
-                    <span>{selectedAgent?.name || agents[0].name}</span>
+                    <span style={{ fontSize: "14px" }}>{currentAgent?.avatar}</span>
+                    <span>{currentAgent?.name}</span>
                   </button>
                 ) : null}
               </div>
@@ -277,7 +273,7 @@ export default function Home() {
               {/* 发送按钮 */}
               <button
                 onClick={handleSend}
-                disabled={!input.trim() || !selectedAgent}
+                disabled={!input.trim() || !currentAgent}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -286,8 +282,8 @@ export default function Home() {
                   height: "40px",
                   borderRadius: "var(--radius-md)",
                   border: "none",
-                  background: input.trim() && selectedAgent ? "var(--color-primary)" : "var(--bg-level-4)",
-                  cursor: input.trim() && selectedAgent ? "pointer" : "not-allowed",
+                  background: input.trim() && currentAgent ? "var(--color-primary)" : "var(--bg-level-4)",
+                  cursor: input.trim() && currentAgent ? "pointer" : "not-allowed",
                   color: "white",
                   transition: "all var(--transition-fast)",
                 }}
