@@ -7,6 +7,7 @@ import json
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent
 from app.services.model import model_service, Message as ModelMessage
+from app.core.pagination import paginate
 
 router = APIRouter()
 
@@ -45,8 +46,8 @@ class MessageResponse(BaseModel):
         from_attributes = True
 
 
-@router.get("", response_model=List[ChatResponse])
-async def list_chats(project_id: Optional[int] = None):
+@router.get("")
+async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int = 20):
     db = SessionLocal()
     try:
         query = db.query(Chat)
@@ -54,7 +55,10 @@ async def list_chats(project_id: Optional[int] = None):
             query = query.filter(Chat.project_id == project_id)
         else:
             query = query.filter(Chat.project_id.is_(None))
-        return query.order_by(Chat.updated_at.desc()).all()
+        query = query.order_by(Chat.updated_at.desc())
+        result = paginate(query, page, limit)
+        result["items"] = [ChatResponse.model_validate(c) for c in result["items"]]
+        return result
     finally:
         db.close()
 
@@ -98,6 +102,30 @@ async def delete_chat(chat_id: int):
         db.delete(chat)
         db.commit()
         return {"status": "deleted"}
+    finally:
+        db.close()
+
+
+class ChatUpdate(BaseModel):
+    title: Optional[str] = None
+    agent_id: Optional[str] = None
+
+
+@router.patch("/{chat_id}", response_model=ChatResponse)
+async def update_chat(chat_id: int, update: ChatUpdate):
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        if update.title is not None:
+            chat.title = update.title
+        if update.agent_id is not None:
+            chat.agent_id = update.agent_id
+        chat.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(chat)
+        return chat
     finally:
         db.close()
 

@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api import models, agents, chat, memory, projects, settings as settings_api
 from app.core.config import settings
 from app.core.database import engine, Base
+from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -21,6 +24,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 错误处理
+app.add_exception_handler(APIError, api_error_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # 注册路由
 app.include_router(models.router, prefix="/api/models", tags=["models"])
