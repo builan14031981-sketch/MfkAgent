@@ -9,6 +9,7 @@ from app.models.agent import Chat, Message, Agent, Memory
 from app.services.model import model_service, Message as ModelMessage
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
+from app.services.knowledge import knowledge_service
 
 router = APIRouter()
 
@@ -305,11 +306,16 @@ async def send_message(chat_id: int, request: SendRequest):
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = _get_personality_prompt(request.personality_level)
         memory_prompt = _get_memory_prompt(chat.agent_id)
+        knowledge_context = ""
+        if chat.project_id:
+            knowledge_context = knowledge_service.get_context(chat.project_id, request.content)
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
         if memory_prompt:
             full_prompt += "\n\n" + memory_prompt
+        if knowledge_context:
+            full_prompt += "\n\n" + knowledge_context
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
@@ -381,11 +387,16 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = _get_personality_prompt(request.personality_level)
         memory_prompt = _get_memory_prompt(chat.agent_id)
+        knowledge_context = ""
+        if chat.project_id:
+            knowledge_context = knowledge_service.get_context(chat.project_id, request.content)
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
         if memory_prompt:
             full_prompt += "\n\n" + memory_prompt
+        if knowledge_context:
+            full_prompt += "\n\n" + knowledge_context
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
