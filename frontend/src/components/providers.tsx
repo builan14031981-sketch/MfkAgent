@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAppStore } from "@/lib/store";
-import { useSettings } from "@/hooks/useSettings";
+import { useAppStore, useSettingsStore } from "@/lib/store";
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -51,7 +50,11 @@ const fontCDN: Record<string, string> = {
 };
 
 export function FontProvider({ children }: FontProviderProps) {
-  const { settings } = useSettings();
+  const { settings, fetchSettings } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   useEffect(() => {
     if (!settings?.font_family) return;

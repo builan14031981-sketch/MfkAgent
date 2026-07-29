@@ -7,6 +7,7 @@ export interface Settings {
   default_model: string;
   default_personality: string;
   font_size: string;
+  font_family: string;
 }
 
 const API_BASE = "http://127.0.0.1:8001";

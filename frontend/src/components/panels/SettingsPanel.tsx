@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Moon,
   Sun,
@@ -9,7 +9,7 @@ import {
   Brain,
   Info,
 } from "lucide-react";
-import { useSettings } from "@/hooks/useSettings";
+import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Panel } from "./Panel";
 
@@ -19,10 +19,14 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
-  const { settings, loading, updateSetting } = useSettings();
+  const { settings, loading, fetchSettings, updateSetting } = useSettingsStore();
   const { t } = useTranslation();
   const [saving, setSaving] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("general");
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleUpdate = async (key: string, value: string) => {
     setSaving(key);
