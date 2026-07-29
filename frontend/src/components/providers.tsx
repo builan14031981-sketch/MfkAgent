@@ -41,14 +41,37 @@ export function FontProvider({ children }: FontProviderProps) {
   useEffect(() => {
     if (!settings?.font_family) return;
 
-    const root = window.document.documentElement;
-    const fontMap: Record<string, string> = {
-      "system": "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
-      "noto-sans-sc": "var(--font-noto-sans-sc), sans-serif",
-      "ibm-plex-sans": "var(--font-ibm-plex-sans), sans-serif",
+    // 移除旧的字体样式
+    const existingLink = document.getElementById("font-cdn");
+    if (existingLink) existingLink.remove();
+
+    // 字体 CDN 映射
+    const fontCDN: Record<string, string> = {
+      "source-han-sans": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap",
+      "lxgw-wenkai": "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css",
+      "ibm-plex-sans": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap",
     };
 
-    const fontFamily = fontMap[settings.font_family] || fontMap["system"];
+    // 动态加载字体 CDN
+    const cdn = fontCDN[settings.font_family];
+    if (cdn) {
+      const link = document.createElement("link");
+      link.id = "font-cdn";
+      link.rel = "stylesheet";
+      link.href = cdn;
+      document.head.appendChild(link);
+    }
+
+    // 应用字体
+    const root = window.document.documentElement;
+    const fontFamilyMap: Record<string, string> = {
+      "system": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      "source-han-sans": "'Source Han Sans SC', 'Noto Sans SC', sans-serif",
+      "lxgw-wenkai": "'LXGW WenKai', cursive",
+      "ibm-plex-sans": "'IBM Plex Sans', sans-serif",
+    };
+
+    const fontFamily = fontFamilyMap[settings.font_family] || fontFamilyMap["system"];
     root.style.setProperty("--font-family", fontFamily);
   }, [settings?.font_family]);
 
