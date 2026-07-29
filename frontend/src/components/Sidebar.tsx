@@ -36,7 +36,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
 
   return (
     <aside style={{
-      width: "280px",
+      width: "260px",
       height: "100%",
       display: "flex",
       flexDirection: "column",
