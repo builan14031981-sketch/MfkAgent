@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Send } from "lucide-react";
+import { Send, Copy, Quote, RefreshCw } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
@@ -303,32 +303,47 @@ export default function ChatPage() {
                       onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
                       >
                         <button style={{
-                          padding: "4px 8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "28px",
+                          height: "28px",
                           borderRadius: "var(--radius-sm)",
                           border: "none",
                           background: "transparent",
                           cursor: "pointer",
-                          fontSize: "12px",
                           color: "var(--text-level-4)",
-                        }}>复制</button>
+                        }}>
+                          <Copy style={{ width: "14px", height: "14px" }} />
+                        </button>
                         <button style={{
-                          padding: "4px 8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "28px",
+                          height: "28px",
                           borderRadius: "var(--radius-sm)",
                           border: "none",
                           background: "transparent",
                           cursor: "pointer",
-                          fontSize: "12px",
                           color: "var(--text-level-4)",
-                        }}>引用</button>
+                        }}>
+                          <Quote style={{ width: "14px", height: "14px" }} />
+                        </button>
                         <button style={{
-                          padding: "4px 8px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "28px",
+                          height: "28px",
                           borderRadius: "var(--radius-sm)",
                           border: "none",
                           background: "transparent",
                           cursor: "pointer",
-                          fontSize: "12px",
                           color: "var(--text-level-4)",
-                        }}>重新生成</button>
+                        }}>
+                          <RefreshCw style={{ width: "14px", height: "14px" }} />
+                        </button>
                       </div>
                     </div>
                   )}

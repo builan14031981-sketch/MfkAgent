@@ -220,6 +220,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               }}
             >
               <option value="mimo-v2.5-pro">MiMo v2.5 Pro</option>
+              <option value="mimo-v2.5">MiMo v2.5</option>
+              <option value="deepseek-chat">DeepSeek Chat</option>
             </select>
           </div>
 
