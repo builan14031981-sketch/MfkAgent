@@ -228,6 +228,81 @@ class ListDirectoryTool(Tool):
             return ToolResult(success=False, output="", error=str(e))
 
 
+class FetchUrlTool(Tool):
+    def __init__(self):
+        super().__init__(
+            name="fetch_url",
+            description="获取网页内容",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "要获取的URL",
+                    },
+                },
+                "required": ["url"],
+            },
+        )
+
+    async def execute(self, url: str = "", **kwargs) -> ToolResult:
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url, timeout=10.0, follow_redirects=True)
+                if response.status_code == 200:
+                    content = response.text[:5000]
+                    return ToolResult(success=True, output=content)
+                else:
+                    return ToolResult(success=False, output="", error=f"HTTP {response.status_code}")
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+
+class DateTimeTool(Tool):
+    def __init__(self):
+        super().__init__(
+            name="get_datetime",
+            description="获取当前日期和时间",
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        )
+
+    async def execute(self, **kwargs) -> ToolResult:
+        from datetime import datetime
+        now = datetime.now()
+        return ToolResult(success=True, output=now.strftime("%Y-%m-%d %H:%M:%S"))
+
+
+class JsonFormatTool(Tool):
+    def __init__(self):
+        super().__init__(
+            name="format_json",
+            description="格式化JSON字符串",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "json_str": {
+                        "type": "string",
+                        "description": "要格式化的JSON字符串",
+                    },
+                },
+                "required": ["json_str"],
+            },
+        )
+
+    async def execute(self, json_str: str = "", **kwargs) -> ToolResult:
+        try:
+            import json
+            data = json.loads(json_str)
+            formatted = json.dumps(data, indent=2, ensure_ascii=False)
+            return ToolResult(success=True, output=formatted)
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+
 class ToolRegistry:
     def __init__(self):
         self._tools: Dict[str, Tool] = {}
@@ -258,3 +333,6 @@ tool_registry.register(CodeExecutionTool())
 tool_registry.register(FileReadTool())
 tool_registry.register(FileWriteTool())
 tool_registry.register(ListDirectoryTool())
+tool_registry.register(FetchUrlTool())
+tool_registry.register(DateTimeTool())
+tool_registry.register(JsonFormatTool())
