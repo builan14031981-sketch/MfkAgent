@@ -1,0 +1,270 @@
+# MfkAgent 项目交接文档 V34.0
+
+**更新时间：2026年7月29日**
+**版本：V34.0**
+**状态：前端架构重构完成版本**
+**用途：记录当前真实代码状态，为后续 AI 开发提供上下文**
+
+---
+
+# 一、项目基本信息
+
+## 项目名称
+
+MfkAgent
+
+---
+
+## 当前产品定位
+
+MfkAgent 是：
+
+> 面向个人开发者、专业用户的 AI 工作助手。
+
+当前方向：
+
+```
+AI工作空间
+
+↓
+
+Project
+
+↓
+
+Chat
+
+↓
+
+Agent辅助
+
+↓
+
+完成任务
+```
+
+---
+
+# 二、当前项目状态
+
+## 总体状态
+
+当前项目：
+
+> 前端架构重构完成，核心链路已打通，准备进入功能扩展阶段。
+
+---
+
+## 后端状态
+
+✅ **V1 已完成**
+
+- 36 个 API 端点全部可用
+- Project、Chat、Message、Agent、Memory、Settings 模型完整
+- 流式输出支持
+- 文件浏览/搜索 API
+
+---
+
+## 前端状态
+
+✅ **架构重构完成**
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| App Layout统一 | ✅ | 统一的AppLayout组件，Sidebar永久显示 |
+| 设置系统统一 | ✅ | 只保留SettingsPanel弹窗 |
+| Memory统一 | ✅ | 只保留MemoryPanel弹窗 |
+| Chat工作流闭环 | ✅ | 首页→Chat自动发送 |
+| Projects页面适配 | ✅ | 所有projects页面适配新Layout |
+| 防重复调用修复 | ✅ | React StrictMode兼容 |
+
+---
+
+# 三、当前代码结构
+
+## 前端目录结构
+
+```
+frontend/src/
+├── app/
+│   ├── layout.tsx          # 根布局，使用AppLayout
+│   ├── page.tsx            # 首页（欢迎界面+输入框）
+│   ├── globals.css         # 全局样式
+│   ├── chat/
+│   │   └── [id]/
+│   │       └── page.tsx    # 聊天页面（只负责内容）
+│   └── projects/
+│       └── [id]/
+│           ├── files/
+│           │   └── page.tsx  # 文件浏览
+│           ├── file/
+│           │   └── page.tsx  # 文件内容
+│           └── search/
+│               └── page.tsx  # 文件搜索
+├── components/
+│   ├── AppLayout.tsx       # 统一布局组件
+│   ├── Sidebar.tsx         # 侧边栏组件
+│   ├── providers.tsx       # 主题/字体Provider
+│   └── panels/
+│       ├── Panel.tsx       # 面板基础组件
+│       ├── SettingsPanel.tsx  # 设置面板
+│       └── MemoryPanel.tsx    # 记忆面板
+├── hooks/
+│   ├── useAgents.ts        # Agent数据
+│   ├── useChat.ts          # Chat CRUD
+│   ├── useMessages.ts      # 消息发送/流式
+│   ├── useProjects.ts      # 项目数据
+│   ├── useProjectFiles.ts  # 项目文件
+│   ├── useFileContent.ts   # 文件内容
+│   ├── useFileSearch.ts    # 文件搜索
+│   ├── useMemory.ts        # 记忆数据
+│   ├── useSettings.ts      # 设置数据
+│   └── useTranslation.ts   # 国际化
+├── lib/
+│   └── store.ts            # Zustand状态管理
+└── locales/
+    ├── zh-CN.json          # 中文翻译
+    └── en-US.json          # 英文翻译
+```
+
+---
+
+## 当前页面架构
+
+```
+layout.tsx
+└── AppLayout (客户端组件)
+    ├── Sidebar (固定存在)
+    │   ├── 新建任务按钮
+    │   ├── 项目列表
+    │   ├── 聊天列表 (按时间分组：今天、昨天)
+    │   └── Memory / Settings 按钮
+    ├── SettingsPanel (全局弹窗)
+    ├── MemoryPanel (全局弹窗)
+    └── MainContent (路由切换)
+        ├── / → Home (欢迎界面 + 输入框)
+        ├── /chat/[id] → ChatPage (聊天界面)
+        └── /projects/[id]/* → ProjectPages (文件浏览/内容/搜索)
+```
+
+---
+
+## 当前Chat流程
+
+```
+用户输入
+    ↓
+首页 handleSend
+    ↓
+createChat() → POST /api/chat
+    ↓
+跳转 /chat/[id]?message=xxx
+    ↓
+Chat页面读取URL参数
+    ↓
+sendMessageStream() → POST /api/chat/[id]/send/stream
+    ↓
+后端保存 user message + 调用模型 + 保存 assistant message
+    ↓
+前端显示流式回复
+    ↓
+清除URL参数
+```
+
+---
+
+# 四、已知问题
+
+## 1. 国际化未完全覆盖
+
+当前有 46 处硬编码中文，需要改为 t() 调用。
+
+涉及文件：
+- page.tsx
+- Sidebar.tsx
+- chat/[id]/page.tsx
+- MemoryPanel.tsx
+- SettingsPanel.tsx
+- projects/*/page.tsx
+
+---
+
+## 2. Agent系统待实现
+
+当前只有基础的Agent数据，需要实现：
+- 预设Agent（小暖、理性分析师、代码助手等）
+- Prompt组合系统
+- 人格系统（极度感性↔极度理性）
+
+---
+
+# 五、下一步任务
+
+## Phase 3: Agent系统
+
+优先级：★★★★
+
+任务：
+1. 实现预设Agent
+2. 实现Prompt组合系统
+3. 实现人格系统
+
+---
+
+## 国际化完善
+
+优先级：★★★
+
+任务：
+1. 修复 46 处硬编码中文
+2. 确保 en-US.json 翻译完整
+
+---
+
+# 六、开发注意事项
+
+## 1. 保持架构稳定
+
+当前AppLayout架构已经统一，不要：
+- 在页面中创建自己的Sidebar
+- 在页面中创建自己的Settings/Memory面板
+
+---
+
+## 2. 使用已有hook
+
+- useChat: Chat CRUD
+- useMessages: 消息发送
+- useProjects: 项目数据
+- useSettings: 设置数据
+
+---
+
+## 3. 国际化规范
+
+所有用户可见文字必须使用 t() 函数：
+
+```tsx
+// ❌ 错误
+<span>加载中...</span>
+
+// ✅ 正确
+<span>{t("common.loading")}</span>
+```
+
+---
+
+# 七、回滚信息
+
+## 已删除文件（可恢复）
+
+| 文件 | 备份位置 |
+|------|----------|
+| /settings/page.tsx | _trash/phase-a/page.tsx.bak |
+| /memory/page.tsx | _trash/phase-b/page.tsx.bak |
+
+---
+
+**文档版本：V34.0**
+**状态：当前有效交接文档**

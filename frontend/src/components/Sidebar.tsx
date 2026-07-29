@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -9,7 +10,7 @@ import {
   Brain,
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
-import { useChat } from "@/hooks/useChat";
+import { useChat, Chat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
 
 interface SidebarProps {
@@ -18,11 +19,45 @@ interface SidebarProps {
   onMemoryClick?: () => void;
 }
 
+function getDateGroup(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const chatDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (chatDate.getTime() === today.getTime()) {
+    return "今天";
+  } else if (chatDate.getTime() === yesterday.getTime()) {
+    return "昨天";
+  } else {
+    return date.toLocaleDateString("zh-CN", { month: "long", day: "numeric" });
+  }
+}
+
+function groupChatsByDate(chats: Chat[]): Map<string, Chat[]> {
+  const groups = new Map<string, Chat[]>();
+
+  for (const chat of chats) {
+    const group = getDateGroup(chat.updated_at || chat.created_at);
+    if (!groups.has(group)) {
+      groups.set(group, []);
+    }
+    groups.get(group)!.push(chat);
+  }
+
+  return groups;
+}
+
 export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { agents } = useAgents();
   const { chats, deleteChat } = useChat();
+
+  const groupedChats = useMemo(() => groupChatsByDate(chats), [chats]);
 
   const handleDeleteChat = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -74,76 +109,96 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
         overflowY: "auto",
         padding: "0 16px 16px 16px",
       }}>
-        <p style={{
-          padding: "0 12px",
-          marginBottom: "4px",
-          fontSize: "12px",
-          fontWeight: "600",
-          color: "var(--text-level-4)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          }}>{t("sidebar.chats")}</p>
-        {chats.map((chat) => {
-          const chatAgent = agents.find((a) => a.id === chat.agent_id);
-          return (
-            <div
-              key={chat.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 12px",
-                borderRadius: "var(--radius-sm)",
-                background: chat.id === currentChatId ? "var(--bg-level-3)" : "transparent",
-                cursor: "pointer",
+        {chats.length === 0 ? (
+          <div style={{
+            padding: "12px",
+            textAlign: "center",
+          }}>
+            <p style={{
+              fontSize: "13px",
+              color: "var(--text-level-3)",
+              margin: 0,
+            }}>{t("sidebar.noChats")}</p>
+            <p style={{
+              fontSize: "12px",
+              color: "var(--text-level-4)",
+              margin: "2px 0 0 0",
+            }}>{t("sidebar.noChatsDesc")}</p>
+          </div>
+        ) : (
+          Array.from(groupedChats.entries()).map(([dateGroup, groupChats]) => (
+            <div key={dateGroup} style={{ marginBottom: "8px" }}>
+              <p style={{
+                padding: "8px 12px 4px",
                 marginBottom: "2px",
-              }}
-              onClick={() => router.push(`/chat/${chat.id}`)}
-            >
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                flex: 1,
-                overflow: "hidden",
-              }}>
-                {chatAgent ? (
-                  <span style={{ fontSize: "14px", flexShrink: 0 }}>{chatAgent.avatar}</span>
-                ) : (
-                  <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0 }} />
-                )}
-                <span style={{
-                  fontSize: "14px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}>{chat.title}</span>
-              </div>
-              <button
-                onClick={(e) => handleDeleteChat(chat.id, e)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "24px",
-                  height: "24px",
-                  borderRadius: "var(--radius-xs)",
-                  border: "none",
-                  background: "transparent",
-                  cursor: "pointer",
-                  color: "var(--text-level-4)",
-                  flexShrink: 0,
-                  opacity: 0,
-                  transition: "opacity 0.2s",
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
-              >
-                <Trash2 style={{ width: "12px", height: "12px" }} />
-              </button>
+                fontSize: "12px",
+                fontWeight: "600",
+                color: "var(--text-level-4)",
+              }}>{dateGroup}</p>
+              {groupChats.map((chat) => {
+                const chatAgent = agents.find((a) => a.id === chat.agent_id);
+                return (
+                  <div
+                    key={chat.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      background: chat.id === currentChatId ? "var(--bg-level-3)" : "transparent",
+                      cursor: "pointer",
+                      marginBottom: "2px",
+                    }}
+                    onClick={() => router.push(`/chat/${chat.id}`)}
+                  >
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      flex: 1,
+                      overflow: "hidden",
+                    }}>
+                      {chatAgent ? (
+                        <span style={{ fontSize: "14px", flexShrink: 0 }}>{chatAgent.avatar}</span>
+                      ) : (
+                        <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0 }} />
+                      )}
+                      <span style={{
+                        fontSize: "14px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}>{chat.title}</span>
+                    </div>
+                    <button
+                      onClick={(e) => handleDeleteChat(chat.id, e)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "var(--radius-xs)",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        color: "var(--text-level-4)",
+                        flexShrink: 0,
+                        opacity: 0,
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
+                    >
+                      <Trash2 style={{ width: "12px", height: "12px" }} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          ))
+        )}
       </div>
 
       {/* 底部按钮 */}

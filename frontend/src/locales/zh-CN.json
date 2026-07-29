@@ -10,13 +10,19 @@
     "edit": "编辑",
     "create": "创建",
     "back": "返回",
-    "close": "关闭"
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制",
+    "search": "搜索",
+    "noData": "暂无数据"
   },
   "sidebar": {
     "newTask": "New Task",
     "chats": "Chats",
     "settings": "Settings",
-    "memory": "Memory"
+    "memory": "Memory",
+    "noChats": "还没有聊天",
+    "noChatsDesc": "开始一次新的对话"
   },
   "home": {
     "welcome": [
@@ -35,7 +41,9 @@
     "startConversationDesc": "输入消息开始与 {name} 交流",
     "inputPlaceholder": "输入消息...",
     "sending": "发送中...",
-    "aiMayError": "MfkAgent 可能会犯错，请核实重要信息"
+    "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
+    "invalidId": "无效的聊天 ID",
+    "backToHome": "返回首页"
   },
   "settings": {
     "title": "设置",
@@ -83,6 +91,10 @@
         "veryRational": "极度理性"
       }
     },
+    "memory": {
+      "title": "记忆",
+      "desc": "AI 会记住你的偏好和重要信息"
+    },
     "about": {
       "title": "关于",
       "version": "版本: v1.0.0",
@@ -105,5 +117,20 @@
     "title": "Project",
     "openProject": "打开一个项目",
     "openProjectDesc": "让AI帮助你工作"
+  },
+  "projects": {
+    "fileBrowser": "文件浏览",
+    "fileSearch": "文件搜索",
+    "fileContent": "文件内容",
+    "rootDirectory": "根目录",
+    "emptyDirectory": "空目录",
+    "emptyDirectoryDesc": "此目录下没有文件",
+    "searchPlaceholder": "搜索文件名...",
+    "searchHint": "输入关键词搜索文件",
+    "noResults": "未找到匹配的文件",
+    "noResultsDesc": "尝试其他关键词",
+    "selectFile": "请选择文件",
+    "searching": "搜索中...",
+    "loadingFile": "加载文件中..."
   }
 }

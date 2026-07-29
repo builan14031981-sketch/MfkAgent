@@ -10,11 +10,13 @@ import {
 } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useFileSearch } from "@/hooks/useFileSearch";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function FileSearchPage() {
   const router = useRouter();
   const params = useParams();
   const projectId = Number(params.id);
+  const { t } = useTranslation();
 
   const { projects } = useProjects();
   const currentProject = projects.find((p) => p.id === projectId);
@@ -31,66 +33,59 @@ export default function FileSearchPage() {
   };
 
   return (
-    <div style={{
-      display: "flex",
-      height: "100vh",
-      background: "var(--bg-level-2)",
-    }}>
-      {/* 左侧 Sidebar */}
-      <aside style={{
-        width: "280px",
-        height: "100%",
+    <>
+      {/* 顶部栏 */}
+      <div style={{
         display: "flex",
-        flexDirection: "column",
-        borderRight: "1px solid var(--border-primary)",
+        alignItems: "center",
+        gap: "16px",
+        padding: "16px 24px",
+        borderBottom: "1px solid var(--border-primary)",
         background: "var(--bg-level-1)",
+        flexShrink: 0,
       }}>
-        {/* 返回按钮 */}
-        <div style={{ padding: "16px" }}>
-          <button
-            onClick={() => router.back()}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 16px",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "var(--bg-level-3)",
-              cursor: "pointer",
-              fontSize: "14px",
-              width: "100%",
-            }}
-          >
-            <ArrowLeft style={{ width: "16px", height: "16px" }} />
-            <span>返回</span>
-          </button>
-        </div>
+        <button
+          onClick={() => router.back()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 12px",
+            borderRadius: "var(--radius-md)",
+            border: "none",
+            background: "var(--bg-level-3)",
+            cursor: "pointer",
+            fontSize: "13px",
+          }}
+        >
+          <ArrowLeft style={{ width: "14px", height: "14px" }} />
+          <span>返回</span>
+        </button>
 
         {/* 项目信息 */}
-        <div style={{ padding: "0 16px" }}>
-          <div style={{
-            padding: "12px",
-            borderRadius: "var(--radius-md)",
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}>
+          <span style={{
+            fontSize: "12px",
+            fontWeight: "500",
+            color: "var(--color-primary)",
+            padding: "2px 8px",
+            borderRadius: "var(--radius-full)",
             background: "var(--color-primary-lighter)",
-          }}>
-            <p style={{
-              fontSize: "12px",
-              fontWeight: "500",
-              color: "var(--color-primary)",
-              margin: 0,
-            }}>Project</p>
-            <p style={{
-              fontSize: "14px",
-              fontWeight: "500",
-              margin: "4px 0 0 0",
-            }}>{currentProject?.name || "Loading..."}</p>
-          </div>
+          }}>{t("project.title")}</span>
+          <span style={{
+            fontSize: "14px",
+            fontWeight: "500",
+            color: "var(--text-level-1)",
+          }}>{currentProject?.name || "Loading..."}</span>
         </div>
-      </aside>
+      </div>
 
-      {/* 右侧内容区 */}
-      <main style={{
+      {/* 内容区 */}
+      <div style={{
         flex: 1,
         overflowY: "auto",
         padding: "24px 32px",
@@ -100,7 +95,7 @@ export default function FileSearchPage() {
           fontWeight: "600",
           color: "var(--text-level-1)",
           margin: "0 0 24px 0",
-        }}>文件搜索</h1>
+        }}>{t("projects.fileSearch")}</h1>
 
         {/* 搜索框 */}
         <div style={{
@@ -124,7 +119,7 @@ export default function FileSearchPage() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索文件名..."
+              placeholder={t("projects.searchPlaceholder")}
               style={{
                 flex: 1,
                 border: "none",
@@ -139,7 +134,7 @@ export default function FileSearchPage() {
 
         {/* 搜索结果 */}
         {loading ? (
-          <p style={{ color: "var(--text-level-3)" }}>搜索中...</p>
+          <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
         ) : error ? (
           <p style={{ color: "var(--color-error)" }}>{error}</p>
         ) : !query.trim() ? (
@@ -150,7 +145,7 @@ export default function FileSearchPage() {
             background: "var(--bg-level-1)",
           }}>
             <Search style={{ width: "48px", height: "48px", color: "var(--text-level-4)", marginBottom: "16px" }} />
-            <p style={{ fontSize: "14px", color: "var(--text-level-3)", margin: 0 }}>输入关键词搜索文件</p>
+            <p style={{ fontSize: "14px", color: "var(--text-level-3)", margin: 0 }}>{t("projects.searchHint")}</p>
           </div>
         ) : results.length === 0 ? (
           <div style={{
@@ -160,8 +155,8 @@ export default function FileSearchPage() {
             background: "var(--bg-level-1)",
           }}>
             <Search style={{ width: "48px", height: "48px", color: "var(--text-level-4)", marginBottom: "16px" }} />
-            <p style={{ fontSize: "14px", color: "var(--text-level-3)", margin: 0 }}>未找到匹配的文件</p>
-            <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "4px 0 0 0" }}>尝试其他关键词</p>
+            <p style={{ fontSize: "14px", color: "var(--text-level-3)", margin: 0 }}>{t("projects.noResults")}</p>
+            <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "4px 0 0 0" }}>{t("projects.noResultsDesc")}</p>
           </div>
         ) : (
           <div style={{
@@ -210,8 +205,8 @@ export default function FileSearchPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
 

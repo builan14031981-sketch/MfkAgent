@@ -10,13 +10,19 @@
     "edit": "Edit",
     "create": "Create",
     "back": "Back",
-    "close": "Close"
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "search": "Search",
+    "noData": "No data"
   },
   "sidebar": {
     "newTask": "New Task",
     "chats": "Chats",
     "settings": "Settings",
-    "memory": "Memory"
+    "memory": "Memory",
+    "noChats": "No chats yet",
+    "noChatsDesc": "Start a new conversation"
   },
   "home": {
     "welcome": [
@@ -35,7 +41,9 @@
     "startConversationDesc": "Type a message to start talking with {name}",
     "inputPlaceholder": "Type a message...",
     "sending": "Sending...",
-    "aiMayError": "MfkAgent may make mistakes. Please verify important information."
+    "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
+    "invalidId": "Invalid chat ID",
+    "backToHome": "Back to Home"
   },
   "settings": {
     "title": "Settings",
@@ -83,6 +91,10 @@
         "veryRational": "Very Rational"
       }
     },
+    "memory": {
+      "title": "Memory",
+      "desc": "AI will remember your preferences and important information"
+    },
     "about": {
       "title": "About",
       "version": "Version: v1.0.0",
@@ -105,5 +117,20 @@
     "title": "Project",
     "openProject": "Open a project",
     "openProjectDesc": "Let AI help you work"
+  },
+  "projects": {
+    "fileBrowser": "File Browser",
+    "fileSearch": "File Search",
+    "fileContent": "File Content",
+    "rootDirectory": "Root",
+    "emptyDirectory": "Empty Directory",
+    "emptyDirectoryDesc": "No files in this directory",
+    "searchPlaceholder": "Search file name...",
+    "searchHint": "Enter keywords to search files",
+    "noResults": "No matching files found",
+    "noResultsDesc": "Try other keywords",
+    "selectFile": "Please select a file",
+    "searching": "Searching...",
+    "loadingFile": "Loading file..."
   }
 }
