@@ -71,7 +71,7 @@ export default function FileContentPage() {
             }}
           >
             <ArrowLeft style={{ width: "14px", height: "14px" }} />
-          <span>返回</span>
+          <span>{t("common.back")}</span>
         </button>
 
         {/* 项目和文件信息 */}
@@ -116,17 +116,17 @@ export default function FileContentPage() {
             color: "var(--text-level-2)",
           }}
         >
-          {copied ? (
-            <>
-              <Check style={{ width: "14px", height: "14px" }} />
-              <span>已复制</span>
-            </>
-          ) : (
-            <>
-              <Copy style={{ width: "14px", height: "14px" }} />
-              <span>复制</span>
-            </>
-          )}
+              {copied ? (
+              <>
+                <Check style={{ width: "14px", height: "14px" }} />
+                <span>{t("common.copied")}</span>
+              </>
+            ) : (
+              <>
+                <Copy style={{ width: "14px", height: "14px" }} />
+                <span>{t("common.copy")}</span>
+              </>
+            )}
         </button>
       </div>
 

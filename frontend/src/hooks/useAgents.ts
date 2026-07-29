@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
+import { apiGet } from "@/lib/api";
 
 export interface Agent {
   id: string;
@@ -9,8 +10,6 @@ export interface Agent {
   system_prompt: string;
 }
 
-const API_BASE = "http://127.0.0.1:8001";
-
 export function useAgents() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,9 +18,7 @@ export function useAgents() {
   const fetchAgents = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/agents`);
-      if (!res.ok) throw new Error("Failed to fetch agents");
-      const data = await res.json();
+      const data = await apiGet<Agent[]>("/api/agents");
       setAgents(data);
       setError(null);
     } catch (err: unknown) {

@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
+import { apiGet, apiFetch } from "@/lib/api";
 
 export interface Settings {
   theme: string;
@@ -10,8 +11,6 @@ export interface Settings {
   font_family: string;
 }
 
-const API_BASE = "http://127.0.0.1:8001";
-
 export function useSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,9 +19,7 @@ export function useSettings() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/settings`);
-      if (!res.ok) throw new Error("Failed to fetch settings");
-      const data = await res.json();
+      const data = await apiGet<Settings>("/api/settings");
       setSettings(data);
       setError(null);
     } catch (err: unknown) {
@@ -37,12 +34,11 @@ export function useSettings() {
   }, [fetchSettings]);
 
   async function updateSetting(key: string, value: string) {
-    const res = await fetch(`${API_BASE}/api/settings/${key}`, {
+    await apiFetch(`/api/settings/${key}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value }),
     });
-    if (!res.ok) throw new Error("Failed to update setting");
     await fetchSettings();
   }
 

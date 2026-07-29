@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
+import { apiGet } from "@/lib/api";
 
 export interface FileEntry {
   name: string;
@@ -7,8 +8,6 @@ export interface FileEntry {
   is_dir: boolean;
   size: number;
 }
-
-const API_BASE = "http://127.0.0.1:8001";
 
 export function useProjectFiles(projectId: number | null, subpath: string = "") {
   const [files, setFiles] = useState<FileEntry[]>([]);
@@ -21,9 +20,7 @@ export function useProjectFiles(projectId: number | null, subpath: string = "") 
       setLoading(true);
       const params = new URLSearchParams();
       if (subpath) params.append("subpath", subpath);
-      const res = await fetch(`${API_BASE}/api/projects/${projectId}/files?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch files");
-      const data = await res.json();
+      const data = await apiGet<FileEntry[]>(`/api/projects/${projectId}/files?${params}`);
       setFiles(data);
       setError(null);
     } catch (err: unknown) {

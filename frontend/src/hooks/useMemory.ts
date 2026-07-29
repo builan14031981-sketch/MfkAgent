@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
 
 export interface Memory {
   id: number;
@@ -12,8 +13,6 @@ export interface Memory {
   updated_at: string;
 }
 
-const API_BASE = "http://127.0.0.1:8001";
-
 export function useMemory(agentId: string) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,9 +22,7 @@ export function useMemory(agentId: string) {
     if (!agentId) return;
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/memory/${agentId}`);
-      if (!res.ok) throw new Error("Failed to fetch memories");
-      const data = await res.json();
+      const data = await apiGet<Memory[]>(`/api/memory/${agentId}`);
       setMemories(data);
       setError(null);
     } catch (err: unknown) {
@@ -40,25 +37,17 @@ export function useMemory(agentId: string) {
   }, [fetchMemories]);
 
   async function createMemory(key: string, value: string, memoryType: string = "preference") {
-    const res = await fetch(`${API_BASE}/api/memory`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        agent_id: agentId,
-        key,
-        value,
-        memory_type: memoryType,
-      }),
+    await apiPost("/api/memory", {
+      agent_id: agentId,
+      key,
+      value,
+      memory_type: memoryType,
     });
-    if (!res.ok) throw new Error("Failed to create memory");
     await fetchMemories();
   }
 
   async function deleteMemory(id: number) {
-    const res = await fetch(`${API_BASE}/api/memory/${id}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) throw new Error("Failed to delete memory");
+    await apiDelete(`/api/memory/${id}`);
     await fetchMemories();
   }
 

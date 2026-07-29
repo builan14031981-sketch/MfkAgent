@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
+import { apiGet } from "@/lib/api";
 
 export interface FileContent {
   path: string;
@@ -7,8 +8,6 @@ export interface FileContent {
   size: number;
   encoding: string;
 }
-
-const API_BASE = "http://127.0.0.1:8001";
 
 export function useFileContent(projectId: number | null, filePath: string) {
   const [fileContent, setFileContent] = useState<FileContent | null>(null);
@@ -20,9 +19,7 @@ export function useFileContent(projectId: number | null, filePath: string) {
     try {
       setLoading(true);
       const params = new URLSearchParams({ path: filePath });
-      const res = await fetch(`${API_BASE}/api/projects/${projectId}/file?${params}`);
-      if (!res.ok) throw new Error("Failed to fetch file content");
-      const data = await res.json();
+      const data = await apiGet<FileContent>(`/api/projects/${projectId}/file?${params}`);
       setFileContent(data);
       setError(null);
     } catch (err: unknown) {

@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
+import { API_BASE, apiGet, apiPost } from "@/lib/api";
 
 export interface Message {
   id: number;
@@ -8,8 +9,6 @@ export interface Message {
   content: string;
   created_at: string;
 }
-
-const API_BASE = "http://127.0.0.1:8001";
 
 export function useMessages(chatId: number | null) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -20,9 +19,7 @@ export function useMessages(chatId: number | null) {
     if (!chatId) return;
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/api/chat/${chatId}/messages`);
-      if (!res.ok) throw new Error("Failed to fetch messages");
-      const data = await res.json();
+      const data = await apiGet<Message[]>(`/api/chat/${chatId}/messages`);
       setMessages(data);
       setError(null);
     } catch (err: unknown) {
@@ -38,13 +35,7 @@ export function useMessages(chatId: number | null) {
 
   async function sendMessage(content: string, model: string = "mimo-v2.5-pro") {
     if (!chatId) throw new Error("No chat selected");
-    const res = await fetch(`${API_BASE}/api/chat/${chatId}/send`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, model }),
-    });
-    if (!res.ok) throw new Error("Failed to send message");
-    const data = await res.json();
+    const data = await apiPost(`/api/chat/${chatId}/send`, { content, model });
     await fetchMessages();
     return data;
   }

@@ -59,7 +59,7 @@ export default function FileSearchPage() {
           }}
         >
           <ArrowLeft style={{ width: "14px", height: "14px" }} />
-          <span>返回</span>
+          <span>{t("common.back")}</span>
         </button>
 
         {/* 项目信息 */}

@@ -7,6 +7,7 @@ import json
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, Memory
 from app.services.model import model_service, Message as ModelMessage
+from app.services.tools import tool_registry
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
 from app.services.knowledge import knowledge_service
@@ -227,6 +228,7 @@ class SendRequest(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 4096
     personality_level: int = 50
+    use_tools: bool = True
 
 
 class SendResponse(BaseModel):
@@ -326,6 +328,7 @@ async def send_message(chat_id: int, request: SendRequest):
                 messages=model_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
+                tools=tool_registry.get_definitions() if request.use_tools else None,
             )
             ai_content = ai_response.content
             api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None

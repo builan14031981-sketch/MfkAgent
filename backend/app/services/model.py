@@ -127,16 +127,16 @@ class ModelService:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         stream: bool = False,
+        tools: List[Dict] = None,
     ) -> ChatResponse:
         """发送聊天请求"""
         config = self.get_model_config(model_id)
         if not config:
             raise ValueError(f"模型 {model_id} 不存在")
-        
+
         if not config.api_key:
             raise ValueError(f"模型 {model_id} 未配置API Key")
-        
-        # 根据不同的provider调用不同的接口
+
         if config.provider in [
             ModelProvider.MIMO,
             ModelProvider.DEEPSEEK,
@@ -147,7 +147,7 @@ class ModelService:
             ModelProvider.BAICHUAN,
         ]:
             return await self._chat_openai_compatible(
-                config, messages, temperature, max_tokens, stream
+                config, messages, temperature, max_tokens, stream, tools
             )
         else:
             raise ValueError(f"不支持的模型提供商: {config.provider}")
@@ -222,13 +222,16 @@ class ModelService:
         temperature: float,
         max_tokens: int,
         stream: bool,
+        tools: List[Dict] = None,
     ) -> ChatResponse:
         """调用OpenAI兼容接口"""
+        from app.services.tools import tool_registry
+
         headers = {
             "Authorization": f"Bearer {config.api_key}",
             "Content-Type": "application/json",
         }
-        
+
         payload = {
             "model": config.model_name,
             "messages": [msg.dict() for msg in messages],
@@ -236,7 +239,10 @@ class ModelService:
             "max_tokens": max_tokens,
             "stream": stream,
         }
-        
+
+        if tools:
+            payload["tools"] = tools
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{config.api_base}/chat/completions",
@@ -244,17 +250,61 @@ class ModelService:
                 json=payload,
                 timeout=60.0,
             )
-            
+
             if response.status_code != 200:
                 raise Exception(f"API调用失败: {response.text}")
-            
+
             data = response.json()
-            
+            choice = data["choices"][0]
+            message = choice["message"]
+
+            if choice.get("finish_reason") == "tool_calls" and message.get("tool_calls"):
+                tool_results = []
+                for tool_call in message["tool_calls"]:
+                    func_name = tool_call["function"]["name"]
+                    import json
+                    try:
+                        func_args = json.loads(tool_call["function"]["arguments"])
+                    except:
+                        func_args = {}
+                    result = await tool_registry.execute(func_name, **func_args)
+                    tool_results.append({
+                        "tool_call_id": tool_call["id"],
+                        "role": "tool",
+                        "content": result.output if result.success else f"Error: {result.error}",
+                    })
+
+                new_messages = [msg.dict() for msg in messages]
+                new_messages.append(message)
+                new_messages.extend(tool_results)
+
+                payload["messages"] = new_messages
+                payload.pop("tools", None)
+
+                response2 = await client.post(
+                    f"{config.api_base}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0,
+                )
+
+                if response2.status_code != 200:
+                    raise Exception(f"API调用失败: {response2.text}")
+
+                data2 = response2.json()
+                return ChatResponse(
+                    id=data2.get("id", ""),
+                    model=data2.get("model", config.model_name),
+                    content=data2["choices"][0]["message"]["content"],
+                    finish_reason=data2["choices"][0].get("finish_reason", "stop"),
+                    usage=data2.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}),
+                )
+
             return ChatResponse(
                 id=data.get("id", ""),
                 model=data.get("model", config.model_name),
-                content=data["choices"][0]["message"]["content"],
-                finish_reason=data["choices"][0].get("finish_reason", "stop"),
+                content=message.get("content", ""),
+                finish_reason=choice.get("finish_reason", "stop"),
                 usage=data.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}),
             )
 

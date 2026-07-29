@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { apiGet } from "@/lib/api";
 
 export interface SearchResult {
   name: string;
@@ -6,8 +7,6 @@ export interface SearchResult {
   is_dir: boolean;
   size: number;
 }
-
-const API_BASE = "http://127.0.0.1:8001";
 
 export function useFileSearch(projectId: number | null, query: string, limit: number = 20) {
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -22,9 +21,7 @@ export function useFileSearch(projectId: number | null, query: string, limit: nu
     try {
       setLoading(true);
       const params = new URLSearchParams({ q: query, limit: String(limit) });
-      const res = await fetch(`${API_BASE}/api/projects/${projectId}/search?${params}`);
-      if (!res.ok) throw new Error("Failed to search files");
-      const data = await res.json();
+      const data = await apiGet<SearchResult[]>(`/api/projects/${projectId}/search?${params}`);
       setResults(data);
       setError(null);
     } catch (err: unknown) {

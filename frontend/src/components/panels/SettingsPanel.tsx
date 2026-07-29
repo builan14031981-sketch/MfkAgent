@@ -56,7 +56,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   ];
 
   return (
-    <Panel isOpen={isOpen} onClose={onClose} title="设置" width="700px" variant="center">
+    <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")} width="700px" variant="center">
       <div style={{
         display: "flex",
         gap: "24px",
@@ -262,12 +262,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       fontWeight: "500",
                       color: "var(--text-level-1)",
                       margin: 0,
-                    }}>默认模型</h3>
+                    }}>{t("settings.model.defaultModel.title")}</h3>
                     <p style={{
                       fontSize: "12px",
                       color: "var(--text-level-3)",
                       margin: "2px 0 0 0",
-                    }}>新聊天默认使用的 AI 模型</p>
+                    }}>{t("settings.model.defaultModel.desc")}</p>
                   </div>
                   <select
                     value={settings?.default_model || "mimo-v2.5-pro"}
@@ -297,7 +297,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   fontWeight: "500",
                   color: "var(--text-level-1)",
                   margin: "0 0 16px 0",
-                }}>API 配置</h3>
+                }}>{t("settings.model.apiConfig.title")}</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {[
                     { key: "api_key_mimo", label: "小米 MiMo", placeholder: "sk-..." },
@@ -356,12 +356,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     fontWeight: "500",
                     color: "var(--text-level-1)",
                     margin: 0,
-                  }}>默认人格</h3>
+                  }}>{t("settings.ai.defaultPersonality.title")}</h3>
                   <p style={{
                     fontSize: "12px",
                     color: "var(--text-level-3)",
                     margin: "2px 0 0 0",
-                  }}>调整 AI 的理性/感性倾向</p>
+                  }}>{t("settings.ai.defaultPersonality.desc")}</p>
                 </div>
                 <span style={{
                   fontSize: "13px",
@@ -388,9 +388,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 color: "var(--text-level-4)",
                 marginTop: "4px",
               }}>
-                <span>极度感性</span>
-                <span>平衡</span>
-                <span>极度理性</span>
+                <span>{t("settings.ai.defaultPersonality.veryEmotional")}</span>
+                <span>{t("settings.ai.defaultPersonality.balanced")}</span>
+                <span>{t("settings.ai.defaultPersonality.veryRational")}</span>
               </div>
             </div>
           )}
@@ -408,12 +408,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   fontWeight: "500",
                   color: "var(--text-level-1)",
                   margin: "0 0 8px 0",
-                }}>记忆管理</p>
+                }}>{t("settings.memory.title")}</p>
                 <p style={{
                   fontSize: "13px",
                   color: "var(--text-level-3)",
                   margin: 0,
-                }}>AI 会记住你的偏好和重要信息，以便提供更个性化的服务。</p>
+                }}>{t("settings.memory.desc")}</p>
               </div>
             </div>
           )}
@@ -436,17 +436,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   fontSize: "13px",
                   color: "var(--text-level-3)",
                   margin: "0 0 4px 0",
-                }}>版本: v1.0.0</p>
+                }}>{t("settings.about.version")}</p>
                 <p style={{
                   fontSize: "13px",
                   color: "var(--text-level-3)",
                   margin: "0 0 12px 0",
-                }}>专业的 AI 工作助手</p>
+                }}>{t("settings.about.description")}</p>
                 <p style={{
                   fontSize: "12px",
                   color: "var(--text-level-4)",
                   margin: 0,
-                }}>MfkAgent 可能会犯错，请核实重要信息</p>
+                }}>{t("settings.about.aiMayError")}</p>
               </div>
             </div>
           )}

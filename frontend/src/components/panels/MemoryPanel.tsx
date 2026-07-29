@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useMemory } from "@/hooks/useMemory";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Panel } from "./Panel";
 
 interface MemoryPanelProps {
@@ -17,6 +18,7 @@ interface MemoryPanelProps {
 
 export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
   const { agents } = useAgents();
+  const { t } = useTranslation();
   const [selectedAgent, setSelectedAgent] = useState(agents[0]?.id || "");
   const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent);
 
@@ -48,7 +50,7 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
   };
 
   return (
-    <Panel isOpen={isOpen} onClose={onClose} title="记忆管理">
+    <Panel isOpen={isOpen} onClose={onClose} title={t("memory.title")}>
       {/* Agent 选择 */}
       <div style={{ marginBottom: "20px" }}>
         <label style={{
@@ -56,7 +58,7 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
           fontSize: "13px",
           color: "var(--text-level-3)",
           marginBottom: "8px",
-        }}>选择 Agent</label>
+        }}>{t("memory.selectAgent")}</label>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {agents.map((agent) => (
             <button
@@ -94,13 +96,13 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
           fontWeight: "500",
           color: "var(--text-level-1)",
           margin: "0 0 12px 0",
-        }}>添加记忆</h3>
+        }}>{t("memory.addMemory")}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <input
             type="text"
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
-            placeholder="键（例如：喜欢简洁回答）"
+            placeholder={t("memory.keyPlaceholder")}
             style={{
               padding: "10px 12px",
               borderRadius: "var(--radius-md)",
@@ -115,7 +117,7 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
             type="text"
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
-            placeholder="值（例如：是）"
+            placeholder={t("memory.valuePlaceholder")}
             style={{
               padding: "10px 12px",
               borderRadius: "var(--radius-md)",
@@ -144,7 +146,7 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
             }}
           >
             <Plus style={{ width: "14px", height: "14px" }} />
-            <span>添加</span>
+            <span>{t("memory.add")}</span>
           </button>
         </div>
       </div>
@@ -156,9 +158,9 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
           fontWeight: "500",
           color: "var(--text-level-1)",
           margin: "0 0 12px 0",
-        }}>记忆列表</h3>
+        }}>{t("memory.memoryList")}</h3>
         {loading ? (
-          <p style={{ color: "var(--text-level-3)" }}>加载中...</p>
+          <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
         ) : memories.length === 0 ? (
           <div style={{
             padding: "24px",
@@ -167,7 +169,7 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
             background: "var(--bg-level-2)",
           }}>
             <Brain style={{ width: "32px", height: "32px", color: "var(--text-level-4)", marginBottom: "8px" }} />
-            <p style={{ fontSize: "13px", color: "var(--text-level-3)", margin: 0 }}>暂无记忆</p>
+            <p style={{ fontSize: "13px", color: "var(--text-level-3)", margin: 0 }}>{t("memory.noMemories")}</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
