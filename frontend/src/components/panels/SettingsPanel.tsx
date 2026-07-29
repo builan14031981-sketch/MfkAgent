@@ -51,6 +51,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "general", label: t("settings.general.title"), icon: Monitor },
     { id: "model", label: t("settings.model.title"), icon: Cpu },
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
+    { id: "memory", label: t("settings.memory.title"), icon: Brain },
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
@@ -390,6 +391,29 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <span>极度感性</span>
                 <span>平衡</span>
                 <span>极度理性</span>
+              </div>
+            </div>
+          )}
+
+          {/* 记忆 */}
+          {activeSection === "memory" && (
+            <div>
+              <div style={{
+                padding: "16px",
+                borderRadius: "var(--radius-md)",
+                background: "var(--bg-level-2)",
+              }}>
+                <p style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "var(--text-level-1)",
+                  margin: "0 0 8px 0",
+                }}>记忆管理</p>
+                <p style={{
+                  fontSize: "13px",
+                  color: "var(--text-level-3)",
+                  margin: 0,
+                }}>AI 会记住你的偏好和重要信息，以便提供更个性化的服务。</p>
               </div>
             </div>
           )}
