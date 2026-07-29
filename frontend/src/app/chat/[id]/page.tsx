@@ -8,11 +8,14 @@ import {
   Send,
   MessageSquare,
   Trash2,
+  Brain,
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
+import { SettingsPanel } from "@/components/panels/SettingsPanel";
+import { MemoryPanel } from "@/components/panels/MemoryPanel";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -34,6 +37,8 @@ export default function ChatPage() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -251,7 +256,27 @@ export default function ChatPage() {
           borderTop: "1px solid var(--border-primary)",
         }}>
           <button
-            onClick={() => router.push("/settings")}
+            onClick={() => setIsMemoryOpen(true)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 12px",
+              borderRadius: "var(--radius-md)",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "14px",
+              color: "var(--text-level-3)",
+              marginBottom: "4px",
+            }}
+          >
+            <Brain style={{ width: "16px", height: "16px" }} />
+            <span>Memory</span>
+          </button>
+          <button
+            onClick={() => setIsSettingsOpen(true)}
             style={{
               width: "100%",
               display: "flex",
@@ -271,6 +296,10 @@ export default function ChatPage() {
           </button>
         </div>
       </aside>
+
+      {/* 面板 */}
+      <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <MemoryPanel isOpen={isMemoryOpen} onClose={() => setIsMemoryOpen(false)} />
 
       {/* 右侧聊天区域 */}
       <main style={{
@@ -375,39 +404,122 @@ export default function ChatPage() {
                 <div
                   key={message.id}
                   style={{
-                    display: "flex",
-                    justifyContent: message.role === "user" ? "flex-end" : "flex-start",
-                    marginBottom: "16px",
+                    marginBottom: "24px",
                   }}
                 >
-                  <div style={{
-                    maxWidth: "70%",
-                    padding: "12px 16px",
-                    borderRadius: "var(--radius-lg)",
-                    background: message.role === "user" ? "var(--color-primary)" : "var(--bg-level-3)",
-                    color: message.role === "user" ? "white" : "var(--text-level-2)",
-                    fontSize: "14px",
-                    lineHeight: "1.6",
-                    whiteSpace: "pre-wrap",
-                  }}>
-                    {message.content}
-                  </div>
+                  {message.role === "user" ? (
+                    /* 用户消息：轻量气泡 */
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                    }}>
+                      <div style={{
+                        maxWidth: "70%",
+                        padding: "10px 14px",
+                        borderRadius: "var(--radius-md)",
+                        background: "var(--color-primary)",
+                        color: "white",
+                        fontSize: "14px",
+                        lineHeight: "1.6",
+                        whiteSpace: "pre-wrap",
+                      }}>
+                        {message.content}
+                      </div>
+                    </div>
+                  ) : (
+                    /* AI 回复：无气泡，全宽显示 */
+                    <div>
+                      {/* AI 标识 */}
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "8px",
+                      }}>
+                        {currentAgent && (
+                          <span style={{ fontSize: "16px" }}>{currentAgent.avatar}</span>
+                        )}
+                        <span style={{
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          color: "var(--text-level-3)",
+                        }}>{currentAgent?.name || "AI"}</span>
+                      </div>
+                      {/* 正文区域 */}
+                      <div style={{
+                        fontSize: "14px",
+                        lineHeight: "1.7",
+                        color: "var(--text-level-2)",
+                        whiteSpace: "pre-wrap",
+                      }}>
+                        {message.content}
+                      </div>
+                      {/* 操作区域 */}
+                      <div style={{
+                        display: "flex",
+                        gap: "8px",
+                        marginTop: "8px",
+                        opacity: 0,
+                        transition: "opacity 0.2s",
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
+                      >
+                        <button style={{
+                          padding: "4px 8px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          color: "var(--text-level-4)",
+                        }}>复制</button>
+                        <button style={{
+                          padding: "4px 8px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          color: "var(--text-level-4)",
+                        }}>引用</button>
+                        <button style={{
+                          padding: "4px 8px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          fontSize: "12px",
+                          color: "var(--text-level-4)",
+                        }}>重新生成</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {streamingContent && (
-                <div style={{
-                  display: "flex",
-                  justifyContent: "flex-start",
-                  marginBottom: "16px",
-                }}>
+                <div style={{ marginBottom: "24px" }}>
+                  {/* AI 标识 */}
                   <div style={{
-                    maxWidth: "70%",
-                    padding: "12px 16px",
-                    borderRadius: "var(--radius-lg)",
-                    background: "var(--bg-level-3)",
-                    color: "var(--text-level-2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    marginBottom: "8px",
+                  }}>
+                    {currentAgent && (
+                      <span style={{ fontSize: "16px" }}>{currentAgent.avatar}</span>
+                    )}
+                    <span style={{
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      color: "var(--text-level-3)",
+                    }}>{currentAgent?.name || "AI"}</span>
+                  </div>
+                  {/* 正文区域 */}
+                  <div style={{
                     fontSize: "14px",
-                    lineHeight: "1.6",
+                    lineHeight: "1.7",
+                    color: "var(--text-level-2)",
                     whiteSpace: "pre-wrap",
                   }}>
                     {streamingContent}
