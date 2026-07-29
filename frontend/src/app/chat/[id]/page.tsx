@@ -2,18 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import {
-  Plus,
-  Settings,
-  Send,
-  MessageSquare,
-  Trash2,
-  Brain,
-} from "lucide-react";
+import { Send } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
+import { Sidebar } from "@/components/Sidebar";
 import { SettingsPanel } from "@/components/panels/SettingsPanel";
 import { MemoryPanel } from "@/components/panels/MemoryPanel";
 
@@ -29,7 +23,7 @@ export default function ChatPage() {
 
   const { agents } = useAgents();
   useProjects();
-  const { chats, updateChat, deleteChat } = useChat();
+  const { chats, updateChat } = useChat();
   const { messages, sendMessageStream } = useMessages(chatId);
 
   const currentChat = chats.find((c) => c.id === chatId);
@@ -127,15 +121,6 @@ export default function ChatPage() {
     }
   };
 
-  const handleDeleteChat = async (id: number) => {
-    try {
-      await deleteChat(id);
-      router.push("/");
-    } catch (err) {
-      console.error("Failed to delete chat:", err);
-    }
-  };
-
   return (
     <div style={{
       display: "flex",
@@ -143,159 +128,11 @@ export default function ChatPage() {
       background: "var(--bg-level-2)",
     }}>
       {/* 左侧 Sidebar */}
-      <aside style={{
-        width: "280px",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        borderRight: "1px solid var(--border-primary)",
-        background: "var(--bg-level-1)",
-      }}>
-        {/* 新建任务 */}
-        <div style={{ padding: "16px" }}>
-          <button
-            onClick={() => router.push("/")}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 16px",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "var(--bg-level-3)",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            <Plus style={{ width: "16px", height: "16px" }} />
-            <span>New Task</span>
-          </button>
-        </div>
-
-        {/* 聊天列表 */}
-        <div style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "0 16px 16px 16px",
-        }}>
-          <p style={{
-            padding: "0 12px",
-            marginBottom: "4px",
-            fontSize: "12px",
-            fontWeight: "600",
-            color: "var(--text-level-4)",
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
-          }}>Chats</p>
-          {chats.map((chat) => {
-            const chatAgent = agents.find((a) => a.id === chat.agent_id);
-            return (
-              <div
-                key={chat.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "8px 12px",
-                  borderRadius: "var(--radius-sm)",
-                  background: chat.id === chatId ? "var(--bg-level-3)" : "transparent",
-                  cursor: "pointer",
-                  marginBottom: "2px",
-                }}
-                onClick={() => router.push(`/chat/${chat.id}`)}
-              >
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  flex: 1,
-                  overflow: "hidden",
-                }}>
-                  {chatAgent ? (
-                    <span style={{ fontSize: "14px", flexShrink: 0 }}>{chatAgent.avatar}</span>
-                  ) : (
-                    <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0 }} />
-                  )}
-                  <span style={{
-                    fontSize: "14px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}>{chat.title}</span>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteChat(chat.id);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "24px",
-                    height: "24px",
-                    borderRadius: "var(--radius-xs)",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    color: "var(--text-level-4)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Trash2 style={{ width: "12px", height: "12px" }} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 设置 */}
-        <div style={{
-          padding: "16px",
-          borderTop: "1px solid var(--border-primary)",
-        }}>
-          <button
-            onClick={() => setIsMemoryOpen(true)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 12px",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "14px",
-              color: "var(--text-level-3)",
-              marginBottom: "4px",
-            }}
-          >
-            <Brain style={{ width: "16px", height: "16px" }} />
-            <span>Memory</span>
-          </button>
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 12px",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "14px",
-              color: "var(--text-level-3)",
-            }}
-          >
-            <Settings style={{ width: "16px", height: "16px" }} />
-            <span>Settings</span>
-          </button>
-        </div>
-      </aside>
+      <Sidebar
+        currentChatId={chatId}
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        onMemoryClick={() => setIsMemoryOpen(true)}
+      />
 
       {/* 面板 */}
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
