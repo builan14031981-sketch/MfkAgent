@@ -9,10 +9,13 @@ import {
   ArrowRight,
   Settings,
   MessageSquare,
+  Brain,
 } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
+import { SettingsPanel } from "@/components/panels/SettingsPanel";
+import { MemoryPanel } from "@/components/panels/MemoryPanel";
 
 const API_BASE = "http://127.0.0.1:8001";
 
@@ -33,6 +36,8 @@ export default function Home() {
   const { projects, loading: projectsLoading } = useProjects();
   const { chats } = useChat();
   const [welcome, setWelcome] = useState(welcomeMessages[0]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
 
   useEffect(() => {
     setWelcome(welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]);
@@ -217,7 +222,27 @@ export default function Home() {
           borderTop: "1px solid var(--border-primary)",
         }}>
           <button
-            onClick={() => router.push("/settings")}
+            onClick={() => setIsMemoryOpen(true)}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 12px",
+              borderRadius: "var(--radius-md)",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "14px",
+              color: "var(--text-level-3)",
+              marginBottom: "4px",
+            }}
+          >
+            <Brain style={{ width: "16px", height: "16px" }} />
+            <span>Memory</span>
+          </button>
+          <button
+            onClick={() => setIsSettingsOpen(true)}
             style={{
               width: "100%",
               display: "flex",
@@ -237,6 +262,10 @@ export default function Home() {
           </button>
         </div>
       </aside>
+
+      {/* 面板 */}
+      <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <MemoryPanel isOpen={isMemoryOpen} onClose={() => setIsMemoryOpen(false)} />
 
       {/* 右侧 Workspace Canvas */}
       <main style={{
