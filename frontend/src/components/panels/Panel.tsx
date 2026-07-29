@@ -8,9 +8,10 @@ interface PanelProps {
   title: string;
   children: React.ReactNode;
   width?: string;
+  variant?: "center" | "bottom-left";
 }
 
-export function Panel({ isOpen, onClose, title, children, width = "380px" }: PanelProps) {
+export function Panel({ isOpen, onClose, title, children, width = "700px", variant = "center" }: PanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,9 +38,11 @@ export function Panel({ isOpen, onClose, title, children, width = "380px" }: Pan
 
   if (!isOpen) return null;
 
+  const isCenter = variant === "center";
+
   return (
     <>
-      {/* 遮罩层 - 半透明，不阻挡交互 */}
+      {/* 遮罩层 */}
       <div
         style={{
           position: "fixed",
@@ -47,30 +50,38 @@ export function Panel({ isOpen, onClose, title, children, width = "380px" }: Pan
           left: 0,
           right: 0,
           bottom: 0,
-          background: "rgba(0, 0, 0, 0.15)",
+          background: "rgba(0, 0, 0, 0.3)",
           zIndex: 99,
           animation: "fadeIn 0.15s ease",
         }}
       />
-      {/* 面板 - 从左下角展开 */}
+      {/* 面板 */}
       <div
         ref={panelRef}
         style={{
           position: "fixed",
-          bottom: "16px",
-          left: "296px", // Sidebar 宽度 280px + 16px 间距
-          width,
-          maxHeight: "calc(100vh - 32px)",
+          ...(isCenter ? {
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width,
+            maxWidth: "90vw",
+            maxHeight: "80vh",
+          } : {
+            bottom: "16px",
+            left: "296px",
+            width,
+            maxHeight: "calc(100vh - 32px)",
+            transformOrigin: "bottom left",
+          }),
           background: "var(--bg-level-1)",
           borderRadius: "var(--radius-xl)",
           boxShadow: "var(--shadow-lg), 0 0 0 1px var(--border-primary)",
           zIndex: 100,
           display: "flex",
           flexDirection: "column",
-          transformOrigin: "bottom left",
-          animation: "panelOpen 0.25s ease forwards",
+          animation: isCenter ? "panelCenterOpen 0.25s ease forwards" : "panelOpen 0.25s ease forwards",
           opacity: 0,
-          transform: "scale(0.95) translateY(10px)",
         }}
       >
         {/* 面板头部 */}
@@ -78,11 +89,11 @@ export function Panel({ isOpen, onClose, title, children, width = "380px" }: Pan
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "16px 20px 12px",
+          padding: "20px 24px 16px",
           borderBottom: "1px solid var(--border-secondary)",
         }}>
           <h2 style={{
-            fontSize: "15px",
+            fontSize: "16px",
             fontWeight: "600",
             color: "var(--text-level-1)",
             margin: 0,
@@ -92,7 +103,7 @@ export function Panel({ isOpen, onClose, title, children, width = "380px" }: Pan
         <div style={{
           flex: 1,
           overflowY: "auto",
-          padding: "16px 20px 20px",
+          padding: "20px 24px 24px",
         }}>
           {children}
         </div>
