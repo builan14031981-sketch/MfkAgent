@@ -203,81 +203,38 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               {/* 字体风格 */}
-              <div style={{ marginBottom: "28px" }}>
-                <div style={{
-                  marginBottom: "12px",
-                }}>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                  }}>字体</h3>
-                  <p style={{
-                    fontSize: "12px",
-                    color: "var(--text-level-3)",
-                    margin: "2px 0 0 0",
-                  }}>选择界面字体风格</p>
-                </div>
-                <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                }}>
-                  {[
-                    { value: "system", label: "系统默认", desc: "使用系统原生字体", family: "-apple-system, BlinkMacSystemFont, sans-serif" },
-                    { value: "noto-sans-sc", label: "思源黑体", desc: "清晰、现代、适合屏幕阅读", family: "'Noto Sans SC', sans-serif" },
-                    { value: "lxgw-wenkai", label: "霞鹜文楷", desc: "温暖、人文、适合阅读", family: "'LXGW WenKai', serif" },
-                    { value: "ibm-plex-sans", label: "IBM Plex Sans", desc: "简洁、专业、技术感", family: "'IBM Plex Sans', sans-serif" },
-                  ].map((font) => (
-                    <button
-                      key={font.value}
-                      onClick={() => handleUpdate("font_family", font.value)}
-                      disabled={saving === "font_family"}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "12px 16px",
-                        borderRadius: "var(--radius-md)",
-                        border: settings?.font_family === font.value ? "2px solid var(--color-primary)" : "1px solid var(--border-primary)",
-                        background: settings?.font_family === font.value ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
-                        cursor: "pointer",
-                        opacity: saving === "font_family" ? 0.7 : 1,
-                      }}
-                    >
-                      <div>
-                        <p style={{
-                          fontSize: "14px",
-                          fontWeight: "500",
-                          color: settings?.font_family === font.value ? "var(--color-primary)" : "var(--text-level-1)",
-                          margin: 0,
-                          fontFamily: font.family,
-                        }}>{font.label}</p>
-                        <p style={{
-                          fontSize: "12px",
-                          color: "var(--text-level-3)",
-                          margin: "2px 0 0 0",
-                        }}>{font.desc}</p>
-                      </div>
-                      {settings?.font_family === font.value && (
-                        <div style={{
-                          width: "20px",
-                          height: "20px",
-                          borderRadius: "50%",
-                          background: "var(--color-primary)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}>
-                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6L5 9L10 3" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "28px",
+              }}>
+                <h3 style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "var(--text-level-1)",
+                  margin: 0,
+                }}>字体</h3>
+                <select
+                  value={settings?.font_family || "system"}
+                  onChange={(e) => handleUpdate("font_family", e.target.value)}
+                  disabled={saving === "font_family"}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--border-primary)",
+                    background: "var(--bg-level-2)",
+                    fontSize: "13px",
+                    color: "var(--text-level-2)",
+                    opacity: saving === "font_family" ? 0.7 : 1,
+                    minWidth: "140px",
+                  }}
+                >
+                  <option value="system">系统默认</option>
+                  <option value="noto-sans-sc">思源黑体</option>
+                  <option value="lxgw-wenkai">霞鹜文楷</option>
+                  <option value="ibm-plex-sans">IBM Plex Sans</option>
+                </select>
               </div>
             </>
           )}
