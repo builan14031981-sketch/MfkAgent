@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -8,6 +8,9 @@ import {
   MessageSquare,
   Trash2,
   Brain,
+  Pin,
+  PinOff,
+  Edit2,
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useChat, Chat } from "@/hooks/useChat";
@@ -17,6 +20,13 @@ interface SidebarProps {
   currentChatId?: number | null;
   onSettingsClick?: () => void;
   onMemoryClick?: () => void;
+}
+
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  chatId: number | null;
 }
 
 function getDateGroup(dateStr: string): string {
@@ -55,12 +65,54 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
   const router = useRouter();
   const { t } = useTranslation();
   const { agents } = useAgents();
-  const { chats, deleteChat } = useChat();
+  const { chats, deleteChat, updateChat } = useChat();
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    chatId: null,
+  });
+  const [renamingChatId, setRenamingChatId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [pinnedChats, setPinnedChats] = useState<Set<number>>(new Set());
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   const groupedChats = useMemo(() => groupChatsByDate(chats), [chats]);
 
-  const handleDeleteChat = async (id: number, e: React.MouseEvent) => {
+  // 点击外部关闭右键菜单
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(prev => ({ ...prev, visible: false }));
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // 重命名输入框自动聚焦
+  useEffect(() => {
+    if (renamingChatId && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [renamingChatId]);
+
+  const handleContextMenu = (e: React.MouseEvent, chatId: number) => {
+    e.preventDefault();
     e.stopPropagation();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      chatId,
+    });
+  };
+
+  const handleDeleteChat = async (id: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
       await deleteChat(id);
       if (currentChatId === id) {
@@ -69,7 +121,53 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
     } catch (err) {
       console.error("Failed to delete chat:", err);
     }
+    setContextMenu(prev => ({ ...prev, visible: false }));
   };
+
+  const handleRename = async () => {
+    if (!renamingChatId || !renameValue.trim()) {
+      setRenamingChatId(null);
+      return;
+    }
+    try {
+      await updateChat(renamingChatId, { title: renameValue.trim() });
+    } catch (err) {
+      console.error("Failed to rename chat:", err);
+    }
+    setRenamingChatId(null);
+  };
+
+  const handlePin = (chatId: number) => {
+    setPinnedChats(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(chatId)) {
+        newSet.delete(chatId);
+      } else {
+        newSet.add(chatId);
+      }
+      return newSet;
+    });
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const startRename = (chatId: number, currentTitle: string) => {
+    setRenamingChatId(chatId);
+    setRenameValue(currentTitle);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  // 排序：置顶的聊天在前
+  const sortedGroupedChats = useMemo(() => {
+    const sorted = new Map<string, Chat[]>();
+    for (const [group, chats] of groupedChats) {
+      sorted.set(group, [...chats].sort((a, b) => {
+        const aPinned = pinnedChats.has(a.id) ? -1 : 0;
+        const bPinned = pinnedChats.has(b.id) ? -1 : 0;
+        return aPinned - bPinned;
+      }));
+    }
+    return sorted;
+  }, [groupedChats, pinnedChats]);
 
   return (
     <aside style={{
@@ -80,6 +178,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
       borderRight: "1px solid var(--border-primary)",
       background: "var(--bg-level-1)",
       flexShrink: 0,
+      position: "relative",
     }}>
       {/* 新建任务 */}
       <div style={{ padding: "16px" }}>
@@ -140,7 +239,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             }}>{t("sidebar.noChatsDesc")}</p>
           </div>
         ) : (
-          Array.from(groupedChats.entries()).map(([dateGroup, groupChats]) => (
+          Array.from(sortedGroupedChats.entries()).map(([dateGroup, groupChats]) => (
             <div key={dateGroup} style={{ marginBottom: "8px" }}>
               <p style={{
                 padding: "8px 12px 4px",
@@ -150,7 +249,9 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                 color: "var(--text-level-4)",
               }}>{dateGroup}</p>
               {groupChats.map((chat) => {
-                const chatAgent = agents.find((a) => a.id === chat.agent_id);
+                const isPinned = pinnedChats.has(chat.id);
+                const isRenaming = renamingChatId === chat.id;
+
                 return (
                   <div
                     key={chat.id}
@@ -165,7 +266,8 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                       marginBottom: "2px",
                       transition: "all var(--transition-fast)",
                     }}
-                    onClick={() => router.push(`/chat/${chat.id}`)}
+                    onClick={() => !isRenaming && router.push(`/chat/${chat.id}`)}
+                    onContextMenu={(e) => handleContextMenu(e, chat.id)}
                     onMouseEnter={(e) => {
                       if (chat.id !== currentChatId) {
                         e.currentTarget.style.background = "var(--bg-level-3)";
@@ -184,14 +286,41 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                       flex: 1,
                       overflow: "hidden",
                     }}>
+                      {isPinned && (
+                        <Pin style={{ width: "12px", height: "12px", flexShrink: 0, color: "var(--color-primary)" }} />
+                      )}
                       <MessageSquare style={{ width: "14px", height: "14px", flexShrink: 0, color: "var(--text-level-3)" }} />
-                      <span style={{
-                        fontSize: "14px",
-                        color: "var(--text-level-2)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}>{chat.title}</span>
+                      {isRenaming ? (
+                        <input
+                          ref={renameInputRef}
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onBlur={handleRename}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRename();
+                            if (e.key === "Escape") setRenamingChatId(null);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            flex: 1,
+                            fontSize: "14px",
+                            color: "var(--text-level-2)",
+                            background: "var(--bg-level-2)",
+                            border: "1px solid var(--color-primary)",
+                            borderRadius: "var(--radius-xs)",
+                            padding: "2px 6px",
+                            outline: "none",
+                          }}
+                        />
+                      ) : (
+                        <span style={{
+                          fontSize: "14px",
+                          color: "var(--text-level-2)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>{chat.title}</span>
+                      )}
                     </div>
                     <button
                       onClick={(e) => handleDeleteChat(chat.id, e)}
@@ -228,6 +357,121 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
           ))
         )}
       </div>
+
+      {/* 右键菜单 */}
+      {contextMenu.visible && contextMenu.chatId && (
+        <div
+          ref={contextMenuRef}
+          style={{
+            position: "fixed",
+            left: contextMenu.x,
+            top: contextMenu.y,
+            background: "var(--bg-level-2)",
+            border: "1px solid var(--border-primary)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "var(--shadow-lg)",
+            padding: "4px",
+            zIndex: 1000,
+            minWidth: "160px",
+          }}
+        >
+          <button
+            onClick={() => {
+              const chat = chats.find(c => c.id === contextMenu.chatId);
+              if (chat) startRename(chat.id, chat.title);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+              padding: "8px 12px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "13px",
+              color: "var(--text-level-2)",
+              borderRadius: "var(--radius-sm)",
+              transition: "all var(--transition-fast)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-3)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <Edit2 style={{ width: "14px", height: "14px" }} />
+            <span>{t("sidebar.rename")}</span>
+          </button>
+          <button
+            onClick={() => contextMenu.chatId && handlePin(contextMenu.chatId)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+              padding: "8px 12px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "13px",
+              color: "var(--text-level-2)",
+              borderRadius: "var(--radius-sm)",
+              transition: "all var(--transition-fast)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-3)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            {contextMenu.chatId && pinnedChats.has(contextMenu.chatId) ? (
+              <>
+                <PinOff style={{ width: "14px", height: "14px" }} />
+                <span>{t("sidebar.unpin")}</span>
+              </>
+            ) : (
+              <>
+                <Pin style={{ width: "14px", height: "14px" }} />
+                <span>{t("sidebar.pin")}</span>
+              </>
+            )}
+          </button>
+          <div style={{
+            height: "1px",
+            background: "var(--border-secondary)",
+            margin: "4px 0",
+          }} />
+          <button
+            onClick={() => contextMenu.chatId && handleDeleteChat(contextMenu.chatId)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+              padding: "8px 12px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "13px",
+              color: "var(--color-error)",
+              borderRadius: "var(--radius-sm)",
+              transition: "all var(--transition-fast)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-3)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <Trash2 style={{ width: "14px", height: "14px" }} />
+            <span>{t("sidebar.delete")}</span>
+          </button>
+        </div>
+      )}
 
       {/* 底部按钮 */}
       <div style={{
