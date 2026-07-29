@@ -91,15 +91,15 @@
 
   /* 背景层级 - 柔和炭黑体系 */
   --bg-level-1: #1c1c1e;           /* 侧边栏背景 */
-  --bg-level-2: #000000;           /* 主内容背景 */
-  --bg-level-3: #1c1c1e;           /* 卡片、输入框、按钮容器 */
-  --bg-level-4: #2c2c2e;           /* 选中、高亮、交互元素 */
+  --bg-level-2: #0a0a0a;           /* 主内容背景 */
+  --bg-level-3: #2c2c2e;           /* 卡片、输入框、按钮容器 */
+  --bg-level-4: #3a3a3c;           /* 选中、高亮、交互元素 */
 
   /* 文字层级 - 深色模式下提高对比度 */
-  --text-level-1: #f5f5f7;         /* 页面标题 */
-  --text-level-2: #e5e5ea;         /* 正文内容 */
-  --text-level-3: #a1a1a6;         /* 辅助信息 */
-  --text-level-4: #636366;         /* 提示信息、占位文字 */
+  --text-level-1: #ffffff;         /* 页面标题 */
+  --text-level-2: #f5f5f7;         /* 正文内容 */
+  --text-level-3: #b0b0b5;         /* 辅助信息 */
+  --text-level-4: #8e8e93;         /* 提示信息、占位文字 */
 
   /* 边框 */
   --border-primary: #38383a;       /* 主要边框 */
@@ -351,4 +351,101 @@ html, body {
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.1),
     var(--shadow-md);
+}
+
+/* ========================================
+ * 按钮动效规范
+ * ======================================== */
+
+/* 基础按钮样式 */
+button {
+  transition: all var(--transition-fast);
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+button:active {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+/* 主要按钮 */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  opacity: 1;
+}
+
+.btn-primary:active {
+  background: var(--color-primary-active);
+  opacity: 1;
+  transform: scale(0.98);
+}
+
+/* 次要按钮 */
+.btn-secondary {
+  background: var(--bg-level-3);
+  color: var(--text-level-2);
+  border: 1px solid var(--border-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-level-4);
+  opacity: 1;
+}
+
+.btn-secondary:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* 幽灵按钮 */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-level-2);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-level-3);
+  opacity: 1;
+}
+
+.btn-ghost:active {
+  background: var(--bg-level-4);
+  opacity: 0.8;
+}
+
+/* 胶囊按钮 */
+.btn-pill {
+  background: var(--bg-level-2);
+  color: var(--text-level-2);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-pill:hover {
+  background: var(--bg-level-3);
+  border-color: var(--color-primary);
+  opacity: 1;
+}
+
+.btn-pill:active {
+  background: var(--bg-level-4);
+  opacity: 0.8;
 }

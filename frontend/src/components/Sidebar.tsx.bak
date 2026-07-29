@@ -97,19 +97,6 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             cursor: "pointer",
             fontSize: "14px",
             color: "var(--text-level-1)",
-            transition: "all var(--transition-fast)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-level-4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "var(--bg-level-3)";
-          }}
-          onMouseDown={(e) => {
-            e.currentTarget.style.transform = "scale(0.98)";
-          }}
-          onMouseUp={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
           }}
         >
           <Plus style={{ width: "16px", height: "16px" }} />
@@ -163,19 +150,8 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                       background: chat.id === currentChatId ? "var(--bg-level-3)" : "transparent",
                       cursor: "pointer",
                       marginBottom: "2px",
-                      transition: "all var(--transition-fast)",
                     }}
                     onClick={() => router.push(`/chat/${chat.id}`)}
-                    onMouseEnter={(e) => {
-                      if (chat.id !== currentChatId) {
-                        e.currentTarget.style.background = "var(--bg-level-3)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (chat.id !== currentChatId) {
-                        e.currentTarget.style.background = "transparent";
-                      }
-                    }}
                   >
                     <div style={{
                       display: "flex",
@@ -208,16 +184,10 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                         color: "var(--text-level-4)",
                         flexShrink: 0,
                         opacity: 0,
-                        transition: "all var(--transition-fast)",
+                        transition: "opacity 0.2s",
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = "1";
-                        e.currentTarget.style.background = "var(--bg-level-4)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = "0";
-                        e.currentTarget.style.background = "transparent";
-                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
                     >
                       <Trash2 style={{ width: "12px", height: "12px" }} />
                     </button>
@@ -250,15 +220,6 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
               fontSize: "14px",
               color: "var(--text-level-3)",
               marginBottom: "4px",
-              transition: "all var(--transition-fast)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--text-level-2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-3)";
             }}
           >
             <Brain style={{ width: "16px", height: "16px" }} />
@@ -280,15 +241,6 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
               cursor: "pointer",
               fontSize: "14px",
               color: "var(--text-level-3)",
-              transition: "all var(--transition-fast)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--text-level-2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-3)";
             }}
           >
             <Settings style={{ width: "16px", height: "16px" }} />

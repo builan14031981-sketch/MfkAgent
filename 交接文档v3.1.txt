@@ -1,8 +1,8 @@
-# MfkAgent 项目交接文档 V34.0
+# MfkAgent 项目交接文档 V36.0
 
 **更新时间：2026年7月29日**
-**版本：V34.0**
-**状态：前端架构重构完成版本**
+**版本：V36.0**
+**状态：V1 完整版本**
 **用途：记录当前真实代码状态，为后续 AI 开发提供上下文**
 
 ---
@@ -51,37 +51,70 @@ Agent辅助
 
 当前项目：
 
-> 前端架构重构完成，核心链路已打通，准备进入功能扩展阶段。
+> **V1 完整版本** - 前后端功能完整，核心工作流已打通。
 
 ---
 
-## 后端状态
+## 后端状态 (B1)
 
-✅ **V1 已完成**
+✅ **V1 + Phase 7 已完成**
 
-- 36 个 API 端点全部可用
-- Project、Chat、Message、Agent、Memory、Settings 模型完整
-- 流式输出支持
-- 文件浏览/搜索 API
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| Phase 0-6 API | ✅ | 36个端点全部可用 |
+| Phase 7 工具集成 | ✅ | 5个工具（web_search、execute_code、read_file、write_file、list_directory） |
+| 模型列表 API | ✅ | `GET /api/models/models` |
+| Agent预设 | ✅ | 4个预设Agent（小暖、锐、码农、笔神） |
+| Prompt组合系统 | ✅ | 系统规则+Agent身份+人格参数+用户偏好 |
+| 人格系统 | ✅ | 5档（极度感性↔极度理性） |
 
 ---
 
-## 前端状态
+## 前端状态 (A2)
 
-✅ **架构重构完成**
+✅ **V1 功能完整**
 
-| 任务 | 状态 | 说明 |
+| 功能 | 状态 | 说明 |
 |------|------|------|
 | App Layout统一 | ✅ | 统一的AppLayout组件，Sidebar永久显示 |
-| 设置系统统一 | ✅ | 只保留SettingsPanel弹窗 |
-| Memory统一 | ✅ | 只保留MemoryPanel弹窗 |
-| Chat工作流闭环 | ✅ | 首页→Chat自动发送 |
-| Projects页面适配 | ✅ | 所有projects页面适配新Layout |
-| 防重复调用修复 | ✅ | React StrictMode兼容 |
+| 首页 | ✅ | 欢迎界面+输入框+Agent/模型选择 |
+| 聊天页面 | ✅ | 消息列表+流式输出+模型切换 |
+| 项目上下文感知 | ✅ | 聊天头部显示当前项目名称 |
+| 设置面板 | ✅ | 主题/语言/字体/模型/人格滑块/Agent详情 |
+| Memory面板 | ✅ | 记忆CRUD |
+| 国际化 | ✅ | zh-CN/en-US完整翻译 |
+| API统一配置 | ✅ | lib/api.ts统一管理 |
+| 项目文件浏览 | ✅ | 文件列表/内容/搜索 |
 
 ---
 
-# 三、当前代码结构
+# 三、V1 核心工作流
+
+```
+选择 Agent → 选择模型 → 开始对话 → 流式回复 → 历史保存
+```
+
+## 完整流程
+
+```
+用户打开 MfkAgent
+    ↓
+首页：选择 Agent + 选择模型
+    ↓
+输入问题
+    ↓
+创建 Chat → 跳转聊天页面
+    ↓
+自动发送消息 → 流式显示 AI 回复
+    ↓
+消息保存 → Sidebar 显示聊天历史
+    ↓
+点击历史聊天 → 恢复上下文
+```
+
+---
+
+# 四、当前代码结构
 
 ## 前端目录结构
 
@@ -89,11 +122,11 @@ Agent辅助
 frontend/src/
 ├── app/
 │   ├── layout.tsx          # 根布局，使用AppLayout
-│   ├── page.tsx            # 首页（欢迎界面+输入框）
+│   ├── page.tsx            # 首页（欢迎界面+输入框+Agent/模型选择）
 │   ├── globals.css         # 全局样式
 │   ├── chat/
 │   │   └── [id]/
-│   │       └── page.tsx    # 聊天页面（只负责内容）
+│   │       └── page.tsx    # 聊天页面（模型切换+项目上下文）
 │   └── projects/
 │       └── [id]/
 │           ├── files/
@@ -104,125 +137,152 @@ frontend/src/
 │               └── page.tsx  # 文件搜索
 ├── components/
 │   ├── AppLayout.tsx       # 统一布局组件
-│   ├── Sidebar.tsx         # 侧边栏组件
+│   ├── Sidebar.tsx         # 侧边栏组件（按时间分组）
 │   ├── providers.tsx       # 主题/字体Provider
 │   └── panels/
 │       ├── Panel.tsx       # 面板基础组件
-│       ├── SettingsPanel.tsx  # 设置面板
+│       ├── SettingsPanel.tsx  # 设置面板（人格滑块+Agent详情）
 │       └── MemoryPanel.tsx    # 记忆面板
 ├── hooks/
 │   ├── useAgents.ts        # Agent数据
 │   ├── useChat.ts          # Chat CRUD
 │   ├── useMessages.ts      # 消息发送/流式
+│   ├── useModels.ts        # 模型列表
 │   ├── useProjects.ts      # 项目数据
 │   ├── useProjectFiles.ts  # 项目文件
 │   ├── useFileContent.ts   # 文件内容
 │   ├── useFileSearch.ts    # 文件搜索
 │   ├── useMemory.ts        # 记忆数据
 │   ├── useSettings.ts      # 设置数据
-│   └── useTranslation.ts   # 国际化
+│   └── useTranslation.ts   # 国际化（支持tArray）
 ├── lib/
+│   ├── api.ts              # 统一API配置
 │   └── store.ts            # Zustand状态管理
 └── locales/
-    ├── zh-CN.json          # 中文翻译
-    └── en-US.json          # 英文翻译
+    ├── zh-CN.json          # 中文翻译（完整）
+    └── en-US.json          # 英文翻译（完整）
 ```
 
 ---
 
-## 当前页面架构
+## 首页布局
 
 ```
-layout.tsx
-└── AppLayout (客户端组件)
-    ├── Sidebar (固定存在)
-    │   ├── 新建任务按钮
-    │   ├── 项目列表
-    │   ├── 聊天列表 (按时间分组：今天、昨天)
-    │   └── Memory / Settings 按钮
-    ├── SettingsPanel (全局弹窗)
-    ├── MemoryPanel (全局弹窗)
-    └── MainContent (路由切换)
-        ├── / → Home (欢迎界面 + 输入框)
-        ├── /chat/[id] → ChatPage (聊天界面)
-        └── /projects/[id]/* → ProjectPages (文件浏览/内容/搜索)
-```
-
----
-
-## 当前Chat流程
-
-```
-用户输入
-    ↓
-首页 handleSend
-    ↓
-createChat() → POST /api/chat
-    ↓
-跳转 /chat/[id]?message=xxx
-    ↓
-Chat页面读取URL参数
-    ↓
-sendMessageStream() → POST /api/chat/[id]/send/stream
-    ↓
-后端保存 user message + 调用模型 + 保存 assistant message
-    ↓
-前端显示流式回复
-    ↓
-清除URL参数
+┌────────────────────────────────────────┐
+│           MfkAgent Logo                │
+│          欢迎语（随机）                 │
+│                                        │
+│  ┌──────────────────────────────────┐  │
+│  │ 输入区域 (padding: 24px)         │  │
+│  │ textarea rows={3}                │  │
+│  │                                  │  │
+│  ├──────────────────────────────────┤  │
+│  │ [Agent] [模型选择]        [发送] │  │  ← 工具栏 (padding: 8px 16px)
+│  └──────────────────────────────────┘  │
+└────────────────────────────────────────┘
 ```
 
 ---
 
-# 四、已知问题
+## 聊天页面布局
 
-## 1. 国际化未完全覆盖
-
-当前有 46 处硬编码中文，需要改为 t() 调用。
-
-涉及文件：
-- page.tsx
-- Sidebar.tsx
-- chat/[id]/page.tsx
-- MemoryPanel.tsx
-- SettingsPanel.tsx
-- projects/*/page.tsx
-
----
-
-## 2. Agent系统待实现
-
-当前只有基础的Agent数据，需要实现：
-- 预设Agent（小暖、理性分析师、代码助手等）
-- Prompt组合系统
-- 人格系统（极度感性↔极度理性）
+```
+┌────────────────────────────────────────┐
+│ [Agent] 标题          [项目名] [Agent名] │
+├────────────────────────────────────────┤
+│                                        │
+│ 消息列表（流式显示）                    │
+│                                        │
+├────────────────────────────────────────┤
+│ [输入框]                        [发送] │
+│ [模型选择器]                           │
+└────────────────────────────────────────┘
+```
 
 ---
 
-# 五、下一步任务
+## 设置面板结构
 
-## Phase 3: Agent系统
-
-优先级：★★★★
-
-任务：
-1. 实现预设Agent
-2. 实现Prompt组合系统
-3. 实现人格系统
-
----
-
-## 国际化完善
-
-优先级：★★★
-
-任务：
-1. 修复 46 处硬编码中文
-2. 确保 en-US.json 翻译完整
+```
+设置
+├── 通用
+│   ├── 外观（浅色/深色/跟随系统）
+│   ├── 语言（中文/English）
+│   └── 字体（系统默认/思源黑体/霞鹜文楷/IBM Plex Sans）
+├── 模型
+│   ├── 默认模型（动态列表）
+│   └── API配置
+├── AI 行为
+│   ├── 默认人格（滑块：极度感性↔极度理性）
+│   └── 预设Agent（详情展示）
+├── 记忆
+└── 关于
+```
 
 ---
 
-# 六、开发注意事项
+# 五、API 端点清单
+
+## 核心 API
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/agents` | 获取Agent列表 |
+| `GET /api/models/models` | 获取模型列表 |
+| `POST /api/chat` | 创建Chat |
+| `GET /api/chat` | 获取Chat列表 |
+| `POST /api/chat/{id}/send/stream` | 流式发送消息 |
+| `GET /api/chat/{id}/messages` | 获取消息列表 |
+| `GET /api/projects` | 获取项目列表 |
+| `GET /api/projects/{id}/files` | 获取项目文件 |
+| `GET /api/settings` | 获取设置 |
+| `PUT /api/settings/{key}` | 更新设置 |
+| `GET /api/memory/{agent_id}` | 获取记忆 |
+| `POST /api/memory` | 创建记忆 |
+
+## 工具 API (Phase 7)
+
+| 端点 | 说明 |
+|------|------|
+| `GET /api/tools` | 列出所有工具 |
+| `POST /api/tools/call` | 调用工具 |
+| `GET /api/tools/definitions` | 获取工具定义 |
+
+---
+
+# 六、预设 Agent
+
+| Agent | 名称 | 定位 | 头像 |
+|-------|------|------|------|
+| warm | 小暖 | 温暖陪伴型 | 🌸 |
+| rational | 锐 | 理性决策型 | ⚔️ |
+| coder | 码农 | 编程开发助手 | 💻 |
+| writer | 笔神 | 写作创作助手 | ✍️ |
+
+---
+
+# 七、已知问题
+
+## 无
+
+V1 功能完整，无已知问题。
+
+---
+
+# 八、下一步方向
+
+## V2 功能（可选）
+
+| 功能 | 说明 | 优先级 |
+|------|------|--------|
+| 工具调用UI | 集成B1的工具API | ★★★★ |
+| 聊天导出 | 导出聊天记录 | ★★★ |
+| 快捷键 | Ctrl+Enter发送等 | ★★ |
+| 文件上传 | 上传文件到项目 | ★★ |
+
+---
+
+# 九、开发注意事项
 
 ## 1. 保持架构稳定
 
@@ -232,12 +292,13 @@ sendMessageStream() → POST /api/chat/[id]/send/stream
 
 ---
 
-## 2. 使用已有hook
+## 2. 使用统一API
 
-- useChat: Chat CRUD
-- useMessages: 消息发送
-- useProjects: 项目数据
-- useSettings: 设置数据
+所有API调用使用 `lib/api.ts` 中的函数：
+- `apiGet<T>(path)` - GET请求
+- `apiPost<T>(path, data)` - POST请求
+- `apiPatch<T>(path, data)` - PATCH请求
+- `apiDelete(path)` - DELETE请求
 
 ---
 
@@ -253,9 +314,15 @@ sendMessageStream() → POST /api/chat/[id]/send/stream
 <span>{t("common.loading")}</span>
 ```
 
+数组类型使用 tArray() 函数：
+
+```tsx
+const messages = tArray("home.welcome");
+```
+
 ---
 
-# 七、回滚信息
+# 十、回滚信息
 
 ## 已删除文件（可恢复）
 
@@ -266,5 +333,6 @@ sendMessageStream() → POST /api/chat/[id]/send/stream
 
 ---
 
-**文档版本：V34.0**
-**状态：当前有效交接文档**
+**文档版本：V36.0**
+**状态：V1 完整版本**
+**下一步：可开始 V2 功能开发**

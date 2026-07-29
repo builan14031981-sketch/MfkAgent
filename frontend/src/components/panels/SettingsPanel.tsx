@@ -8,9 +8,12 @@ import {
   Cpu,
   Brain,
   Info,
+  Bot,
 } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useModels } from "@/hooks/useModels";
+import { useAgents } from "@/hooks/useAgents";
 import { Panel } from "./Panel";
 
 interface SettingsPanelProps {
@@ -21,6 +24,8 @@ interface SettingsPanelProps {
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, loading, fetchSettings, updateSetting } = useSettingsStore();
   const { t } = useTranslation();
+  const { models, loading: modelsLoading } = useModels();
+  const { agents } = useAgents();
   const [saving, setSaving] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("general");
 
@@ -272,7 +277,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   <select
                     value={settings?.default_model || "mimo-v2.5-pro"}
                     onChange={(e) => handleUpdate("default_model", e.target.value)}
-                    disabled={saving === "default_model"}
+                    disabled={saving === "default_model" || modelsLoading}
                     style={{
                       padding: "8px 12px",
                       borderRadius: "var(--radius-sm)",
@@ -283,9 +288,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       opacity: saving === "default_model" ? 0.7 : 1,
                     }}
                   >
-                    <option value="mimo-v2.5-pro">MiMo v2.5 Pro</option>
-                    <option value="mimo-v2.5">MiMo v2.5</option>
-                    <option value="deepseek-chat">DeepSeek Chat</option>
+                    {modelsLoading ? (
+                      <option value="mimo-v2.5-pro">Loading...</option>
+                    ) : (
+                      models.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>
@@ -391,6 +402,76 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <span>{t("settings.ai.defaultPersonality.veryEmotional")}</span>
                 <span>{t("settings.ai.defaultPersonality.balanced")}</span>
                 <span>{t("settings.ai.defaultPersonality.veryRational")}</span>
+              </div>
+
+              {/* 预设 Agent 列表 */}
+              <div style={{ marginTop: "32px" }}>
+                <h3 style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "var(--text-level-1)",
+                  margin: "0 0 8px 0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}>
+                  <Bot style={{ width: "16px", height: "16px" }} />
+                  {t("settings.ai.agents.title")}
+                </h3>
+                <p style={{
+                  fontSize: "12px",
+                  color: "var(--text-level-3)",
+                  margin: "0 0 16px 0",
+                }}>{t("settings.ai.agents.desc")}</p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {agents.map((agent) => (
+                    <div
+                      key={agent.id}
+                      style={{
+                        padding: "16px",
+                        borderRadius: "var(--radius-md)",
+                        background: "var(--bg-level-2)",
+                        border: "1px solid var(--border-primary)",
+                      }}
+                    >
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        marginBottom: "12px",
+                      }}>
+                        <span style={{ fontSize: "24px" }}>{agent.avatar}</span>
+                        <div>
+                          <p style={{
+                            fontSize: "14px",
+                            fontWeight: "500",
+                            color: "var(--text-level-1)",
+                            margin: 0,
+                          }}>{agent.name}</p>
+                          <p style={{
+                            fontSize: "12px",
+                            color: "var(--text-level-3)",
+                            margin: "2px 0 0 0",
+                          }}>{agent.description}</p>
+                        </div>
+                      </div>
+                      <div style={{
+                        padding: "12px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--bg-level-1)",
+                        fontSize: "12px",
+                        color: "var(--text-level-3)",
+                        fontFamily: "monospace",
+                        whiteSpace: "pre-wrap",
+                        maxHeight: "100px",
+                        overflowY: "auto",
+                      }}>
+                        {agent.system_prompt}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

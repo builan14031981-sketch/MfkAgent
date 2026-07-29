@@ -22,7 +22,11 @@
     "settings": "Settings",
     "memory": "Memory",
     "noChats": "No chats yet",
-    "noChatsDesc": "Start a new conversation"
+    "noChatsDesc": "Start a new conversation",
+    "rename": "Rename",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "delete": "Delete"
   },
   "home": {
     "welcome": [
@@ -89,6 +93,12 @@
         "veryEmotional": "Very Emotional",
         "balanced": "Balanced",
         "veryRational": "Very Rational"
+      },
+      "agents": {
+        "title": "Preset Agents",
+        "desc": "System provided AI work partners",
+        "systemPrompt": "System Prompt",
+        "personality": "Personality Config"
       }
     },
     "memory": {

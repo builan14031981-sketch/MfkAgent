@@ -22,7 +22,11 @@
     "settings": "Settings",
     "memory": "Memory",
     "noChats": "还没有聊天",
-    "noChatsDesc": "开始一次新的对话"
+    "noChatsDesc": "开始一次新的对话",
+    "rename": "重命名",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "delete": "删除"
   },
   "home": {
     "welcome": [
@@ -89,6 +93,12 @@
         "veryEmotional": "极度感性",
         "balanced": "平衡",
         "veryRational": "极度理性"
+      },
+      "agents": {
+        "title": "预设 Agent",
+        "desc": "系统提供的 AI 工作伙伴",
+        "systemPrompt": "系统提示词",
+        "personality": "人格配置"
       }
     },
     "memory": {

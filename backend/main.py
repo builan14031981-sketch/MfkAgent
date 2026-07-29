@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import models, agents, chat, memory, projects, settings as settings_api, backup, knowledge, fonts, tools
+from app.api import models, agents, chat, memory, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
@@ -41,6 +41,7 @@ app.include_router(backup.router, prefix="/api/backup", tags=["backup"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
 app.include_router(fonts.router, prefix="/api/fonts", tags=["fonts"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
+app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 
 @app.get("/")
 async def root():

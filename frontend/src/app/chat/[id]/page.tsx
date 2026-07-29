@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Send, Copy, Quote, RefreshCw } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
+import { useModels, Model } from "@/hooks/useModels";
+import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -18,14 +20,19 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { agents } = useAgents();
+  const { models } = useModels();
+  const { projects } = useProjects();
   const { chats, updateChat } = useChat();
   const { messages, sendMessageStream } = useMessages(chatId);
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
+  const currentProject = currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null;
+  const currentModel = selectedModel || models[0] || null;
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -122,6 +129,7 @@ export default function ChatPage() {
     if (!input.trim() || isSending) return;
 
     const userMessage = input.trim();
+    const modelId = currentModel?.id || "mimo-v2.5-pro";
     setInput("");
     setIsSending(true);
     setStreamingContent("");
@@ -129,7 +137,7 @@ export default function ChatPage() {
     try {
       await sendMessageStream(
         userMessage,
-        "mimo-v2.5-pro",
+        modelId,
         (chunk) => {
           setStreamingContent((prev) => prev + chunk);
         },
@@ -182,9 +190,9 @@ export default function ChatPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "16px 24px",
-        borderBottom: "1px solid var(--border-primary)",
-        background: "var(--bg-level-1)",
+        padding: "8px 24px",
+        borderBottom: "1px solid rgba(128, 128, 128, 0.15)",
+        background: "color-mix(in srgb, var(--bg-level-1) 85%, transparent)",
         flexShrink: 0,
       }}>
         <div style={{
@@ -232,13 +240,28 @@ export default function ChatPage() {
           )}
         </div>
         {currentAgent && (
-          <span style={{
-            fontSize: "12px",
-            color: "var(--text-level-3)",
-            padding: "4px 8px",
-            borderRadius: "var(--radius-full)",
-            background: "var(--bg-level-3)",
-          }}>{currentAgent.name}</span>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            {currentProject && (
+              <span style={{
+                fontSize: "12px",
+                color: "var(--color-primary)",
+                padding: "4px 8px",
+                borderRadius: "var(--radius-full)",
+                background: "var(--color-primary-lighter)",
+              }}>📁 {currentProject.name}</span>
+            )}
+            <span style={{
+              fontSize: "12px",
+              color: "var(--text-level-3)",
+              padding: "4px 8px",
+              borderRadius: "var(--radius-full)",
+              background: "var(--bg-level-3)",
+            }}>{currentAgent.name}</span>
+          </div>
         )}
       </div>
 
@@ -434,52 +457,105 @@ export default function ChatPage() {
         <div style={{
           maxWidth: "800px",
           margin: "0 auto",
-          display: "flex",
-          gap: "12px",
-          alignItems: "flex-end",
         }}>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t("chat.inputPlaceholder")}
-            rows={1}
-            disabled={isSending}
-            style={{
-              flex: 1,
-              padding: "12px 16px",
-              borderRadius: "var(--radius-lg)",
-              border: "1px solid var(--border-primary)",
-              background: "var(--bg-level-2)",
-              fontSize: "14px",
-              lineHeight: "1.5",
-              color: "var(--text-level-2)",
-              resize: "none",
-              outline: "none",
-              minHeight: "44px",
-              maxHeight: "120px",
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isSending}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "44px",
-              height: "44px",
-              borderRadius: "var(--radius-lg)",
-              border: "none",
-              background: input.trim() && !isSending ? "var(--color-primary)" : "var(--bg-level-3)",
-              cursor: input.trim() && !isSending ? "pointer" : "not-allowed",
-              color: input.trim() && !isSending ? "white" : "var(--text-level-3)",
-              transition: "all var(--transition-fast)",
-              flexShrink: 0,
-            }}
-          >
-            <Send style={{ width: "18px", height: "18px" }} />
-          </button>
+          {/* 输入框行 */}
+          <div style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "flex-end",
+          }}>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t("chat.inputPlaceholder")}
+              rows={1}
+              disabled={isSending}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-2)",
+                fontSize: "14px",
+                lineHeight: "1.5",
+                color: "var(--text-level-2)",
+                resize: "none",
+                outline: "none",
+                minHeight: "44px",
+                maxHeight: "120px",
+              }}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || isSending}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "44px",
+                height: "44px",
+                borderRadius: "var(--radius-lg)",
+                border: "none",
+                background: input.trim() && !isSending ? "var(--color-primary)" : "var(--bg-level-3)",
+                cursor: input.trim() && !isSending ? "pointer" : "not-allowed",
+                color: input.trim() && !isSending ? "white" : "var(--text-level-3)",
+                transition: "all var(--transition-fast)",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                if (input.trim() && !isSending) {
+                  e.currentTarget.style.background = "var(--color-primary-hover)";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = input.trim() && !isSending ? "var(--color-primary)" : "var(--bg-level-3)";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = "scale(0.95)";
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              <Send style={{ width: "18px", height: "18px" }} />
+            </button>
+          </div>
+
+          {/* 工具栏行 */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginTop: "8px",
+          }}>
+            {/* 模型选择 */}
+            <select
+              value={currentModel?.id || ""}
+              onChange={(e) => {
+                const model = models.find(m => m.id === e.target.value);
+                if (model) setSelectedModel(model);
+              }}
+              style={{
+                padding: "5px 10px",
+                borderRadius: "var(--radius-full)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-2)",
+                cursor: "pointer",
+                fontSize: "12px",
+                color: "var(--text-level-2)",
+                outline: "none",
+              }}
+            >
+              {models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <p style={{
           textAlign: "center",

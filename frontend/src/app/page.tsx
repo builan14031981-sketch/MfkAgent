@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
+import { useModels, Model } from "@/hooks/useModels";
 import { useChat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -15,7 +16,9 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
+  const { models, loading: modelsLoading } = useModels();
   const { createChat } = useChat();
   const [welcome, setWelcome] = useState("");
 
@@ -25,6 +28,7 @@ export default function Home() {
   }, [tArray]);
 
   const currentAgent = selectedAgent || agents[0] || null;
+  const currentModel = selectedModel || models[0] || null;
 
   const handleSend = async () => {
     if (!input.trim() || !currentAgent || isCreating) return;
@@ -115,7 +119,7 @@ export default function Home() {
           overflow: "hidden",
         }}>
           {/* 输入区域 */}
-          <div style={{ padding: "20px" }}>
+          <div style={{ padding: "24px" }}>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -140,17 +144,17 @@ export default function Home() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "12px 20px",
+            padding: "8px 16px",
             borderTop: "1px solid var(--border-secondary)",
           }}>
             <div style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
+              gap: "6px",
             }}>
               {/* Agent 选择 */}
               {agentsLoading ? (
-                <span style={{ fontSize: "13px", color: "var(--text-level-3)" }}>{t("common.loading")}</span>
+                <span style={{ fontSize: "12px", color: "var(--text-level-3)" }}>{t("common.loading")}</span>
               ) : agents.length > 0 ? (
                 <div style={{ position: "relative" }}>
                   <button
@@ -158,22 +162,59 @@ export default function Home() {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
-                      padding: "8px 14px",
+                      gap: "6px",
+                      padding: "5px 12px",
                       borderRadius: "var(--radius-full)",
                       border: "1px solid var(--border-primary)",
                       background: "var(--bg-level-2)",
                       cursor: "pointer",
-                      fontSize: "13px",
+                      fontSize: "12px",
                       color: "var(--text-level-2)",
                       transition: "all var(--transition-fast)",
                     }}
                     title={currentAgent?.description}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = "var(--color-primary)";
+                      e.currentTarget.style.background = "var(--bg-level-3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = "var(--border-primary)";
+                      e.currentTarget.style.background = "var(--bg-level-2)";
+                    }}
                   >
-                    <span style={{ fontSize: "16px" }}>{currentAgent?.avatar}</span>
+                    <span style={{ fontSize: "14px" }}>{currentAgent?.avatar}</span>
                     <span style={{ fontWeight: "500" }}>{currentAgent?.name}</span>
                   </button>
                 </div>
+              ) : null}
+
+              {/* 模型选择 */}
+              {modelsLoading ? (
+                <span style={{ fontSize: "12px", color: "var(--text-level-3)" }}>{t("common.loading")}</span>
+              ) : models.length > 0 ? (
+                <select
+                  value={currentModel?.id || ""}
+                  onChange={(e) => {
+                    const model = models.find(m => m.id === e.target.value);
+                    if (model) setSelectedModel(model);
+                  }}
+                  style={{
+                    padding: "5px 10px",
+                    borderRadius: "var(--radius-full)",
+                    border: "1px solid var(--border-primary)",
+                    background: "var(--bg-level-2)",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    color: "var(--text-level-2)",
+                    outline: "none",
+                  }}
+                >
+                  {models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
               ) : null}
             </div>
 
@@ -185,8 +226,8 @@ export default function Home() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: "40px",
-                height: "40px",
+                width: "32px",
+                height: "32px",
                 borderRadius: "var(--radius-md)",
                 border: "none",
                 background: input.trim() && currentAgent && !isCreating ? "var(--color-primary)" : "var(--bg-level-4)",
@@ -194,8 +235,24 @@ export default function Home() {
                 color: "white",
                 transition: "all var(--transition-fast)",
               }}
+              onMouseEnter={(e) => {
+                if (input.trim() && currentAgent && !isCreating) {
+                  e.currentTarget.style.background = "var(--color-primary-hover)";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = input.trim() && currentAgent && !isCreating ? "var(--color-primary)" : "var(--bg-level-4)";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = "scale(0.95)";
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
             >
-              <ArrowRight style={{ width: "18px", height: "18px" }} />
+              <ArrowRight style={{ width: "16px", height: "16px" }} />
             </button>
           </div>
         </div>
