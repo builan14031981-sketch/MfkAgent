@@ -59,8 +59,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         <nav style={{
           width: "140px",
           flexShrink: 0,
-          borderRight: "1px solid var(--border-secondary)",
+          borderRight: "1px solid rgba(0, 0, 0, 0.06)",
           paddingRight: "16px",
+          marginRight: "16px",
         }}>
           {navItems.map((item) => (
             <button
