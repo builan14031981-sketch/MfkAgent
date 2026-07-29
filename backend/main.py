@@ -12,7 +12,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="MfkAgent API",
-    description="智能Agent平台后端API",
+    description="MfkAgent - AI工作助手后端API",
     version="0.1.0",
 )
 
