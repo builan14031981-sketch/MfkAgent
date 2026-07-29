@@ -45,7 +45,6 @@ export function FontProvider({ children }: FontProviderProps) {
     const fontMap: Record<string, string> = {
       "system": "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
       "noto-sans-sc": "var(--font-noto-sans-sc), sans-serif",
-      "lxgw-wenkai": "var(--font-lxgw-wenkai), serif",
       "ibm-plex-sans": "var(--font-ibm-plex-sans), sans-serif",
     };
 

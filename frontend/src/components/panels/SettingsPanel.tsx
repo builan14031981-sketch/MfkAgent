@@ -232,7 +232,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 >
                   <option value="system">系统默认</option>
                   <option value="noto-sans-sc">思源黑体</option>
-                  <option value="lxgw-wenkai">霞鹜文楷</option>
                   <option value="ibm-plex-sans">IBM Plex Sans</option>
                 </select>
               </div>
