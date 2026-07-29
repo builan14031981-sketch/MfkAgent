@@ -94,32 +94,29 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {activeSection === "general" && (
             <>
               {/* 主题 */}
-              <div style={{ marginBottom: "28px" }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "var(--text-level-1)",
-                      margin: 0,
-                    }}>外观</h3>
-                    <p style={{
-                      fontSize: "12px",
-                      color: "var(--text-level-3)",
-                      margin: "2px 0 0 0",
-                    }}>选择界面主题</p>
-                  </div>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "28px",
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "var(--text-level-1)",
+                    margin: 0,
+                  }}>外观</h3>
+                  <p style={{
+                    fontSize: "12px",
+                    color: "var(--text-level-3)",
+                    margin: "2px 0 0 0",
+                  }}>选择界面主题</p>
                 </div>
                 <div style={{
                   display: "flex",
-                  gap: "8px",
-                  padding: "4px",
-                  borderRadius: "var(--radius-md)",
+                  padding: "3px",
+                  borderRadius: "var(--radius-sm)",
                   background: "var(--bg-level-2)",
                 }}>
                   {[
@@ -136,9 +133,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "6px",
-                        flex: 1,
-                        padding: "8px 12px",
-                        borderRadius: "var(--radius-sm)",
+                        padding: "6px 14px",
+                        borderRadius: "var(--radius-xs)",
                         border: "none",
                         background: settings?.theme === theme.value ? "var(--bg-level-1)" : "transparent",
                         cursor: "pointer",
@@ -155,110 +151,106 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               {/* 语言 */}
-              <div style={{ marginBottom: "28px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "28px",
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "var(--text-level-1)",
+                    margin: 0,
+                  }}>语言</h3>
+                  <p style={{
+                    fontSize: "12px",
+                    color: "var(--text-level-3)",
+                    margin: "2px 0 0 0",
+                  }}>界面显示语言</p>
+                </div>
                 <div style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  padding: "3px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--bg-level-2)",
                 }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "var(--text-level-1)",
-                      margin: 0,
-                    }}>语言</h3>
-                    <p style={{
-                      fontSize: "12px",
-                      color: "var(--text-level-3)",
-                      margin: "2px 0 0 0",
-                    }}>界面显示语言</p>
-                  </div>
-                  <div style={{
-                    display: "flex",
-                    gap: "4px",
-                    padding: "3px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-level-2)",
-                  }}>
-                    {[
-                      { value: "zh-CN", label: "中文" },
-                      { value: "en", label: "English" },
-                    ].map((lang) => (
-                      <button
-                        key={lang.value}
-                        onClick={() => handleUpdate("language", lang.value)}
-                        disabled={saving === "language"}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: "var(--radius-xs)",
-                          border: "none",
-                          background: settings?.language === lang.value ? "var(--bg-level-1)" : "transparent",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          color: settings?.language === lang.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                          opacity: saving === "language" ? 0.7 : 1,
-                        }}
-                      >
-                        {lang.label}
-                      </button>
-                    ))}
-                  </div>
+                  {[
+                    { value: "zh-CN", label: "中文" },
+                    { value: "en", label: "English" },
+                  ].map((lang) => (
+                    <button
+                      key={lang.value}
+                      onClick={() => handleUpdate("language", lang.value)}
+                      disabled={saving === "language"}
+                      style={{
+                        padding: "6px 16px",
+                        borderRadius: "var(--radius-xs)",
+                        border: "none",
+                        background: settings?.language === lang.value ? "var(--bg-level-1)" : "transparent",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        color: settings?.language === lang.value ? "var(--text-level-1)" : "var(--text-level-3)",
+                        opacity: saving === "language" ? 0.7 : 1,
+                      }}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* 字体大小 */}
-              <div style={{ marginBottom: "28px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "28px",
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "var(--text-level-1)",
+                    margin: 0,
+                  }}>字体大小</h3>
+                  <p style={{
+                    fontSize: "12px",
+                    color: "var(--text-level-3)",
+                    margin: "2px 0 0 0",
+                  }}>调整界面文字大小</p>
+                </div>
                 <div style={{
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  padding: "3px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--bg-level-2)",
                 }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "var(--text-level-1)",
-                      margin: 0,
-                    }}>字体大小</h3>
-                    <p style={{
-                      fontSize: "12px",
-                      color: "var(--text-level-3)",
-                      margin: "2px 0 0 0",
-                    }}>调整界面文字大小</p>
-                  </div>
-                  <div style={{
-                    display: "flex",
-                    gap: "4px",
-                    padding: "3px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg-level-2)",
-                  }}>
-                    {[
-                      { value: "12", label: "小" },
-                      { value: "14", label: "标准" },
-                      { value: "16", label: "大" },
-                      { value: "18", label: "特大" },
-                    ].map((size) => (
-                      <button
-                        key={size.value}
-                        onClick={() => handleUpdate("font_size", size.value)}
-                        disabled={saving === "font_size"}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: "var(--radius-xs)",
-                          border: "none",
-                          background: settings?.font_size === size.value ? "var(--bg-level-1)" : "transparent",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          color: settings?.font_size === size.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                          opacity: saving === "font_size" ? 0.7 : 1,
-                        }}
-                      >
-                        {size.label}
-                      </button>
-                    ))}
-                  </div>
+                  {[
+                    { value: "12", label: "小" },
+                    { value: "14", label: "标准" },
+                    { value: "16", label: "大" },
+                    { value: "18", label: "特大" },
+                  ].map((size) => (
+                    <button
+                      key={size.value}
+                      onClick={() => handleUpdate("font_size", size.value)}
+                      disabled={saving === "font_size"}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: "var(--radius-xs)",
+                        border: "none",
+                        background: settings?.font_size === size.value ? "var(--bg-level-1)" : "transparent",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        color: settings?.font_size === size.value ? "var(--text-level-1)" : "var(--text-level-3)",
+                        opacity: saving === "font_size" ? 0.7 : 1,
+                      }}
+                    >
+                      {size.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </>
