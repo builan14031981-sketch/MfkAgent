@@ -278,6 +278,12 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                         e.currentTarget.style.background = "transparent";
                       }
                     }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = "scale(0.98)";
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                    }}
                   >
                     <div style={{
                       display: "flex",
@@ -373,6 +379,9 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             padding: "4px",
             zIndex: 1000,
             minWidth: "160px",
+            opacity: 0,
+            transform: "scale(0.95)",
+            animation: "contextMenuOpen 0.15s ease forwards",
           }}
         >
           <button
@@ -400,6 +409,12 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "transparent";
             }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "scale(0.98)";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
           >
             <Edit2 style={{ width: "14px", height: "14px" }} />
             <span>{t("sidebar.rename")}</span>
@@ -425,6 +440,12 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "transparent";
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "scale(0.98)";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
             }}
           >
             {contextMenu.chatId && pinnedChats.has(contextMenu.chatId) ? (
@@ -465,6 +486,12 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "transparent";
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "scale(0.98)";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
             }}
           >
             <Trash2 style={{ width: "14px", height: "14px" }} />

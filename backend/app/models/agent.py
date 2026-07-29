@@ -23,6 +23,7 @@ class Chat(Base):
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     agent_id = Column(String(50), default="warm")
     title = Column(String(200), default="New Chat")
+    is_pinned = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

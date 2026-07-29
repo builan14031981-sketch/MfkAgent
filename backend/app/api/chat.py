@@ -26,6 +26,7 @@ class ChatResponse(BaseModel):
     project_id: Optional[int]
     agent_id: str
     title: str
+    is_pinned: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -58,7 +59,7 @@ async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int
             query = query.filter(Chat.project_id == project_id)
         else:
             query = query.filter(Chat.project_id.is_(None))
-        query = query.order_by(Chat.updated_at.desc())
+        query = query.order_by(Chat.is_pinned.desc(), Chat.updated_at.desc())
         result = paginate(query, page, limit)
         result["items"] = [ChatResponse.model_validate(c) for c in result["items"]]
         return result
@@ -166,6 +167,7 @@ async def export_chat(chat_id: int, format: str = "json"):
 class ChatUpdate(BaseModel):
     title: Optional[str] = None
     agent_id: Optional[str] = None
+    is_pinned: Optional[bool] = None
 
 
 @router.patch("/{chat_id}", response_model=ChatResponse)
@@ -179,6 +181,8 @@ async def update_chat(chat_id: int, update: ChatUpdate):
             chat.title = update.title
         if update.agent_id is not None:
             chat.agent_id = update.agent_id
+        if update.is_pinned is not None:
+            chat.is_pinned = update.is_pinned
         chat.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(chat)
