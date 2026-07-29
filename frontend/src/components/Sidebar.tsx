@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useChat } from "@/hooks/useChat";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface SidebarProps {
   currentChatId?: number | null;
@@ -19,6 +20,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: SidebarProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const { agents } = useAgents();
   const { chats, deleteChat } = useChat();
 
@@ -62,7 +64,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
           }}
         >
           <Plus style={{ width: "16px", height: "16px" }} />
-          <span>New Task</span>
+          <span>{t("sidebar.newTask")}</span>
         </button>
       </div>
 
@@ -80,7 +82,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
           color: "var(--text-level-4)",
           textTransform: "uppercase",
           letterSpacing: "0.05em",
-        }}>Chats</p>
+          }}>{t("sidebar.chats")}</p>
         {chats.map((chat) => {
           const chatAgent = agents.find((a) => a.id === chat.agent_id);
           return (
@@ -168,7 +170,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             }}
           >
             <Brain style={{ width: "16px", height: "16px" }} />
-            <span>Memory</span>
+            <span>{t("sidebar.memory")}</span>
           </button>
         )}
         {onSettingsClick && (
@@ -189,7 +191,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             }}
           >
             <Settings style={{ width: "16px", height: "16px" }} />
-            <span>Settings</span>
+            <span>{t("sidebar.settings")}</span>
           </button>
         )}
       </div>

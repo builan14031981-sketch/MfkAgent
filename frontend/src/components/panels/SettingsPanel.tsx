@@ -10,6 +10,7 @@ import {
   Info,
 } from "lucide-react";
 import { useSettings } from "@/hooks/useSettings";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Panel } from "./Panel";
 
 interface SettingsPanelProps {
@@ -19,6 +20,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, loading, updateSetting } = useSettings();
+  const { t } = useTranslation();
   const [saving, setSaving] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("general");
 
@@ -35,17 +37,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   if (loading) {
     return (
-      <Panel isOpen={isOpen} onClose={onClose} title="设置">
-        <p style={{ color: "var(--text-level-3)" }}>正在加载设置...</p>
+      <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")}>
+        <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
       </Panel>
     );
   }
 
   const navItems = [
-    { id: "general", label: "通用", icon: Monitor },
-    { id: "model", label: "模型", icon: Cpu },
-    { id: "ai", label: "AI 行为", icon: Brain },
-    { id: "about", label: "关于", icon: Info },
+    { id: "general", label: t("settings.general.title"), icon: Monitor },
+    { id: "model", label: t("settings.model.title"), icon: Cpu },
+    { id: "ai", label: t("settings.ai.title"), icon: Brain },
+    { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
   return (
@@ -107,12 +109,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     fontWeight: "500",
                     color: "var(--text-level-1)",
                     margin: 0,
-                  }}>外观</h3>
+                  }}>{t("settings.general.theme.title")}</h3>
                   <p style={{
                     fontSize: "12px",
                     color: "var(--text-level-3)",
                     margin: "2px 0 0 0",
-                  }}>选择界面主题</p>
+                  }}>{t("settings.general.theme.desc")}</p>
                 </div>
                 <div style={{
                   display: "flex",
@@ -121,9 +123,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   background: "var(--bg-level-2)",
                 }}>
                   {[
-                    { value: "light", label: "浅色", icon: Sun },
-                    { value: "dark", label: "深色", icon: Moon },
-                    { value: "system", label: "跟随系统", icon: Monitor },
+                    { value: "light", label: t("settings.general.theme.light"), icon: Sun },
+                    { value: "dark", label: t("settings.general.theme.dark"), icon: Moon },
+                    { value: "system", label: t("settings.general.theme.system"), icon: Monitor },
                   ].map((theme) => (
                     <button
                       key={theme.value}
@@ -164,12 +166,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     fontWeight: "500",
                     color: "var(--text-level-1)",
                     margin: 0,
-                  }}>语言</h3>
+                  }}>{t("settings.general.language.title")}</h3>
                   <p style={{
                     fontSize: "12px",
                     color: "var(--text-level-3)",
                     margin: "2px 0 0 0",
-                  }}>界面显示语言</p>
+                  }}>{t("settings.general.language.desc")}</p>
                 </div>
                 <div style={{
                   display: "flex",
@@ -178,8 +180,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   background: "var(--bg-level-2)",
                 }}>
                   {[
-                    { value: "zh-CN", label: "中文" },
-                    { value: "en", label: "English" },
+                    { value: "zh-CN", label: t("settings.general.language.zh-CN") },
+                    { value: "en-US", label: t("settings.general.language.en-US") },
                   ].map((lang) => (
                     <button
                       key={lang.value}
@@ -214,7 +216,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   fontWeight: "500",
                   color: "var(--text-level-1)",
                   margin: 0,
-                }}>字体</h3>
+                }}>{t("settings.general.font.title")}</h3>
                 <select
                   value={settings?.font_family || "system"}
                   onChange={(e) => handleUpdate("font_family", e.target.value)}
@@ -230,10 +232,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     minWidth: "140px",
                   }}
                 >
-                  <option value="system">系统默认</option>
-                  <option value="source-han-sans">思源黑体</option>
-                  <option value="lxgw-wenkai">霞鹜文楷</option>
-                  <option value="ibm-plex-sans">IBM Plex Sans</option>
+                  <option value="system">{t("settings.general.font.system")}</option>
+                  <option value="source-han-sans">{t("settings.general.font.source-han-sans")}</option>
+                  <option value="lxgw-wenkai">{t("settings.general.font.lxgw-wenkai")}</option>
+                  <option value="ibm-plex-sans">{t("settings.general.font.ibm-plex-sans")}</option>
                 </select>
               </div>
             </>

@@ -1,0 +1,109 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "back": "返回",
+    "close": "关闭"
+  },
+  "sidebar": {
+    "newTask": "New Task",
+    "chats": "Chats",
+    "settings": "Settings",
+    "memory": "Memory"
+  },
+  "home": {
+    "welcome": [
+      "嗨，今天感觉怎么样？",
+      "今天想做哪个项目？",
+      "有什么新的灵感吗？",
+      "准备好开始工作了吗？",
+      "需要我帮你做什么？"
+    ],
+    "inputPlaceholder": "输入内容开始工作...",
+    "agentSwitch": "切换 Agent"
+  },
+  "chat": {
+    "title": "Chat",
+    "startConversation": "开始对话",
+    "startConversationDesc": "输入消息开始与 {name} 交流",
+    "inputPlaceholder": "输入消息...",
+    "sending": "发送中...",
+    "aiMayError": "MfkAgent 可能会犯错，请核实重要信息"
+  },
+  "settings": {
+    "title": "设置",
+    "general": {
+      "title": "通用",
+      "theme": {
+        "title": "外观",
+        "desc": "选择界面主题",
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "language": {
+        "title": "语言",
+        "desc": "界面显示语言",
+        "zh-CN": "中文",
+        "en-US": "English"
+      },
+      "font": {
+        "title": "字体",
+        "desc": "选择界面字体风格",
+        "system": "系统默认",
+        "source-han-sans": "思源黑体",
+        "lxgw-wenkai": "霞鹜文楷",
+        "ibm-plex-sans": "IBM Plex Sans"
+      }
+    },
+    "model": {
+      "title": "模型",
+      "defaultModel": {
+        "title": "默认模型",
+        "desc": "新聊天默认使用的 AI 模型"
+      },
+      "apiConfig": {
+        "title": "API 配置"
+      }
+    },
+    "ai": {
+      "title": "AI 行为",
+      "defaultPersonality": {
+        "title": "默认人格",
+        "desc": "调整 AI 的理性/感性倾向",
+        "veryEmotional": "极度感性",
+        "balanced": "平衡",
+        "veryRational": "极度理性"
+      }
+    },
+    "about": {
+      "title": "关于",
+      "version": "版本: v1.0.0",
+      "description": "专业的 AI 工作助手",
+      "aiMayError": "MfkAgent 可能会犯错，请核实重要信息"
+    }
+  },
+  "memory": {
+    "title": "记忆管理",
+    "selectAgent": "选择 Agent",
+    "addMemory": "添加记忆",
+    "keyPlaceholder": "键（例如：喜欢简洁回答）",
+    "valuePlaceholder": "值（例如：是）",
+    "add": "添加",
+    "memoryList": "记忆列表",
+    "noMemories": "暂无记忆",
+    "noMemoriesDesc": "添加记忆让 AI 更了解你"
+  },
+  "project": {
+    "title": "Project",
+    "openProject": "打开一个项目",
+    "openProjectDesc": "让AI帮助你工作"
+  }
+}

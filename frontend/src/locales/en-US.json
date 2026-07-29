@@ -1,0 +1,109 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "back": "Back",
+    "close": "Close"
+  },
+  "sidebar": {
+    "newTask": "New Task",
+    "chats": "Chats",
+    "settings": "Settings",
+    "memory": "Memory"
+  },
+  "home": {
+    "welcome": [
+      "Hi, how are you today?",
+      "Which project would you like to work on?",
+      "Any new inspiration?",
+      "Ready to start working?",
+      "What can I help you with?"
+    ],
+    "inputPlaceholder": "Start working by typing...",
+    "agentSwitch": "Switch Agent"
+  },
+  "chat": {
+    "title": "Chat",
+    "startConversation": "Start Conversation",
+    "startConversationDesc": "Type a message to start talking with {name}",
+    "inputPlaceholder": "Type a message...",
+    "sending": "Sending...",
+    "aiMayError": "MfkAgent may make mistakes. Please verify important information."
+  },
+  "settings": {
+    "title": "Settings",
+    "general": {
+      "title": "General",
+      "theme": {
+        "title": "Appearance",
+        "desc": "Choose interface theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "language": {
+        "title": "Language",
+        "desc": "Interface display language",
+        "zh-CN": "中文",
+        "en-US": "English"
+      },
+      "font": {
+        "title": "Font",
+        "desc": "Choose interface font style",
+        "system": "System Default",
+        "source-han-sans": "Source Han Sans",
+        "lxgw-wenkai": "LXGW WenKai",
+        "ibm-plex-sans": "IBM Plex Sans"
+      }
+    },
+    "model": {
+      "title": "Model",
+      "defaultModel": {
+        "title": "Default Model",
+        "desc": "Default AI model for new chats"
+      },
+      "apiConfig": {
+        "title": "API Configuration"
+      }
+    },
+    "ai": {
+      "title": "AI Behavior",
+      "defaultPersonality": {
+        "title": "Default Personality",
+        "desc": "Adjust AI rational/emotional tendency",
+        "veryEmotional": "Very Emotional",
+        "balanced": "Balanced",
+        "veryRational": "Very Rational"
+      }
+    },
+    "about": {
+      "title": "About",
+      "version": "Version: v1.0.0",
+      "description": "Professional AI Work Assistant",
+      "aiMayError": "MfkAgent may make mistakes. Please verify important information."
+    }
+  },
+  "memory": {
+    "title": "Memory Management",
+    "selectAgent": "Select Agent",
+    "addMemory": "Add Memory",
+    "keyPlaceholder": "Key (e.g., prefer concise answers)",
+    "valuePlaceholder": "Value (e.g., yes)",
+    "add": "Add",
+    "memoryList": "Memory List",
+    "noMemories": "No memories yet",
+    "noMemoriesDesc": "Add memories to help AI understand you better"
+  },
+  "project": {
+    "title": "Project",
+    "openProject": "Open a project",
+    "openProjectDesc": "Let AI help you work"
+  }
+}

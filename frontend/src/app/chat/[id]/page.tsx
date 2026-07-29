@@ -7,6 +7,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Sidebar } from "@/components/Sidebar";
 import { SettingsPanel } from "@/components/panels/SettingsPanel";
 import { MemoryPanel } from "@/components/panels/MemoryPanel";
@@ -15,6 +16,7 @@ export default function ChatPage() {
   const router = useRouter();
   const params = useParams();
   const chatId = params.id ? Number(params.id) : null;
+  const { t } = useTranslation();
 
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -227,9 +229,9 @@ export default function ChatPage() {
               {currentAgent && (
                 <span style={{ fontSize: "48px", marginBottom: "16px" }}>{currentAgent.avatar}</span>
               )}
-              <p style={{ fontSize: "16px", margin: 0 }}>开始对话</p>
+              <p style={{ fontSize: "16px", margin: 0 }}>{t("chat.startConversation")}</p>
               <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "var(--text-level-4)" }}>
-                输入消息开始与 {currentAgent?.name || "AI"} 交流
+                {t("chat.startConversationDesc", { name: currentAgent?.name || "AI" })}
               </p>
             </div>
           ) : (
@@ -408,7 +410,7 @@ export default function ChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入消息..."
+              placeholder={t("chat.inputPlaceholder")}
               rows={1}
               disabled={isSending}
               style={{
@@ -453,7 +455,7 @@ export default function ChatPage() {
             color: "var(--text-level-4)",
             marginTop: "8px",
             marginBottom: 0,
-          }}>MfkAgent 可能会犯错，请核实重要信息</p>
+          }}>{t("chat.aiMayError")}</p>
         </div>
       </main>
     </div>

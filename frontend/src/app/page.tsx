@@ -14,35 +14,30 @@ import {
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
+import { useTranslation } from "@/hooks/useTranslation";
 import { SettingsPanel } from "@/components/panels/SettingsPanel";
 import { MemoryPanel } from "@/components/panels/MemoryPanel";
 
 const API_BASE = "http://127.0.0.1:8001";
 
-const welcomeMessages = [
-  "嗨，今天感觉怎么样？",
-  "今天想做哪个项目？",
-  "有什么新的灵感吗？",
-  "准备好开始工作了吗？",
-  "需要我帮你做什么？",
-];
-
 export default function Home() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [input, setInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { projects, loading: projectsLoading } = useProjects();
   const { chats } = useChat();
-  const [welcome, setWelcome] = useState(welcomeMessages[0]);
+  const [welcome, setWelcome] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
 
   useEffect(() => {
-    setWelcome(welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)]);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-  }, []);
+    const welcomeMessages = t("home.welcome", {});
+    const messages = typeof welcomeMessages === "string" ? [welcomeMessages] : welcomeMessages;
+    setWelcome(messages[Math.floor(Math.random() * messages.length)]);
+  }, [t]);
 
   const currentAgent = selectedAgent || agents[0] || null;
 
@@ -322,7 +317,7 @@ export default function Home() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="输入内容开始工作..."
+                placeholder={t("home.inputPlaceholder")}
                 rows={3}
                 style={{
                   width: "100%",
