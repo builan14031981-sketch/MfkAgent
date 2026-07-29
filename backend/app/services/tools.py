@@ -42,7 +42,7 @@ class WebSearchTool(Tool):
     def __init__(self):
         super().__init__(
             name="web_search",
-            description="搜索互联网获取信息",
+            description="搜索互联网获取信息（使用 GitHub API）",
             parameters={
                 "type": "object",
                 "properties": {
@@ -60,20 +60,26 @@ class WebSearchTool(Tool):
             import httpx
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    "https://api.duckduckgo.com/",
-                    params={"q": query, "format": "json"},
+                    "https://api.github.com/search/repositories",
+                    params={"q": query, "per_page": 5},
                     timeout=10.0,
+                    headers={"Accept": "application/vnd.github.v3+json"},
                 )
                 if response.status_code == 200:
                     data = response.json()
                     results = []
-                    if data.get("Abstract"):
-                        results.append(data["Abstract"])
-                    for result in data.get("RelatedTopics", [])[:5]:
-                        if isinstance(result, dict) and result.get("Text"):
-                            results.append(result["Text"])
+                    
+                    total = data.get("total_count", 0)
+                    results.append(f"找到 {total} 个相关项目:")
+                    
+                    for item in data.get("items", [])[:5]:
+                        name = item.get("full_name", "")
+                        desc = item.get("description", "无描述")
+                        stars = item.get("stargazers_count", 0)
+                        results.append(f"• {name} (⭐{stars}): {desc}")
+                    
                     if results:
-                        return ToolResult(success=True, output="\n\n".join(results))
+                        return ToolResult(success=True, output="\n".join(results))
                     else:
                         return ToolResult(success=True, output="未找到相关结果")
                 else:

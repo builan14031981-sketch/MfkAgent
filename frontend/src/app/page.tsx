@@ -11,7 +11,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 
 export default function Home() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, tArray } = useTranslation();
   const [input, setInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
@@ -20,10 +20,9 @@ export default function Home() {
   const [welcome, setWelcome] = useState("");
 
   useEffect(() => {
-    const welcomeMessages = t("home.welcome", {});
-    const messages = typeof welcomeMessages === "string" ? [welcomeMessages] : welcomeMessages;
+    const messages = tArray("home.welcome");
     setWelcome(messages[Math.floor(Math.random() * messages.length)]);
-  }, [t]);
+  }, [tArray]);
 
   const currentAgent = selectedAgent || agents[0] || null;
 

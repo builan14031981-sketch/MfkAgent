@@ -10,7 +10,7 @@ const locales: Record<string, typeof zhCN> = {
   "en-US": enUS,
 };
 
-function getNestedValue(obj: Record<string, unknown>, path: string): string {
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   const keys = path.split(".");
   let current: unknown = obj;
   for (const key of keys) {
@@ -20,7 +20,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): string {
       return path;
     }
   }
-  return typeof current === "string" ? current : path;
+  return current;
 }
 
 export function useTranslation() {
@@ -38,16 +38,41 @@ export function useTranslation() {
       const messages = locales[locale] || locales["zh-CN"];
       let value = getNestedValue(messages as Record<string, unknown>, key);
 
+      // 如果值不是字符串，返回key路径
+      if (typeof value !== "string") {
+        return key;
+      }
+
       if (params) {
         Object.entries(params).forEach(([k, v]) => {
-          value = value.replace(`{${k}}`, v);
+          value = (value as string).replace(`{${k}}`, v);
         });
       }
 
-      return value;
+      return value as string;
     },
     [locale]
   );
 
-  return { t, locale };
+  const tArray = useCallback(
+    (key: string): string[] => {
+      const messages = locales[locale] || locales["zh-CN"];
+      const value = getNestedValue(messages as Record<string, unknown>, key);
+
+      // 如果值是数组，返回数组
+      if (Array.isArray(value)) {
+        return value as string[];
+      }
+
+      // 如果值是字符串，返回单元素数组
+      if (typeof value === "string") {
+        return [value];
+      }
+
+      return [key];
+    },
+    [locale]
+  );
+
+  return { t, tArray, locale };
 }
