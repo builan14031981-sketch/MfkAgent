@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 import json
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message, Agent, Memory
+from app.models.agent import Chat, Message, Agent, Memory, Setting
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
 from app.core.pagination import paginate
@@ -246,6 +246,17 @@ class SendResponse(BaseModel):
     token_usage: dict
 
 
+def _get_default_model() -> str:
+    db = SessionLocal()
+    try:
+        setting = db.query(Setting).filter(Setting.key == "default_model").first()
+        if setting and setting.value:
+            return setting.value
+        return "mimo-v2.5-pro"
+    finally:
+        db.close()
+
+
 def _get_agent_prompt(agent_id: str) -> str:
     db = SessionLocal()
     try:
@@ -329,7 +340,7 @@ async def send_message(chat_id: int, request: SendRequest):
                 else:
                     tools_arg = []
             ai_response = await model_service.chat(
-                model_id=chat.model or request.model or "mimo-v2.5-pro",
+                model_id=chat.model or request.model or _get_default_model(),
                 messages=model_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
@@ -417,7 +428,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         full_content = ""
         try:
             async for chunk in model_service.chat_stream(
-                model_id=chat.model or request.model or "mimo-v2.5-pro",
+                model_id=chat.model or request.model or _get_default_model(),
                 messages=model_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
