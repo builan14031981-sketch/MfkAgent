@@ -20,7 +20,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo [3/3] Starting Electron...
-start "MfkAgent Electron" cmd /c "cd /d %~dp0frontend && set ELECTRON_DEV=true && npx electron ."
+set ELECTRON_DEV=true
+start "MfkAgent Electron" cmd /c "cd /d %~dp0frontend && npx electron ."
 
 echo.
 echo MfkAgent Desktop started!
