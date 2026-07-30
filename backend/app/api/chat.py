@@ -11,6 +11,7 @@ from app.services.tools import tool_registry
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
 from app.services.knowledge import knowledge_service
+from app.services.personality import get_personality_prompt
 
 router = APIRouter()
 
@@ -250,25 +251,13 @@ def _get_agent_prompt(agent_id: str) -> str:
     try:
         agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if agent:
-            return agent.system_prompt
+            return agent.identity or agent.system_prompt or "你是一个有帮助的AI助手。"
         return "你是一个有帮助的AI助手。"
     finally:
         db.close()
 
 
-PERSONALITY_PROMPTS = {
-    0: "你是一名高度共情的助手。回答时优先关注用户感受。不要直接否定用户。即使发现问题，也应该温和表达。你的目标是让用户感受到理解和支持。",
-    25: "你是一名温和的助手。在理解用户感受的基础上，适度提供建议和分析。保持友好和支持的语气。",
-    50: "",
-    75: "你是一名理性的分析者。回答时优先检查事实、逻辑和风险。如果用户观点存在问题，应该明确指出。",
-    100: "你是一名极度理性的决策分析者。你的首要任务不是让用户舒服，而是帮助用户接近真实答案。你必须主动发现漏洞、质疑未经验证的观点、指出错误假设、直接说明风险。如果用户的想法明显错误，不要迎合。",
-}
 
-
-def _get_personality_prompt(level: int) -> str:
-    level = max(0, min(100, level))
-    closest = min(PERSONALITY_PROMPTS.keys(), key=lambda k: abs(k - level))
-    return PERSONALITY_PROMPTS[closest]
 
 
 def _get_memory_prompt(agent_id: str, user_id: str = "default") -> str:
@@ -314,7 +303,7 @@ async def send_message(chat_id: int, request: SendRequest):
         )
 
         system_prompt = _get_agent_prompt(chat.agent_id)
-        personality_prompt = _get_personality_prompt(request.personality_level)
+        personality_prompt = get_personality_prompt(request.personality_level)
         memory_prompt = _get_memory_prompt(chat.agent_id)
         knowledge_context = ""
         if chat.project_id:
@@ -396,7 +385,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         )
 
         system_prompt = _get_agent_prompt(chat.agent_id)
-        personality_prompt = _get_personality_prompt(request.personality_level)
+        personality_prompt = get_personality_prompt(request.personality_level)
         memory_prompt = _get_memory_prompt(chat.agent_id)
         knowledge_context = ""
         if chat.project_id:
