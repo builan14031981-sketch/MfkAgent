@@ -8,6 +8,9 @@ export interface Agent {
   description: string;
   avatar: string;
   system_prompt: string;
+  identity: string;
+  capabilities: string[];
+  default_model: string;
 }
 
 export function useAgents() {
