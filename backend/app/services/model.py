@@ -73,9 +73,15 @@ class ModelService:
                 api_key=self._get_api_key(settings.MIMO_API_KEY, "api_key_mimo"),
                 api_base=settings.MIMO_API_BASE,
             ),
-            "deepseek-chat": ModelConfig(
+            "deepseek-v4-flash": ModelConfig(
                 provider=ModelProvider.DEEPSEEK,
-                model_name="deepseek-chat",
+                model_name="deepseek-v4-flash",
+                api_key=self._get_api_key(settings.DEEPSEEK_API_KEY, "api_key_deepseek"),
+                api_base="https://api.deepseek.com/v1",
+            ),
+            "deepseek-v4-pro": ModelConfig(
+                provider=ModelProvider.DEEPSEEK,
+                model_name="deepseek-v4-pro",
                 api_key=self._get_api_key(settings.DEEPSEEK_API_KEY, "api_key_deepseek"),
                 api_base="https://api.deepseek.com/v1",
             ),
