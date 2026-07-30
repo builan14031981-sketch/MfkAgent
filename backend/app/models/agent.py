@@ -24,6 +24,8 @@ class Chat(Base):
     agent_id = Column(String(50), default="warm")
     title = Column(String(200), default="New Chat")
     is_pinned = Column(Boolean, default=False)
+    personality_level = Column(Integer, default=50)
+    model = Column(String(50))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -52,6 +54,8 @@ class Agent(Base):
     description = Column(Text)
     avatar = Column(String(500))
     system_prompt = Column(Text)
+    identity = Column(Text)
+    capabilities = Column(JSON, default=list)
     model = Column(String(50), default="mimo-v2.5-pro")
     temperature = Column(Integer, default=70)
     created_at = Column(DateTime, default=datetime.utcnow)
