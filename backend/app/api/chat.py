@@ -17,8 +17,10 @@ router = APIRouter()
 
 class ChatCreate(BaseModel):
     project_id: Optional[int] = None
-    agent_id: str = "warm"
+    agent_id: str = "general"
     title: str = "New Chat"
+    personality_level: int = 50
+    model: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -75,6 +77,8 @@ async def create_chat(chat: ChatCreate):
             project_id=chat.project_id,
             agent_id=chat.agent_id,
             title=chat.title,
+            personality_level=chat.personality_level,
+            model=chat.model,
         )
         db.add(db_chat)
         db.commit()

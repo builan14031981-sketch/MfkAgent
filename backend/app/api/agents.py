@@ -13,6 +13,9 @@ class AgentInfo(BaseModel):
     description: str
     avatar: str
     system_prompt: str
+    identity: str = ""
+    capabilities: list[str] = []
+    default_model: str = ""
 
     class Config:
         from_attributes = True
@@ -29,7 +32,10 @@ async def list_agents():
                 name=a.name,
                 description=a.description,
                 avatar=a.avatar,
-                system_prompt=a.system_prompt,
+                system_prompt=a.identity or a.system_prompt or "",
+                identity=a.identity or "",
+                capabilities=a.capabilities or [],
+                default_model=a.model or "",
             )
             for a in agents
         ]
@@ -49,7 +55,10 @@ async def get_agent(agent_id: str):
             name=agent.name,
             description=agent.description,
             avatar=agent.avatar,
-            system_prompt=agent.system_prompt,
+            system_prompt=agent.identity or agent.system_prompt or "",
+            identity=agent.identity or "",
+            capabilities=agent.capabilities or [],
+            default_model=agent.model or "",
         )
     finally:
         db.close()

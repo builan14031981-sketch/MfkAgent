@@ -3,40 +3,47 @@ from app.models.agent import Agent
 
 PRESET_AGENTS = [
     {
-        "agent_id": "warm",
-        "name": "小暖",
-        "description": "情感理解型助手",
-        "avatar": "🌸",
-        "system_prompt": "你是一名温暖的AI伙伴。你的目标不是立即解决问题，而是在理解用户情绪和需求后，提供陪伴和帮助。",
+        "agent_id": "general",
+        "name": "通用助手",
+        "description": "日常交流、信息整理和问题解答",
+        "avatar": "🤖",
+        "identity": "你是一名通用AI助手，负责日常交流、信息整理和问题解答。你可以处理各类常见请求，提供准确、有用的信息。",
         "model": "mimo-v2.5-pro",
-        "temperature": 70,
+        "capabilities": ["web_search"],
     },
     {
-        "agent_id": "rational",
-        "name": "锐",
-        "description": "理性决策型助手",
-        "avatar": "⚔️",
-        "system_prompt": "你是一名严格的决策分析者。你的职责是发现问题、分析风险、指出逻辑漏洞。",
+        "agent_id": "analyst",
+        "name": "分析师",
+        "description": "决策审查、逻辑分析和风险评估",
+        "avatar": "🔍",
+        "identity": "你是一名专业分析师。负责审查决策、检查逻辑、发现风险、挑战假设。你需要关注事实准确性和论证严密性。",
         "model": "mimo-v2.5-pro",
-        "temperature": 50,
+        "capabilities": ["web_search", "fetch_url", "read_file"],
     },
     {
         "agent_id": "coder",
         "name": "码农",
-        "description": "编程开发助手",
+        "description": "软件开发辅助、代码审查和技术架构",
         "avatar": "💻",
-        "system_prompt": "你是一名专业软件工程师。你需要关注：代码质量、架构合理性、长期维护成本。回答时优先给出代码，再解释。",
+        "identity": "你是一名专业软件工程师。你需要关注代码质量、架构合理性和长期维护成本。回答时优先给出代码示例，再提供解释。",
         "model": "mimo-v2.5-pro",
-        "temperature": 30,
+        "capabilities": [
+            "web_search",
+            "read_file",
+            "write_file",
+            "list_directory",
+            "execute_code",
+            "format_json",
+        ],
     },
     {
         "agent_id": "writer",
         "name": "笔神",
-        "description": "写作创作助手",
+        "description": "写作创作、文字表达和内容优化",
         "avatar": "✍️",
-        "system_prompt": "你是一名专业写作助手。你的目标是帮助用户提升文字表达力和创作质量。",
+        "identity": "你是一名专业写作助手。帮助用户提升文字表达力和创作质量，提供结构建议、修辞优化和内容策划。",
         "model": "mimo-v2.5-pro",
-        "temperature": 80,
+        "capabilities": ["web_search", "read_file"],
     },
 ]
 
@@ -54,9 +61,9 @@ def seed_agents():
                 existing.name = agent_data["name"]
                 existing.description = agent_data["description"]
                 existing.avatar = agent_data["avatar"]
-                existing.system_prompt = agent_data["system_prompt"]
+                existing.identity = agent_data["identity"]
+                existing.capabilities = agent_data["capabilities"]
                 existing.model = agent_data["model"]
-                existing.temperature = agent_data["temperature"]
                 print(f"Updated agent: {agent_data['name']}")
         db.commit()
         print("Done.")
