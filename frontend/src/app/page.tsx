@@ -9,6 +9,7 @@ import { useAgents, Agent } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useChat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useSettingsStore } from "@/lib/store";
 
 export default function Home() {
   const router = useRouter();
@@ -20,12 +21,24 @@ export default function Home() {
   const { agents, loading: agentsLoading } = useAgents();
   const { models, loading: modelsLoading } = useModels();
   const { createChat } = useChat();
+  const { settings } = useSettingsStore();
   const [welcome, setWelcome] = useState("");
 
   useEffect(() => {
     const messages = tArray("home.welcome");
     setWelcome(messages[Math.floor(Math.random() * messages.length)]);
   }, [tArray]);
+
+  // 根据 Settings 默认模型预选
+  useEffect(() => {
+    if (!modelsLoading && models.length > 0 && !selectedModel) {
+      const defaultModelId = settings?.default_model;
+      if (defaultModelId) {
+        const found = models.find((m) => m.id === defaultModelId);
+        if (found) setSelectedModel(found);
+      }
+    }
+  }, [modelsLoading, models, settings?.default_model, selectedModel]);
 
   const currentAgent = selectedAgent || agents[0] || null;
   const currentModel = selectedModel || models[0] || null;
