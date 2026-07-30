@@ -82,7 +82,7 @@ export default function Home() {
     }}>
       {/* 内容区 - 居中 */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         style={{
