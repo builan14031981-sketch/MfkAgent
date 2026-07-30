@@ -303,7 +303,7 @@ async def send_message(chat_id: int, request: SendRequest):
         )
 
         system_prompt = _get_agent_prompt(chat.agent_id)
-        personality_prompt = get_personality_prompt(request.personality_level if request.personality_level is not None else chat.personality_level)
+        personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
         memory_prompt = _get_memory_prompt(chat.agent_id)
         knowledge_context = ""
         if chat.project_id:
@@ -329,7 +329,7 @@ async def send_message(chat_id: int, request: SendRequest):
                 else:
                     tools_arg = []
             ai_response = await model_service.chat(
-                model_id=request.model or chat.model or "mimo-v2.5-pro",
+                model_id=chat.model or request.model or "mimo-v2.5-pro",
                 messages=model_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
@@ -417,7 +417,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         full_content = ""
         try:
             async for chunk in model_service.chat_stream(
-                model_id=request.model or chat.model or "mimo-v2.5-pro",
+                model_id=chat.model or request.model or "mimo-v2.5-pro",
                 messages=model_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
