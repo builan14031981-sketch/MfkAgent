@@ -319,13 +319,21 @@ async def send_message(chat_id: int, request: SendRequest):
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
 
+        agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
+        allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
         try:
+            tools_arg = None
+            if request.use_tools and allowed_tools is not None:
+                if allowed_tools:
+                    tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
+                else:
+                    tools_arg = []
             ai_response = await model_service.chat(
                 model_id=request.model,
                 messages=model_messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
-                tools=tool_registry.get_definitions() if request.use_tools else None,
+                tools=tools_arg,
             )
             ai_content = ai_response.content
             api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None
