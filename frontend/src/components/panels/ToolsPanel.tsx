@@ -29,8 +29,8 @@ export function ToolsPanel({ isOpen, onClose }: ToolsPanelProps) {
   async function fetchTools() {
     try {
       setLoading(true);
-      const data = await apiGet<ToolDefinition[]>("/api/tools/definitions");
-      setTools(data);
+      const data = await apiGet<{ definitions?: ToolDefinition[] }>("/api/tools/definitions");
+      setTools(data.definitions ?? []);
     } catch (err) {
       console.error("Failed to fetch tools:", err);
     } finally {
@@ -49,11 +49,15 @@ export function ToolsPanel({ isOpen, onClose }: ToolsPanelProps) {
     try {
       setExecuting(true);
       setResult(null);
-      const data = await apiPost<{ success: boolean; result: unknown }>("/api/tools/call", {
-        tool: selectedTool.name,
-        params: toolParams,
+      const data = await apiPost<{ success: boolean; output: string; error: string }>("/api/tools/call", {
+        tool_name: selectedTool.name,
+        arguments: toolParams,
       });
-      setResult(JSON.stringify(data.result, null, 2));
+      if (data.success) {
+        setResult(data.output);
+      } else {
+        setResult(`Error: ${data.error || "Unknown error"}`);
+      }
     } catch (err) {
       setResult(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {

@@ -404,7 +404,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         )
 
         system_prompt = _get_agent_prompt(chat.agent_id)
-        personality_prompt = get_personality_prompt(request.personality_level)
+        personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
         memory_prompt = _get_memory_prompt(chat.agent_id)
         knowledge_context = ""
         if chat.project_id:
@@ -420,6 +420,10 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
 
+        effective_model = chat.model or request.model or _get_default_model()
+        temperature = request.temperature
+        max_tokens = request.max_tokens
+
         db.commit()
     finally:
         db.close()
@@ -428,10 +432,10 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         full_content = ""
         try:
             async for chunk in model_service.chat_stream(
-                model_id=chat.model or request.model or _get_default_model(),
+                model_id=effective_model,
                 messages=model_messages,
-                temperature=request.temperature,
-                max_tokens=request.max_tokens,
+                temperature=temperature,
+                max_tokens=max_tokens,
             ):
                 if "content" in chunk:
                     full_content += chunk["content"]
