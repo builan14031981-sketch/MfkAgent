@@ -86,6 +86,24 @@ async def delete_project(project_id: int):
 import os
 
 
+def _resolve_safe_path(base_path: str, relative_path: str) -> str:
+    """安全解析项目内路径：拒绝绝对路径与 .. 穿越，确保结果位于 base_path 内"""
+    if not relative_path:
+        return base_path
+
+    normalized = relative_path.replace("\\", "/")
+    if normalized.startswith("/") or os.path.isabs(relative_path):
+        raise HTTPException(status_code=400, detail="Absolute path not allowed")
+
+    base_real = os.path.realpath(base_path)
+    target = os.path.realpath(os.path.join(base_path, relative_path))
+
+    if target != base_real and not target.startswith(base_real + os.sep):
+        raise HTTPException(status_code=400, detail="Path traversal detected")
+
+    return target
+
+
 class FileInfo(BaseModel):
     name: str
     path: str
@@ -104,7 +122,7 @@ async def list_project_files(project_id: int, subpath: str = ""):
         db.close()
 
     base_path = project.path
-    target_path = os.path.join(base_path, subpath) if subpath else base_path
+    target_path = _resolve_safe_path(base_path, subpath)
 
     if not os.path.exists(target_path):
         raise HTTPException(status_code=404, detail="Path not found")
@@ -160,7 +178,7 @@ async def read_file(project_id: int, path: str):
         db.close()
 
     base_path = project.path
-    file_path = os.path.join(base_path, path)
+    file_path = _resolve_safe_path(base_path, path)
 
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")

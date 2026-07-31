@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from app.core.database import SessionLocal
 from app.models.agent import Setting
+from app.services.model import model_service
 
 router = APIRouter()
 
@@ -71,6 +72,8 @@ async def update_setting(key: str, request: SettingUpdate):
             db.add(setting)
         db.commit()
         db.refresh(setting)
+        if key.startswith("api_key_"):
+            model_service.reload_models()
         return SettingResponse(key=setting.key, value=setting.value)
     finally:
         db.close()
@@ -90,6 +93,8 @@ async def update_settings(request: SettingsBulkUpdate):
                 db.add(setting)
             result[key] = value
         db.commit()
+        if any(k.startswith("api_key_") for k in request.settings):
+            model_service.reload_models()
         return result
     finally:
         db.close()
