@@ -24,7 +24,7 @@ DEFAULT_SETTINGS = {
     "theme": "system",
     "language": "zh-CN",
     "default_model": "mimo-v2.5-pro",
-    "default_agent": "warm",
+    "default_agent": "general",
     "default_personality": "50",
     "memory_enabled": "true",
     "font_size": "14",

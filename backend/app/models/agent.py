@@ -21,7 +21,7 @@ class Chat(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
-    agent_id = Column(String(50), default="warm")
+    agent_id = Column(String(50), default="general")
     title = Column(String(200), default="New Chat")
     is_pinned = Column(Boolean, default=False)
     personality_level = Column(Integer, default=50)

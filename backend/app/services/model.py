@@ -42,6 +42,13 @@ class ChatResponse(BaseModel):
     finish_reason: str
     usage: Any
 
+# DeepSeek 官方 API 模型名映射（内部展示 ID → 官方 API 名称）
+DEEPSEEK_MODEL_MAPPING = {
+    "deepseek-v4-flash": "deepseek-chat",
+    "deepseek-v4-pro": "deepseek-reasoner",
+}
+
+
 class ModelService:
     def __init__(self):
         self.models = self._init_models()
@@ -122,6 +129,12 @@ class ModelService:
         """获取模型配置"""
         return self.models.get(model_id)
 
+    def _resolve_api_model_name(self, config: ModelConfig) -> str:
+        """将内部模型 ID 转换为官方 API 使用的模型名"""
+        if config.provider == ModelProvider.DEEPSEEK:
+            return DEEPSEEK_MODEL_MAPPING.get(config.model_name, config.model_name)
+        return config.model_name
+
     def reload_models(self):
         """重新加载模型配置（当设置更新时调用）"""
         self.models = self._init_models()
@@ -179,7 +192,7 @@ class ModelService:
         }
 
         payload = {
-            "model": config.model_name,
+            "model": self._resolve_api_model_name(config),
             "messages": [msg.dict() for msg in messages],
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -239,7 +252,7 @@ class ModelService:
         }
 
         payload = {
-            "model": config.model_name,
+            "model": self._resolve_api_model_name(config),
             "messages": [msg.dict() for msg in messages],
             "temperature": temperature,
             "max_tokens": max_tokens,
