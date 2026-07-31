@@ -142,5 +142,12 @@
     "selectFile": "Please select a file",
     "searching": "Searching...",
     "loadingFile": "Loading file..."
+  },
+  "tools": {
+    "title": "Tools",
+    "parameters": "Parameters",
+    "execute": "Execute",
+    "executing": "Executing...",
+    "result": "Result"
   }
 }

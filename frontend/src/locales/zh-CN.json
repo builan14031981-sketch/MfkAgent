@@ -142,5 +142,12 @@
     "selectFile": "请选择文件",
     "searching": "搜索中...",
     "loadingFile": "加载文件中..."
+  },
+  "tools": {
+    "title": "工具",
+    "parameters": "参数",
+    "execute": "执行",
+    "executing": "执行中...",
+    "result": "结果"
   }
 }

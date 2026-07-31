@@ -12,7 +12,6 @@ import {
   PinOff,
   Edit2,
 } from "lucide-react";
-import { useAgents } from "@/hooks/useAgents";
 import { useChat, Chat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -64,8 +63,7 @@ function groupChatsByDate(chats: Chat[]): Map<string, Chat[]> {
 export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const { agents } = useAgents();
-  const { chats, deleteChat, updateChat } = useChat();
+  const { chats, deleteChat, updateChat, pinChat } = useChat();
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
@@ -75,7 +73,6 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
   });
   const [renamingChatId, setRenamingChatId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [pinnedChats, setPinnedChats] = useState<Set<number>>(new Set());
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,16 +134,12 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
     setRenamingChatId(null);
   };
 
-  const handlePin = (chatId: number) => {
-    setPinnedChats(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(chatId)) {
-        newSet.delete(chatId);
-      } else {
-        newSet.add(chatId);
-      }
-      return newSet;
-    });
+  const handlePin = async (chatId: number, pinned: boolean) => {
+    try {
+      await pinChat(chatId, pinned);
+    } catch (err) {
+      console.error("Failed to pin chat:", err);
+    }
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
@@ -156,18 +149,18 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
-  // 排序：置顶的聊天在前
+  // 排序：置顶的聊天在前（使用后端返回的 is_pinned 字段）
   const sortedGroupedChats = useMemo(() => {
     const sorted = new Map<string, Chat[]>();
     for (const [group, chats] of groupedChats) {
       sorted.set(group, [...chats].sort((a, b) => {
-        const aPinned = pinnedChats.has(a.id) ? -1 : 0;
-        const bPinned = pinnedChats.has(b.id) ? -1 : 0;
+        const aPinned = a.is_pinned ? -1 : 0;
+        const bPinned = b.is_pinned ? -1 : 0;
         return aPinned - bPinned;
       }));
     }
     return sorted;
-  }, [groupedChats, pinnedChats]);
+  }, [groupedChats]);
 
   return (
     <aside style={{
@@ -249,7 +242,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
                 color: "var(--text-level-4)",
               }}>{dateGroup}</p>
               {groupChats.map((chat) => {
-                const isPinned = pinnedChats.has(chat.id);
+                const isPinned = chat.is_pinned;
                 const isRenaming = renamingChatId === chat.id;
 
                 return (
@@ -424,7 +417,10 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
             <span>{t("sidebar.rename")}</span>
           </button>
           <button
-            onClick={() => contextMenu.chatId && handlePin(contextMenu.chatId)}
+            onClick={() => {
+              const chat = chats.find(c => c.id === contextMenu.chatId);
+              if (chat) handlePin(chat.id, !chat.is_pinned);
+            }}
             style={{
               display: "flex",
               alignItems: "center",
@@ -454,7 +450,7 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
               e.currentTarget.style.background = "var(--bg-level-3)";
             }}
           >
-            {contextMenu.chatId && pinnedChats.has(contextMenu.chatId) ? (
+            {contextMenu.chatId && chats.find(c => c.id === contextMenu.chatId)?.is_pinned ? (
               <>
                 <PinOff style={{ width: "14px", height: "14px" }} />
                 <span>{t("sidebar.unpin")}</span>

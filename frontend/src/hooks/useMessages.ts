@@ -33,9 +33,9 @@ export function useMessages(chatId: number | null) {
     fetchMessages();
   }, [fetchMessages]);
 
-  async function sendMessage(content: string, model: string = "mimo-v2.5-pro") {
+  async function sendMessage(content: string, model: string = "mimo-v2.5-pro", personalityLevel?: number) {
     if (!chatId) throw new Error("No chat selected");
-    const data = await apiPost(`/api/chat/${chatId}/send`, { content, model });
+    const data = await apiPost(`/api/chat/${chatId}/send`, { content, model, personality_level: personalityLevel });
     await fetchMessages();
     return data;
   }
@@ -45,14 +45,15 @@ export function useMessages(chatId: number | null) {
     model: string = "mimo-v2.5-pro",
     onChunk: (chunk: string) => void,
     onFinish: () => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    personalityLevel?: number
   ) {
     if (!chatId) throw new Error("No chat selected");
 
     const response = await fetch(`${API_BASE}/api/chat/${chatId}/send/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, model }),
+      body: JSON.stringify({ content, model, personality_level: personalityLevel }),
     });
 
     if (!response.ok) throw new Error("Failed to send message");

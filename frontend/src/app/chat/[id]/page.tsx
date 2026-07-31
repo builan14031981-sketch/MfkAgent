@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Send, Copy, Quote, RefreshCw } from "lucide-react";
+import { Send, Copy, Quote, RefreshCw, Brain, Zap } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useSettingsStore } from "@/lib/store";
+import { ToolsPanel } from "@/components/panels/ToolsPanel";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -21,6 +23,8 @@ export default function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [personalityLevel, setPersonalityLevel] = useState(50);
+  const [personalityInitialized, setPersonalityInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { agents } = useAgents();
@@ -28,11 +32,20 @@ export default function ChatPage() {
   const { projects } = useProjects();
   const { chats, updateChat } = useChat();
   const { messages, sendMessageStream } = useMessages(chatId);
+  const { settings } = useSettingsStore();
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
   const currentProject = currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null;
   const currentModel = selectedModel || models[0] || null;
+
+  // Initialize personality level from settings (adjust during render, avoiding effect setState)
+  if (!personalityInitialized && settings?.default_personality) {
+    setPersonalityInitialized(true);
+    setPersonalityLevel(Number(settings.default_personality));
+  }
+
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -83,7 +96,8 @@ export default function ChatPage() {
               console.error("Auto-send stream error:", error);
               setStreamingContent("");
               setIsSending(false);
-            }
+            },
+            personalityLevel
           );
         } catch (err) {
           console.error("Failed to auto-send:", err);
@@ -94,7 +108,7 @@ export default function ChatPage() {
 
       autoSend();
     }
-  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream]);
+  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream, personalityLevel]);
 
   if (!chatId) {
     return (
@@ -149,7 +163,8 @@ export default function ChatPage() {
           console.error("Stream error:", error);
           setStreamingContent("");
           setIsSending(false);
-        }
+        },
+        personalityLevel
       );
     } catch (err) {
       console.error("Failed to send message:", err);
@@ -261,6 +276,34 @@ export default function ChatPage() {
               borderRadius: "var(--radius-full)",
               background: "var(--bg-level-3)",
             }}>{currentAgent.name}</span>
+            {/* 人格滑块 */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "0 8px",
+            }}>
+              <Brain style={{ width: "14px", height: "14px", color: "var(--text-level-4)" }} />
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="25"
+                value={personalityLevel}
+                onChange={(e) => setPersonalityLevel(Number(e.target.value))}
+                style={{
+                  width: "100px",
+                  accentColor: "var(--color-primary)",
+                }}
+                title={t("settings.ai.defaultPersonality.desc")}
+              />
+              <span style={{
+                fontSize: "11px",
+                color: "var(--text-level-4)",
+                minWidth: "28px",
+                textAlign: "right",
+              }}>{personalityLevel}</span>
+            </div>
           </div>
         )}
       </div>
@@ -555,6 +598,34 @@ export default function ChatPage() {
                 </option>
               ))}
             </select>
+            {/* 工具按钮 */}
+            <button
+              onClick={() => setToolsPanelOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "32px",
+                height: "32px",
+                borderRadius: "var(--radius-full)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-2)",
+                cursor: "pointer",
+                color: "var(--text-level-2)",
+                transition: "all 0.6s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-3)";
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-2)";
+                e.currentTarget.style.borderColor = "var(--border-primary)";
+              }}
+              title={t("tools.title")}
+            >
+              <Zap style={{ width: "16px", height: "16px" }} />
+            </button>
           </div>
         </div>
         <p style={{
@@ -565,6 +636,9 @@ export default function ChatPage() {
           marginBottom: 0,
         }}>{t("chat.aiMayError")}</p>
       </div>
+
+      {/* Tools Panel */}
+      <ToolsPanel isOpen={toolsPanelOpen} onClose={() => setToolsPanelOpen(false)} />
     </>
   );
 }

@@ -9,6 +9,7 @@ export interface Chat {
   title: string;
   created_at: string;
   updated_at: string;
+  is_pinned: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -55,7 +56,7 @@ export function useChat(projectId?: number | null, page: number = 1, limit: numb
     return data;
   }
 
-  async function updateChat(id: number, updates: { title?: string; agent_id?: string }) {
+  async function updateChat(id: number, updates: { title?: string; agent_id?: string; is_pinned?: boolean }) {
     await apiPatch(`/api/chat/${id}`, updates);
     await fetchChats();
   }
@@ -65,5 +66,10 @@ export function useChat(projectId?: number | null, page: number = 1, limit: numb
     await fetchChats();
   }
 
-  return { chats, total, loading, error, createChat, updateChat, deleteChat, refetch: fetchChats };
+  async function pinChat(id: number, pinned: boolean) {
+    await apiPatch(`/api/chat/${id}`, { is_pinned: pinned });
+    await fetchChats();
+  }
+
+  return { chats, total, loading, error, createChat, updateChat, deleteChat, pinChat, refetch: fetchChats };
 }
