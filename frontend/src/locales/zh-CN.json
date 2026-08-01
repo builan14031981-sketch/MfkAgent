@@ -15,7 +15,9 @@
     "copied": "已复制",
     "search": "搜索",
     "noData": "暂无数据",
-    "clear": "清空"
+    "clear": "清空",
+    "saved": "已保存",
+    "saving": "保存中..."
   },
   "sidebar": {
     "newTask": "New Task",
@@ -86,11 +88,16 @@
         "desc": "新聊天默认使用的 AI 模型"
       },
       "apiConfig": {
-        "title": "API 配置"
+        "title": "API 配置",
+        "desc": "配置各提供商的 API Key，保存后生效"
       }
     },
     "ai": {
       "title": "AI 行为",
+      "defaultAgent": {
+        "title": "默认 Agent",
+        "desc": "新聊天默认使用的 AI 工作伙伴"
+      },
       "defaultPersonality": {
         "title": "默认人格",
         "desc": "调整 AI 的理性/感性倾向",

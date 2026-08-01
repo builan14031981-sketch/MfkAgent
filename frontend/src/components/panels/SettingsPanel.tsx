@@ -22,16 +22,34 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
-  const { settings, loading, fetchSettings, updateSetting } = useSettingsStore();
+  const { settings, loading, fetchSettings, updateSetting, updateSettings } = useSettingsStore();
   const { t } = useTranslation();
   const { models, loading: modelsLoading } = useModels();
   const { agents } = useAgents();
   const [saving, setSaving] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("general");
+  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+  const [savingApiKeys, setSavingApiKeys] = useState(false);
+  const [apiKeysSaved, setApiKeysSaved] = useState(false);
+  const [apiKeysSynced, setApiKeysSynced] = useState(false);
 
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
+
+  // 当 settings 加载完成后，将当前 API Key 值同步到本地暂存（渲染期调整，避免 effect setState）
+  if (settings && !apiKeysSynced) {
+    setApiKeysSynced(true);
+    setApiKeys(prev => {
+      const next: Record<string, string> = {};
+      for (const key of Object.keys(settings)) {
+        if (key.startsWith("api_key_")) {
+          next[key] = settings[key] || "";
+        }
+      }
+      return { ...prev, ...next };
+    });
+  }
 
   const handleUpdate = async (key: string, value: string) => {
     setSaving(key);
@@ -41,6 +59,20 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       console.error("Failed to update setting:", err);
     } finally {
       setSaving(null);
+    }
+  };
+
+  const handleSaveApiKeys = async () => {
+    setSavingApiKeys(true);
+    setApiKeysSaved(false);
+    try {
+      await updateSettings(apiKeys);
+      setApiKeysSaved(true);
+      setTimeout(() => setApiKeysSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save API keys:", err);
+    } finally {
+      setSavingApiKeys(false);
     }
   };
 
@@ -303,12 +335,55 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
               {/* API Key */}
               <div>
-                <h3 style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "var(--text-level-1)",
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "16px",
+                }}>
+                  <h3 style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "var(--text-level-1)",
+                    margin: 0,
+                  }}>{t("settings.model.apiConfig.title")}</h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {apiKeysSaved && (
+                      <span style={{ fontSize: "12px", color: "var(--color-success)" }}>
+                        {t("common.saved")}
+                      </span>
+                    )}
+                    <button
+                      onClick={handleSaveApiKeys}
+                      disabled={savingApiKeys}
+                      style={{
+                        padding: "6px 16px",
+                        borderRadius: "var(--radius-sm)",
+                        border: "none",
+                        background: "var(--color-primary)",
+                        color: "white",
+                        cursor: savingApiKeys ? "not-allowed" : "pointer",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        opacity: savingApiKeys ? 0.7 : 1,
+                        transition: "all 0.6s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!savingApiKeys) e.currentTarget.style.background = "var(--color-primary-hover)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--color-primary)";
+                      }}
+                    >
+                      {savingApiKeys ? t("common.saving") : t("common.save")}
+                    </button>
+                  </div>
+                </div>
+                <p style={{
+                  fontSize: "12px",
+                  color: "var(--text-level-4)",
                   margin: "0 0 16px 0",
-                }}>{t("settings.model.apiConfig.title")}</h3>
+                }}>{t("settings.model.apiConfig.desc")}</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {[
                     { key: "api_key_mimo", label: "小米 MiMo", placeholder: "sk-..." },
@@ -329,9 +404,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       }}>{apiKey.label}</label>
                       <input
                         type="password"
-                        value={settings?.[apiKey.key as keyof typeof settings] || ""}
-                        onChange={(e) => handleUpdate(apiKey.key, e.target.value)}
-                        disabled={saving === apiKey.key}
+                        value={apiKeys[apiKey.key] || ""}
+                        onChange={(e) => setApiKeys(prev => ({ ...prev, [apiKey.key]: e.target.value }))}
                         placeholder={apiKey.placeholder}
                         style={{
                           flex: 1,
@@ -342,7 +416,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           fontSize: "13px",
                           color: "var(--text-level-2)",
                           outline: "none",
-                          opacity: saving === apiKey.key ? 0.7 : 1,
                         }}
                       />
                     </div>
@@ -355,6 +428,49 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {/* AI 行为 */}
           {activeSection === "ai" && (
             <div>
+              {/* 默认 Agent */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "28px",
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "var(--text-level-1)",
+                    margin: 0,
+                  }}>{t("settings.ai.defaultAgent.title")}</h3>
+                  <p style={{
+                    fontSize: "12px",
+                    color: "var(--text-level-3)",
+                    margin: "2px 0 0 0",
+                  }}>{t("settings.ai.defaultAgent.desc")}</p>
+                </div>
+                <select
+                  value={settings?.default_agent || "general"}
+                  onChange={(e) => handleUpdate("default_agent", e.target.value)}
+                  disabled={saving === "default_agent"}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--border-primary)",
+                    background: "var(--bg-level-2)",
+                    fontSize: "13px",
+                    color: "var(--text-level-2)",
+                    opacity: saving === "default_agent" ? 0.7 : 1,
+                    minWidth: "140px",
+                  }}
+                >
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.avatar} {agent.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{
                 display: "flex",
                 alignItems: "center",

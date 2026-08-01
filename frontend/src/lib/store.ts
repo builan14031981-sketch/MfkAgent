@@ -17,6 +17,7 @@ interface SettingsState {
   loading: boolean;
   fetchSettings: () => Promise<void>;
   updateSetting: (key: string, value: string) => Promise<void>;
+  updateSettings: (updates: Record<string, string>) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -42,6 +43,18 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       await get().fetchSettings();
     } catch (err) {
       console.error("Failed to update setting:", err);
+    }
+  },
+  updateSettings: async (updates: Record<string, string>) => {
+    try {
+      await apiFetch(`/api/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: updates }),
+      });
+      await get().fetchSettings();
+    } catch (err) {
+      console.error("Failed to update settings:", err);
     }
   },
 }));

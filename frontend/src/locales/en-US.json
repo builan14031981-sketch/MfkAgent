@@ -15,7 +15,9 @@
     "copied": "Copied",
     "search": "Search",
     "noData": "No data",
-    "clear": "Clear"
+    "clear": "Clear",
+    "saved": "Saved",
+    "saving": "Saving..."
   },
   "sidebar": {
     "newTask": "New Task",
@@ -86,11 +88,16 @@
         "desc": "Default AI model for new chats"
       },
       "apiConfig": {
-        "title": "API Configuration"
+        "title": "API Configuration",
+        "desc": "Configure API keys for each provider. Applied after saving."
       }
     },
     "ai": {
       "title": "AI Behavior",
+      "defaultAgent": {
+        "title": "Default Agent",
+        "desc": "Default AI work partner for new chats"
+      },
       "defaultPersonality": {
         "title": "Default Personality",
         "desc": "Adjust AI rational/emotional tendency",
