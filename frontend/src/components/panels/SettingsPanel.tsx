@@ -148,6 +148,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           overflowX: "hidden",
           height: "100%",
           paddingRight: "4px",
+          // 预留滚动条槽位，避免切换内容时滚动条出现/消失导致宽度跳动
+          scrollbarGutter: "stable",
         }}>
           {/* 通用设置 */}
           {activeSection === "general" && (
