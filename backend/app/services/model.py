@@ -141,6 +141,20 @@ class ModelService:
             return DEEPSEEK_MODEL_MAPPING.get(config.model_name, config.model_name)
         return config.model_name
 
+    def _apply_reasoning_payload(self, payload: dict, config: ModelConfig, reasoning_effort: str) -> None:
+        """按 provider 官方规范设置思考/推理参数。
+
+        阿里百炼 OpenAI 兼容接口：
+          - QWEN（qwen-plus / qwen-flash 等混合思考模式，默认关闭）：enable_thinking 布尔开关
+          - DEEPSEEK-V4 / GLM：reasoning_effort 力度档位（low/high 等）
+        """
+        if not reasoning_effort or reasoning_effort == "none":
+            return
+        if config.provider == ModelProvider.QWEN:
+            payload["enable_thinking"] = True
+        elif config.provider in (ModelProvider.DEEPSEEK, ModelProvider.GLM):
+            payload["reasoning_effort"] = reasoning_effort
+
     def reload_models(self):
         """重新加载模型配置（当设置更新时调用）"""
         self.models = self._init_models()
@@ -226,7 +240,7 @@ class ModelService:
                 "stream": True,
             }
             if reasoning_effort and reasoning_effort != "none":
-                payload["reasoning_effort"] = reasoning_effort
+                self._apply_reasoning_payload(payload, config, reasoning_effort)
             if tools:
                 payload["tools"] = tools
 
@@ -369,7 +383,7 @@ class ModelService:
             "stream": stream,
         }
         if reasoning_effort and reasoning_effort != "none":
-            payload["reasoning_effort"] = reasoning_effort
+            self._apply_reasoning_payload(payload, config, reasoning_effort)
 
         if tools:
             payload["tools"] = tools
