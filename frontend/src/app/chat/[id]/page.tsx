@@ -590,7 +590,7 @@ export default function ChatPage() {
 
       {/* 输入区域 */}
       <div style={{
-        padding: "12px 24px 16px 24px",
+        padding: "12px 24px 4px 24px",
         borderTop: "1px solid var(--border-primary)",
         background: "var(--bg-level-1)",
         flexShrink: 0,
@@ -631,9 +631,12 @@ export default function ChatPage() {
         </div>
         <p style={{
           textAlign: "center",
-          fontSize: "12px",
+          fontSize: "11px",
+          lineHeight: 1.4,
           color: "var(--text-level-4)",
-          marginTop: "8px",
+          marginTop: "6px",
+          paddingBottom: "6px",
+          paddingTop: "2px",
           marginBottom: 0,
         }}>{t("chat.aiMayError")}</p>
       </div>

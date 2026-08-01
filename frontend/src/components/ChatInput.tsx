@@ -257,15 +257,15 @@ export function ChatInput({
         disabled={isSending || disabled}
         style={{
           width: "100%",
-          padding: "14px 14px 10px 14px",
+          padding: "10px 14px",
           background: "transparent",
           border: "none",
           outline: "none",
           resize: "none",
           fontSize: "14px",
-          lineHeight: "1.6",
+          lineHeight: "1.5rem",
           color: "var(--text-level-2)",
-          minHeight: "52px",
+          minHeight: "72px",
           maxHeight: "120px",
           fontFamily: "inherit",
           boxSizing: "border-box",

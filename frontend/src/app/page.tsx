@@ -162,14 +162,14 @@ export default function Home() {
         transition={{ duration: 0.5 }}
         style={{
           width: "100%",
-          maxWidth: "900px",
+          maxWidth: "768px",
           padding: "0 40px",
         }}
       >
         {/* Logo */}
         <div style={{
           textAlign: "center",
-          marginBottom: "48px",
+          marginBottom: "32px",
         }}>
           <h1 style={{
             fontSize: "48px",
@@ -329,13 +329,15 @@ export default function Home() {
         />
       </motion.div>
 
-      {/* 底部提示 */}
+      {/* 底部提示 - 极贴底部 */}
       <p style={{
         textAlign: "center",
-        fontSize: "12px",
+        fontSize: "11px",
+        lineHeight: 1.4,
         color: "var(--text-level-4)",
-        marginTop: "auto",
-        paddingBottom: "16px",
+        marginTop: "6px",
+        paddingBottom: "6px",
+        paddingTop: "2px",
         pointerEvents: "none",
       }}>MfkAgent 可能会犯错，请核实重要信息</p>
     </div>
