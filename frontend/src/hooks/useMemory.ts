@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { apiGet, apiPost, apiDelete, apiPatch } from "@/lib/api";
 
 export interface Memory {
   id: number;
@@ -9,6 +9,7 @@ export interface Memory {
   key: string;
   value: string;
   memory_type: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -51,5 +52,10 @@ export function useMemory(agentId: string) {
     await fetchMemories();
   }
 
-  return { memories, loading, error, createMemory, deleteMemory, refetch: fetchMemories };
+  async function updateMemory(id: number, updates: { key?: string; value?: string; memory_type?: string; is_active?: boolean }) {
+    await apiPatch(`/api/memory/${id}`, updates);
+    await fetchMemories();
+  }
+
+  return { memories, loading, error, createMemory, deleteMemory, updateMemory, refetch: fetchMemories };
 }

@@ -132,7 +132,19 @@
     "add": "添加",
     "memoryList": "记忆列表",
     "noMemories": "暂无记忆",
-    "noMemoriesDesc": "添加记忆让 AI 更了解你"
+    "noMemoriesDesc": "添加记忆让 AI 更了解你",
+    "preferences": "个人偏好",
+    "project": "项目记忆",
+    "edit": "编辑",
+    "save": "保存",
+    "cancel": "取消",
+    "enable": "启用",
+    "disable": "禁用",
+    "noPreferences": "暂无个人偏好记忆",
+    "noProjectMemories": "暂无项目记忆",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "delete": "删除"
   },
   "project": {
     "title": "Project",
