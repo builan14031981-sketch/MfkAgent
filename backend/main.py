@@ -10,6 +10,24 @@ from app.core.errors import APIError, api_error_handler, http_exception_handler,
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
 
+
+def _ensure_schema():
+    """轻量迁移：为旧 SQLite 库补充新增列（create_all 不会改已有表）"""
+    from sqlalchemy import inspect
+    import sqlalchemy as sa
+
+    inspector = inspect(engine)
+    if "memories" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("memories")}
+        with engine.begin() as conn:
+            if "project_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE memories ADD COLUMN project_id INTEGER"))
+            if "is_active" not in cols:
+                conn.execute(sa.text("ALTER TABLE memories ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+
+
+_ensure_schema()
+
 app = FastAPI(
     title="MfkAgent API",
     description="MfkAgent - AI工作助手后端API",

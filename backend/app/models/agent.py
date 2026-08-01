@@ -68,9 +68,11 @@ class Memory(Base):
     id = Column(Integer, primary_key=True, index=True)
     agent_id = Column(String(50), nullable=False)
     user_id = Column(String(100), default="default")
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
     key = Column(String(200), nullable=False)
     value = Column(Text, nullable=False)
     memory_type = Column(String(50), default="preference")
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -271,20 +271,39 @@ def _get_agent_prompt(agent_id: str) -> str:
 
 
 
-def _get_memory_prompt(agent_id: str, user_id: str = "default") -> str:
+def _get_memory_prompt(agent_id: str, user_id: str = "default", project_id: Optional[int] = None) -> str:
     db = SessionLocal()
     try:
-        memories = (
-            db.query(Memory)
-            .filter(Memory.agent_id == agent_id, Memory.user_id == user_id)
-            .all()
+        query = db.query(Memory).filter(
+            Memory.agent_id == agent_id,
+            Memory.user_id == user_id,
+            Memory.is_active == True,
         )
-        if not memories:
-            return ""
-        lines = ["用户偏好和记忆："]
-        for m in memories:
-            lines.append(f"- {m.key}: {m.value}")
-        return "\n".join(lines)
+        user_memories = query.filter(Memory.memory_type.in_(["user", "preference"])).all()
+        sections = []
+        if user_memories:
+            lines = ["用户记忆："]
+            for m in user_memories:
+                lines.append(f"- {m.key}: {m.value}")
+            sections.append("\n".join(lines))
+        if project_id is not None:
+            project_memories = (
+                db.query(Memory)
+                .filter(
+                    Memory.agent_id == agent_id,
+                    Memory.user_id == user_id,
+                    Memory.memory_type == "project",
+                    Memory.project_id == project_id,
+                    Memory.is_active == True,
+                )
+                .all()
+            )
+            if project_memories:
+                lines = ["项目记忆："]
+                for m in project_memories:
+                    lines.append(f"- {m.key}: {m.value}")
+                sections.append("\n".join(lines))
+        return "\n\n".join(sections)
     finally:
         db.close()
 
@@ -315,7 +334,7 @@ async def send_message(chat_id: int, request: SendRequest):
 
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
-        memory_prompt = _get_memory_prompt(chat.agent_id)
+        memory_prompt = _get_memory_prompt(chat.agent_id, project_id=chat.project_id)
         knowledge_context = ""
         if chat.project_id:
             knowledge_context = knowledge_service.get_context(chat.project_id, request.content)
@@ -405,7 +424,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
-        memory_prompt = _get_memory_prompt(chat.agent_id)
+        memory_prompt = _get_memory_prompt(chat.agent_id, project_id=chat.project_id)
         knowledge_context = ""
         if chat.project_id:
             knowledge_context = knowledge_service.get_context(chat.project_id, request.content)
