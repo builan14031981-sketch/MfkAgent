@@ -11,6 +11,7 @@ import { useModels, Model } from "@/hooks/useModels";
 import { useChat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
+import { AgentIcon } from "@/components/AgentIcon";
 
 // agent_id → 用户可见名称映射（内部仍用 coder/frontend_ui/backend 等）
 // 研发核心三角置顶展示：代码审查 AI、前端 UI 设计 AI、后端 AI
@@ -231,7 +232,7 @@ export default function Home() {
                       transition: "all var(--transition-fast)",
                     }}
                   >
-                    <span style={{ fontSize: "14px" }}>{currentAgent?.avatar}</span>
+                    <AgentIcon id={currentAgent?.id} size={14} style={{ flexShrink: 0 }} />
                     <span style={{ fontWeight: "500" }}>{display.label}</span>
                     <ChevronDown style={{
                       width: "10px", height: "10px", color: "var(--text-level-4)",
@@ -282,7 +283,7 @@ export default function Home() {
                               if (!isActive) e.currentTarget.style.background = "transparent";
                             }}
                           >
-                            <span style={{ fontSize: "13px", lineHeight: 1 }}>{agent.avatar}</span>
+                            <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
                                 fontSize: "12px",

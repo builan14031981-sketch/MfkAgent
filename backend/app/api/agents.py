@@ -23,6 +23,7 @@ class AgentInfo(BaseModel):
     name: str
     description: str
     avatar: str
+    icon: str = ""
     system_prompt: str
     identity: str = ""
     capabilities: list[str] = []
@@ -47,6 +48,7 @@ async def list_agents():
                 name=a.name,
                 description=a.description,
                 avatar=a.avatar,
+                icon=a.avatar,
                 system_prompt=a.identity or a.system_prompt or "",
                 identity=a.identity or "",
                 capabilities=a.capabilities or [],
@@ -70,6 +72,7 @@ async def get_agent(agent_id: str):
             name=agent.name,
             description=agent.description,
             avatar=agent.avatar,
+            icon=agent.avatar,
             system_prompt=agent.identity or agent.system_prompt or "",
             identity=agent.identity or "",
             capabilities=agent.capabilities or [],

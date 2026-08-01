@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Send, Copy, Quote, RefreshCw, Brain, Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
@@ -12,21 +12,39 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { apiGet } from "@/lib/api";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
+import { AgentIcon } from "@/components/AgentIcon";
 
 interface PersonalitySliderProps {
   value: number;
   onCommit: (value: number) => void;
 }
 
-function PersonalitySlider({ value, onCommit }: PersonalitySliderProps) {
+/**
+ * 人格滑块：拖动（onChange）仅更新组件内部局部 draft state，
+ * 父级 personalityLevel 仅在松手/失焦时通过 onCommit 一次性提交。
+ * React.memo 隔离：父组件任何重渲染都不会让滑块重新绘制。
+ */
+const PersonalitySlider = memo(function PersonalitySlider({ value, onCommit }: PersonalitySliderProps) {
   const [draft, setDraft] = useState<number | null>(null);
+  const draftRef = useRef<number | null>(null);
   const displayed = draft ?? value;
-  const commit = () => {
-    if (draft !== null) {
-      onCommit(draft);
+
+  // 拖动中仅更新局部 draft（不触达父级 state）；onCommit 只在松手/失焦时一次性调用
+  const commit = useCallback(() => {
+    const d = draftRef.current;
+    if (d !== null) {
+      draftRef.current = null;
       setDraft(null);
+      onCommit(d);
     }
-  };
+  }, [onCommit]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = Number(e.target.value);
+    draftRef.current = v;
+    setDraft(v);
+  }, []);
+
   return (
     <div style={{
       display: "flex",
@@ -41,7 +59,7 @@ function PersonalitySlider({ value, onCommit }: PersonalitySliderProps) {
         max="100"
         step="25"
         value={displayed}
-        onChange={(e) => setDraft(Number(e.target.value))}
+        onChange={handleChange}
         onPointerUp={commit}
         onKeyUp={commit}
         onBlur={commit}
@@ -54,12 +72,15 @@ function PersonalitySlider({ value, onCommit }: PersonalitySliderProps) {
       <span style={{
         fontSize: "11px",
         color: "var(--text-level-4)",
-        minWidth: "28px",
+        width: "28px",
         textAlign: "right",
+        fontVariantNumeric: "tabular-nums",
+        letterSpacing: "0.2px",
+        flexShrink: 0,
       }}>{displayed}</span>
     </div>
   );
-}
+});
 
 export default function ChatPage() {
   const router = useRouter();
@@ -108,6 +129,16 @@ export default function ChatPage() {
   const [editTitle, setEditTitle] = useState("");
   const [hasAutoSent, setHasAutoSent] = useState(false);
   const autoSendLockRef = useRef(false);
+
+  // 人格提交回调：useCallback 稳定引用，避免父组件重渲染时触发滑块（memo）重绘
+  const handleCommitPersonality = useCallback((v: number) => {
+    setPersonalityLevel(v);
+    if (chatId) {
+      updateChat(chatId, { personality_level: v }).catch((err) =>
+        console.error("Failed to persist personality:", err)
+      );
+    }
+  }, [chatId, updateChat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -298,7 +329,7 @@ export default function ChatPage() {
           gap: "8px",
         }}>
           {currentAgent && (
-            <span style={{ fontSize: "18px" }}>{currentAgent.avatar}</span>
+            <AgentIcon id={currentAgent.id} size={18} style={{ color: "var(--color-primary)" }} />
           )}
           {isEditingTitle ? (
             <input
@@ -349,7 +380,13 @@ export default function ChatPage() {
                 padding: "4px 8px",
                 borderRadius: "var(--radius-full)",
                 background: "var(--color-primary-lighter)",
-              }}>📁 {currentProject.name}</span>
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}>
+                <Folder style={{ width: "12px", height: "12px" }} />
+                {currentProject.name}
+              </span>
             )}
             {currentProject && (
               <button
@@ -387,17 +424,10 @@ export default function ChatPage() {
               borderRadius: "var(--radius-full)",
               background: "var(--bg-level-3)",
             }}>{currentAgent.name}</span>
-            {/* 人格滑块（拖动仅更新子组件，提交时才触发父级重渲染） */}
+            {/* 人格滑块（memo 隔离 + 拖动仅更新子组件局部 draft，提交时才触发父级重渲染） */}
             <PersonalitySlider
               value={personalityLevel}
-              onCommit={(v) => {
-                setPersonalityLevel(v);
-                if (chatId) {
-                  updateChat(chatId, { personality_level: v }).catch((err) =>
-                    console.error("Failed to persist personality:", err)
-                  );
-                }
-              }}
+              onCommit={handleCommitPersonality}
             />
           </div>
         )}
@@ -419,7 +449,7 @@ export default function ChatPage() {
             color: "var(--text-level-3)",
           }}>
             {currentAgent && (
-              <span style={{ fontSize: "48px", marginBottom: "16px" }}>{currentAgent.avatar}</span>
+              <AgentIcon id={currentAgent.id} size={48} strokeWidth={1.5} style={{ marginBottom: "16px", color: "var(--text-level-4)" }} />
             )}
             <p style={{ fontSize: "16px", margin: 0 }}>{t("chat.startConversation")}</p>
             <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "var(--text-level-4)" }}>
@@ -468,7 +498,7 @@ export default function ChatPage() {
                       marginBottom: "8px",
                     }}>
                       {currentAgent && (
-                        <span style={{ fontSize: "16px" }}>{currentAgent.avatar}</span>
+                        <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
                       )}
                       <span style={{
                         fontSize: "13px",

@@ -13,6 +13,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { useMemory, Memory } from "@/hooks/useMemory";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Panel } from "./Panel";
+import { AgentIcon } from "../AgentIcon";
 
 interface MemoryPanelProps {
   isOpen: boolean;
@@ -134,7 +135,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
                 color: selectedAgent === agent.id ? "var(--color-primary)" : "var(--text-level-2)",
               }}
             >
-              <span>{agent.avatar}</span>
+              <AgentIcon id={agent.id} size={14} style={{ color: selectedAgent === agent.id ? "var(--color-primary)" : "var(--text-level-3)" }} />
               <span>{agent.name}</span>
             </button>
           ))}

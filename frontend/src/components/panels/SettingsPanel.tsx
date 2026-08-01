@@ -16,6 +16,7 @@ import { useModels } from "@/hooks/useModels";
 import { useAgents } from "@/hooks/useAgents";
 import { Panel } from "./Panel";
 import { MemoryPanel } from "./MemoryPanel";
+import { AgentIcon } from "../AgentIcon";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -485,7 +486,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     .filter((agent) => !["warm", "rational"].includes(agent.id))
                     .map((agent) => (
                     <option key={agent.id} value={agent.id}>
-                      {agent.avatar} {agent.name}
+                      {agent.name}
                     </option>
                   ))}
                 </select>
@@ -586,7 +587,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         gap: "10px",
                         marginBottom: "8px",
                       }}>
-                        <span style={{ fontSize: "18px" }}>{agent.avatar}</span>
+                        <AgentIcon id={agent.id} size={18} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
                         <div>
                           <p style={{
                             fontSize: "13px",
