@@ -7,6 +7,7 @@ import json
 import os
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, Memory, Setting, Project
+from app.core.tools import FILE_TOOLS_DEFINITIONS
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
 from app.core.pagination import paginate
@@ -494,11 +495,15 @@ async def send_message(chat_id: int, request: SendRequest):
         allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
         try:
             tools_arg = None
-            if request.use_tools and allowed_tools is not None:
-                if allowed_tools:
-                    tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
-                else:
-                    tools_arg = []
+            if request.use_tools:
+                if chat.project_path:
+                    # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）
+                    tools_arg = FILE_TOOLS_DEFINITIONS
+                elif allowed_tools is not None:
+                    if allowed_tools:
+                        tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
+                    else:
+                        tools_arg = []
             ai_response = await model_service.chat(
                 model_id=chat.model or request.model or _get_default_model(),
                 messages=model_messages,
@@ -506,6 +511,7 @@ async def send_message(chat_id: int, request: SendRequest):
                 max_tokens=request.max_tokens,
                 tools=tools_arg,
                 reasoning_effort=request.reasoning_effort,
+                project_path=chat.project_path,
             )
             ai_content = ai_response.content
             api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None

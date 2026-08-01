@@ -148,6 +148,8 @@ class ModelService:
         stream: bool = False,
         tools: List[Dict] = None,
         reasoning_effort: str = None,
+        project_path: str = None,
+        max_tool_rounds: int = 4,
     ) -> ChatResponse:
         """发送聊天请求"""
         config = self.get_model_config(model_id)
@@ -167,7 +169,8 @@ class ModelService:
             ModelProvider.BAICHUAN,
         ]:
             return await self._chat_openai_compatible(
-                config, messages, temperature, max_tokens, stream, tools, reasoning_effort
+                config, messages, temperature, max_tokens, stream, tools,
+                reasoning_effort, project_path, max_tool_rounds,
             )
         else:
             raise ValueError(f"不支持的模型提供商: {config.provider}")
@@ -247,9 +250,12 @@ class ModelService:
         stream: bool,
         tools: List[Dict] = None,
         reasoning_effort: str = None,
+        project_path: str = None,
+        max_tool_rounds: int = 4,
     ) -> ChatResponse:
-        """调用OpenAI兼容接口"""
+        """调用OpenAI兼容接口（支持多轮 Tool Calling 自动执行环）"""
         from app.services.tools import tool_registry
+        from app.core.tools import execute_file_tool
 
         headers = {
             "Authorization": f"Bearer {config.api_key}",
@@ -270,62 +276,60 @@ class ModelService:
             payload["tools"] = tools
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{config.api_base}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60.0,
-            )
-
-            if response.status_code != 200:
-                raise Exception(f"API调用失败: {response.text}")
-
-            data = response.json()
-            choice = data["choices"][0]
-            message = choice["message"]
-
-            if choice.get("finish_reason") == "tool_calls" and message.get("tool_calls"):
-                tool_results = []
-                for tool_call in message["tool_calls"]:
-                    func_name = tool_call["function"]["name"]
-                    import json
-                    try:
-                        func_args = json.loads(tool_call["function"]["arguments"])
-                    except:
-                        func_args = {}
-                    result = await tool_registry.execute(func_name, **func_args)
-                    tool_results.append({
-                        "tool_call_id": tool_call["id"],
-                        "role": "tool",
-                        "content": result.output if result.success else f"Error: {result.error}",
-                    })
-
-                new_messages = [msg.dict() for msg in messages]
-                new_messages.append(message)
-                new_messages.extend(tool_results)
-
-                payload["messages"] = new_messages
-                payload.pop("tools", None)
-
-                response2 = await client.post(
+            round_no = 0
+            data = None
+            while True:
+                response = await client.post(
                     f"{config.api_base}/chat/completions",
                     headers=headers,
                     json=payload,
                     timeout=60.0,
                 )
+                if response.status_code != 200:
+                    raise Exception(f"API调用失败: {response.text}")
 
-                if response2.status_code != 200:
-                    raise Exception(f"API调用失败: {response2.text}")
+                data = response.json()
+                choice = data["choices"][0]
+                message = choice["message"]
 
-                data2 = response2.json()
-                return ChatResponse(
-                    id=data2.get("id", ""),
-                    model=data2.get("model", config.model_name),
-                    content=data2["choices"][0]["message"]["content"],
-                    finish_reason=data2["choices"][0].get("finish_reason", "stop"),
-                    usage=data2.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}),
-                )
+                # 无工具调用：返回最终结果
+                if choice.get("finish_reason") != "tool_calls" or not message.get("tool_calls"):
+                    break
 
+                round_no += 1
+                if round_no > max_tool_rounds:
+                    break
+
+                # 执行工具调用，将结果追加到消息历史
+                tool_messages = [msg.dict() for msg in messages]
+                tool_messages.append(message)
+                for tool_call in message["tool_calls"]:
+                    func_name = tool_call["function"]["name"]
+                    try:
+                        func_args = json.loads(tool_call["function"]["arguments"])
+                    except Exception:
+                        func_args = {}
+
+                    if func_name in ("write_file", "read_file", "list_files") and project_path:
+                        result = execute_file_tool(func_name, project_path=project_path, **func_args)
+                        content = result
+                    else:
+                        r = await tool_registry.execute(func_name, **func_args)
+                        content = r.output if r.success else f"Error: {r.error}"
+
+                    tool_messages.append({
+                        "tool_call_id": tool_call["id"],
+                        "role": "tool",
+                        "content": content,
+                    })
+
+                payload["messages"] = tool_messages
+
+            if not data:
+                raise Exception("API 未返回结果")
+
+            choice = data["choices"][0]
+            message = choice["message"]
             return ChatResponse(
                 id=data.get("id", ""),
                 model=data.get("model", config.model_name),

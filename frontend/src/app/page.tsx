@@ -224,21 +224,33 @@ export default function Home() {
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    padding: "3px 8px",
+                    height: "28px",
+                    padding: "0 10px",
                     borderRadius: "var(--radius-full)",
                     border: "1px solid var(--border-primary)",
-                    background: "var(--bg-level-2)",
+                    background: showAgentDropdown ? "var(--bg-level-4)" : "var(--bg-level-3)",
                     cursor: "pointer",
                     fontSize: "12px",
-                    color: "var(--text-level-2)",
+                    fontWeight: 500,
+                    color: showAgentDropdown ? "var(--color-primary)" : "var(--text-level-2)",
+                    whiteSpace: "nowrap",
                     transition: "all var(--transition-fast)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-level-4)";
+                    e.currentTarget.style.color = "var(--color-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = showAgentDropdown ? "var(--bg-level-4)" : "var(--bg-level-3)";
+                    e.currentTarget.style.color = showAgentDropdown ? "var(--color-primary)" : "var(--text-level-2)";
                   }}
                 >
                   <AgentIcon id={currentAgent?.id} size={14} style={{ flexShrink: 0 }} />
-                  <span style={{ fontWeight: "500" }}>{display.label}</span>
+                  <span style={{ fontWeight: 500 }}>{display.label}</span>
                   <ChevronDown style={{
-                    width: "10px", height: "10px", color: "var(--text-level-4)",
-                    transform: showAgentDropdown ? "rotate(180deg)" : "none",
+                    width: "12px", height: "12px", color: "var(--text-level-4)",
+                    marginLeft: "4px",
+                    transform: showAgentDropdown ? "rotate(180deg)" : "rotate(0deg)",
                     transition: "transform var(--transition-fast)",
                   }} />
                 </button>

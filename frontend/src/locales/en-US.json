@@ -76,6 +76,7 @@
     "dropToAttach": "Release to attach files as context",
     "dragHint": "Drag files here to use as context",
     "attachedFiles": "Attached Files",
+    "toolWritten": "Auto-written to disk",
     "menu": {
       "uploadFile": "Upload File",
       "linkProject": "Link Local Project",

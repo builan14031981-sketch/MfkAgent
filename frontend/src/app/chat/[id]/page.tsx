@@ -16,6 +16,7 @@ import { AgentIcon } from "@/components/AgentIcon";
 import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile } from "@/components/FileDropZone";
 import { ChatInput } from "@/components/ChatInput";
+import { ToolCallCardList } from "@/components/ToolCallCard";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -474,6 +475,10 @@ export default function ChatPage() {
                         color: "var(--text-level-3)",
                       }}>{currentAgent?.name || "AI"}</span>
                     </div>
+                    {/* 文件操作事件卡片 */}
+                    {message.tool_calls && message.tool_calls.length > 0 && (
+                      <ToolCallCardList toolCalls={message.tool_calls} />
+                    )}
                     {/* 正文区域 */}
                     <div style={{
                       fontSize: "14px",

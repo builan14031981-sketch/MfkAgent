@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, FileUp, FolderPlus, Trash2, Send, Brain, Folder, X } from "lucide-react";
+import { Plus, FileUp, FolderPlus, Trash2, Send, Brain, Folder, X, Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { FilePill } from "@/components/FileDropZone";
@@ -66,21 +66,26 @@ export function ChatInput({
 }: ChatInputProps) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reasoningOpen, setReasoningOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const reasoningRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 点击外部关闭菜单
+  // 点击外部关闭弹出层（+ 菜单 / 思考模式下拉）
   useEffect(() => {
-    if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
+      if (reasoningRef.current && !reasoningRef.current.contains(e.target as Node)) {
+        setReasoningOpen(false);
+      }
     };
+    if (!menuOpen && !reasoningOpen) return;
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
+  }, [menuOpen, reasoningOpen]);
 
   // 自适应高度
   useEffect(() => {
@@ -110,7 +115,52 @@ export function ChatInput({
     }
   };
 
-  const menuItemStyle: React.CSSProperties = {
+  // 统一 Toolbar Pill 控件外观：28px 高、12px 字、medium、px-2.5、同背景同箭头
+  const pillStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    height: "28px",
+    padding: "0 10px",
+    borderRadius: "var(--radius-full)",
+    border: "1px solid var(--border-primary)",
+    background: "var(--bg-level-3)",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: 500,
+    color: "var(--text-level-2)",
+    whiteSpace: "nowrap",
+    transition: "all var(--transition-fast)",
+    flexShrink: 0,
+  };
+
+  const chevronStyle: React.CSSProperties = {
+    width: "12px",
+    height: "12px",
+    color: "var(--text-level-4)",
+    marginLeft: "4px",
+    flexShrink: 0,
+  };
+
+  const popoverStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: "calc(100% + 8px)",
+    left: 0,
+    minWidth: "180px",
+    padding: "4px",
+    borderRadius: "var(--radius-lg)",
+    background: "var(--glass-bg)",
+    backdropFilter: "var(--glass-blur)",
+    WebkitBackdropFilter: "var(--glass-blur)",
+    border: "1px solid var(--glass-border)",
+    boxShadow: "var(--shadow-lg), inset 0 0 0 1px var(--border-secondary)",
+    zIndex: 1001,
+    animation: "panelOpen 0.15s ease forwards",
+    transformOrigin: "bottom left",
+  };
+
+  const popoverItemStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
     gap: "10px",
@@ -124,6 +174,14 @@ export function ChatInput({
     borderRadius: "var(--radius-sm)",
     textAlign: "left",
   };
+
+  const reasoningModes: { value: ReasoningEffort; label: string }[] = [
+    { value: "none", label: t("chat.reasoning.off") },
+    { value: "low", label: t("chat.reasoning.fast") },
+    { value: "high", label: t("chat.reasoning.deep") },
+  ];
+
+  const currentReasoningLabel = reasoningModes.find((m) => m.value === reasoningEffort)?.label ?? "";
 
   return (
     <div style={{
@@ -188,7 +246,7 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Textarea - 紧凑自适应 */}
+      {/* Textarea - 舒展自适应 */}
       <textarea
         ref={textareaRef}
         value={value}
@@ -199,17 +257,18 @@ export function ChatInput({
         disabled={isSending || disabled}
         style={{
           width: "100%",
-          padding: "10px 12px",
+          padding: "14px 14px 10px 14px",
           background: "transparent",
           border: "none",
           outline: "none",
           resize: "none",
           fontSize: "14px",
-          lineHeight: "1.5",
+          lineHeight: "1.6",
           color: "var(--text-level-2)",
-          minHeight: "24px",
+          minHeight: "52px",
           maxHeight: "120px",
           fontFamily: "inherit",
+          boxSizing: "border-box",
         }}
       />
 
@@ -224,36 +283,29 @@ export function ChatInput({
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "6px",
+          gap: "8px",
           minWidth: 0,
         }}>
-          {leftExtra}
-
-          {/* + 极简菜单按钮 28x28 */}
+          {/* + 极简菜单按钮（最左第一位）28x28 */}
           <div style={{ position: "relative", flexShrink: 0 }} ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
               title={t("chat.menu.uploadFile")}
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                ...pillStyle,
                 width: "28px",
-                height: "28px",
-                borderRadius: "var(--radius-sm)",
-                border: "none",
-                background: menuOpen ? "var(--color-primary-light)" : "transparent",
-                cursor: "pointer",
-                color: menuOpen ? "var(--color-primary)" : "var(--text-level-3)",
-                transition: "all var(--transition-fast)",
+                padding: "0",
+                borderRadius: "var(--radius-full)",
+                background: menuOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
+                color: menuOpen ? "var(--color-primary)" : "var(--text-level-2)",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-level-3)";
+                e.currentTarget.style.background = "var(--bg-level-4)";
                 e.currentTarget.style.color = "var(--color-primary)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = menuOpen ? "var(--color-primary-light)" : "transparent";
-                e.currentTarget.style.color = menuOpen ? "var(--color-primary)" : "var(--text-level-3)";
+                e.currentTarget.style.background = menuOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
+                e.currentTarget.style.color = menuOpen ? "var(--color-primary)" : "var(--text-level-2)";
               }}
             >
               <Plus style={{
@@ -266,27 +318,10 @@ export function ChatInput({
 
             {/* Quick Menu 毛玻璃卡片 */}
             {menuOpen && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "calc(100% + 8px)",
-                  left: 0,
-                  minWidth: "220px",
-                  padding: "4px",
-                  borderRadius: "var(--radius-lg)",
-                  background: "var(--glass-bg)",
-                  backdropFilter: "var(--glass-blur)",
-                  WebkitBackdropFilter: "var(--glass-blur)",
-                  border: "1px solid var(--glass-border)",
-                  boxShadow: "var(--shadow-lg), inset 0 0 0 1px var(--border-secondary)",
-                  zIndex: 1001,
-                  animation: "panelOpen 0.15s ease forwards",
-                  transformOrigin: "bottom left",
-                }}
-              >
+              <div style={popoverStyle}>
                 <button
                   onClick={handlePickFile}
-                  style={menuItemStyle}
+                  style={popoverItemStyle}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                 >
@@ -295,7 +330,7 @@ export function ChatInput({
                 </button>
                 <button
                   onClick={handlePickDirectory}
-                  style={menuItemStyle}
+                  style={popoverItemStyle}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                 >
@@ -314,7 +349,7 @@ export function ChatInput({
                   }}
                   disabled={!hasContext}
                   style={{
-                    ...menuItemStyle,
+                    ...popoverItemStyle,
                     color: hasContext ? "var(--color-error)" : "var(--text-level-4)",
                     cursor: hasContext ? "pointer" : "not-allowed",
                   }}
@@ -341,63 +376,104 @@ export function ChatInput({
             />
           </div>
 
-          {/* 模型选择 - 微型 */}
-          {models.length > 0 && (
-            <select
-              value={modelId || ""}
-              onChange={(e) => onModelChange(e.target.value)}
-              style={{
-                padding: "4px 8px",
-                borderRadius: "var(--radius-full)",
-                border: "1px solid var(--border-primary)",
-                background: "var(--bg-level-2)",
-                cursor: "pointer",
-                fontSize: "12px",
-                color: "var(--text-level-2)",
-                outline: "none",
-                maxWidth: "120px",
-              }}
-            >
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-          )}
+          {/* Agent 选择器（由页面注入，如首页 Agent 下拉） */}
+          {leftExtra}
 
-          {/* 思考模式 三段胶囊 - 微型 */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "2px",
-            padding: "2px",
-            borderRadius: "var(--radius-full)",
-            background: "var(--bg-level-3)",
-          }}>
-            <Brain style={{ width: "12px", height: "12px", color: "var(--text-level-4)", marginLeft: "4px" }} />
-            {([
-              { value: "none", label: t("chat.reasoning.off") },
-              { value: "low", label: t("chat.reasoning.fast") },
-              { value: "high", label: t("chat.reasoning.deep") },
-            ] as const).map((mode) => (
-              <button
-                key={mode.value}
-                onClick={() => onReasoningChange(mode.value)}
+          {/* 模型选择 - 下拉胶囊按钮（无截断，完整显示） */}
+          {models.length > 0 && (
+            <div style={{
+              position: "relative",
+              minWidth: 0,
+              maxWidth: "200px",
+              flexShrink: 0,
+            }}>
+              <select
+                value={modelId || ""}
+                onChange={(e) => onModelChange(e.target.value)}
+                title={models.find((m) => m.id === modelId)?.name ?? ""}
                 style={{
-                  padding: "3px 8px",
-                  borderRadius: "var(--radius-full)",
-                  border: "none",
-                  background: reasoningEffort === mode.value ? "var(--bg-level-1)" : "transparent",
-                  cursor: "pointer",
-                  fontSize: "11px",
-                  color: reasoningEffort === mode.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                  transition: "all 0.6s ease",
+                  ...pillStyle,
+                  maxWidth: "200px",
+                  minWidth: 0,
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  paddingRight: "24px",
                 }}
               >
-                {mode.label}
-              </button>
-            ))}
+                {models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                style={{
+                  ...chevronStyle,
+                  position: "absolute",
+                  right: "8px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  marginLeft: 0,
+                }}
+              />
+            </div>
+          )}
+
+          {/* 思考模式 - 下拉胶囊按钮 + Popover */}
+          <div style={{ position: "relative", flexShrink: 0 }} ref={reasoningRef}>
+            <button
+              onClick={() => setReasoningOpen((v) => !v)}
+              title={currentReasoningLabel}
+              style={{
+                ...pillStyle,
+                background: reasoningOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
+                color: reasoningOpen ? "var(--color-primary)" : "var(--text-level-2)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-4)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = reasoningOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
+                e.currentTarget.style.color = reasoningOpen ? "var(--color-primary)" : "var(--text-level-2)";
+              }}
+            >
+              <Brain style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
+              <span>{currentReasoningLabel}</span>
+              <ChevronDown style={{
+                ...chevronStyle,
+                transform: reasoningOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform var(--transition-normal)",
+              }} />
+            </button>
+
+            {reasoningOpen && (
+              <div style={popoverStyle}>
+                {reasoningModes.map((mode) => {
+                  const active = reasoningEffort === mode.value;
+                  return (
+                    <button
+                      key={mode.value}
+                      onClick={() => {
+                        onReasoningChange(mode.value);
+                        setReasoningOpen(false);
+                      }}
+                      style={{
+                        ...popoverItemStyle,
+                        color: active ? "var(--color-primary)" : "var(--text-level-2)",
+                        fontWeight: active ? 600 : 400,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <span style={{ flex: 1 }}>{mode.label}</span>
+                      {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

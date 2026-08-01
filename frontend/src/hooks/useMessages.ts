@@ -1,12 +1,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
 import { API_BASE, apiGet, apiPost } from "@/lib/api";
+import type { ToolCall } from "@/components/ToolCallCard";
 
 export interface Message {
   id: number;
   chat_id: number;
   role: "user" | "assistant" | "system";
   content: string;
+  tool_calls?: ToolCall[];
   created_at: string;
 }
 

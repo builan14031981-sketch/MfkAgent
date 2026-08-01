@@ -76,6 +76,7 @@
     "dropToAttach": "松开以添加文件到上下文",
     "dragHint": "拖拽文件到此处作为上下文",
     "attachedFiles": "已附加文件",
+    "toolWritten": "已自动写入硬盘",
     "menu": {
       "uploadFile": "上传文件",
       "linkProject": "关联本地项目",
