@@ -14,7 +14,8 @@
     "copy": "复制",
     "copied": "已复制",
     "search": "搜索",
-    "noData": "暂无数据"
+    "noData": "暂无数据",
+    "clear": "清空"
   },
   "sidebar": {
     "newTask": "New Task",
@@ -47,7 +48,10 @@
     "sending": "发送中...",
     "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
     "invalidId": "无效的聊天 ID",
-    "backToHome": "返回首页"
+    "backToHome": "返回首页",
+    "projectContext": "项目上下文",
+    "selectedFiles": "已选文件",
+    "noFilesSelected": "勾选项目文件以带入聊天上下文"
   },
   "settings": {
     "title": "设置",

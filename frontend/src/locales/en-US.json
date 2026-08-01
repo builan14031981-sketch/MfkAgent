@@ -14,7 +14,8 @@
     "copy": "Copy",
     "copied": "Copied",
     "search": "Search",
-    "noData": "No data"
+    "noData": "No data",
+    "clear": "Clear"
   },
   "sidebar": {
     "newTask": "New Task",
@@ -47,7 +48,10 @@
     "sending": "Sending...",
     "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
     "invalidId": "Invalid chat ID",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "projectContext": "Project Context",
+    "selectedFiles": "Selected Files",
+    "noFilesSelected": "Check project files to include in chat context"
   },
   "settings": {
     "title": "Settings",

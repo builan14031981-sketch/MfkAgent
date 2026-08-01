@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Send, Copy, Quote, RefreshCw, Brain, Zap } from "lucide-react";
+import { Send, Copy, Quote, RefreshCw, Brain, Zap, Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
@@ -10,7 +10,9 @@ import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
+import { apiGet } from "@/lib/api";
 import { ToolsPanel } from "@/components/panels/ToolsPanel";
+import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -36,7 +38,7 @@ export default function ChatPage() {
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
-  const currentProject = currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null;
+  const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
   const currentModel = selectedModel || models[0] || null;
 
   // Initialize personality level from settings (adjust during render, avoiding effect setState)
@@ -46,6 +48,8 @@ export default function ChatPage() {
   }
 
   const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
+  const [projectContextOpen, setProjectContextOpen] = useState(false);
+  const [contextFiles, setContextFiles] = useState<string[]>([]);
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -139,6 +143,27 @@ export default function ChatPage() {
     );
   }
 
+  const buildContextPrefix = async () => {
+    if (!chatId || contextFiles.length === 0 || !currentProject) return "";
+    try {
+      const parts: string[] = [];
+      for (const filePath of contextFiles) {
+        try {
+          const params = new URLSearchParams({ path: filePath });
+          const data = await apiGet<{ content: string }>(`/api/projects/${currentProject.id}/file?${params}`);
+          parts.push(`[文件: ${filePath}]\n${data.content}`);
+        } catch (err) {
+          console.error(`Failed to read context file ${filePath}:`, err);
+        }
+      }
+      if (parts.length === 0) return "";
+      return `[项目文件上下文]\n${parts.join("\n\n")}\n\n`;
+    } catch (err) {
+      console.error("Failed to build context prefix:", err);
+      return "";
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isSending) return;
 
@@ -149,8 +174,10 @@ export default function ChatPage() {
     setStreamingContent("");
 
     try {
+      const contextPrefix = await buildContextPrefix();
+      const finalMessage = contextPrefix ? `${contextPrefix}${userMessage}` : userMessage;
       await sendMessageStream(
-        userMessage,
+        finalMessage,
         modelId,
         (chunk) => {
           setStreamingContent((prev) => prev + chunk);
@@ -268,6 +295,35 @@ export default function ChatPage() {
                 borderRadius: "var(--radius-full)",
                 background: "var(--color-primary-lighter)",
               }}>📁 {currentProject.name}</span>
+            )}
+            {currentProject && (
+              <button
+                onClick={() => setProjectContextOpen(true)}
+                title={t("chat.projectContext")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "var(--radius-full)",
+                  border: "1px solid var(--border-primary)",
+                  background: "var(--bg-level-2)",
+                  cursor: "pointer",
+                  color: "var(--text-level-2)",
+                  transition: "all 0.6s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-level-3)";
+                  e.currentTarget.style.borderColor = "var(--color-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--bg-level-2)";
+                  e.currentTarget.style.borderColor = "var(--border-primary)";
+                }}
+              >
+                <Folder style={{ width: "14px", height: "14px" }} />
+              </button>
             )}
             <span style={{
               fontSize: "12px",
@@ -639,6 +695,20 @@ export default function ChatPage() {
 
       {/* Tools Panel */}
       <ToolsPanel isOpen={toolsPanelOpen} onClose={() => setToolsPanelOpen(false)} />
+
+      {/* Project Context Panel */}
+      <ProjectContextPanel
+        isOpen={projectContextOpen}
+        onClose={() => setProjectContextOpen(false)}
+        project={currentProject}
+        selectedFiles={contextFiles}
+        onToggleFile={(path) => {
+          setContextFiles(prev =>
+            prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path]
+          );
+        }}
+        onClearFiles={() => setContextFiles([])}
+      />
     </>
   );
 }
