@@ -30,6 +30,8 @@ class ChatResponse(BaseModel):
     agent_id: str
     title: str
     is_pinned: bool = False
+    model: Optional[str] = None
+    personality_level: int = 50
     created_at: datetime
     updated_at: datetime
 
@@ -173,6 +175,8 @@ class ChatUpdate(BaseModel):
     title: Optional[str] = None
     agent_id: Optional[str] = None
     is_pinned: Optional[bool] = None
+    model: Optional[str] = None
+    personality_level: Optional[int] = None
 
 
 @router.patch("/{chat_id}", response_model=ChatResponse)
@@ -188,6 +192,10 @@ async def update_chat(chat_id: int, update: ChatUpdate):
             chat.agent_id = update.agent_id
         if update.is_pinned is not None:
             chat.is_pinned = update.is_pinned
+        if update.model is not None:
+            chat.model = update.model
+        if update.personality_level is not None:
+            chat.personality_level = update.personality_level
         chat.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(chat)

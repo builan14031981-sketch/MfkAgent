@@ -1,15 +1,29 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useChat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
+
+// agent_id → 用户可见名称映射（内部仍用 general/analyst/coder/writer）
+const AGENT_COMBOS: { agentId: string; label: string; desc: string; personality: number }[] = [
+  { agentId: "general", label: "小暖", desc: "温暖陪伴", personality: 0 },
+  { agentId: "analyst", label: "锐", desc: "理性分析", personality: 100 },
+  { agentId: "coder", label: "码农", desc: "编程开发", personality: 75 },
+  { agentId: "writer", label: "笔神", desc: "写作创作", personality: 25 },
+];
+
+function getDisplayName(agentId: string) {
+  const c = AGENT_COMBOS.find(x => x.agentId === agentId);
+  return c ? { label: c.label, desc: c.desc } : { label: agentId, desc: "" };
+}
 
 export default function Home() {
   const router = useRouter();
@@ -18,11 +32,29 @@ export default function Home() {
   const [isCreating, setIsCreating] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [showAgentDropdown, setShowAgentDropdown] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { models, loading: modelsLoading } = useModels();
   const { createChat } = useChat();
   const { settings } = useSettingsStore();
   const [welcome, setWelcome] = useState("");
+  const [comboPersonality, setComboPersonality] = useState<number | null>(null);
+
+  // 点击外部关闭下拉 (portal 渲染到 body，用 buttonRef 判断)
+  useEffect(() => {
+    if (!showAgentDropdown) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      const portal = document.getElementById("agent-dropdown-portal");
+      if (portal?.contains(target)) return;
+      setShowAgentDropdown(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAgentDropdown]);
 
   useEffect(() => {
     const messages = tArray("home.welcome");
@@ -40,8 +72,16 @@ export default function Home() {
     }
   }, [modelsLoading, models, settings?.default_model, selectedModel]);
 
-  const currentAgent = selectedAgent || agents[0] || null;
+  const currentAgent = selectedAgent || (settings?.default_agent ? agents.find(a => a.id === settings.default_agent) || null : null) || agents[0] || null;
   const currentModel = selectedModel || models[0] || null;
+  const display = currentAgent ? getDisplayName(currentAgent.id) : { label: "", desc: "" };
+
+  const handleSelectCombo = (c: typeof AGENT_COMBOS[number]) => {
+    const agent = agents.find((a) => a.id === c.agentId);
+    if (agent) setSelectedAgent(agent);
+    setComboPersonality(c.personality);
+    setShowAgentDropdown(false);
+  };
 
   const handleSend = async () => {
     if (!input.trim() || !currentAgent || isCreating) return;
@@ -51,9 +91,13 @@ export default function Home() {
     setInput("");
 
     try {
+      const personalityLevel = comboPersonality ?? (settings?.default_personality ? Number(settings.default_personality) : 50);
       const chat = await createChat(
         currentAgent.id,
-        userMessage.slice(0, 50) || "New Chat"
+        userMessage.slice(0, 50) || "New Chat",
+        null,
+        currentModel?.id || settings?.default_model || null,
+        personalityLevel
       );
 
       const encodedMessage = encodeURIComponent(userMessage);
@@ -73,13 +117,6 @@ export default function Home() {
         handleSend();
       }
     }
-  };
-
-  const handleAgentSwitch = () => {
-    if (agents.length === 0) return;
-    const currentIdx = agents.findIndex((a) => a.id === currentAgent?.id);
-    const nextIdx = (currentIdx + 1) % agents.length;
-    setSelectedAgent(agents[nextIdx]);
   };
 
   return (
@@ -165,18 +202,23 @@ export default function Home() {
               alignItems: "center",
               gap: "6px",
             }}>
-              {/* Agent 选择 */}
+              {/* Agent 紧凑下拉选择器 */}
               {agentsLoading ? (
                 <span style={{ fontSize: "12px", color: "var(--text-level-3)" }}>{t("common.loading")}</span>
               ) : agents.length > 0 ? (
                 <div style={{ position: "relative" }}>
                   <button
-                    onClick={handleAgentSwitch}
+                    ref={buttonRef}
+                    onClick={() => {
+                      const rect = buttonRef.current?.getBoundingClientRect();
+                      if (rect) setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                      setShowAgentDropdown(!showAgentDropdown);
+                    }}
                     style={{
                       display: "flex",
                       alignItems: "center",
                       gap: "6px",
-                      padding: "5px 12px",
+                      padding: "5px 10px",
                       borderRadius: "var(--radius-full)",
                       border: "1px solid var(--border-primary)",
                       background: "var(--bg-level-2)",
@@ -185,19 +227,85 @@ export default function Home() {
                       color: "var(--text-level-2)",
                       transition: "all var(--transition-fast)",
                     }}
-                    title={currentAgent?.description}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "var(--color-primary)";
-                      e.currentTarget.style.background = "var(--bg-level-3)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border-primary)";
-                      e.currentTarget.style.background = "var(--bg-level-2)";
-                    }}
                   >
                     <span style={{ fontSize: "14px" }}>{currentAgent?.avatar}</span>
-                    <span style={{ fontWeight: "500" }}>{currentAgent?.name}</span>
+                    <span style={{ fontWeight: "500" }}>{display.label}</span>
+                    <ChevronDown style={{
+                      width: "10px", height: "10px", color: "var(--text-level-4)",
+                      transform: showAgentDropdown ? "rotate(180deg)" : "none",
+                      transition: "transform var(--transition-fast)",
+                    }} />
                   </button>
+                  {showAgentDropdown && createPortal(
+                    <div id="agent-dropdown-portal" style={{
+                      position: "fixed",
+                      top: dropdownPos.top,
+                      left: dropdownPos.left,
+                      minWidth: "200px",
+                      maxHeight: "260px",
+                      overflowY: "auto",
+                      background: "var(--bg-level-2)",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--border-primary)",
+                      boxShadow: "var(--shadow-md)",
+                      zIndex: 9999,
+                      padding: "4px",
+                    }}>
+                      {AGENT_COMBOS.map((combo) => {
+                        const agent = agents.find((a) => a.id === combo.agentId);
+                        if (!agent) return null;
+                        const isActive = currentAgent?.id === combo.agentId && comboPersonality === combo.personality;
+                        return (
+                          <button
+                            key={combo.agentId}
+                            onClick={() => handleSelectCombo(combo)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              width: "100%",
+                              padding: "7px 10px",
+                              border: "none",
+                              borderRadius: "var(--radius-sm)",
+                              background: isActive ? "var(--color-primary-lighter)" : "transparent",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: "background 0.1s",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isActive) e.currentTarget.style.background = "var(--bg-level-3)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isActive) e.currentTarget.style.background = "transparent";
+                            }}
+                          >
+                            <span style={{ fontSize: "14px", lineHeight: 1 }}>{agent.avatar}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: "13px",
+                                fontWeight: "500",
+                                color: isActive ? "var(--color-primary)" : "var(--text-level-1)",
+                              }}>{combo.label}</div>
+                              <div style={{
+                                fontSize: "11px",
+                                color: "var(--text-level-4)",
+                                marginTop: "1px",
+                              }}>{combo.desc}</div>
+                            </div>
+                            {isActive && (
+                              <span style={{
+                                width: "6px", height: "6px",
+                                borderRadius: "50%",
+                                background: "var(--color-primary)",
+                                flexShrink: 0,
+                              }} />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>,
+                    document.body
+                  )}
                 </div>
               ) : null}
 

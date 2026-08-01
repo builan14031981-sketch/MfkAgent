@@ -14,6 +14,54 @@ import { apiGet } from "@/lib/api";
 import { ToolsPanel } from "@/components/panels/ToolsPanel";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 
+interface PersonalitySliderProps {
+  value: number;
+  onCommit: (value: number) => void;
+}
+
+function PersonalitySlider({ value, onCommit }: PersonalitySliderProps) {
+  const [draft, setDraft] = useState<number | null>(null);
+  const displayed = draft ?? value;
+  const commit = () => {
+    if (draft !== null) {
+      onCommit(draft);
+      setDraft(null);
+    }
+  };
+  return (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      padding: "0 8px",
+    }}>
+      <Brain style={{ width: "14px", height: "14px", color: "var(--text-level-4)" }} />
+      <input
+        type="range"
+        min="0"
+        max="100"
+        step="25"
+        value={displayed}
+        onChange={(e) => setDraft(Number(e.target.value))}
+        onPointerUp={commit}
+        onKeyUp={commit}
+        onBlur={commit}
+        style={{
+          width: "100px",
+          accentColor: "var(--color-primary)",
+        }}
+        title="0=感性  50=平衡  100=理性"
+      />
+      <span style={{
+        fontSize: "11px",
+        color: "var(--text-level-4)",
+        minWidth: "28px",
+        textAlign: "right",
+      }}>{displayed}</span>
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const params = useParams();
@@ -39,7 +87,7 @@ export default function ChatPage() {
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
   const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
-  const currentModel = selectedModel || models[0] || null;
+  const currentModel = selectedModel || (currentChat?.model ? models.find(m => m.id === currentChat.model) || null : null) || models[0] || null;
 
   // Initialize personality level from settings (adjust during render, avoiding effect setState)
   if (!personalityInitialized && settings?.default_personality) {
@@ -332,34 +380,18 @@ export default function ChatPage() {
               borderRadius: "var(--radius-full)",
               background: "var(--bg-level-3)",
             }}>{currentAgent.name}</span>
-            {/* 人格滑块 */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "0 8px",
-            }}>
-              <Brain style={{ width: "14px", height: "14px", color: "var(--text-level-4)" }} />
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="25"
-                value={personalityLevel}
-                onChange={(e) => setPersonalityLevel(Number(e.target.value))}
-                style={{
-                  width: "100px",
-                  accentColor: "var(--color-primary)",
-                }}
-                title={t("settings.ai.defaultPersonality.desc")}
-              />
-              <span style={{
-                fontSize: "11px",
-                color: "var(--text-level-4)",
-                minWidth: "28px",
-                textAlign: "right",
-              }}>{personalityLevel}</span>
-            </div>
+            {/* 人格滑块（拖动仅更新子组件，提交时才触发父级重渲染） */}
+            <PersonalitySlider
+              value={personalityLevel}
+              onCommit={(v) => {
+                setPersonalityLevel(v);
+                if (chatId) {
+                  updateChat(chatId, { personality_level: v }).catch((err) =>
+                    console.error("Failed to persist personality:", err)
+                  );
+                }
+              }}
+            />
           </div>
         )}
       </div>
@@ -635,7 +667,14 @@ export default function ChatPage() {
               value={currentModel?.id || ""}
               onChange={(e) => {
                 const model = models.find(m => m.id === e.target.value);
-                if (model) setSelectedModel(model);
+                if (model) {
+                  setSelectedModel(model);
+                  if (chatId) {
+                    updateChat(chatId, { model: model.id }).catch((err) =>
+                      console.error("Failed to persist model:", err)
+                    );
+                  }
+                }
               }}
               style={{
                 padding: "5px 10px",
