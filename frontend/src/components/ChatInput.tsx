@@ -1,13 +1,26 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Plus, FileUp, FolderPlus, Trash2, Send, Brain, Folder, X, Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { FilePill } from "@/components/FileDropZone";
+import { useAgents } from "@/hooks/useAgents";
+import { AgentIcon } from "@/components/AgentIcon";
 import type { Model } from "@/hooks/useModels";
 
 export type ReasoningEffort = "none" | "low" | "high";
+
+// agent_id → 展示组合（label/desc/personality），仅在 allowAgentChange 时渲染
+const AGENT_COMBOS: { agentId: string; label: string; desc: string; personality: number }[] = [
+  { agentId: "coder", label: "代码审查 AI", desc: "代码审查、开发与架构", personality: 75 },
+  { agentId: "frontend_ui", label: "前端 UI 设计 AI", desc: "界面设计与前端实现", personality: 50 },
+  { agentId: "backend", label: "后端 AI", desc: "服务端与数据逻辑", personality: 75 },
+  { agentId: "general", label: "小暖", desc: "温暖陪伴", personality: 0 },
+  { agentId: "analyst", label: "锐", desc: "理性分析", personality: 100 },
+  { agentId: "writer", label: "笔神", desc: "写作创作", personality: 25 },
+];
 
 export interface ChatInputProps {
   value: string;
@@ -17,12 +30,23 @@ export interface ChatInputProps {
   placeholder: string;
   disabled?: boolean;
 
+  /** 外部注入 textarea ref（供引用/编辑后自动聚焦） */
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+
+  /** 草稿本地持久化 key（如 mfk_draft_${chatId}），提供则自动读写 localStorage */
+  draftKey?: string;
+
   models: Model[];
   modelId: string | null;
   onModelChange: (id: string) => void;
 
   reasoningEffort: ReasoningEffort;
   onReasoningChange: (e: ReasoningEffort) => void;
+
+  // Agent 锁定：仅一级入口（首页）允许切换，二级对话页隐藏切换下拉
+  allowAgentChange?: boolean;
+  agentId?: string | null;
+  onAgentChange?: (agentId: string, personality: number) => void;
 
   onUploadFile: (file: File) => void;
   onSelectDirectory: (path: string) => void;
@@ -33,8 +57,6 @@ export interface ChatInputProps {
   onRemoveFile: (path: string) => void;
   projectName?: string | null;
   onRemoveProject?: () => void;
-
-  leftExtra?: React.ReactNode;
 }
 
 /**
@@ -49,11 +71,16 @@ export function ChatInput({
   isSending,
   placeholder,
   disabled,
+  textareaRef: externalTextareaRef,
+  draftKey,
   models,
   modelId,
   onModelChange,
   reasoningEffort,
   onReasoningChange,
+  allowAgentChange = false,
+  agentId,
+  onAgentChange,
   onUploadFile,
   onSelectDirectory,
   onClearContext,
@@ -62,30 +89,38 @@ export function ChatInput({
   onRemoveFile,
   projectName,
   onRemoveProject,
-  leftExtra,
 }: ChatInputProps) {
   const { t } = useTranslation();
+  const { agents, loading: agentsLoading } = useAgents();
   const [menuOpen, setMenuOpen] = useState(false);
   const [reasoningOpen, setReasoningOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agentDropdownPos, setAgentDropdownPos] = useState({ bottom: 0, left: 0 });
+  const agentBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const reasoningRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalTextareaRef ?? internalTextareaRef;
 
-  // 点击外部关闭弹出层（+ 菜单 / 思考模式下拉）
+  // 点击外部关闭弹出层（Agent / + 菜单 / 模型下拉 / 思考模式下拉）
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-      if (reasoningRef.current && !reasoningRef.current.contains(e.target as Node)) {
-        setReasoningOpen(false);
-      }
+      const target = e.target as Node;
+      if (agentBtnRef.current?.contains(target)) return;
+      const portal = document.getElementById("agent-dropdown-portal");
+      if (portal?.contains(target)) return;
+      if (menuRef.current && !menuRef.current.contains(target)) setMenuOpen(false);
+      if (reasoningRef.current && !reasoningRef.current.contains(target)) setReasoningOpen(false);
+      if (modelRef.current && !modelRef.current.contains(target)) setModelOpen(false);
+      if (portal) setAgentOpen(false);
     };
-    if (!menuOpen && !reasoningOpen) return;
+    if (!menuOpen && !reasoningOpen && !modelOpen && !agentOpen) return;
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen, reasoningOpen]);
+  }, [menuOpen, reasoningOpen, modelOpen, agentOpen]);
 
   // 自适应高度
   useEffect(() => {
@@ -93,7 +128,51 @@ export function ChatInput({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
-  }, [value]);
+  }, [value, textareaRef]);
+
+  // 草稿持久化：挂载时从 localStorage 恢复（仅当当前无内容时）
+  const draftHydratedRef = useRef(false);
+  useEffect(() => {
+    if (!draftKey || draftHydratedRef.current) return;
+    try {
+      const saved = window.localStorage.getItem(draftKey);
+      if (saved && !value) {
+        onChange(saved);
+      }
+    } catch {
+      // localStorage 不可用则忽略
+    }
+    draftHydratedRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  // 草稿持久化：内容变更且未发送时防抖写入
+  useEffect(() => {
+    if (!draftKey || !draftHydratedRef.current) return;
+    if (value === "") {
+      window.localStorage.removeItem(draftKey);
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        window.localStorage.setItem(draftKey, value);
+      } catch {
+        // 忽略写入失败
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [draftKey, value]);
+
+  // 草稿持久化：发送成功后清空缓存
+  const clearDraft = useCallback(() => {
+    if (draftKey) {
+      try {
+        window.localStorage.removeItem(draftKey);
+      } catch {
+        // 忽略
+      }
+    }
+  }, [draftKey]);
 
   const handlePickFile = () => {
     setMenuOpen(false);
@@ -111,7 +190,10 @@ export function ChatInput({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (canSend) onSend();
+      if (canSend) {
+        clearDraft();
+        onSend();
+      }
     }
   };
 
@@ -133,6 +215,7 @@ export function ChatInput({
     whiteSpace: "nowrap",
     transition: "all var(--transition-fast)",
     flexShrink: 0,
+    outline: "none",
   };
 
   const chevronStyle: React.CSSProperties = {
@@ -143,36 +226,42 @@ export function ChatInput({
     flexShrink: 0,
   };
 
+  // 下拉面板：统一向上弹出（bottom-full mb-1.5）、最高层级 z-[100]、紧凑高密度
   const popoverStyle: React.CSSProperties = {
     position: "absolute",
-    bottom: "calc(100% + 8px)",
+    bottom: "calc(100% + 6px)",
     left: 0,
-    minWidth: "180px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    minWidth: "140px",
     padding: "4px",
-    borderRadius: "var(--radius-lg)",
-    background: "var(--glass-bg)",
-    backdropFilter: "var(--glass-blur)",
-    WebkitBackdropFilter: "var(--glass-blur)",
-    border: "1px solid var(--glass-border)",
-    boxShadow: "var(--shadow-lg), inset 0 0 0 1px var(--border-secondary)",
-    zIndex: 1001,
+    borderRadius: "var(--radius-xl)",
+    background: "var(--bg-level-2)",
+    border: "1px solid var(--border-primary)",
+    boxShadow: "var(--shadow-lg)",
+    zIndex: 100,
     animation: "panelOpen 0.15s ease forwards",
     transformOrigin: "bottom left",
   };
 
+  // 下拉选项：text-xs、font-medium、px-2.5 py-1.5、leading-tight
   const popoverItemStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
+    gap: "8px",
     width: "100%",
-    padding: "8px 12px",
+    padding: "6px 10px",
     border: "none",
     background: "transparent",
     cursor: "pointer",
-    fontSize: "13px",
+    fontSize: "12px",
+    fontWeight: 500,
+    lineHeight: 1.25,
     color: "var(--text-level-2)",
     borderRadius: "var(--radius-sm)",
     textAlign: "left",
+    outline: "none",
   };
 
   const reasoningModes: { value: ReasoningEffort; label: string }[] = [
@@ -182,14 +271,17 @@ export function ChatInput({
   ];
 
   const currentReasoningLabel = reasoningModes.find((m) => m.value === reasoningEffort)?.label ?? "";
+  const currentModelName = models.find((m) => m.id === modelId)?.name ?? modelId ?? "";
+  const currentAgentCombo = AGENT_COMBOS.find((c) => c.agentId === agentId);
+  const currentAgentLabel = currentAgentCombo?.label ?? agents.find((a) => a.id === agentId)?.name ?? "";
 
   return (
     <div style={{
+      position: "relative",
       border: "1px solid var(--border-primary)",
-      borderRadius: "var(--radius-xl)",
+      borderRadius: "var(--radius-2xl)",
       background: "var(--bg-level-2)",
-      boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
-      overflow: "hidden",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
     }}>
       {/* 草稿 Pills（文件 + 项目） */}
       {(files.length > 0 || (projectName && onRemoveProject)) && (
@@ -376,47 +468,200 @@ export function ChatInput({
             />
           </div>
 
-          {/* Agent 选择器（由页面注入，如首页 Agent 下拉） */}
-          {leftExtra}
+          {/* Agent 选择器（仅一级入口 allowAgentChange 时展示，向上弹出） */}
+          {allowAgentChange && (
+            agentsLoading ? (
+              <span style={{ fontSize: "12px", color: "var(--text-level-3)", flexShrink: 0 }}>{t("common.loading")}</span>
+            ) : (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  ref={agentBtnRef}
+                  onClick={() => {
+                    const rect = agentBtnRef.current?.getBoundingClientRect();
+                    if (rect) {
+                      // 以按钮底部为锚点：bottom = 视口高度 - 按钮底部 → 菜单物理向上弹出
+                      setAgentDropdownPos({
+                        bottom: window.innerHeight - rect.bottom,
+                        left: Math.max(8, Math.min(rect.left, window.innerWidth - 170)),
+                      });
+                    }
+                    setAgentOpen((v) => !v);
+                  }}
+                  style={{
+                    ...pillStyle,
+                    background: agentOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
+                    color: agentOpen ? "var(--color-primary)" : "var(--text-level-2)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-level-4)";
+                    e.currentTarget.style.color = "var(--color-primary)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = agentOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
+                    e.currentTarget.style.color = agentOpen ? "var(--color-primary)" : "var(--text-level-2)";
+                  }}
+                >
+                  <AgentIcon id={agentId ?? undefined} size={14} style={{ flexShrink: 0 }} />
+                  <span style={{ fontWeight: 500 }}>{currentAgentLabel || agentId}</span>
+                  <ChevronDown style={{
+                    ...chevronStyle,
+                    transform: agentOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform var(--transition-normal)",
+                  }} />
+                </button>
+                {agentOpen && createPortal(
+                  <div id="agent-dropdown-portal" className="no-scrollbar" style={{
+                    position: "fixed",
+                    bottom: agentDropdownPos.bottom + 8,
+                    left: agentDropdownPos.left,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "2px",
+                    minWidth: "160px",
+                    maxHeight: "220px",
+                    overflowY: "auto",
+                    padding: "6px",
+                    borderRadius: "var(--radius-xl)",
+                    background: "var(--bg-level-2)",
+                    border: "1px solid var(--border-secondary)",
+                    boxShadow: "var(--shadow-lg)",
+                    zIndex: 9999,
+                  }}>
+                    {AGENT_COMBOS.map((combo) => {
+                      const active = combo.agentId === agentId;
+                      return (
+                        <button
+                          key={combo.agentId}
+                          onClick={() => {
+                            onAgentChange?.(combo.agentId, combo.personality);
+                            setAgentOpen(false);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            width: "100%",
+                            padding: "6px 10px",
+                            border: "none",
+                            borderRadius: "var(--radius-sm)",
+                            background: active ? "var(--color-primary-lighter)" : "transparent",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            lineHeight: 1.25,
+                            outline: "none",
+                            transition: "background 0.1s",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!active) e.currentTarget.style.background = "var(--bg-level-3)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!active) e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <AgentIcon id={combo.agentId} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: "12px",
+                              fontWeight: "500",
+                              lineHeight: 1.25,
+                              color: active ? "var(--color-primary)" : "var(--text-level-1)",
+                            }}>{combo.label}</div>
+                            <div style={{
+                              fontSize: "10px",
+                              lineHeight: 1.25,
+                              color: "var(--text-level-4)",
+                            }}>{combo.desc}</div>
+                          </div>
+                          {active && (
+                            <span style={{
+                              width: "6px", height: "6px",
+                              borderRadius: "50%",
+                              background: "var(--color-primary)",
+                              flexShrink: 0,
+                            }} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>,
+                  document.body
+                )}
+              </div>
+            )
+          )}
 
-          {/* 模型选择 - 下拉胶囊按钮（无截断，完整显示） */}
+          {/* 模型选择 - 下拉胶囊按钮 + Popover（向上弹出，完整显示） */}
           {models.length > 0 && (
             <div style={{
               position: "relative",
               minWidth: 0,
               maxWidth: "200px",
               flexShrink: 0,
-            }}>
-              <select
-                value={modelId || ""}
-                onChange={(e) => onModelChange(e.target.value)}
-                title={models.find((m) => m.id === modelId)?.name ?? ""}
+            }} ref={modelRef}>
+              <button
+                onClick={() => setModelOpen((v) => !v)}
+                title={currentModelName}
                 style={{
                   ...pillStyle,
                   maxWidth: "200px",
-                  minWidth: 0,
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  paddingRight: "24px",
+                  background: modelOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
+                  color: modelOpen ? "var(--color-primary)" : "var(--text-level-2)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-level-4)";
+                  e.currentTarget.style.color = "var(--color-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = modelOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
+                  e.currentTarget.style.color = modelOpen ? "var(--color-primary)" : "var(--text-level-2)";
                 }}
               >
-                {models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                style={{
+                <span style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                }}>{currentModelName}</span>
+                <ChevronDown style={{
                   ...chevronStyle,
-                  position: "absolute",
-                  right: "8px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  pointerEvents: "none",
-                  marginLeft: 0,
-                }}
-              />
+                  transform: modelOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform var(--transition-normal)",
+                }} />
+              </button>
+
+              {modelOpen && (
+                <div style={popoverStyle}>
+                  {models.map((model) => {
+                    const active = model.id === modelId;
+                    return (
+                      <button
+                        key={model.id}
+                        onClick={() => {
+                          onModelChange(model.id);
+                          setModelOpen(false);
+                        }}
+                        style={{
+                          ...popoverItemStyle,
+                          color: active ? "var(--color-primary)" : "var(--text-level-2)",
+                          fontWeight: active ? 600 : 500,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <span style={{
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>{model.name}</span>
+                        {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -479,7 +724,10 @@ export function ChatInput({
 
         {/* 发送按钮 28x28 - 卡片右下角 */}
         <button
-          onClick={onSend}
+          onClick={() => {
+            clearDraft();
+            onSend();
+          }}
           disabled={!canSend}
           style={{
             display: "flex",
@@ -494,6 +742,7 @@ export function ChatInput({
             color: canSend ? "white" : "var(--text-level-3)",
             transition: "all var(--transition-fast)",
             flexShrink: 0,
+            outline: "none",
           }}
           onMouseEnter={(e) => {
             if (canSend) {

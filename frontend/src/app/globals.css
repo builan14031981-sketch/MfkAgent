@@ -194,6 +194,16 @@ html, body {
   background: var(--text-level-3);
 }
 
+/* 隐藏滚动条但保留滚动能力（用于下拉菜单等紧凑弹层） */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ========================================
  * 动画
  * ======================================== */

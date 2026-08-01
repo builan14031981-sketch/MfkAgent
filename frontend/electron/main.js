@@ -93,19 +93,35 @@ async function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
-
-// 原生目录选择：供渲染进程关联本地项目工作区
-ipcMain.handle("select-directory", async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
-    title: "选择项目文件夹",
-    properties: ["openDirectory", "createDirectory"],
-  });
-  if (result.canceled || result.filePaths.length === 0) {
-    return null;
-  }
-  return result.filePaths[0];
+app.whenReady().then(() => {
+  registerIpcHandlers();
+  createWindow();
 });
+
+// 原生目录选择：供渲染进程关联本地项目工作区。
+// 必须在 app ready 后注册，确保 preload 加载时句柄已就绪。
+function registerIpcHandlers() {
+  if (ipcMain.listenerCount("select-directory") > 0 || ipcMain.eventNames().includes("select-directory")) {
+    console.warn("[Electron] 'select-directory' handler already registered, skip.");
+    return;
+  }
+  ipcMain.handle("select-directory", async () => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: "选择项目文件夹",
+        properties: ["openDirectory", "createDirectory"],
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+      return result.filePaths[0];
+    } catch (err) {
+      console.error("[Electron] select-directory failed:", err);
+      return null;
+    }
+  });
+  console.log("[Electron] IPC handler 'select-directory' registered");
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -115,6 +131,7 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
+    registerIpcHandlers();
     createWindow();
   }
 });

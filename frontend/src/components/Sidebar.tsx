@@ -15,14 +15,17 @@ import {
   FolderPlus,
   FolderSearch,
   ChevronRight,
+  MoreHorizontal,
 } from "lucide-react";
 import { useChat, Chat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
+import type { Project } from "@/hooks/useProjects";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { Panel } from "./panels/Panel";
+import { ProjectInitModal } from "./ProjectInitModal";
 
 interface SidebarProps {
   currentChatId?: number | null;
@@ -34,6 +37,7 @@ interface ContextMenuState {
   x: number;
   y: number;
   chatId: number | null;
+  projectId: number | null;
 }
 
 /** 排序：置顶的聊天在前，再按更新时间倒序 */
@@ -50,7 +54,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { chats, deleteChat, updateChat, pinChat, createChat, refetch: refetchChats } = useChat();
-  const { projects, createProject, refetch: refetchProjects } = useProjects(1, 100);
+  const { projects, createProject, deleteProject, pinProject, refetch: refetchProjects } = useProjects(1, 100);
   const { agents } = useAgents();
   const { settings } = useSettingsStore();
 
@@ -59,6 +63,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
     x: 0,
     y: 0,
     chatId: null,
+    projectId: null,
   });
   const [renamingChatId, setRenamingChatId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -68,6 +73,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectPath, setNewProjectPath] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [initProject, setInitProject] = useState<Project | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -142,6 +148,46 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       x: e.clientX,
       y: e.clientY,
       chatId,
+      projectId: null,
+    });
+  };
+
+  // `...` 更多按钮：会话行
+  const handleMoreChat = (e: React.MouseEvent, chatId: number) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setContextMenu({
+      visible: true,
+      x: rect.right - 160,
+      y: rect.top,
+      chatId,
+      projectId: null,
+    });
+  };
+
+  // `...` 更多按钮：项目节点
+  const handleMoreProject = (e: React.MouseEvent, projectId: number) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setContextMenu({
+      visible: true,
+      x: rect.right - 160,
+      y: rect.top,
+      chatId: null,
+      projectId,
+    });
+  };
+
+  // 项目节点右键菜单（与 ... 菜单一致：置顶 / 删除）
+  const handleProjectContextMenu = (e: React.MouseEvent, projectId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      chatId: null,
+      projectId,
     });
   };
 
@@ -154,6 +200,26 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       }
     } catch (err) {
       console.error("Failed to delete chat:", err);
+    }
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleDeleteProject = async (id: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    try {
+      await deleteProject(id);
+      window.dispatchEvent(new Event("mfk-projects-changed"));
+    } catch (err) {
+      console.error("Failed to delete project:", err);
+    }
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const handlePinProject = async (id: number, pinned: boolean) => {
+    try {
+      await pinProject(id, pinned);
+    } catch (err) {
+      console.error("Failed to pin project:", err);
     }
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
@@ -222,7 +288,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       setNewProjectPath("");
       setProjectModalOpen(false);
       window.dispatchEvent(new Event("mfk-projects-changed"));
-      router.push(`/projects/${project.id}/files`);
+      setInitProject(project);
     } catch (err) {
       console.error("Failed to create project:", err);
     } finally {
@@ -230,13 +296,24 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
     }
   };
 
-  // 原生文件夹选择：自动填充名称与路径
+  // 原生文件夹选择：选中即自动创建项目（无需手动粘贴/点击创建），随后弹初始化向导
   const handlePickDirectory = async () => {
     const dir = await selectDirectory();
     if (!dir) return;
     const name = dir.split(/[\\/]/).filter(Boolean).pop() || dir;
     setNewProjectName(name);
     setNewProjectPath(dir);
+    try {
+      const project = await createProject(name, dir);
+      setNewProjectName("");
+      setNewProjectPath("");
+      setProjectModalOpen(false);
+      window.dispatchEvent(new Event("mfk-projects-changed"));
+      setInitProject(project);
+    } catch (err) {
+      // 自动创建失败：保留表单填充，用户可手动提交
+      console.error("Failed to auto-create project from directory:", err);
+    }
   };
 
   const openProjectWorkspace = (projectId: number) => {
@@ -258,7 +335,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: indented ? "5px 12px 5px 28px" : "5px 12px",
+          padding: indented ? "3px 10px 3px 26px" : "3px 10px",
           borderRadius: "var(--radius-sm)",
           background: isActive ? "var(--color-primary-light)" : "transparent",
           cursor: "pointer",
@@ -336,7 +413,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
           )}
         </div>
         <button
-          onClick={(e) => handleDeleteChat(chat.id, e)}
+          onClick={(e) => handleMoreChat(e, chat.id)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -351,6 +428,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             flexShrink: 0,
             opacity: 0,
             transition: "opacity var(--transition-fast)",
+            outline: "none",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.opacity = "1";
@@ -361,7 +439,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             e.currentTarget.style.background = "transparent";
           }}
         >
-          <Trash2 style={{ width: "12px", height: "12px" }} />
+          <MoreHorizontal style={{ width: "14px", height: "14px" }} />
         </button>
       </div>
     );
@@ -387,7 +465,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             display: "flex",
             alignItems: "center",
             gap: "8px",
-            padding: "8px 12px",
+            padding: "6px 10px",
             borderRadius: "var(--radius-md)",
             border: "none",
             background: "var(--bg-level-3)",
@@ -481,6 +559,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                 {/* 项目文件夹节点 */}
                 <div
                   onClick={() => toggleProject(project.id)}
+                  onContextMenu={(e) => handleProjectContextMenu(e, project.id)}
                   onMouseEnter={() => setHoveredProjectId(project.id)}
                   onMouseLeave={() => setHoveredProjectId(null)}
                   style={{
@@ -520,6 +599,9 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                     fontWeight: "500",
                     color: isActiveProject ? "var(--color-primary)" : "var(--text-level-2)",
                   }}>{project.name}</span>
+                  {project.is_pinned && (
+                    <Pin style={{ width: "11px", height: "11px", flexShrink: 0, color: "var(--color-primary)" }} />
+                  )}
                   <span style={{
                     fontSize: "11px",
                     color: "var(--text-level-4)",
@@ -552,6 +634,31 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "transparent"; }}
                   >
                     <Plus style={{ width: "12px", height: "12px" }} />
+                  </button>
+                  {/* 悬停显示 ...：更多操作（删除项目） */}
+                  <button
+                    onClick={(e) => handleMoreProject(e, project.id)}
+                    title={t("sidebar.more")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "18px",
+                      height: "18px",
+                      borderRadius: "var(--radius-xs)",
+                      border: "none",
+                      background: isHovered ? "var(--bg-level-3)" : "transparent",
+                      cursor: "pointer",
+                      color: isHovered ? "var(--text-level-3)" : "transparent",
+                      opacity: isHovered ? 1 : 0,
+                      flexShrink: 0,
+                      transition: "opacity var(--transition-fast), color var(--transition-fast)",
+                      outline: "none",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--text-level-1)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "transparent"; }}
+                  >
+                    <MoreHorizontal style={{ width: "13px", height: "13px" }} />
                   </button>
                 </div>
                 {/* 项目内会话 */}
@@ -592,8 +699,8 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
         </div>
       </div>
 
-      {/* 右键菜单 */}
-      {contextMenu.visible && contextMenu.chatId && (
+      {/* 右键 / 更多菜单 */}
+      {contextMenu.visible && (contextMenu.chatId != null || contextMenu.projectId != null) && (
         <div
           ref={contextMenuRef}
           style={{
@@ -608,93 +715,158 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             zIndex: 1000,
             minWidth: "160px",
             opacity: 0,
-            transform: "scale(0.95)",
             animation: "contextMenuOpen 0.15s ease forwards",
           }}
         >
-          <button
-            onClick={() => {
-              const chat = chats.find(c => c.id === contextMenu.chatId);
-              if (chat) startRename(chat.id, chat.title);
-            }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              padding: "8px 12px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "13px",
-              color: "var(--text-level-2)",
-              borderRadius: "var(--radius-sm)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-          >
-            <Edit2 style={{ width: "14px", height: "14px" }} />
-            <span>{t("sidebar.rename")}</span>
-          </button>
-          <button
-            onClick={() => {
-              const chat = chats.find(c => c.id === contextMenu.chatId);
-              if (chat) handlePin(chat.id, !chat.is_pinned);
-            }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              padding: "8px 12px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "13px",
-              color: "var(--text-level-2)",
-              borderRadius: "var(--radius-sm)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-          >
-            {contextMenu.chatId && chats.find(c => c.id === contextMenu.chatId)?.is_pinned ? (
-              <>
-                <PinOff style={{ width: "14px", height: "14px" }} />
-                <span>{t("sidebar.unpin")}</span>
-              </>
-            ) : (
-              <>
-                <Pin style={{ width: "14px", height: "14px" }} />
-                <span>{t("sidebar.pin")}</span>
-              </>
-            )}
-          </button>
-          <div style={{
-            height: "1px",
-            background: "var(--border-secondary)",
-            margin: "4px 0",
-          }} />
-          <button
-            onClick={() => contextMenu.chatId && handleDeleteChat(contextMenu.chatId)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              padding: "8px 12px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "13px",
-              color: "var(--color-error)",
-              borderRadius: "var(--radius-sm)",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-          >
-            <Trash2 style={{ width: "14px", height: "14px" }} />
-            <span>{t("sidebar.delete")}</span>
-          </button>
+          {contextMenu.chatId != null ? (
+            <>
+              <button
+                onClick={() => {
+                  const chat = chats.find(c => c.id === contextMenu.chatId);
+                  if (chat) startRename(chat.id, chat.title);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "6px 10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "var(--text-level-2)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <Edit2 style={{ width: "14px", height: "14px" }} />
+                <span>{t("sidebar.rename")}</span>
+              </button>
+              <button
+                onClick={() => {
+                  const chat = chats.find(c => c.id === contextMenu.chatId);
+                  if (chat) handlePin(chat.id, !chat.is_pinned);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "6px 10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "var(--text-level-2)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                {contextMenu.chatId && chats.find(c => c.id === contextMenu.chatId)?.is_pinned ? (
+                  <>
+                    <PinOff style={{ width: "14px", height: "14px" }} />
+                    <span>{t("sidebar.unpin")}</span>
+                  </>
+                ) : (
+                  <>
+                    <Pin style={{ width: "14px", height: "14px" }} />
+                    <span>{t("sidebar.pin")}</span>
+                  </>
+                )}
+              </button>
+              <div style={{
+                height: "1px",
+                background: "var(--border-secondary)",
+                margin: "4px 0",
+              }} />
+              <button
+                onClick={() => contextMenu.chatId != null && handleDeleteChat(contextMenu.chatId)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "6px 10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "var(--color-error)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <Trash2 style={{ width: "14px", height: "14px" }} />
+                <span>{t("sidebar.delete")}</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  const project = projects.find(p => p.id === contextMenu.projectId);
+                  if (project) handlePinProject(project.id, !project.is_pinned);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "6px 10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "var(--text-level-2)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                {contextMenu.projectId && projects.find(p => p.id === contextMenu.projectId)?.is_pinned ? (
+                  <>
+                    <PinOff style={{ width: "14px", height: "14px" }} />
+                    <span>{t("sidebar.unpin")}</span>
+                  </>
+                ) : (
+                  <>
+                    <Pin style={{ width: "14px", height: "14px" }} />
+                    <span>{t("sidebar.pin")}</span>
+                  </>
+                )}
+              </button>
+              <div style={{
+                height: "1px",
+                background: "var(--border-secondary)",
+                margin: "4px 0",
+              }} />
+              <button
+                onClick={() => contextMenu.projectId != null && handleDeleteProject(contextMenu.projectId)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "6px 10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "var(--color-error)",
+                  borderRadius: "var(--radius-sm)",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <Trash2 style={{ width: "14px", height: "14px" }} />
+                <span>{t("sidebar.delete")}</span>
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -733,7 +905,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                 display: "flex",
                 alignItems: "center",
                 gap: "10px",
-                padding: "10px 12px",
+                padding: "8px 10px",
                 borderRadius: "var(--radius-md)",
                 border: "1px solid var(--border-primary)",
                 background: "var(--bg-level-2)",
@@ -810,7 +982,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             onChange={(e) => setNewProjectName(e.target.value)}
             placeholder={t("sidebar.projectName")}
             style={{
-              padding: "8px 12px",
+              padding: "6px 10px",
               borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-primary)",
               background: "var(--bg-level-2)",
@@ -824,7 +996,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             onChange={(e) => setNewProjectPath(e.target.value)}
             placeholder={t("sidebar.projectPath")}
             style={{
-              padding: "8px 12px",
+              padding: "6px 10px",
               borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-primary)",
               background: "var(--bg-level-2)",
@@ -841,7 +1013,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             onClick={handleCreateProject}
             disabled={!newProjectName.trim() || !newProjectPath.trim() || isCreatingProject}
             style={{
-              padding: "8px 12px",
+              padding: "6px 10px",
               borderRadius: "var(--radius-md)",
               border: "none",
               background: newProjectName.trim() && newProjectPath.trim() && !isCreatingProject ? "var(--color-primary)" : "var(--bg-level-3)",
@@ -869,7 +1041,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              padding: "8px 12px",
+              padding: "6px 10px",
               borderRadius: "var(--radius-md)",
               border: "none",
               background: "transparent",
@@ -891,6 +1063,16 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
           </button>
         )}
       </div>
+
+      {/* 项目初始化向导弹窗 */}
+      <ProjectInitModal
+        project={initProject}
+        onClose={() => setInitProject(null)}
+        onCreated={() => {
+          refetchChats();
+          window.dispatchEvent(new Event("mfk-projects-changed"));
+        }}
+      />
     </aside>
   );
 }

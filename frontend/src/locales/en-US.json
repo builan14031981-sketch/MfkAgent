@@ -46,14 +46,20 @@
   },
   "home": {
     "welcome": [
-      "Hi, how are you today?",
-      "Which project would you like to work on?",
+      "Hi, how are you feeling today?",
+      "Which project are we working on today?",
       "Any new inspiration?",
-      "Ready to start working?",
+      "Ready to get started?",
       "What can I help you with?"
     ],
     "inputPlaceholder": "Start working by typing...",
-    "agentSwitch": "Switch Agent"
+    "agentSwitch": "Switch Agent",
+    "quickStarts": [
+      "Review a piece of code",
+      "Design a component solution",
+      "Analyze the project architecture",
+      "Write a weekly report"
+    ]
   },
   "chat": {
     "title": "Chat",
@@ -77,6 +83,19 @@
     "dragHint": "Drag files here to use as context",
     "attachedFiles": "Attached Files",
     "toolWritten": "Auto-written to disk",
+    "codeExpand": "Expand",
+    "codeCollapse": "Collapse",
+    "codeCopy": "Copy",
+    "codeCopied": "Copied",
+    "codeCollapsedHint": "Content collapsed, click to expand",
+    "jumpToLatest": "Latest",
+    "edit": "Edit",
+    "quote": "Quote",
+    "regenerate": "Regenerate",
+    "thinking": "Thinking",
+    "projectInitTitle": "Linked project: {name}",
+    "projectInitDesc": "What would you like to do in this project?",
+    "projectInitPlaceholder": "Type a task and press Enter...",
     "menu": {
       "uploadFile": "Upload File",
       "linkProject": "Link Local Project",

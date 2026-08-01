@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 
 export interface Project {
   id: number;
   name: string;
   path: string;
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -54,5 +55,10 @@ export function useProjects(page: number = 1, limit: number = 50) {
     await fetchProjects();
   }
 
-  return { projects, total, loading, error, createProject, deleteProject, refetch: fetchProjects };
+  async function pinProject(id: number, pinned: boolean) {
+    await apiPatch(`/api/projects/${id}`, { is_pinned: pinned });
+    await fetchProjects();
+  }
+
+  return { projects, total, loading, error, createProject, deleteProject, pinProject, refetch: fetchProjects };
 }

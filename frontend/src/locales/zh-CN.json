@@ -53,7 +53,13 @@
       "需要我帮你做什么？"
     ],
     "inputPlaceholder": "输入内容开始工作...",
-    "agentSwitch": "切换 Agent"
+    "agentSwitch": "切换 Agent",
+    "quickStarts": [
+      "帮我审查一段代码",
+      "设计一个组件方案",
+      "分析项目架构",
+      "写一份周报"
+    ]
   },
   "chat": {
     "title": "Chat",
@@ -77,6 +83,19 @@
     "dragHint": "拖拽文件到此处作为上下文",
     "attachedFiles": "已附加文件",
     "toolWritten": "已自动写入硬盘",
+    "codeExpand": "展开",
+    "codeCollapse": "折叠",
+    "codeCopy": "复制",
+    "codeCopied": "已复制",
+    "codeCollapsedHint": "内容已折叠，点击展开查看",
+    "jumpToLatest": "回最新",
+    "edit": "编辑",
+    "quote": "引用",
+    "regenerate": "重新生成",
+    "thinking": "思考过程",
+    "projectInitTitle": "已关联项目：{name}",
+    "projectInitDesc": "您想要在这个项目里面做什么？",
+    "projectInitPlaceholder": "输入任务，回车开始...",
     "menu": {
       "uploadFile": "上传文件",
       "linkProject": "关联本地项目",

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { API_BASE, apiGet, apiPost } from "@/lib/api";
+import { API_BASE, apiGet, apiPost, apiDelete } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
 
 export interface Message {
@@ -42,6 +42,13 @@ export function useMessages(chatId: number | null) {
     return data;
   }
 
+  /** 删除该消息及其之后的所有历史（重生成 / 编辑） */
+  async function deleteMessagesFrom(messageId: number) {
+    if (!chatId) throw new Error("No chat selected");
+    await apiDelete(`/api/chat/${chatId}/messages/${messageId}`);
+    await fetchMessages();
+  }
+
   async function sendMessageStream(
     content: string,
     model: string = "mimo-v2.5-pro",
@@ -49,7 +56,8 @@ export function useMessages(chatId: number | null) {
     onFinish: () => void,
     onError: (error: string) => void,
     personalityLevel?: number,
-    reasoningEffort?: "none" | "low" | "high"
+    reasoningEffort?: "none" | "low" | "high",
+    onToolCall?: (toolCall: ToolCall) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
 
@@ -66,40 +74,87 @@ export function useMessages(chatId: number | null) {
 
     const decoder = new TextDecoder();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    // ---- SSE 平滑缓冲：累积增量文本，以 30ms 节流批量交付给 React，消除打字卡顿 ----
+    const THROTTLE_MS = 30;
+    let buffer = "";
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-      const text = decoder.decode(value);
-      const lines = text.split("\n");
+    const flush = () => {
+      if (buffer === "") return;
+      const chunk = buffer;
+      buffer = "";
+      onChunk(chunk);
+    };
 
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.slice(6).trim();
-          if (data === "[DONE]") {
-            onFinish();
-            await fetchMessages();
-            return;
-          }
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed.error) {
-              onError(parsed.error);
+    const scheduleFlush = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        flush();
+      }, THROTTLE_MS);
+    };
+
+    const flushNowAndClear = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      flush();
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value);
+        const lines = text.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") {
+              flushNowAndClear();
+              onFinish();
+              await fetchMessages();
               return;
             }
-            if (parsed.content) {
-              onChunk(parsed.content);
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.error) {
+                flushNowAndClear();
+                onError(parsed.error);
+                return;
+              }
+              if (parsed.tool_call) {
+                // 工具调用事件：实时回调，供 ToolCallCard 渲染
+                if (onToolCall && parsed.tool_call.name && parsed.tool_call.path) {
+                  onToolCall({
+                    name: parsed.tool_call.name,
+                    path: parsed.tool_call.path,
+                    success: parsed.tool_call.success,
+                  });
+                }
+                continue;
+              }
+              if (parsed.content) {
+                buffer += parsed.content;
+                scheduleFlush();
+              }
+            } catch {
+              // Skip invalid JSON
             }
-          } catch {
-            // Skip invalid JSON
           }
         }
       }
-    }
 
-    onFinish();
-    await fetchMessages();
+      flushNowAndClear();
+      onFinish();
+      await fetchMessages();
+    } finally {
+      flushNowAndClear();
+    }
   }
 
-  return { messages, loading, error, sendMessage, sendMessageStream, refetch: fetchMessages };
+  return { messages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages };
 }

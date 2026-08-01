@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Copy, Quote, RefreshCw, Folder } from "lucide-react";
+import { Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
+import type { Message } from "@/hooks/useMessages";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { apiGet } from "@/lib/api";
@@ -15,8 +16,9 @@ import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 import { AgentIcon } from "@/components/AgentIcon";
 import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile } from "@/components/FileDropZone";
-import { ChatInput } from "@/components/ChatInput";
-import { ToolCallCardList } from "@/components/ToolCallCard";
+import { ChatComposer } from "@/components/ChatComposer";
+import { MessageList } from "@/components/MessageList";
+import type { ToolCall } from "@/components/ToolCallCard";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -28,16 +30,16 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [personalityLevel, setPersonalityLevel] = useState(50);
   const [personalityInitForChatId, setPersonalityInitForChatId] = useState<number | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { agents } = useAgents();
   const { models } = useModels();
   const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
-  const { messages, sendMessageStream } = useMessages(chatId);
+  const { messages, sendMessageStream, deleteMessagesFrom } = useMessages(chatId);
   const { settings } = useSettingsStore();
 
   const currentChat = chats.find((c) => c.id === chatId);
@@ -72,6 +74,7 @@ export default function ChatPage() {
   const [editTitle, setEditTitle] = useState("");
   const [hasAutoSent, setHasAutoSent] = useState(false);
   const autoSendLockRef = useRef(false);
+  const chatInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   // 将拖入文件的绝对路径转为项目相对路径（挂载 Context 用）
   const toProjectRelativePath = useCallback((absPath: string): string => {
@@ -124,9 +127,85 @@ export default function ChatPage() {
     setContextFiles([]);
   }, []);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingContent]);
+  // 引用：把 AI 回复追加到输入框并聚焦（> 引用块格式）
+  const handleQuote = useCallback((content: string) => {
+    const quoted = content.trim();
+    if (!quoted) return;
+    const prefix = input.trim() ? input + "\n\n" : "";
+    const target = `${prefix}> ${quoted}\n\n`;
+    setInput(target);
+    requestAnimationFrame(() => {
+      const el = chatInputRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(target.length, target.length);
+      }
+    });
+  }, [input]);
+
+  // 编辑：拉回输入框，删除该消息及其后的所有历史
+  const handleEdit = useCallback(async (message: Message) => {
+    setInput(message.content);
+    try {
+      await deleteMessagesFrom(message.id);
+    } catch (err) {
+      console.error("Failed to clear history on edit:", err);
+    }
+    requestAnimationFrame(() => {
+      const el = chatInputRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(message.content.length, message.content.length);
+      }
+    });
+  }, [deleteMessagesFrom]);
+
+  // 重新生成：删除该 AI 消息及其后历史，找到前一条用户消息重新流式生成
+  const handleRegenerate = useCallback(async (messageId: number) => {
+    if (isSending) return;
+    const idx = messages.findIndex((m) => m.id === messageId);
+    if (idx < 0) return;
+    // 找到该 AI 消息之前的最近一条用户消息
+    let userMsg: Message | null = null;
+    for (let i = idx - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        userMsg = messages[i];
+        break;
+      }
+    }
+    if (!userMsg) return;
+    try {
+      await deleteMessagesFrom(messageId);
+    } catch (err) {
+      console.error("Failed to clear history on regenerate:", err);
+      return;
+    }
+    setIsSending(true);
+    setStreamingContent("");
+    const modelId = currentModel?.id || "mimo-v2.5-pro";
+    try {
+      await sendMessageStream(
+        userMsg.content,
+        modelId,
+        (chunk) => setStreamingContent((prev) => prev + chunk),
+        () => {
+          setStreamingContent("");
+          setIsSending(false);
+        },
+        (error) => {
+          console.error("Regenerate stream error:", error);
+          setStreamingContent("");
+          setIsSending(false);
+        },
+        personalityLevel,
+        reasoningEffort
+      );
+    } catch (err) {
+      console.error("Failed to regenerate:", err);
+      setIsSending(false);
+      setStreamingContent("");
+    }
+  }, [messages, isSending, deleteMessagesFrom, sendMessageStream, currentModel?.id, personalityLevel, reasoningEffort]);
 
   // 从URL参数获取用户输入，自动发送消息
   useEffect(() => {
@@ -153,6 +232,7 @@ export default function ChatPage() {
       const autoSend = async () => {
         setIsSending(true);
         setStreamingContent("");
+        setStreamingToolCalls([]);
         try {
           await sendMessageStream(
             userMessage,
@@ -162,20 +242,29 @@ export default function ChatPage() {
             },
             () => {
               setStreamingContent("");
+              setStreamingToolCalls([]);
               setIsSending(false);
             },
             (error) => {
               console.error("Auto-send stream error:", error);
               setStreamingContent("");
+              setStreamingToolCalls([]);
               setIsSending(false);
             },
             personalityLevel,
-            reasoningEffort
+            reasoningEffort,
+            (toolCall) => {
+              setStreamingToolCalls((prev) => {
+                const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
+                return exists ? prev : [...prev, toolCall];
+              });
+            }
           );
         } catch (err) {
           console.error("Failed to auto-send:", err);
           setIsSending(false);
           setStreamingContent("");
+          setStreamingToolCalls([]);
         }
       };
 
@@ -241,6 +330,7 @@ export default function ChatPage() {
     setInput("");
     setIsSending(true);
     setStreamingContent("");
+    setStreamingToolCalls([]);
 
     try {
       const contextPrefix = await buildContextPrefix();
@@ -253,20 +343,29 @@ export default function ChatPage() {
         },
         () => {
           setStreamingContent("");
+          setStreamingToolCalls([]);
           setIsSending(false);
         },
         (error) => {
           console.error("Stream error:", error);
           setStreamingContent("");
+          setStreamingToolCalls([]);
           setIsSending(false);
         },
         personalityLevel,
-        reasoningEffort
+        reasoningEffort,
+        (toolCall) => {
+          setStreamingToolCalls((prev) => {
+            const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
+            return exists ? prev : [...prev, toolCall];
+          });
+        }
       );
     } catch (err) {
       console.error("Failed to send message:", err);
       setIsSending(false);
       setStreamingContent("");
+      setStreamingToolCalls([]);
     }
   };
 
@@ -293,8 +392,7 @@ export default function ChatPage() {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "8px 24px",
-        borderBottom: "1px solid rgba(128, 128, 128, 0.15)",
-        background: "color-mix(in srgb, var(--bg-level-1) 85%, transparent)",
+        background: "transparent",
         flexShrink: 0,
       }}>
         <div style={{
@@ -402,243 +500,54 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* 消息列表 */}
-      <div style={{
-        flex: 1,
-        overflowY: "auto",
-        padding: "24px",
-      }}>
-        {messages.length === 0 && !streamingContent ? (
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-            color: "var(--text-level-3)",
-          }}>
-            {currentAgent && (
-              <AgentIcon id={currentAgent.id} size={48} strokeWidth={1.5} style={{ marginBottom: "16px", color: "var(--text-level-4)" }} />
-            )}
-            <p style={{ fontSize: "16px", margin: 0 }}>{t("chat.startConversation")}</p>
-            <p style={{ fontSize: "13px", margin: "4px 0 0 0", color: "var(--text-level-4)" }}>
-              {t("chat.startConversationDesc", { name: currentAgent?.name || "AI" })}
-            </p>
-          </div>
-        ) : (
-          <div style={{
-            maxWidth: "800px",
-            margin: "0 auto",
-          }}>
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                style={{
-                  marginBottom: "24px",
-                }}
-              >
-                {message.role === "user" ? (
-                  /* 用户消息：轻量气泡 */
-                  <div style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                  }}>
-                    <div style={{
-                      maxWidth: "70%",
-                      padding: "10px 14px",
-                      borderRadius: "var(--radius-md)",
-                      background: "var(--color-primary)",
-                      color: "white",
-                      fontSize: "14px",
-                      lineHeight: "1.6",
-                      whiteSpace: "pre-wrap",
-                    }}>
-                      {message.content}
-                    </div>
-                  </div>
-                ) : (
-                  /* AI 回复：无气泡，全宽显示 */
-                  <div>
-                    {/* AI 标识 */}
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      marginBottom: "8px",
-                    }}>
-                      {currentAgent && (
-                        <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
-                      )}
-                      <span style={{
-                        fontSize: "13px",
-                        fontWeight: "500",
-                        color: "var(--text-level-3)",
-                      }}>{currentAgent?.name || "AI"}</span>
-                    </div>
-                    {/* 文件操作事件卡片 */}
-                    {message.tool_calls && message.tool_calls.length > 0 && (
-                      <ToolCallCardList toolCalls={message.tool_calls} />
-                    )}
-                    {/* 正文区域 */}
-                    <div style={{
-                      fontSize: "14px",
-                      lineHeight: "1.7",
-                      color: "var(--text-level-2)",
-                      whiteSpace: "pre-wrap",
-                    }}>
-                      {message.content}
-                    </div>
-                    {/* 操作区域 */}
-                    <div style={{
-                      display: "flex",
-                      gap: "8px",
-                      marginTop: "8px",
-                      opacity: 0,
-                      transition: "opacity 0.2s",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
-                    onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
-                    >
-                      <button style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "var(--radius-sm)",
-                        border: "none",
-                        background: "transparent",
-                        cursor: "pointer",
-                        color: "var(--text-level-4)",
-                      }}>
-                        <Copy style={{ width: "14px", height: "14px" }} />
-                      </button>
-                      <button style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "var(--radius-sm)",
-                        border: "none",
-                        background: "transparent",
-                        cursor: "pointer",
-                        color: "var(--text-level-4)",
-                      }}>
-                        <Quote style={{ width: "14px", height: "14px" }} />
-                      </button>
-                      <button style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        width: "28px",
-                        height: "28px",
-                        borderRadius: "var(--radius-sm)",
-                        border: "none",
-                        background: "transparent",
-                        cursor: "pointer",
-                        color: "var(--text-level-4)",
-                      }}>
-                        <RefreshCw style={{ width: "14px", height: "14px" }} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            {streamingContent && (
-              <div style={{ marginBottom: "24px" }}>
-                {/* AI 标识 */}
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginBottom: "8px",
-                }}>
-                  {currentAgent && (
-                    <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
-                  )}
-                  <span style={{
-                    fontSize: "13px",
-                    fontWeight: "500",
-                    color: "var(--text-level-3)",
-                  }}>{currentAgent?.name || "AI"}</span>
-                </div>
-                {/* 正文区域 */}
-                <div style={{
-                  fontSize: "14px",
-                  lineHeight: "1.7",
-                  color: "var(--text-level-2)",
-                  whiteSpace: "pre-wrap",
-                }}>
-                  {streamingContent}
-                  <span style={{
-                    display: "inline-block",
-                    width: "2px",
-                    height: "14px",
-                    background: "var(--text-level-2)",
-                    marginLeft: "2px",
-                    animation: "pulse 1s infinite",
-                  }} />
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-      </div>
+      {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠） */}
+      <MessageList
+        messages={messages}
+        streamingContent={streamingContent}
+        streamingToolCalls={streamingToolCalls}
+        isStreaming={isSending}
+        currentAgent={currentAgent ? { id: currentAgent.id, name: currentAgent.name } : null}
+        onQuote={handleQuote}
+        onRegenerate={handleRegenerate}
+        onEdit={handleEdit}
+      />
 
-      {/* 输入区域 */}
+      {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮） */}
       <div style={{
-        padding: "12px 24px 4px 24px",
-        borderTop: "1px solid var(--border-primary)",
-        background: "var(--bg-level-1)",
         flexShrink: 0,
+        background: "transparent",
       }}>
-        <div style={{
-          maxWidth: "800px",
-          margin: "0 auto",
-        }}>
-          <ChatInput
-            value={input}
-            onChange={setInput}
-            onSend={handleSend}
-            isSending={isSending}
-            placeholder={t("chat.inputPlaceholder")}
-            models={models}
-            modelId={currentModel?.id || null}
-            onModelChange={(id) => {
-              const model = models.find(m => m.id === id);
-              if (model) {
-                setSelectedModel(model);
-                if (chatId) {
-                  updateChat(chatId, { model: model.id }).catch((err) =>
-                    console.error("Failed to persist model:", err)
-                  );
-                }
+        <ChatComposer
+          value={input}
+          onChange={setInput}
+          onSend={handleSend}
+          isSending={isSending}
+          placeholder={t("chat.inputPlaceholder")}
+          textareaRef={chatInputRef}
+          draftKey={chatId ? `mfk_draft_${chatId}` : undefined}
+          models={models}
+          modelId={currentModel?.id || null}
+          onModelChange={(id) => {
+            const model = models.find(m => m.id === id);
+            if (model) {
+              setSelectedModel(model);
+              if (chatId) {
+                updateChat(chatId, { model: model.id }).catch((err) =>
+                  console.error("Failed to persist model:", err)
+                );
               }
-            }}
-            reasoningEffort={reasoningEffort}
-            onReasoningChange={setReasoningEffort}
-            onUploadFile={handleUploadFile}
-            onSelectDirectory={handleSelectDirectory}
-            onClearContext={handleClearContext}
-            hasContext={contextFiles.length > 0}
-            files={contextFiles}
-            onRemoveFile={removeContextFile}
-            projectName={currentProject?.name || null}
-          />
-        </div>
-        <p style={{
-          textAlign: "center",
-          fontSize: "11px",
-          lineHeight: 1.4,
-          color: "var(--text-level-4)",
-          marginTop: "6px",
-          paddingBottom: "6px",
-          paddingTop: "2px",
-          marginBottom: 0,
-        }}>{t("chat.aiMayError")}</p>
+            }
+          }}
+          reasoningEffort={reasoningEffort}
+          onReasoningChange={setReasoningEffort}
+          onUploadFile={handleUploadFile}
+          onSelectDirectory={handleSelectDirectory}
+          onClearContext={handleClearContext}
+          hasContext={contextFiles.length > 0}
+          files={contextFiles}
+          onRemoveFile={removeContextFile}
+          projectName={currentProject?.name || null}
+        />
       </div>
 
       {/* 全屏文件拖拽感知 */}
