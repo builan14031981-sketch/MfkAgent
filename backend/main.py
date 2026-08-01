@@ -38,6 +38,8 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN deleted_at DATETIME"))
             if "thinking_mode" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN thinking_mode VARCHAR(20) DEFAULT 'none'"))
+            if "mode" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN mode VARCHAR(10) DEFAULT 'build'"))
 
     if "projects" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("projects")}

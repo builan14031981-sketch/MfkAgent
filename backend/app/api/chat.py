@@ -26,6 +26,7 @@ class ChatCreate(BaseModel):
     personality_level: int = 50
     model: Optional[str] = None
     thinking_mode: Optional[str] = None
+    mode: Optional[str] = None
     project_path: Optional[str] = None
     context_files: List[str] = []
 
@@ -41,6 +42,7 @@ class ChatResponse(BaseModel):
     model: Optional[str] = None
     personality_level: int = 50
     thinking_mode: str = "none"
+    mode: str = "build"
     context_files: List[str] = []
     created_at: datetime
     updated_at: datetime
@@ -79,6 +81,7 @@ def _chat_to_response(chat) -> ChatResponse:
         model=chat.model,
         personality_level=chat.personality_level,
         thinking_mode=chat.thinking_mode or "none",
+        mode=chat.mode or "build",
         context_files=chat.context_files or [],
         created_at=chat.created_at,
         updated_at=chat.updated_at,
@@ -120,6 +123,7 @@ async def create_chat(chat: ChatCreate):
 
         context_files = [p for p in (chat.context_files or []) if p.strip()]
         thinking_mode = chat.thinking_mode or "none"
+        mode = chat.mode or "build"
 
         db_chat = Chat(
             project_id=project_id,
@@ -129,6 +133,7 @@ async def create_chat(chat: ChatCreate):
             personality_level=chat.personality_level,
             model=chat.model,
             thinking_mode=thinking_mode,
+            mode=mode,
             context_files=context_files,
         )
         db.add(db_chat)
@@ -317,6 +322,8 @@ class ChatUpdate(BaseModel):
     is_pinned: Optional[bool] = None
     model: Optional[str] = None
     personality_level: Optional[int] = None
+    thinking_mode: Optional[str] = None
+    mode: Optional[str] = None
     project_id: Optional[int] = None
     unbind_project: Optional[bool] = None
 
@@ -338,6 +345,10 @@ async def update_chat(chat_id: int, update: ChatUpdate):
             chat.model = update.model
         if update.personality_level is not None:
             chat.personality_level = update.personality_level
+        if update.thinking_mode is not None:
+            chat.thinking_mode = update.thinking_mode
+        if update.mode is not None:
+            chat.mode = update.mode
         if update.unbind_project:
             chat.project_id = None
             chat.project_path = None
@@ -354,6 +365,8 @@ async def update_chat(chat_id: int, update: ChatUpdate):
             or update.agent_id is not None
             or update.model is not None
             or update.personality_level is not None
+            or update.thinking_mode is not None
+            or update.mode is not None
             or update.unbind_project
             or update.project_id is not None
         )
@@ -461,6 +474,18 @@ def _get_default_model() -> str:
         db.close()
 
 
+def _get_default_reasoning_effort() -> str:
+    """读取设置中的默认推理程度（none/low/high），供未显式指定时兜底"""
+    db = SessionLocal()
+    try:
+        setting = db.query(Setting).filter(Setting.key == "default_reasoning_effort").first()
+        if setting and setting.value:
+            return setting.value
+        return "none"
+    finally:
+        db.close()
+
+
 def _get_agent_prompt(agent_id: str) -> str:
     db = SessionLocal()
     try:
@@ -555,12 +580,17 @@ async def send_message(chat_id: int, request: SendRequest):
 
         agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
         allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
+        chat_mode = chat.mode or "build"
+        reasoning_effort = request.reasoning_effort or _get_default_reasoning_effort()
         try:
             tools_arg = None
             if request.use_tools:
                 if chat.project_path:
                     # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）
                     tools_arg = FILE_TOOLS_DEFINITIONS
+                    if chat_mode == "plan":
+                        # plan 只读模式：仅提供读取/浏览工具，禁止写文件
+                        tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
                 elif allowed_tools is not None:
                     if allowed_tools:
                         tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
@@ -572,8 +602,9 @@ async def send_message(chat_id: int, request: SendRequest):
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 tools=tools_arg,
-                reasoning_effort=request.reasoning_effort,
+                reasoning_effort=reasoning_effort,
                 project_path=chat.project_path,
+                read_only=(chat_mode == "plan"),
             )
             ai_content = ai_response.content
             api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None
@@ -652,8 +683,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         effective_model = chat.model or request.model or _get_default_model()
         temperature = request.temperature
         max_tokens = request.max_tokens
-        reasoning_effort = request.reasoning_effort
+        reasoning_effort = request.reasoning_effort or _get_default_reasoning_effort()
         project_path = chat.project_path
+        chat_mode = chat.mode or "build"
 
         agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
         allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
@@ -661,6 +693,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         if request.use_tools:
             if project_path:
                 tools_arg = FILE_TOOLS_DEFINITIONS
+                if chat_mode == "plan":
+                    # plan 只读模式：仅提供读取/浏览工具，禁止写文件
+                    tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
             elif allowed_tools is not None:
                 if allowed_tools:
                     tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
@@ -691,6 +726,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 reasoning_effort=reasoning_effort,
                 tools=tools_arg,
                 project_path=project_path,
+                read_only=(chat_mode == "plan"),
             ):
                 # 文本增量：攒批打包为一个 SSE 事件，减轻前端高频 DOM 渲染压力
                 if "content" in chunk:

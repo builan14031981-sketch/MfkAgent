@@ -31,6 +31,7 @@ class Chat(Base):
     personality_level = Column(Integer, default=50)
     model = Column(String(50))
     thinking_mode = Column(String(20), default="none")
+    mode = Column(String(10), default="build")
     context_files = Column(JSON, default=list)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime)

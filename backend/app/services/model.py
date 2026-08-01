@@ -170,6 +170,7 @@ class ModelService:
         reasoning_effort: str = None,
         project_path: str = None,
         max_tool_rounds: int = 4,
+        read_only: bool = False,
     ) -> ChatResponse:
         """发送聊天请求"""
         config = self.get_model_config(model_id)
@@ -190,7 +191,7 @@ class ModelService:
         ]:
             return await self._chat_openai_compatible(
                 config, messages, temperature, max_tokens, stream, tools,
-                reasoning_effort, project_path, max_tool_rounds,
+                reasoning_effort, project_path, max_tool_rounds, read_only,
             )
         else:
             raise ValueError(f"不支持的模型提供商: {config.provider}")
@@ -205,6 +206,7 @@ class ModelService:
         tools: List[Dict] = None,
         project_path: str = None,
         max_tool_rounds: int = 4,
+        read_only: bool = False,
     ) -> AsyncIterator[Dict[str, Any]]:
         """流式聊天请求（支持多轮 Tool Calling 自动执行环）。
 
@@ -316,7 +318,10 @@ class ModelService:
                         func_args = {}
 
                     if func_name in ("write_file", "read_file", "list_files") and project_path:
-                        result = execute_file_tool(func_name, project_path=project_path, **func_args)
+                        if read_only and func_name == "write_file":
+                            result = "错误: 当前为 plan 只读模式，禁止写入或修改项目文件。如需修改请切换到 build 模式。"
+                        else:
+                            result = execute_file_tool(func_name, project_path=project_path, **func_args)
                         result_text = result
                     else:
                         from app.services.tools import tool_registry
@@ -365,6 +370,7 @@ class ModelService:
         reasoning_effort: str = None,
         project_path: str = None,
         max_tool_rounds: int = 4,
+        read_only: bool = False,
     ) -> ChatResponse:
         """调用OpenAI兼容接口（支持多轮 Tool Calling 自动执行环）"""
         from app.services.tools import tool_registry
@@ -424,7 +430,10 @@ class ModelService:
                         func_args = {}
 
                     if func_name in ("write_file", "read_file", "list_files") and project_path:
-                        result = execute_file_tool(func_name, project_path=project_path, **func_args)
+                        if read_only and func_name == "write_file":
+                            result = "错误: 当前为 plan 只读模式，禁止写入或修改项目文件。如需修改请切换到 build 模式。"
+                        else:
+                            result = execute_file_tool(func_name, project_path=project_path, **func_args)
                         content = result
                     else:
                         r = await tool_registry.execute(func_name, **func_args)

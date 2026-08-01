@@ -27,9 +27,14 @@ DEFAULT_SETTINGS = {
     "default_model": "mimo-v2.5-pro",
     "default_agent": "general",
     "default_personality": "50",
+    "default_reasoning_effort": "none",
     "memory_enabled": "true",
     "font_size": "14",
     "font_family": "system",
+    "hero_entry": "1",
+    "hero_random": "1",
+    "hero_random_scope": "all",
+    "hero_favorites": "[]",
 }
 
 
