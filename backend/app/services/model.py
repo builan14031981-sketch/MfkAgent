@@ -92,9 +92,15 @@ class ModelService:
                 api_key=self._get_api_key(settings.DEEPSEEK_API_KEY, "api_key_deepseek"),
                 api_base="https://api.deepseek.com/v1",
             ),
-            "qwen-turbo": ModelConfig(
+            "qwen-plus": ModelConfig(
                 provider=ModelProvider.QWEN,
-                model_name="qwen-turbo",
+                model_name="qwen-plus",
+                api_key=self._get_api_key(settings.QWEN_API_KEY, "api_key_qwen"),
+                api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+            "qwen-flash": ModelConfig(
+                provider=ModelProvider.QWEN,
+                model_name="qwen-flash",
                 api_key=self._get_api_key(settings.QWEN_API_KEY, "api_key_qwen"),
                 api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
             ),
