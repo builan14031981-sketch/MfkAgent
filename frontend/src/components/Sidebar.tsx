@@ -7,7 +7,6 @@ import {
   Settings,
   MessageSquare,
   Trash2,
-  Brain,
   Pin,
   PinOff,
   Edit2,
@@ -18,7 +17,6 @@ import { useTranslation } from "@/hooks/useTranslation";
 interface SidebarProps {
   currentChatId?: number | null;
   onSettingsClick?: () => void;
-  onMemoryClick?: () => void;
 }
 
 interface ContextMenuState {
@@ -60,7 +58,7 @@ function groupChatsByDate(chats: Chat[]): Map<string, Chat[]> {
   return groups;
 }
 
-export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: SidebarProps) {
+export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { chats, deleteChat, updateChat, pinChat } = useChat();
@@ -509,37 +507,6 @@ export function Sidebar({ currentChatId, onSettingsClick, onMemoryClick }: Sideb
         padding: "16px",
         borderTop: "1px solid var(--border-primary)",
       }}>
-        {onMemoryClick && (
-          <button
-            onClick={onMemoryClick}
-            style={{
-              width: "100%",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 12px",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "14px",
-              color: "var(--text-level-3)",
-              marginBottom: "4px",
-              transition: "all 0.6s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--text-level-2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-3)";
-            }}
-          >
-            <Brain style={{ width: "16px", height: "16px" }} />
-            <span>{t("sidebar.memory")}</span>
-          </button>
-        )}
         {onSettingsClick && (
           <button
             onClick={onSettingsClick}

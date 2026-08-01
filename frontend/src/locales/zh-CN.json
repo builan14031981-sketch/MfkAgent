@@ -53,7 +53,13 @@
     "backToHome": "返回首页",
     "projectContext": "项目上下文",
     "selectedFiles": "已选文件",
-    "noFilesSelected": "勾选项目文件以带入聊天上下文"
+    "noFilesSelected": "勾选项目文件以带入聊天上下文",
+    "reasoning": {
+      "title": "思考模式",
+      "off": "关闭",
+      "fast": "快速推理",
+      "deep": "深度思考"
+    }
   },
   "settings": {
     "title": "设置",
@@ -113,7 +119,7 @@
       }
     },
     "memory": {
-      "title": "记忆",
+      "title": "长期记忆",
       "desc": "AI 会记住你的偏好和重要信息"
     },
     "about": {

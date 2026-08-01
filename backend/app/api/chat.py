@@ -246,6 +246,7 @@ class SendRequest(BaseModel):
     max_tokens: int = 4096
     personality_level: Optional[int] = None
     use_tools: bool = True
+    reasoning_effort: Optional[str] = None
 
 
 class SendResponse(BaseModel):
@@ -372,6 +373,7 @@ async def send_message(chat_id: int, request: SendRequest):
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
                 tools=tools_arg,
+                reasoning_effort=request.reasoning_effort,
             )
             ai_content = ai_response.content
             api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None
@@ -450,6 +452,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         effective_model = chat.model or request.model or _get_default_model()
         temperature = request.temperature
         max_tokens = request.max_tokens
+        reasoning_effort = request.reasoning_effort
 
         db.commit()
     finally:
@@ -463,6 +466,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 messages=model_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                reasoning_effort=reasoning_effort,
             ):
                 if "content" in chunk:
                     full_content += chunk["content"]

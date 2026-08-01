@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Send, Copy, Quote, RefreshCw, Brain, Zap, Folder } from "lucide-react";
+import { Send, Copy, Quote, RefreshCw, Brain, Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
@@ -11,7 +11,6 @@ import { useMessages } from "@/hooks/useMessages";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { apiGet } from "@/lib/api";
-import { ToolsPanel } from "@/components/panels/ToolsPanel";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 
 interface PersonalitySliderProps {
@@ -74,7 +73,7 @@ export default function ChatPage() {
   const [streamingContent, setStreamingContent] = useState("");
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [personalityLevel, setPersonalityLevel] = useState(50);
-  const [personalityInitialized, setPersonalityInitialized] = useState(false);
+  const [personalityInitForChatId, setPersonalityInitForChatId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { agents } = useAgents();
@@ -89,13 +88,19 @@ export default function ChatPage() {
   const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
   const currentModel = selectedModel || (currentChat?.model ? models.find(m => m.id === currentChat.model) || null : null) || models[0] || null;
 
-  // Initialize personality level from settings (adjust during render, avoiding effect setState)
-  if (!personalityInitialized && settings?.default_personality) {
-    setPersonalityInitialized(true);
-    setPersonalityLevel(Number(settings.default_personality));
+  // 人格初始值：优先读当前会话快照 currentChat.personality_level，仅当其缺失时回退全局默认/50。
+  // 切换会话时（chatId 变化）重新初始化，确保老会话继承自己保存的理性度。
+  if (personalityInitForChatId !== chatId && currentChat) {
+    setPersonalityInitForChatId(chatId);
+    const snapshot = currentChat.personality_level;
+    setPersonalityLevel(
+      snapshot != null
+        ? snapshot
+        : (settings?.default_personality ? Number(settings.default_personality) : 50)
+    );
   }
 
-  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
   const [projectContextOpen, setProjectContextOpen] = useState(false);
   const [contextFiles, setContextFiles] = useState<string[]>([]);
 
@@ -136,7 +141,7 @@ export default function ChatPage() {
         try {
           await sendMessageStream(
             userMessage,
-            "mimo-v2.5-pro",
+            currentModel?.id || "mimo-v2.5-pro",
             (chunk) => {
               setStreamingContent((prev) => prev + chunk);
             },
@@ -149,7 +154,8 @@ export default function ChatPage() {
               setStreamingContent("");
               setIsSending(false);
             },
-            personalityLevel
+            personalityLevel,
+            reasoningEffort
           );
         } catch (err) {
           console.error("Failed to auto-send:", err);
@@ -160,7 +166,7 @@ export default function ChatPage() {
 
       autoSend();
     }
-  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream, personalityLevel]);
+  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream, personalityLevel, reasoningEffort, currentModel?.id]);
 
   if (!chatId) {
     return (
@@ -239,7 +245,8 @@ export default function ChatPage() {
           setStreamingContent("");
           setIsSending(false);
         },
-        personalityLevel
+        personalityLevel,
+        reasoningEffort
       );
     } catch (err) {
       console.error("Failed to send message:", err);
@@ -693,34 +700,39 @@ export default function ChatPage() {
                 </option>
               ))}
             </select>
-            {/* 工具按钮 */}
-            <button
-              onClick={() => setToolsPanelOpen(true)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "32px",
-                height: "32px",
-                borderRadius: "var(--radius-full)",
-                border: "1px solid var(--border-primary)",
-                background: "var(--bg-level-2)",
-                cursor: "pointer",
-                color: "var(--text-level-2)",
-                transition: "all 0.6s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-level-3)";
-                e.currentTarget.style.borderColor = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--bg-level-2)";
-                e.currentTarget.style.borderColor = "var(--border-primary)";
-              }}
-              title={t("tools.title")}
-            >
-              <Zap style={{ width: "16px", height: "16px" }} />
-            </button>
+            {/* 思考模式 */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "3px",
+              borderRadius: "var(--radius-full)",
+              background: "var(--bg-level-2)",
+            }}>
+              <Brain style={{ width: "14px", height: "14px", color: "var(--text-level-4)", marginLeft: "4px" }} />
+              {([
+                { value: "none", label: t("chat.reasoning.off") },
+                { value: "low", label: t("chat.reasoning.fast") },
+                { value: "high", label: t("chat.reasoning.deep") },
+              ] as const).map((mode) => (
+                <button
+                  key={mode.value}
+                  onClick={() => setReasoningEffort(mode.value)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: "var(--radius-full)",
+                    border: "none",
+                    background: reasoningEffort === mode.value ? "var(--bg-level-1)" : "transparent",
+                    cursor: "pointer",
+                    fontSize: "11px",
+                    color: reasoningEffort === mode.value ? "var(--text-level-1)" : "var(--text-level-3)",
+                    transition: "all 0.6s ease",
+                  }}
+                >
+                  {mode.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <p style={{
@@ -731,9 +743,6 @@ export default function ChatPage() {
           marginBottom: 0,
         }}>{t("chat.aiMayError")}</p>
       </div>
-
-      {/* Tools Panel */}
-      <ToolsPanel isOpen={toolsPanelOpen} onClose={() => setToolsPanelOpen(false)} />
 
       {/* Project Context Panel */}
       <ProjectContextPanel

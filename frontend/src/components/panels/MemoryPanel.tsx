@@ -17,11 +17,13 @@ import { Panel } from "./Panel";
 interface MemoryPanelProps {
   isOpen: boolean;
   onClose: () => void;
+  /** 嵌入模式：渲染为内嵌内容（无 Panel 外壳），用于嵌入 SettingsPanel */
+  embedded?: boolean;
 }
 
 type MemoryTab = "preference" | "project";
 
-export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
+export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelProps) {
   const { agents } = useAgents();
   const { t } = useTranslation();
   const [selectedAgent, setSelectedAgent] = useState(agents[0]?.id || "");
@@ -101,8 +103,8 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
     }
   };
 
-  return (
-    <Panel isOpen={isOpen} onClose={onClose} title={t("memory.title")}>
+  const content = (
+    <>
       {/* Agent 选择 */}
       <div style={{ marginBottom: "20px" }}>
         <label style={{
@@ -433,6 +435,16 @@ export function MemoryPanel({ isOpen, onClose }: MemoryPanelProps) {
           </div>
         )}
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <Panel isOpen={isOpen} onClose={onClose} title={t("memory.title")}>
+      {content}
     </Panel>
   );
 }

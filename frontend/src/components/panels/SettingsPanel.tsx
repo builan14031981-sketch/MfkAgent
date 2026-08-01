@@ -15,6 +15,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
 import { useAgents } from "@/hooks/useAgents";
 import { Panel } from "./Panel";
+import { MemoryPanel } from "./MemoryPanel";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -594,25 +595,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
           {/* 记忆 */}
           {activeSection === "memory" && (
-            <div>
-              <div style={{
-                padding: "16px",
-                borderRadius: "var(--radius-md)",
-                background: "var(--bg-level-2)",
-              }}>
-                <p style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "var(--text-level-1)",
-                  margin: "0 0 8px 0",
-                }}>{t("settings.memory.title")}</p>
-                <p style={{
-                  fontSize: "13px",
-                  color: "var(--text-level-3)",
-                  margin: 0,
-                }}>{t("settings.memory.desc")}</p>
-              </div>
-            </div>
+            <MemoryPanel embedded isOpen onClose={() => {}} />
           )}
 
           {/* 关于 */}

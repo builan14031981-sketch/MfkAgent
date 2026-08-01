@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { SettingsPanel } from "./panels/SettingsPanel";
-import { MemoryPanel } from "./panels/MemoryPanel";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -13,7 +12,6 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
 
   // 从URL解析当前chatId
   const currentChatId = useMemo(() => {
@@ -31,12 +29,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       <Sidebar
         currentChatId={currentChatId}
         onSettingsClick={() => setIsSettingsOpen(true)}
-        onMemoryClick={() => setIsMemoryOpen(true)}
       />
 
       {/* 面板 - 全局覆盖 */}
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-      <MemoryPanel isOpen={isMemoryOpen} onClose={() => setIsMemoryOpen(false)} />
 
       {/* 右侧主内容区 */}
       <main style={{

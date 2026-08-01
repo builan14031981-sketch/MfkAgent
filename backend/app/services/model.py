@@ -147,6 +147,7 @@ class ModelService:
         max_tokens: int = 4096,
         stream: bool = False,
         tools: List[Dict] = None,
+        reasoning_effort: str = None,
     ) -> ChatResponse:
         """发送聊天请求"""
         config = self.get_model_config(model_id)
@@ -166,17 +167,18 @@ class ModelService:
             ModelProvider.BAICHUAN,
         ]:
             return await self._chat_openai_compatible(
-                config, messages, temperature, max_tokens, stream, tools
+                config, messages, temperature, max_tokens, stream, tools, reasoning_effort
             )
         else:
             raise ValueError(f"不支持的模型提供商: {config.provider}")
-    
+
     async def chat_stream(
         self,
         model_id: str,
         messages: List[Message],
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        reasoning_effort: str = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """流式聊天请求"""
         config = self.get_model_config(model_id)
@@ -198,6 +200,8 @@ class ModelService:
             "max_tokens": max_tokens,
             "stream": True,
         }
+        if reasoning_effort and reasoning_effort != "none":
+            payload["reasoning_effort"] = reasoning_effort
 
         async with httpx.AsyncClient() as client:
             async with client.stream(
@@ -242,6 +246,7 @@ class ModelService:
         max_tokens: int,
         stream: bool,
         tools: List[Dict] = None,
+        reasoning_effort: str = None,
     ) -> ChatResponse:
         """调用OpenAI兼容接口"""
         from app.services.tools import tool_registry
@@ -258,6 +263,8 @@ class ModelService:
             "max_tokens": max_tokens,
             "stream": stream,
         }
+        if reasoning_effort and reasoning_effort != "none":
+            payload["reasoning_effort"] = reasoning_effort
 
         if tools:
             payload["tools"] = tools

@@ -53,7 +53,13 @@
     "backToHome": "Back to Home",
     "projectContext": "Project Context",
     "selectedFiles": "Selected Files",
-    "noFilesSelected": "Check project files to include in chat context"
+    "noFilesSelected": "Check project files to include in chat context",
+    "reasoning": {
+      "title": "Reasoning Mode",
+      "off": "Off",
+      "fast": "Fast",
+      "deep": "Deep"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -113,7 +119,7 @@
       }
     },
     "memory": {
-      "title": "Memory",
+      "title": "Long-term Memory",
       "desc": "AI will remember your preferences and important information"
     },
     "about": {
