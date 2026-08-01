@@ -29,7 +29,20 @@
     "rename": "Rename",
     "pin": "Pin",
     "unpin": "Unpin",
-    "delete": "Delete"
+    "delete": "Delete",
+    "projectWorkspace": "Workspace",
+    "generalChats": "General Chats",
+    "openProject": "Open / New Workspace",
+    "openProjectDesc": "Pick or create a project for AI to work in",
+    "noProjects": "No projects yet",
+    "noProjectsDesc": "Open or create a project workspace",
+    "newProject": "New Project",
+    "projectName": "Project Name",
+    "projectPath": "Project Path",
+    "createProject": "Create",
+    "pickDirectory": "Pick Folder",
+    "newChatInProject": "New chat in this project",
+    "newChatTitle": "New Chat"
   },
   "home": {
     "welcome": [
@@ -59,7 +72,17 @@
       "off": "Off",
       "fast": "Fast",
       "deep": "Deep"
-    }
+    },
+    "dropToAttach": "Release to attach files as context",
+    "dragHint": "Drag files here to use as context",
+    "attachedFiles": "Attached Files",
+    "menu": {
+      "uploadFile": "Upload File",
+      "linkProject": "Link Local Project",
+      "clearContext": "Clear Context"
+    },
+    "projectLinked": "Project linked",
+    "projectLinkFailed": "Failed to link project"
   },
   "settings": {
     "title": "Settings",

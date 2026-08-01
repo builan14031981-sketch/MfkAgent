@@ -12,6 +12,7 @@ export interface Chat {
   is_pinned: boolean;
   model: string | null;
   personality_level: number;
+  context_files: string[];
 }
 
 export interface PaginatedResponse<T> {
@@ -48,19 +49,20 @@ export function useChat(projectId?: number | null, page: number = 1, limit: numb
     fetchChats();
   }, [fetchChats]);
 
-  async function createChat(agentId: string, title: string, projectId?: number | null, model?: string | null, personalityLevel?: number) {
+  async function createChat(agentId: string, title: string, projectId?: number | null, model?: string | null, personalityLevel?: number, contextFiles?: string[]) {
     const data = await apiPost<Chat>("/api/chat", {
       project_id: projectId || null,
       agent_id: agentId,
       title: title,
       model: model || null,
       personality_level: personalityLevel,
+      context_files: contextFiles || [],
     });
     await fetchChats();
     return data;
   }
 
-  async function updateChat(id: number, updates: { title?: string; agent_id?: string; is_pinned?: boolean; model?: string; personality_level?: number }) {
+  async function updateChat(id: number, updates: { title?: string; agent_id?: string; is_pinned?: boolean; model?: string; personality_level?: number; project_id?: number | null; unbind_project?: boolean }) {
     await apiPatch(`/api/chat/${id}`, updates);
     await fetchChats();
   }

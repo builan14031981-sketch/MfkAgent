@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+import os
 from app.core.database import SessionLocal
 from app.models.agent import Project, Chat
 from app.core.pagination import paginate
@@ -10,8 +11,8 @@ router = APIRouter()
 
 
 class ProjectCreate(BaseModel):
-    name: str
     path: str
+    name: Optional[str] = None
 
 
 class ProjectResponse(BaseModel):
@@ -23,6 +24,23 @@ class ProjectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+def _validate_project_path(raw_path: str) -> str:
+    """校验并规范化本地目录绝对路径：必须为绝对路径、目录存在，返回 realpath 规范化值"""
+    if not raw_path or not raw_path.strip():
+        raise HTTPException(status_code=400, detail="路径不能为空")
+    path = raw_path.strip().strip('"').strip("'")
+
+    if not os.path.isabs(path):
+        raise HTTPException(status_code=400, detail="必须提供本地目录绝对路径")
+
+    real_path = os.path.realpath(path)
+    if not os.path.exists(real_path):
+        raise HTTPException(status_code=404, detail=f"目录不存在: {real_path}")
+    if not os.path.isdir(real_path):
+        raise HTTPException(status_code=400, detail=f"不是目录: {real_path}")
+    return real_path
 
 
 @router.get("")
@@ -41,14 +59,17 @@ async def list_projects(page: int = 1, limit: int = 20):
 async def create_project(project: ProjectCreate):
     db = SessionLocal()
     try:
-        existing = db.query(Project).filter(Project.path == project.path).first()
+        real_path = _validate_project_path(project.path)
+        name = (project.name or "").strip() or os.path.basename(real_path.rstrip("/\\")) or real_path
+
+        existing = db.query(Project).filter(Project.path == real_path).first()
         if existing:
             existing.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(existing)
             return existing
 
-        db_project = Project(name=project.name, path=project.path)
+        db_project = Project(name=name, path=real_path)
         db.add(db_project)
         db.commit()
         db.refresh(db_project)
@@ -81,9 +102,6 @@ async def delete_project(project_id: int):
         return {"status": "deleted"}
     finally:
         db.close()
-
-
-import os
 
 
 def _resolve_safe_path(base_path: str, relative_path: str) -> str:

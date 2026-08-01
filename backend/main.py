@@ -25,6 +25,14 @@ def _ensure_schema():
             if "is_active" not in cols:
                 conn.execute(sa.text("ALTER TABLE memories ADD COLUMN is_active BOOLEAN DEFAULT 1"))
 
+    if "chats" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("chats")}
+        with engine.begin() as conn:
+            if "project_path" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN project_path VARCHAR(500)"))
+            if "context_files" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN context_files JSON"))
+
 
 _ensure_schema()
 

@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     chrome: process.versions.chrome,
     electron: process.versions.electron,
   },
+  selectDirectory: () => ipcRenderer.invoke("select-directory"),
 });

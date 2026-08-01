@@ -29,7 +29,20 @@
     "rename": "重命名",
     "pin": "置顶",
     "unpin": "取消置顶",
-    "delete": "删除"
+    "delete": "删除",
+    "projectWorkspace": "项目工作区",
+    "generalChats": "通用对话",
+    "openProject": "打开 / 新建项目工作区",
+    "openProjectDesc": "选择或创建一个项目，让 AI 进入工作区",
+    "noProjects": "暂无项目",
+    "noProjectsDesc": "打开或新建一个项目工作区",
+    "newProject": "新建项目",
+    "projectName": "项目名称",
+    "projectPath": "项目路径",
+    "createProject": "创建",
+    "pickDirectory": "选择文件夹",
+    "newChatInProject": "在此项目中新建会话",
+    "newChatTitle": "新会话"
   },
   "home": {
     "welcome": [
@@ -59,7 +72,17 @@
       "off": "关闭",
       "fast": "快速推理",
       "deep": "深度思考"
-    }
+    },
+    "dropToAttach": "松开以添加文件到上下文",
+    "dragHint": "拖拽文件到此处作为上下文",
+    "attachedFiles": "已附加文件",
+    "menu": {
+      "uploadFile": "上传文件",
+      "linkProject": "关联本地项目",
+      "clearContext": "清除上下文"
+    },
+    "projectLinked": "已关联项目",
+    "projectLinkFailed": "关联项目失败"
   },
   "settings": {
     "title": "设置",

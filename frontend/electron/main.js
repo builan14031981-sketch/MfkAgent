@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const http = require("http");
 
@@ -94,6 +94,18 @@ async function createWindow() {
 }
 
 app.whenReady().then(createWindow);
+
+// 原生目录选择：供渲染进程关联本地项目工作区
+ipcMain.handle("select-directory", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "选择项目文件夹",
+    properties: ["openDirectory", "createDirectory"],
+  });
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+  return result.filePaths[0];
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {

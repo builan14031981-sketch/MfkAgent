@@ -4,8 +4,9 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import json
+import os
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message, Agent, Memory, Setting
+from app.models.agent import Chat, Message, Agent, Memory, Setting, Project
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
 from app.core.pagination import paginate
@@ -22,16 +23,21 @@ class ChatCreate(BaseModel):
     title: str = "New Chat"
     personality_level: int = 50
     model: Optional[str] = None
+    project_path: Optional[str] = None
+    context_files: List[str] = []
 
 
 class ChatResponse(BaseModel):
     id: int
     project_id: Optional[int]
+    project_path: Optional[str] = None
+    project_name: Optional[str] = None
     agent_id: str
     title: str
     is_pinned: bool = False
     model: Optional[str] = None
     personality_level: int = 50
+    context_files: List[str] = []
     created_at: datetime
     updated_at: datetime
 
@@ -55,18 +61,34 @@ class MessageResponse(BaseModel):
         from_attributes = True
 
 
+def _chat_to_response(chat) -> ChatResponse:
+    """将 Chat ORM 对象转换为响应（填充 project_path/project_name）"""
+    return ChatResponse(
+        id=chat.id,
+        project_id=chat.project_id,
+        project_path=chat.project_path or (chat.project.path if chat.project else None),
+        project_name=(chat.project.name if chat.project else None),
+        agent_id=chat.agent_id,
+        title=chat.title,
+        is_pinned=chat.is_pinned,
+        model=chat.model,
+        personality_level=chat.personality_level,
+        context_files=chat.context_files or [],
+        created_at=chat.created_at,
+        updated_at=chat.updated_at,
+    )
+
+
 @router.get("")
-async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int = 20):
+async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int = 50):
     db = SessionLocal()
     try:
         query = db.query(Chat)
         if project_id is not None:
             query = query.filter(Chat.project_id == project_id)
-        else:
-            query = query.filter(Chat.project_id.is_(None))
         query = query.order_by(Chat.is_pinned.desc(), Chat.updated_at.desc())
         result = paginate(query, page, limit)
-        result["items"] = [ChatResponse.model_validate(c) for c in result["items"]]
+        result["items"] = [_chat_to_response(c) for c in result["items"]]
         return result
     finally:
         db.close()
@@ -76,17 +98,27 @@ async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int
 async def create_chat(chat: ChatCreate):
     db = SessionLocal()
     try:
+        project_path = chat.project_path
+        if project_path is None and chat.project_id is not None:
+            project = db.query(Project).filter(Project.id == chat.project_id).first()
+            if project:
+                project_path = project.path
+
+        context_files = [p for p in (chat.context_files or []) if p.strip()]
+
         db_chat = Chat(
             project_id=chat.project_id,
+            project_path=project_path,
             agent_id=chat.agent_id,
             title=chat.title,
             personality_level=chat.personality_level,
             model=chat.model,
+            context_files=context_files,
         )
         db.add(db_chat)
         db.commit()
         db.refresh(db_chat)
-        return db_chat
+        return _chat_to_response(db_chat)
     finally:
         db.close()
 
@@ -98,7 +130,7 @@ async def get_chat(chat_id: int):
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if not chat:
             raise HTTPException(status_code=404, detail="Chat not found")
-        return chat
+        return _chat_to_response(chat)
     finally:
         db.close()
 
@@ -113,6 +145,95 @@ async def delete_chat(chat_id: int):
         db.delete(chat)
         db.commit()
         return {"status": "deleted"}
+    finally:
+        db.close()
+
+
+def _is_within(base_dir: str, file_path: str) -> bool:
+    """校验 file_path 是否位于 base_dir 目录内（含自身），防止越权"""
+    if not base_dir or not file_path:
+        return False
+    base_real = os.path.realpath(base_dir)
+    file_real = os.path.realpath(file_path)
+    return file_real == base_real or file_real.startswith(base_real + os.sep)
+
+
+class ContextFilesRequest(BaseModel):
+    paths: List[str]
+
+
+@router.get("/{chat_id}/context_files")
+async def get_context_files(chat_id: int):
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        return {"context_files": chat.context_files or []}
+    finally:
+        db.close()
+
+
+@router.post("/{chat_id}/context_files")
+async def add_context_files(chat_id: int, request: ContextFilesRequest):
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+        base_dir = chat.project_path or (chat.project.path if chat.project else None)
+        if not base_dir:
+            raise HTTPException(status_code=400, detail="Chat 未关联项目，无法添加文件上下文")
+
+        accepted: List[str] = []
+        rejected: List[str] = []
+        for p in request.paths:
+            if not p.strip():
+                continue
+            if not _is_within(base_dir, p):
+                rejected.append(p)
+                continue
+            if not os.path.exists(p):
+                rejected.append(p)
+                continue
+            accepted.append(p)
+
+        if rejected:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "部分路径不在项目目录内或不存在",
+                    "accepted": accepted,
+                    "rejected": rejected,
+                },
+            )
+
+        existing = set(chat.context_files or [])
+        merged = list(existing)
+        for p in accepted:
+            if p not in existing:
+                merged.append(p)
+        chat.context_files = merged
+        chat.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(chat)
+        return {"context_files": merged, "added": len(merged) - len(existing)}
+    finally:
+        db.close()
+
+
+@router.delete("/{chat_id}/context_files")
+async def clear_context_files(chat_id: int):
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        chat.context_files = []
+        chat.updated_at = datetime.utcnow()
+        db.commit()
+        return {"context_files": []}
     finally:
         db.close()
 
@@ -177,6 +298,8 @@ class ChatUpdate(BaseModel):
     is_pinned: Optional[bool] = None
     model: Optional[str] = None
     personality_level: Optional[int] = None
+    project_id: Optional[int] = None
+    unbind_project: Optional[bool] = None
 
 
 @router.patch("/{chat_id}", response_model=ChatResponse)
@@ -196,10 +319,19 @@ async def update_chat(chat_id: int, update: ChatUpdate):
             chat.model = update.model
         if update.personality_level is not None:
             chat.personality_level = update.personality_level
+        if update.unbind_project:
+            chat.project_id = None
+            chat.project_path = None
+        elif update.project_id is not None:
+            project = db.query(Project).filter(Project.id == update.project_id).first()
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+            chat.project_id = project.id
+            chat.project_path = project.path
         chat.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(chat)
-        return chat
+        return _chat_to_response(chat)
     finally:
         db.close()
 

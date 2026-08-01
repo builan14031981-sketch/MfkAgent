@@ -1,17 +1,20 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { createPortal } from "react-dom";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useChat } from "@/hooks/useChat";
+import { useProjects } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { AgentIcon } from "@/components/AgentIcon";
+import { ChatInput } from "@/components/ChatInput";
+import type { Project } from "@/hooks/useProjects";
 
 // agent_id → 用户可见名称映射（内部仍用 coder/frontend_ui/backend 等）
 // 研发核心三角置顶展示：代码审查 AI、前端 UI 设计 AI、后端 AI
@@ -42,9 +45,13 @@ export default function Home() {
   const { agents, loading: agentsLoading } = useAgents();
   const { models, loading: modelsLoading } = useModels();
   const { createChat } = useChat();
+  const { createProject } = useProjects();
   const { settings } = useSettingsStore();
   const [welcome, setWelcome] = useState("");
   const [comboPersonality, setComboPersonality] = useState<number | null>(null);
+  const [pendingProject, setPendingProject] = useState<Project | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<string[]>([]);
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
 
   // 点击外部关闭下拉 (portal 渲染到 body，用 buttonRef 判断)
   useEffect(() => {
@@ -99,9 +106,10 @@ export default function Home() {
       const chat = await createChat(
         currentAgent.id,
         userMessage.slice(0, 50) || "New Chat",
-        null,
+        pendingProject?.id ?? null,
         currentModel?.id || settings?.default_model || null,
-        personalityLevel
+        personalityLevel,
+        pendingFiles
       );
 
       const encodedMessage = encodeURIComponent(userMessage);
@@ -113,15 +121,28 @@ export default function Home() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      // 防止重复触发
-      if (!isCreating && input.trim() && currentAgent) {
-        handleSend();
-      }
-    }
-  };
+  // 草稿预挂载：首页无 Chat 状态下附加文件 / 关联项目，创建会话时一并提交
+  const handleAttachFile = useCallback((file: File) => {
+    const fileWithPath = file as File & { path?: string };
+    const path = fileWithPath.path || file.name;
+    setPendingFiles((prev) => (prev.includes(path) ? prev : [...prev, path]));
+  }, []);
+
+  const handleLinkProject = useCallback(async (dirPath: string) => {
+    const name = dirPath.split(/[\\/]/).filter(Boolean).pop() || dirPath;
+    const project = await createProject(name, dirPath);
+    setPendingProject(project);
+    window.dispatchEvent(new Event("mfk-projects-changed"));
+  }, [createProject]);
+
+  const handleClearDraft = useCallback(() => {
+    setPendingFiles([]);
+    setPendingProject(null);
+  }, []);
+
+  const removePendingFile = useCallback((path: string) => {
+    setPendingFiles((prev) => prev.filter((p) => p !== path));
+  }, []);
 
   return (
     <div style={{
@@ -164,222 +185,136 @@ export default function Home() {
           }}>{welcome}</p>
         </div>
 
-        {/* Composer - ChatGPT风格输入框 */}
-        <div style={{
-          borderRadius: "var(--radius-2xl)",
-          background: "var(--bg-level-3)",
-          border: "1px solid var(--border-primary)",
-          boxShadow: "var(--shadow-lg)",
-          overflow: "hidden",
-        }}>
-          {/* 输入区域 */}
-          <div style={{ padding: "24px" }}>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t("home.inputPlaceholder")}
-              rows={3}
-              style={{
-                width: "100%",
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                resize: "none",
-                fontSize: "15px",
-                lineHeight: "1.6",
-                color: "var(--text-level-2)",
-              }}
-            />
-          </div>
-
-          {/* 底部工具栏 */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "8px 16px",
-            borderTop: "1px solid var(--border-secondary)",
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}>
-              {/* Agent 紧凑下拉选择器 */}
-              {agentsLoading ? (
-                <span style={{ fontSize: "12px", color: "var(--text-level-3)" }}>{t("common.loading")}</span>
-              ) : agents.length > 0 ? (
-                <div style={{ position: "relative" }}>
-                  <button
-                    ref={buttonRef}
-                    onClick={() => {
-                      const rect = buttonRef.current?.getBoundingClientRect();
-                      if (rect) setDropdownPos({ top: rect.bottom + 4, left: rect.left });
-                      setShowAgentDropdown(!showAgentDropdown);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "5px 10px",
-                      borderRadius: "var(--radius-full)",
-                      border: "1px solid var(--border-primary)",
-                      background: "var(--bg-level-2)",
-                      cursor: "pointer",
-                      fontSize: "12px",
-                      color: "var(--text-level-2)",
-                      transition: "all var(--transition-fast)",
-                    }}
-                  >
-                    <AgentIcon id={currentAgent?.id} size={14} style={{ flexShrink: 0 }} />
-                    <span style={{ fontWeight: "500" }}>{display.label}</span>
-                    <ChevronDown style={{
-                      width: "10px", height: "10px", color: "var(--text-level-4)",
-                      transform: showAgentDropdown ? "rotate(180deg)" : "none",
-                      transition: "transform var(--transition-fast)",
-                    }} />
-                  </button>
-                  {showAgentDropdown && createPortal(
-                    <div id="agent-dropdown-portal" style={{
-                      position: "fixed",
-                      top: dropdownPos.top,
-                      left: dropdownPos.left,
-                      minWidth: "200px",
-                      maxHeight: "220px",
-                      overflowY: "auto",
-                      background: "var(--bg-level-2)",
-                      borderRadius: "var(--radius-md)",
-                      border: "1px solid var(--border-primary)",
-                      boxShadow: "var(--shadow-md)",
-                      zIndex: 9999,
-                      padding: "3px",
-                    }}>
-                      {AGENT_COMBOS.map((combo) => {
-                        const agent = agents.find((a) => a.id === combo.agentId);
-                        if (!agent) return null;
-                        const isActive = currentAgent?.id === combo.agentId && comboPersonality === combo.personality;
-                        return (
-                          <button
-                            key={combo.agentId}
-                            onClick={() => handleSelectCombo(combo)}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              width: "100%",
-                              padding: "5px 8px",
-                              border: "none",
-                              borderRadius: "var(--radius-sm)",
-                              background: isActive ? "var(--color-primary-lighter)" : "transparent",
-                              cursor: "pointer",
-                              textAlign: "left",
-                              transition: "background 0.1s",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isActive) e.currentTarget.style.background = "var(--bg-level-3)";
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isActive) e.currentTarget.style.background = "transparent";
-                            }}
-                          >
-                            <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: "12px",
-                                fontWeight: "500",
-                                color: isActive ? "var(--color-primary)" : "var(--text-level-1)",
-                              }}>{combo.label}</div>
-                              <div style={{
-                                fontSize: "10px",
-                                color: "var(--text-level-4)",
-                              }}>{combo.desc}</div>
-                            </div>
-                            {isActive && (
-                              <span style={{
-                                width: "6px", height: "6px",
-                                borderRadius: "50%",
-                                background: "var(--color-primary)",
-                                flexShrink: 0,
-                              }} />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>,
-                    document.body
-                  )}
-                </div>
-              ) : null}
-
-              {/* 模型选择 */}
-              {modelsLoading ? (
-                <span style={{ fontSize: "12px", color: "var(--text-level-3)" }}>{t("common.loading")}</span>
-              ) : models.length > 0 ? (
-                <select
-                  value={currentModel?.id || ""}
-                  onChange={(e) => {
-                    const model = models.find(m => m.id === e.target.value);
-                    if (model) setSelectedModel(model);
+        {/* Composer - 一体化紧凑输入卡片 */}
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSend={handleSend}
+          isSending={isCreating}
+          placeholder={t("home.inputPlaceholder")}
+          models={models}
+          modelId={currentModel?.id || null}
+          onModelChange={(id) => {
+            const model = models.find(m => m.id === id);
+            if (model) setSelectedModel(model);
+          }}
+          reasoningEffort={reasoningEffort}
+          onReasoningChange={setReasoningEffort}
+          onUploadFile={handleAttachFile}
+          onSelectDirectory={handleLinkProject}
+          onClearContext={handleClearDraft}
+          hasContext={pendingFiles.length > 0 || !!pendingProject}
+          files={pendingFiles}
+          onRemoveFile={removePendingFile}
+          projectName={pendingProject?.name || null}
+          onRemoveProject={() => setPendingProject(null)}
+          leftExtra={
+            agentsLoading ? (
+              <span style={{ fontSize: "12px", color: "var(--text-level-3)", flexShrink: 0 }}>{t("common.loading")}</span>
+            ) : agents.length > 0 ? (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button
+                  ref={buttonRef}
+                  onClick={() => {
+                    const rect = buttonRef.current?.getBoundingClientRect();
+                    if (rect) setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                    setShowAgentDropdown(!showAgentDropdown);
                   }}
                   style={{
-                    padding: "5px 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "3px 8px",
                     borderRadius: "var(--radius-full)",
                     border: "1px solid var(--border-primary)",
                     background: "var(--bg-level-2)",
                     cursor: "pointer",
                     fontSize: "12px",
                     color: "var(--text-level-2)",
-                    outline: "none",
+                    transition: "all var(--transition-fast)",
                   }}
                 >
-                  {models.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </div>
-
-            {/* 发送按钮 */}
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || !currentAgent || isCreating}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "32px",
-                height: "32px",
-                borderRadius: "var(--radius-md)",
-                border: "none",
-                background: input.trim() && currentAgent && !isCreating ? "var(--color-primary)" : "var(--bg-level-4)",
-                cursor: input.trim() && currentAgent && !isCreating ? "pointer" : "not-allowed",
-                color: "white",
-                transition: "all var(--transition-fast)",
-              }}
-              onMouseEnter={(e) => {
-                if (input.trim() && currentAgent && !isCreating) {
-                  e.currentTarget.style.background = "var(--color-primary-hover)";
-                  e.currentTarget.style.transform = "scale(1.05)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = input.trim() && currentAgent && !isCreating ? "var(--color-primary)" : "var(--bg-level-4)";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = "scale(0.95)";
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <ArrowRight style={{ width: "16px", height: "16px" }} />
-            </button>
-          </div>
-        </div>
+                  <AgentIcon id={currentAgent?.id} size={14} style={{ flexShrink: 0 }} />
+                  <span style={{ fontWeight: "500" }}>{display.label}</span>
+                  <ChevronDown style={{
+                    width: "10px", height: "10px", color: "var(--text-level-4)",
+                    transform: showAgentDropdown ? "rotate(180deg)" : "none",
+                    transition: "transform var(--transition-fast)",
+                  }} />
+                </button>
+                {showAgentDropdown && createPortal(
+                  <div id="agent-dropdown-portal" style={{
+                    position: "fixed",
+                    top: dropdownPos.top,
+                    left: dropdownPos.left,
+                    minWidth: "200px",
+                    maxHeight: "220px",
+                    overflowY: "auto",
+                    background: "var(--bg-level-2)",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--border-primary)",
+                    boxShadow: "var(--shadow-md)",
+                    zIndex: 9999,
+                    padding: "3px",
+                  }}>
+                    {AGENT_COMBOS.map((combo) => {
+                      const agent = agents.find((a) => a.id === combo.agentId);
+                      if (!agent) return null;
+                      const isActive = currentAgent?.id === combo.agentId && comboPersonality === combo.personality;
+                      return (
+                        <button
+                          key={combo.agentId}
+                          onClick={() => handleSelectCombo(combo)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            width: "100%",
+                            padding: "5px 8px",
+                            border: "none",
+                            borderRadius: "var(--radius-sm)",
+                            background: isActive ? "var(--color-primary-lighter)" : "transparent",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "background 0.1s",
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) e.currentTarget.style.background = "var(--bg-level-3)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) e.currentTarget.style.background = "transparent";
+                          }}
+                        >
+                          <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: "12px",
+                              fontWeight: "500",
+                              color: isActive ? "var(--color-primary)" : "var(--text-level-1)",
+                            }}>{combo.label}</div>
+                            <div style={{
+                              fontSize: "10px",
+                              color: "var(--text-level-4)",
+                            }}>{combo.desc}</div>
+                          </div>
+                          {isActive && (
+                            <span style={{
+                              width: "6px", height: "6px",
+                              borderRadius: "50%",
+                              background: "var(--color-primary)",
+                              flexShrink: 0,
+                            }} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>,
+                  document.body
+                )}
+              </div>
+            ) : null
+          }
+        />
       </motion.div>
 
       {/* 底部提示 */}

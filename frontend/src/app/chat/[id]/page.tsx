@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, memo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Send, Copy, Quote, RefreshCw, Brain, Folder } from "lucide-react";
+import { Copy, Quote, RefreshCw, Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
@@ -13,74 +13,9 @@ import { useSettingsStore } from "@/lib/store";
 import { apiGet } from "@/lib/api";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 import { AgentIcon } from "@/components/AgentIcon";
-
-interface PersonalitySliderProps {
-  value: number;
-  onCommit: (value: number) => void;
-}
-
-/**
- * 人格滑块：拖动（onChange）仅更新组件内部局部 draft state，
- * 父级 personalityLevel 仅在松手/失焦时通过 onCommit 一次性提交。
- * React.memo 隔离：父组件任何重渲染都不会让滑块重新绘制。
- */
-const PersonalitySlider = memo(function PersonalitySlider({ value, onCommit }: PersonalitySliderProps) {
-  const [draft, setDraft] = useState<number | null>(null);
-  const draftRef = useRef<number | null>(null);
-  const displayed = draft ?? value;
-
-  // 拖动中仅更新局部 draft（不触达父级 state）；onCommit 只在松手/失焦时一次性调用
-  const commit = useCallback(() => {
-    const d = draftRef.current;
-    if (d !== null) {
-      draftRef.current = null;
-      setDraft(null);
-      onCommit(d);
-    }
-  }, [onCommit]);
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = Number(e.target.value);
-    draftRef.current = v;
-    setDraft(v);
-  }, []);
-
-  return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      padding: "0 8px",
-    }}>
-      <Brain style={{ width: "14px", height: "14px", color: "var(--text-level-4)" }} />
-      <input
-        type="range"
-        min="0"
-        max="100"
-        step="25"
-        value={displayed}
-        onChange={handleChange}
-        onPointerUp={commit}
-        onKeyUp={commit}
-        onBlur={commit}
-        style={{
-          width: "100px",
-          accentColor: "var(--color-primary)",
-        }}
-        title="0=感性  50=平衡  100=理性"
-      />
-      <span style={{
-        fontSize: "11px",
-        color: "var(--text-level-4)",
-        width: "28px",
-        textAlign: "right",
-        fontVariantNumeric: "tabular-nums",
-        letterSpacing: "0.2px",
-        flexShrink: 0,
-      }}>{displayed}</span>
-    </div>
-  );
-});
+import { FileDropZone } from "@/components/FileDropZone";
+import type { DroppedFile } from "@/components/FileDropZone";
+import { ChatInput } from "@/components/ChatInput";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -99,7 +34,7 @@ export default function ChatPage() {
 
   const { agents } = useAgents();
   const { models } = useModels();
-  const { projects } = useProjects();
+  const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
   const { messages, sendMessageStream } = useMessages(chatId);
   const { settings } = useSettingsStore();
@@ -124,21 +59,69 @@ export default function ChatPage() {
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
   const [projectContextOpen, setProjectContextOpen] = useState(false);
   const [contextFiles, setContextFiles] = useState<string[]>([]);
+  const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
+
+  // 上下文文件初始值：读会话快照 currentChat.context_files（首页草稿预挂载时随创建请求一起提交）。
+  if (contextInitForChatId !== chatId && currentChat) {
+    setContextInitForChatId(chatId);
+    setContextFiles(currentChat.context_files || []);
+  }
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [hasAutoSent, setHasAutoSent] = useState(false);
   const autoSendLockRef = useRef(false);
 
-  // 人格提交回调：useCallback 稳定引用，避免父组件重渲染时触发滑块（memo）重绘
-  const handleCommitPersonality = useCallback((v: number) => {
-    setPersonalityLevel(v);
-    if (chatId) {
-      updateChat(chatId, { personality_level: v }).catch((err) =>
-        console.error("Failed to persist personality:", err)
-      );
+  // 将拖入文件的绝对路径转为项目相对路径（挂载 Context 用）
+  const toProjectRelativePath = useCallback((absPath: string): string => {
+    if (!currentProject) return absPath;
+    const normalize = (p: string) => p.replace(/\\/g, "/");
+    const projRoot = normalize(currentProject.path).replace(/\/+$/, "");
+    const filePath = normalize(absPath);
+    if (filePath.startsWith(projRoot + "/")) {
+      return filePath.slice(projRoot.length + 1);
     }
-  }, [chatId, updateChat]);
+    return filePath.split("/").pop() || absPath;
+  }, [currentProject]);
+
+  const handleFilesDrop = useCallback((files: DroppedFile[]) => {
+    setContextFiles((prev) => {
+      const next = [...prev];
+      for (const file of files) {
+        const relPath = toProjectRelativePath(file.path);
+        if (!next.includes(relPath)) next.push(relPath);
+      }
+      return next;
+    });
+  }, [toProjectRelativePath]);
+
+  const removeContextFile = useCallback((path: string) => {
+    setContextFiles((prev) => prev.filter((p) => p !== path));
+  }, []);
+
+  // 上传文件：挂载为当前会话的 Context 文件（Electron 下 File.path 为绝对路径）
+  const handleUploadFile = useCallback((file: File) => {
+    const fileWithPath = file as File & { path?: string };
+    const relPath = toProjectRelativePath(fileWithPath.path || file.name);
+    setContextFiles((prev) => (prev.includes(relPath) ? prev : [...prev, relPath]));
+  }, [toProjectRelativePath]);
+
+  // 关联本地项目：创建 Project 并绑定到当前会话
+  const handleSelectDirectory = useCallback(async (dirPath: string) => {
+    if (!chatId) return;
+    try {
+      const name = dirPath.split(/[\\/]/).filter(Boolean).pop() || dirPath;
+      const project = await createProject(name, dirPath);
+      await updateChat(chatId, { project_id: project.id });
+      window.dispatchEvent(new Event("mfk-projects-changed"));
+    } catch (err) {
+      console.error("Failed to link project:", err);
+    }
+  }, [chatId, createProject, updateChat]);
+
+  const handleClearContext = useCallback(() => {
+    setContextFiles([]);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -286,16 +269,6 @@ export default function ChatPage() {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      // 防止重复触发
-      if (!isSending && input.trim()) {
-        handleSend();
-      }
-    }
-  };
-
   const handleStartEditTitle = () => {
     setEditTitle(currentChat?.title || "");
     setIsEditingTitle(true);
@@ -424,11 +397,6 @@ export default function ChatPage() {
               borderRadius: "var(--radius-full)",
               background: "var(--bg-level-3)",
             }}>{currentAgent.name}</span>
-            {/* 人格滑块（memo 隔离 + 拖动仅更新子组件局部 draft，提交时才触发父级重渲染） */}
-            <PersonalitySlider
-              value={personalityLevel}
-              onCommit={handleCommitPersonality}
-            />
           </div>
         )}
       </div>
@@ -583,7 +551,7 @@ export default function ChatPage() {
                   marginBottom: "8px",
                 }}>
                   {currentAgent && (
-                    <span style={{ fontSize: "16px" }}>{currentAgent.avatar}</span>
+                    <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
                   )}
                   <span style={{
                     fontSize: "13px",
@@ -617,7 +585,7 @@ export default function ChatPage() {
 
       {/* 输入区域 */}
       <div style={{
-        padding: "16px 24px",
+        padding: "12px 24px 16px 24px",
         borderTop: "1px solid var(--border-primary)",
         background: "var(--bg-level-1)",
         flexShrink: 0,
@@ -626,144 +594,35 @@ export default function ChatPage() {
           maxWidth: "800px",
           margin: "0 auto",
         }}>
-          {/* 输入框行 */}
-          <div style={{
-            display: "flex",
-            gap: "12px",
-            alignItems: "flex-end",
-          }}>
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t("chat.inputPlaceholder")}
-              rows={1}
-              disabled={isSending}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--border-primary)",
-                background: "var(--bg-level-2)",
-                fontSize: "14px",
-                lineHeight: "1.5",
-                color: "var(--text-level-2)",
-                resize: "none",
-                outline: "none",
-                minHeight: "44px",
-                maxHeight: "120px",
-              }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || isSending}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "44px",
-                height: "44px",
-                borderRadius: "var(--radius-lg)",
-                border: "none",
-                background: input.trim() && !isSending ? "var(--color-primary)" : "var(--bg-level-3)",
-                cursor: input.trim() && !isSending ? "pointer" : "not-allowed",
-                color: input.trim() && !isSending ? "white" : "var(--text-level-3)",
-                transition: "all var(--transition-fast)",
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => {
-                if (input.trim() && !isSending) {
-                  e.currentTarget.style.background = "var(--color-primary-hover)";
-                  e.currentTarget.style.transform = "scale(1.05)";
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            isSending={isSending}
+            placeholder={t("chat.inputPlaceholder")}
+            models={models}
+            modelId={currentModel?.id || null}
+            onModelChange={(id) => {
+              const model = models.find(m => m.id === id);
+              if (model) {
+                setSelectedModel(model);
+                if (chatId) {
+                  updateChat(chatId, { model: model.id }).catch((err) =>
+                    console.error("Failed to persist model:", err)
+                  );
                 }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = input.trim() && !isSending ? "var(--color-primary)" : "var(--bg-level-3)";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-              onMouseDown={(e) => {
-                e.currentTarget.style.transform = "scale(0.95)";
-              }}
-              onMouseUp={(e) => {
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <Send style={{ width: "18px", height: "18px" }} />
-            </button>
-          </div>
-
-          {/* 工具栏行 */}
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginTop: "8px",
-          }}>
-            {/* 模型选择 */}
-            <select
-              value={currentModel?.id || ""}
-              onChange={(e) => {
-                const model = models.find(m => m.id === e.target.value);
-                if (model) {
-                  setSelectedModel(model);
-                  if (chatId) {
-                    updateChat(chatId, { model: model.id }).catch((err) =>
-                      console.error("Failed to persist model:", err)
-                    );
-                  }
-                }
-              }}
-              style={{
-                padding: "5px 10px",
-                borderRadius: "var(--radius-full)",
-                border: "1px solid var(--border-primary)",
-                background: "var(--bg-level-2)",
-                cursor: "pointer",
-                fontSize: "12px",
-                color: "var(--text-level-2)",
-                outline: "none",
-              }}
-            >
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-            {/* 思考模式 */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "3px",
-              borderRadius: "var(--radius-full)",
-              background: "var(--bg-level-2)",
-            }}>
-              <Brain style={{ width: "14px", height: "14px", color: "var(--text-level-4)", marginLeft: "4px" }} />
-              {([
-                { value: "none", label: t("chat.reasoning.off") },
-                { value: "low", label: t("chat.reasoning.fast") },
-                { value: "high", label: t("chat.reasoning.deep") },
-              ] as const).map((mode) => (
-                <button
-                  key={mode.value}
-                  onClick={() => setReasoningEffort(mode.value)}
-                  style={{
-                    padding: "4px 10px",
-                    borderRadius: "var(--radius-full)",
-                    border: "none",
-                    background: reasoningEffort === mode.value ? "var(--bg-level-1)" : "transparent",
-                    cursor: "pointer",
-                    fontSize: "11px",
-                    color: reasoningEffort === mode.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                    transition: "all 0.6s ease",
-                  }}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
+              }
+            }}
+            reasoningEffort={reasoningEffort}
+            onReasoningChange={setReasoningEffort}
+            onUploadFile={handleUploadFile}
+            onSelectDirectory={handleSelectDirectory}
+            onClearContext={handleClearContext}
+            hasContext={contextFiles.length > 0}
+            files={contextFiles}
+            onRemoveFile={removeContextFile}
+            projectName={currentProject?.name || null}
+          />
         </div>
         <p style={{
           textAlign: "center",
@@ -773,6 +632,9 @@ export default function ChatPage() {
           marginBottom: 0,
         }}>{t("chat.aiMayError")}</p>
       </div>
+
+      {/* 全屏文件拖拽感知 */}
+      <FileDropZone onFilesDrop={handleFilesDrop} />
 
       {/* Project Context Panel */}
       <ProjectContextPanel
