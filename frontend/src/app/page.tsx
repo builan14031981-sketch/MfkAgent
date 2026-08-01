@@ -12,11 +12,14 @@ import { useChat } from "@/hooks/useChat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 
-// agent_id → 用户可见名称映射（内部仍用 general/analyst/coder/writer）
+// agent_id → 用户可见名称映射（内部仍用 coder/frontend_ui/backend 等）
+// 研发核心三角置顶展示：代码审查 AI、前端 UI 设计 AI、后端 AI
 const AGENT_COMBOS: { agentId: string; label: string; desc: string; personality: number }[] = [
+  { agentId: "coder", label: "代码审查 AI", desc: "代码审查、开发与架构", personality: 75 },
+  { agentId: "frontend_ui", label: "前端 UI 设计 AI", desc: "界面设计与前端实现", personality: 50 },
+  { agentId: "backend", label: "后端 AI", desc: "服务端与数据逻辑", personality: 75 },
   { agentId: "general", label: "小暖", desc: "温暖陪伴", personality: 0 },
   { agentId: "analyst", label: "锐", desc: "理性分析", personality: 100 },
-  { agentId: "coder", label: "码农", desc: "编程开发", personality: 75 },
   { agentId: "writer", label: "笔神", desc: "写作创作", personality: 25 },
 ];
 
@@ -242,14 +245,14 @@ export default function Home() {
                       top: dropdownPos.top,
                       left: dropdownPos.left,
                       minWidth: "200px",
-                      maxHeight: "260px",
+                      maxHeight: "220px",
                       overflowY: "auto",
                       background: "var(--bg-level-2)",
                       borderRadius: "var(--radius-md)",
                       border: "1px solid var(--border-primary)",
                       boxShadow: "var(--shadow-md)",
                       zIndex: 9999,
-                      padding: "4px",
+                      padding: "3px",
                     }}>
                       {AGENT_COMBOS.map((combo) => {
                         const agent = agents.find((a) => a.id === combo.agentId);
@@ -262,9 +265,9 @@ export default function Home() {
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: "8px",
+                              gap: "6px",
                               width: "100%",
-                              padding: "7px 10px",
+                              padding: "5px 8px",
                               border: "none",
                               borderRadius: "var(--radius-sm)",
                               background: isActive ? "var(--color-primary-lighter)" : "transparent",
@@ -279,17 +282,16 @@ export default function Home() {
                               if (!isActive) e.currentTarget.style.background = "transparent";
                             }}
                           >
-                            <span style={{ fontSize: "14px", lineHeight: 1 }}>{agent.avatar}</span>
+                            <span style={{ fontSize: "13px", lineHeight: 1 }}>{agent.avatar}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{
-                                fontSize: "13px",
+                                fontSize: "12px",
                                 fontWeight: "500",
                                 color: isActive ? "var(--color-primary)" : "var(--text-level-1)",
                               }}>{combo.label}</div>
                               <div style={{
-                                fontSize: "11px",
+                                fontSize: "10px",
                                 color: "var(--text-level-4)",
-                                marginTop: "1px",
                               }}>{combo.desc}</div>
                             </div>
                             {isActive && (

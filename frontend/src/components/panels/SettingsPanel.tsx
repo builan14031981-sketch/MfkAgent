@@ -99,14 +99,18 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         display: "flex",
         gap: "24px",
         minHeight: "400px",
+        height: "100%",
+        overflow: "hidden",
       }}>
-        {/* 左侧导航 */}
+        {/* 左侧导航 - 固定不滚动 */}
         <nav style={{
           width: "140px",
           flexShrink: 0,
           borderRight: "1px solid rgba(0, 0, 0, 0.06)",
           paddingRight: "16px",
           marginRight: "16px",
+          height: "100%",
+          overflow: "hidden",
         }}>
           {navItems.map((item) => (
             <button
@@ -134,8 +138,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           ))}
         </nav>
 
-        {/* 右侧内容 */}
-        <div style={{ flex: 1 }}>
+        {/* 右侧内容 - 独立滚动 */}
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          height: "100%",
+          paddingRight: "4px",
+        }}>
           {/* 通用设置 */}
           {activeSection === "general" && (
             <>
@@ -464,7 +475,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     minWidth: "140px",
                   }}
                 >
-                  {agents.map((agent) => (
+                  {[...agents]
+                    .sort((a, b) => {
+                      const order = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
+                      const ai = order.indexOf(a.id) === -1 ? 99 : order.indexOf(a.id);
+                      const bi = order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id);
+                      return ai - bi;
+                    })
+                    .filter((agent) => !["warm", "rational"].includes(agent.id))
+                    .map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {agent.avatar} {agent.name}
                     </option>
@@ -541,12 +560,21 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   margin: "0 0 16px 0",
                 }}>{t("settings.ai.agents.desc")}</p>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {agents.map((agent) => (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {/* 研发核心三角置顶：代码审查 AI、前端 UI 设计 AI、后端 AI；旧预设 warm/rational 不展示 */}
+                  {[...agents]
+                    .sort((a, b) => {
+                      const order = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
+                      const ai = order.indexOf(a.id) === -1 ? 99 : order.indexOf(a.id);
+                      const bi = order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id);
+                      return ai - bi;
+                    })
+                    .filter((agent) => !["warm", "rational"].includes(agent.id))
+                    .map((agent) => (
                     <div
                       key={agent.id}
                       style={{
-                        padding: "16px",
+                        padding: "10px 12px",
                         borderRadius: "var(--radius-md)",
                         background: "var(--bg-level-2)",
                         border: "1px solid var(--border-primary)",
@@ -555,34 +583,35 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       <div style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        marginBottom: "12px",
+                        gap: "10px",
+                        marginBottom: "8px",
                       }}>
-                        <span style={{ fontSize: "24px" }}>{agent.avatar}</span>
+                        <span style={{ fontSize: "18px" }}>{agent.avatar}</span>
                         <div>
                           <p style={{
-                            fontSize: "14px",
+                            fontSize: "13px",
                             fontWeight: "500",
                             color: "var(--text-level-1)",
                             margin: 0,
                           }}>{agent.name}</p>
                           <p style={{
-                            fontSize: "12px",
+                            fontSize: "11px",
                             color: "var(--text-level-3)",
-                            margin: "2px 0 0 0",
+                            margin: "1px 0 0 0",
                           }}>{agent.description}</p>
                         </div>
                       </div>
                       <div style={{
-                        padding: "12px",
+                        padding: "8px 10px",
                         borderRadius: "var(--radius-sm)",
                         background: "var(--bg-level-1)",
-                        fontSize: "12px",
+                        fontSize: "11px",
                         color: "var(--text-level-3)",
                         fontFamily: "monospace",
                         whiteSpace: "pre-wrap",
-                        maxHeight: "100px",
+                        maxHeight: "72px",
                         overflowY: "auto",
+                        lineHeight: "1.5",
                       }}>
                         {agent.system_prompt}
                       </div>

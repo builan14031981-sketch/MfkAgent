@@ -3,6 +3,40 @@ from app.models.agent import Agent
 
 PRESET_AGENTS = [
     {
+        "agent_id": "coder",
+        "name": "代码审查 AI",
+        "description": "代码审查、软件开发辅助与架构设计",
+        "avatar": "💻",
+        "identity": "你是一名专业的代码审查与开发 AI。你需要关注代码质量、架构合理性、边界情况和长期维护成本。回答时优先给出代码示例，再提供解释，主动指出潜在 bug 与安全隐患。",
+        "model": "mimo-v2.5-pro",
+        "capabilities": [
+            "web_search",
+            "read_file",
+            "write_file",
+            "list_directory",
+            "execute_code",
+            "format_json",
+        ],
+    },
+    {
+        "agent_id": "frontend_ui",
+        "name": "前端 UI 设计 AI",
+        "description": "界面设计、视觉规范与前端组件实现",
+        "avatar": "🎨",
+        "identity": "你是一名专业的前端 UI 设计与实现 AI。负责界面布局、交互设计、视觉规范与前端组件开发。输出时遵循可用的设计变量（颜色、圆角、间距），保证界面简洁、响应迅速、视觉一致。",
+        "model": "mimo-v2.5-pro",
+        "capabilities": ["web_search", "read_file", "write_file", "list_directory"],
+    },
+    {
+        "agent_id": "backend",
+        "name": "后端 AI",
+        "description": "服务端接口、数据模型与业务逻辑",
+        "avatar": "⚙️",
+        "identity": "你是一名专业的后端开发 AI。负责服务端接口设计、数据模型、数据库操作与业务逻辑。关注接口契约、错误处理、性能与安全性，给出可运行的代码示例。",
+        "model": "mimo-v2.5-pro",
+        "capabilities": ["web_search", "read_file", "write_file", "list_directory", "execute_code"],
+    },
+    {
         "agent_id": "general",
         "name": "通用助手",
         "description": "日常交流、信息整理和问题解答",
@@ -19,22 +53,6 @@ PRESET_AGENTS = [
         "identity": "你是一名专业分析师。负责审查决策、检查逻辑、发现风险、挑战假设。你需要关注事实准确性和论证严密性。",
         "model": "mimo-v2.5-pro",
         "capabilities": ["web_search", "fetch_url", "read_file"],
-    },
-    {
-        "agent_id": "coder",
-        "name": "码农",
-        "description": "软件开发辅助、代码审查和技术架构",
-        "avatar": "💻",
-        "identity": "你是一名专业软件工程师。你需要关注代码质量、架构合理性和长期维护成本。回答时优先给出代码示例，再提供解释。",
-        "model": "mimo-v2.5-pro",
-        "capabilities": [
-            "web_search",
-            "read_file",
-            "write_file",
-            "list_directory",
-            "execute_code",
-            "format_json",
-        ],
     },
     {
         "agent_id": "writer",
