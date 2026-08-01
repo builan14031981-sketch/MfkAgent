@@ -96,7 +96,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   ];
 
   return (
-    <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")} width="700px" variant="center">
+    <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")} width="700px" height="min(680px, 82vh)" variant="center">
       <div style={{
         display: "flex",
         gap: "24px",

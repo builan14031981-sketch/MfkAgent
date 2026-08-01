@@ -8,10 +8,11 @@ interface PanelProps {
   title: string;
   children: React.ReactNode;
   width?: string;
+  height?: string;
   variant?: "center" | "bottom-left";
 }
 
-export function Panel({ isOpen, onClose, title, children, width = "700px", variant = "center" }: PanelProps) {
+export function Panel({ isOpen, onClose, title, children, width = "700px", height, variant = "center" }: PanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,6 +66,7 @@ export function Panel({ isOpen, onClose, title, children, width = "700px", varia
             left: "50%",
             transform: "translate(-50%, -50%)",
             width,
+            ...(height ? { height } : {}),
             maxWidth: "90vw",
             maxHeight: "80vh",
           } : {
