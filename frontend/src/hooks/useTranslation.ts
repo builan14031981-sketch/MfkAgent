@@ -1,6 +1,5 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useCallback } from "react";
-import { useSettings } from "./useSettings";
+import { useCallback } from "react";
+import { useSettingsStore } from "@/lib/store";
 
 import zhCN from "@/locales/zh-CN.json";
 import enUS from "@/locales/en-US.json";
@@ -24,14 +23,9 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
 }
 
 export function useTranslation() {
-  const { settings } = useSettings();
-  const [locale, setLocale] = useState<string>("zh-CN");
-
-  useEffect(() => {
-    if (settings?.language) {
-      setLocale(settings.language);
-    }
-  }, [settings?.language]);
+  // 统一走 Settings Store：仅订阅 language，语言切换即时全局生效，
+  // 其它设置变化不会触发翻译消费者重渲染
+  const locale = useSettingsStore((s) => s.settings?.language ?? "zh-CN");
 
   const t = useCallback(
     (key: string, params?: Record<string, string>): string => {

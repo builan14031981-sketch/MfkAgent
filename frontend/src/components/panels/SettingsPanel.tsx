@@ -36,8 +36,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [apiKeysSynced, setApiKeysSynced] = useState(false);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    // 仅首次未加载时拉取，避免每次打开面板重复全量 GET + loading 翻转
+    if (!settings) fetchSettings();
+  }, [settings, fetchSettings]);
 
   // 当 settings 加载完成后，将当前 API Key 值同步到本地暂存（渲染期调整，避免 effect setState）
   if (settings && !apiKeysSynced) {
@@ -293,6 +294,105 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   <option value="ibm-plex-sans">{t("settings.general.font.ibm-plex-sans")}</option>
                 </select>
               </div>
+
+              {/* 首页启动主题（规则控制；主题管理/切换留在首页） */}
+              <div style={{ marginBottom: "28px" }}>
+                <h3 style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "var(--text-level-1)",
+                  margin: 0,
+                }}>{t("settings.general.heroTheme.title")}</h3>
+                <p style={{
+                  fontSize: "12px",
+                  color: "var(--text-level-3)",
+                  margin: "2px 0 12px 0",
+                }}>{t("settings.general.heroTheme.desc")}</p>
+
+                {/* 启用首页主题入口 */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}>
+                  <div>
+                    <h4 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+                      {t("settings.general.heroTheme.entry")}
+                    </h4>
+                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
+                      {t("settings.general.heroTheme.entryDesc")}
+                    </p>
+                  </div>
+                  <SwitchButton
+                    checked={settings?.hero_entry !== "0"}
+                    disabled={saving === "hero_entry"}
+                    onChange={(v) => handleUpdate("hero_entry", v ? "1" : "0")}
+                  />
+                </div>
+
+                {/* 启动时随机主题 */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}>
+                  <div>
+                    <h4 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+                      {t("settings.general.heroTheme.random")}
+                    </h4>
+                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
+                      {t("settings.general.heroTheme.randomDesc")}
+                    </p>
+                  </div>
+                  <SwitchButton
+                    checked={settings?.hero_random !== "0"}
+                    disabled={saving === "hero_random"}
+                    onChange={(v) => handleUpdate("hero_random", v ? "1" : "0")}
+                  />
+                </div>
+
+                {/* 随机范围 */}
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}>
+                  <div>
+                    <h4 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+                      {t("settings.general.heroTheme.scope")}
+                    </h4>
+                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
+                      {t("settings.general.heroTheme.scopeDesc")}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", padding: "3px", borderRadius: "var(--radius-sm)", background: "var(--bg-level-2)" }}>
+                    {[
+                      { value: "all", label: t("settings.general.heroTheme.scopeAll") },
+                      { value: "favorites", label: t("settings.general.heroTheme.scopeFavorites") },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => handleUpdate("hero_random_scope", opt.value)}
+                        disabled={saving === "hero_random_scope"}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: "var(--radius-xs)",
+                          border: "none",
+                          background: (settings?.hero_random_scope || "all") === opt.value ? "var(--bg-level-1)" : "transparent",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          color: (settings?.hero_random_scope || "all") === opt.value ? "var(--text-level-1)" : "var(--text-level-3)",
+                          opacity: saving === "hero_random_scope" ? 0.7 : 1,
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
@@ -342,6 +442,47 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         </option>
                       ))
                     )}
+                  </select>
+                </div>
+              </div>
+
+              {/* 默认推理程度 */}
+              <div style={{ marginBottom: "28px" }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}>
+                  <div>
+                    <h3 style={{
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: "var(--text-level-1)",
+                      margin: 0,
+                    }}>{t("settings.model.reasoningEffort.title")}</h3>
+                    <p style={{
+                      fontSize: "12px",
+                      color: "var(--text-level-3)",
+                      margin: "2px 0 0 0",
+                    }}>{t("settings.model.reasoningEffort.desc")}</p>
+                  </div>
+                  <select
+                    value={settings?.default_reasoning_effort || "none"}
+                    onChange={(e) => handleUpdate("default_reasoning_effort", e.target.value)}
+                    disabled={saving === "default_reasoning_effort"}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid var(--border-primary)",
+                      background: "var(--bg-level-2)",
+                      fontSize: "13px",
+                      color: "var(--text-level-2)",
+                      opacity: saving === "default_reasoning_effort" ? 0.7 : 1,
+                    }}
+                  >
+                    <option value="none">{t("chat.reasoning.off")}</option>
+                    <option value="low">{t("chat.reasoning.fast")}</option>
+                    <option value="high">{t("chat.reasoning.deep")}</option>
                   </select>
                 </div>
               </div>
@@ -522,11 +663,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 max="100"
                 step="25"
                 value={settings?.default_personality || "50"}
-                onChange={(e) => handleUpdate("default_personality", e.target.value)}
-                disabled={saving === "default_personality"}
+                onChange={(e) => {
+                  // 拖动中乐观本地更新 + 后台保存，不 setSaving/disabled，避免中断拖动
+                  updateSetting("default_personality", e.target.value);
+                }}
                 style={{
                   width: "100%",
-                  opacity: saving === "default_personality" ? 0.7 : 1,
                 }}
               />
               <div style={{
@@ -663,5 +805,46 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
         </div>
       </div>
     </Panel>
+  );
+}
+
+interface SwitchButtonProps {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (value: boolean) => void;
+}
+
+/** 通用开关（设置项用） */
+function SwitchButton({ checked, disabled, onChange }: SwitchButtonProps) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      style={{
+        width: 34,
+        height: 19,
+        borderRadius: 999,
+        border: "none",
+        background: checked ? "var(--color-primary)" : "var(--bg-level-4)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        position: "relative",
+        transition: "background 0.2s ease",
+        flexShrink: 0,
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      <span style={{
+        position: "absolute",
+        top: 2,
+        left: checked ? 17 : 2,
+        width: 15,
+        height: 15,
+        borderRadius: "50%",
+        background: "#fff",
+        transition: "left 0.2s ease",
+      }} />
+    </button>
   );
 }

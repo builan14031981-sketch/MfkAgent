@@ -20,7 +20,7 @@ interface SettingsState {
   updateSettings: (updates: Record<string, string>) => Promise<void>;
 }
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
+export const useSettingsStore = create<SettingsState>((set) => ({
   settings: null,
   loading: true,
   fetchSettings: async () => {
@@ -40,7 +40,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value }),
       });
-      await get().fetchSettings();
+      // 本地乐观合并，避免全量拉取引发的 loading 翻转与整树重渲染
+      set((state) => ({
+        settings: state.settings ? { ...state.settings, [key]: value } : state.settings,
+      }));
     } catch (err) {
       console.error("Failed to update setting:", err);
     }
@@ -52,7 +55,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settings: updates }),
       });
-      await get().fetchSettings();
+      // 本地乐观合并
+      set((state) => ({
+        settings: state.settings ? { ...state.settings, ...updates } : state.settings,
+      }));
     } catch (err) {
       console.error("Failed to update settings:", err);
     }
