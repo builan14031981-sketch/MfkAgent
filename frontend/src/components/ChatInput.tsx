@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Plus, FileUp, FolderPlus, Trash2, Send, Brain, Folder, X, Check, ChevronDown } from "lucide-react";
+import { Plus, FileUp, FolderPlus, Trash2, Send, Brain, Folder, X, Check, ChevronDown, Wrench, Compass } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { FilePill } from "@/components/FileDropZone";
@@ -11,6 +11,8 @@ import { AgentIcon } from "@/components/AgentIcon";
 import type { Model } from "@/hooks/useModels";
 
 export type ReasoningEffort = "none" | "low" | "high";
+/** 会话工作模式：build（可写）/ plan（只读） */
+export type ChatMode = "build" | "plan";
 
 // agent_id → 展示组合（label/desc/personality），仅在 allowAgentChange 时渲染
 const AGENT_COMBOS: { agentId: string; label: string; desc: string; personality: number }[] = [
@@ -42,6 +44,9 @@ export interface ChatInputProps {
 
   reasoningEffort: ReasoningEffort;
   onReasoningChange: (e: ReasoningEffort) => void;
+
+  mode: ChatMode;
+  onModeChange: (m: ChatMode) => void;
 
   // Agent 锁定：仅一级入口（首页）允许切换，二级对话页隐藏切换下拉
   allowAgentChange?: boolean;
@@ -78,6 +83,8 @@ export function ChatInput({
   onModelChange,
   reasoningEffort,
   onReasoningChange,
+  mode,
+  onModeChange,
   allowAgentChange = false,
   agentId,
   onAgentChange,
@@ -92,35 +99,52 @@ export function ChatInput({
 }: ChatInputProps) {
   const { t } = useTranslation();
   const { agents, loading: agentsLoading } = useAgents();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [reasoningOpen, setReasoningOpen] = useState(false);
-  const [modelOpen, setModelOpen] = useState(false);
-  const [agentOpen, setAgentOpen] = useState(false);
+  // 互斥规则：同一时刻只允许一个下拉展开，展开新胶囊自动关闭旧胶囊
+  const [activePop, setActivePop] = useState<string | null>(null);
   const [agentDropdownPos, setAgentDropdownPos] = useState({ bottom: 0, left: 0 });
+  const menuOpen = activePop === "menu";
+  const reasoningOpen = activePop === "reasoning";
+  const modeOpen = activePop === "mode";
+  const modelOpen = activePop === "model";
+  const agentOpen = activePop === "agent";
+
+  // 展开/收起指定胶囊（再次点击同胶囊则收起）
+  const togglePop = useCallback((key: string | null) => {
+    setActivePop((prev) => (prev === key ? null : key));
+  }, []);
   const agentBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const reasoningRef = useRef<HTMLDivElement>(null);
+  const modeRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalTextareaRef ?? internalTextareaRef;
 
-  // 点击外部关闭弹出层（Agent / + 菜单 / 模型下拉 / 思考模式下拉）
+  // 点击外部关闭当前展开的弹出层（互斥：同一时刻仅一个）
   useEffect(() => {
+    if (!activePop) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (agentBtnRef.current?.contains(target)) return;
       const portal = document.getElementById("agent-dropdown-portal");
-      if (portal?.contains(target)) return;
-      if (menuRef.current && !menuRef.current.contains(target)) setMenuOpen(false);
-      if (reasoningRef.current && !reasoningRef.current.contains(target)) setReasoningOpen(false);
-      if (modelRef.current && !modelRef.current.contains(target)) setModelOpen(false);
-      if (portal) setAgentOpen(false);
+      const refFor = (key: string): HTMLElement | null => {
+        switch (key) {
+          case "agent": return agentBtnRef.current;
+          case "menu": return menuRef.current;
+          case "reasoning": return reasoningRef.current;
+          case "mode": return modeRef.current;
+          case "model": return modelRef.current;
+          default: return null;
+        }
+      };
+      const el = refFor(activePop);
+      if (el && el.contains(target)) return;
+      if (activePop === "agent" && portal?.contains(target)) return;
+      setActivePop(null);
     };
-    if (!menuOpen && !reasoningOpen && !modelOpen && !agentOpen) return;
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen, reasoningOpen, modelOpen, agentOpen]);
+  }, [activePop]);
 
   // 自适应高度
   useEffect(() => {
@@ -175,12 +199,12 @@ export function ChatInput({
   }, [draftKey]);
 
   const handlePickFile = () => {
-    setMenuOpen(false);
+    setActivePop(null);
     fileInputRef.current?.click();
   };
 
   const handlePickDirectory = async () => {
-    setMenuOpen(false);
+    setActivePop(null);
     const dir = await selectDirectory();
     if (dir) onSelectDirectory(dir);
   };
@@ -258,6 +282,7 @@ export function ChatInput({
     fontSize: "12px",
     fontWeight: 500,
     lineHeight: 1.25,
+    whiteSpace: "nowrap",
     color: "var(--text-level-2)",
     borderRadius: "var(--radius-sm)",
     textAlign: "left",
@@ -270,7 +295,14 @@ export function ChatInput({
     { value: "high", label: t("chat.reasoning.deep") },
   ];
 
+  const modeOptions: { value: ChatMode; label: string; icon: typeof Wrench }[] = [
+    { value: "build", label: t("chat.mode.build"), icon: Wrench },
+    { value: "plan", label: t("chat.mode.plan"), icon: Compass },
+  ];
+
   const currentReasoningLabel = reasoningModes.find((m) => m.value === reasoningEffort)?.label ?? "";
+  const currentModeLabel = modeOptions.find((m) => m.value === mode)?.label ?? "";
+  const CurrentModeIcon = modeOptions.find((m) => m.value === mode)?.icon ?? Wrench;
   const currentModelName = models.find((m) => m.id === modelId)?.name ?? modelId ?? "";
   const currentAgentCombo = AGENT_COMBOS.find((c) => c.agentId === agentId);
   const currentAgentLabel = currentAgentCombo?.label ?? agents.find((a) => a.id === agentId)?.name ?? "";
@@ -381,7 +413,7 @@ export function ChatInput({
           {/* + 极简菜单按钮（最左第一位）28x28 */}
           <div style={{ position: "relative", flexShrink: 0 }} ref={menuRef}>
             <button
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => togglePop("menu")}
               title={t("chat.menu.uploadFile")}
               style={{
                 ...pillStyle,
@@ -436,7 +468,7 @@ export function ChatInput({
                 }} />
                 <button
                   onClick={() => {
-                    setMenuOpen(false);
+                    setActivePop(null);
                     onClearContext();
                   }}
                   disabled={!hasContext}
@@ -485,7 +517,7 @@ export function ChatInput({
                         left: Math.max(8, Math.min(rect.left, window.innerWidth - 170)),
                       });
                     }
-                    setAgentOpen((v) => !v);
+                    togglePop("agent");
                   }}
                   style={{
                     ...pillStyle,
@@ -534,7 +566,7 @@ export function ChatInput({
                           key={combo.agentId}
                           onClick={() => {
                             onAgentChange?.(combo.agentId, combo.personality);
-                            setAgentOpen(false);
+                            setActivePop(null);
                           }}
                           style={{
                             display: "flex",
@@ -601,7 +633,7 @@ export function ChatInput({
               flexShrink: 0,
             }} ref={modelRef}>
               <button
-                onClick={() => setModelOpen((v) => !v)}
+                onClick={() => togglePop("model")}
                 title={currentModelName}
                 style={{
                   ...pillStyle,
@@ -640,7 +672,7 @@ export function ChatInput({
                         key={model.id}
                         onClick={() => {
                           onModelChange(model.id);
-                          setModelOpen(false);
+                          setActivePop(null);
                         }}
                         style={{
                           ...popoverItemStyle,
@@ -665,10 +697,67 @@ export function ChatInput({
             </div>
           )}
 
+          {/* 工作模式 - 下拉胶囊按钮 + Popover（build 可写 / plan 只读） */}
+          <div style={{ position: "relative", flexShrink: 0 }} ref={modeRef}>
+            <button
+              onClick={() => togglePop("mode")}
+              title={currentModeLabel}
+              style={{
+                ...pillStyle,
+                background: modeOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
+                color: modeOpen ? "var(--color-primary)" : "var(--text-level-2)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-4)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = modeOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
+                e.currentTarget.style.color = modeOpen ? "var(--color-primary)" : "var(--text-level-2)";
+              }}
+            >
+              <CurrentModeIcon style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
+              <span>{currentModeLabel}</span>
+              <ChevronDown style={{
+                ...chevronStyle,
+                transform: modeOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform var(--transition-normal)",
+              }} />
+            </button>
+
+            {modeOpen && (
+              <div style={{ ...popoverStyle, minWidth: 112 }}>
+                {modeOptions.map((opt) => {
+                  const active = mode === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        onModeChange(opt.value);
+                        setActivePop(null);
+                      }}
+                      style={{
+                        ...popoverItemStyle,
+                        color: active ? "var(--color-primary)" : "var(--text-level-2)",
+                        fontWeight: active ? 600 : 400,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <opt.icon style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{opt.label}</span>
+                      {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* 思考模式 - 下拉胶囊按钮 + Popover */}
           <div style={{ position: "relative", flexShrink: 0 }} ref={reasoningRef}>
             <button
-              onClick={() => setReasoningOpen((v) => !v)}
+              onClick={() => togglePop("reasoning")}
               title={currentReasoningLabel}
               style={{
                 ...pillStyle,
@@ -702,7 +791,7 @@ export function ChatInput({
                       key={mode.value}
                       onClick={() => {
                         onReasoningChange(mode.value);
-                        setReasoningOpen(false);
+                        setActivePop(null);
                       }}
                       style={{
                         ...popoverItemStyle,

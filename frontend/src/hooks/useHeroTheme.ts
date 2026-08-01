@@ -9,30 +9,31 @@ const STORAGE_THEME = "mfk_hero_theme";
 const STORAGE_ENABLED = "mfk_hero_theme_enabled";
 const STORAGE_FAVORITES = "mfk_hero_favorites";
 
-/** 收藏位上限 */
-export const MAX_FAVORITES = 5;
-/** 默认收藏（保证开箱即有快速切换入口） */
-const DEFAULT_FAVORITES = ["cyber-terminal", "8bit-boot", "ai-awakening"];
+/** 默认收藏（保证开箱即有快速切换入口；收藏数量无上限） */
+const DEFAULT_FAVORITES = ["cyber-terminal", "ai-awakening"];
 
 /** 会话级决策标志：每次应用启动只随机一次；手动选择/手动随机后不再被启动随机覆盖 */
 let sessionDecided = false;
 
-function readFavorites(): string[] {
+/** 解析收藏字符串（过滤无效主题；数量无上限） */
+function parseFavorites(raw: string | null): string[] {
+  if (!raw) return [];
   try {
-    const raw = localStorage.getItem(STORAGE_FAVORITES);
-    if (raw !== null) {
-      const parsed: unknown = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .filter((id): id is string => typeof id === "string" && !!getHeroTheme(id))
-          .slice(0, MAX_FAVORITES);
-      }
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((id): id is string => typeof id === "string" && !!getHeroTheme(id));
     }
   } catch {
     /* ignore */
   }
-  // 首次使用：播种默认收藏
-  return DEFAULT_FAVORITES.filter((id) => !!getHeroTheme(id));
+  return [];
+}
+
+/** 读取本地缓存收藏；从未设置时播种默认收藏（"[]"= 用户已清空，不重新播种） */
+function readLocalFavorites(): string[] {
+  const raw = localStorage.getItem(STORAGE_FAVORITES);
+  if (raw === null) return DEFAULT_FAVORITES.filter((id) => !!getHeroTheme(id));
+  return parseFavorites(raw);
 }
 
 function persistFavorites(favorites: string[]) {
@@ -48,11 +49,13 @@ function persistFavorites(favorites: string[]) {
  * - 每次应用启动从「设置指定范围」中随机选择一个启动主题（默认全部主题）
  * - 用户手动选择后，本会话内不再被启动随机覆盖
  * - 收藏机制：首页快速切换只展示收藏主题（上限 MAX_FAVORITES）
+ * - 收藏持久化：后端 Settings（本地 SQLite，hero_favorites）为权威源，
+ *   localStorage 作为本地缓存，跨重启/跨标签记住用户个人喜好
  * - 可随时关闭动画 / 通过设置关闭整个入口
- * - 偏好持久化到 localStorage，规则控制走 Settings（后端）
+ * - 规则控制走 Settings（后端）
  */
 export function useHeroTheme() {
-  const { settings } = useSettingsStore();
+  const { settings, updateSetting } = useSettingsStore();
   const [theme, setThemeState] = useState<HeroTheme | undefined>(undefined);
   const [enabled, setEnabledState] = useState(true);
   const [favorites, setFavoritesState] = useState<string[]>([]);
@@ -80,14 +83,29 @@ export function useHeroTheme() {
     const decide = (randomOn: boolean, scope: "all" | "favorites") => {
       let savedId: string | null = null;
       let savedEnabled = true;
-      let favs: string[] = [];
+      let localFavs: string[] = [];
       try {
         savedId = localStorage.getItem(STORAGE_THEME);
         savedEnabled = localStorage.getItem(STORAGE_ENABLED) !== "0";
-        favs = readFavorites();
+        localFavs = readLocalFavorites();
       } catch {
         /* ignore */
       }
+
+      // 收藏：后端 Settings（本地 SQLite）为权威源，localStorage 为缓存
+      let favs = localFavs;
+      const remoteRaw = settings?.hero_favorites ?? null;
+      if (remoteRaw) {
+        const remote = parseFavorites(remoteRaw);
+        if (remote.length > 0) favs = remote;
+      }
+      persistFavorites(favs);
+
+      // 首次使用（后端尚无收藏记录）：写入默认收藏，生成本地个人喜好配置
+      if (settings !== null && (!remoteRaw || remoteRaw === "[]")) {
+        updateSetting("hero_favorites", JSON.stringify(favs));
+      }
+
       setEnabledState(savedEnabled);
       setFavoritesState(favs);
 
@@ -157,21 +175,13 @@ export function useHeroTheme() {
   const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);
 
   const toggleFavorite = useCallback((id: string) => {
-    setFavoritesState((prev) => {
-      const has = prev.includes(id);
-      let next: string[];
-      if (has) {
-        next = prev.filter((f) => f !== id);
-      } else if (prev.length >= MAX_FAVORITES) {
-        // 收藏位已满：挤出最旧收藏
-        next = [...prev.slice(1), id];
-      } else {
-        next = [...prev, id];
-      }
-      persistFavorites(next);
-      return next;
-    });
-  }, []);
+    const has = favorites.includes(id);
+    const next = has ? favorites.filter((f) => f !== id) : [...favorites, id];
+    setFavoritesState(next);
+    persistFavorites(next);
+    // 同步到后端 Settings（本地 SQLite），生成用户个人喜好配置
+    updateSetting("hero_favorites", JSON.stringify(next));
+  }, [favorites, updateSetting]);
 
   const favoriteThemes = HERO_THEMES.filter((t) => favorites.includes(t.id));
 

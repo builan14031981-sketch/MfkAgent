@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { Palette, X, Check, Power, Star, ArrowLeft, ChevronDown, Shuffle, Layers } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { THEME_CATEGORIES } from "@/themes/registry";
-import { MAX_FAVORITES } from "@/hooks/useHeroTheme";
 import type { HeroTheme } from "@/themes/types";
 
 interface ThemeSwitcherProps {
@@ -30,10 +29,10 @@ interface PanelPos {
 
 /**
  * 首页主题快速切换器：
- * - 快捷区：只展示收藏主题（上限 5），一键切换
+ * - 快捷区：展示全部收藏主题，一键切换
  * - 「查看更多」→ 完整主题列表（分类分组、可折叠、紧凑高密度，支撑 20+ 主题）
- * - 定位：自适应上/下展开 + maxHeight 内部滚动 + Portal 挂 body，
- *   入口附近空间不足时自动翻转方向，杜绝内容被遮挡/截断
+ * - 定位：自适应上/下展开 + maxHeight 内部滚动（无可见滚动条）+ Portal 挂 body，
+ *   入口附近空间不足时自动翻转方向，杜绝内容被遮挡/截断；跟随页面滚动实时重锚
  */
 export function ThemeSwitcher({
   theme,
@@ -58,15 +57,18 @@ export function ThemeSwitcher({
   const updatePos = useCallback(() => {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const spaceAbove = rect.top - 8;
-    const spaceBelow = window.innerHeight - rect.bottom - 8;
-    const openUp = spaceBelow < 260 && spaceAbove > spaceBelow;
+    const gap = 4;
+    const spaceAbove = rect.top - gap;
+    const spaceBelow = window.innerHeight - rect.bottom - gap;
+    const openUp = spaceBelow < 300 && spaceAbove > spaceBelow;
+    const available = (openUp ? spaceAbove : spaceBelow) - gap;
     setPos({
       right: window.innerWidth - rect.right - 4,
       ...(openUp
-        ? { bottom: window.innerHeight - rect.top + 8 }
-        : { top: rect.bottom + 8 }),
-      maxHeight: Math.max((openUp ? spaceAbove : spaceBelow) - 8, 160),
+        ? { bottom: window.innerHeight - rect.top + gap }
+        : { top: rect.bottom + gap }),
+      // 上限 520px：保持面板贴近按钮，内容多时内部滚动而非向下延伸过远
+      maxHeight: Math.max(Math.min(available, 520), 160),
     });
   }, []);
 
@@ -86,6 +88,7 @@ export function ThemeSwitcher({
       if (e.key === "Escape") closePanel();
     };
     const onResize = () => updatePos();
+    const onScroll = () => updatePos();
     const onMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
       if (panelRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
@@ -94,10 +97,13 @@ export function ThemeSwitcher({
     window.addEventListener("resize", onResize);
     window.addEventListener("keydown", onKey);
     window.addEventListener("mousedown", onMouseDown);
+    // 捕获阶段监听：任意滚动容器滚动时跟随按钮重锚，避免面板脱离按钮
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [open, updatePos, closePanel]);
 
@@ -156,6 +162,7 @@ export function ThemeSwitcher({
             width: 272,
             maxHeight: pos.maxHeight,
             overflowY: "auto",
+            overscrollBehavior: "contain",
             zIndex: 9999,
             borderRadius: 12,
             border: "1px solid var(--border-primary)",
@@ -164,6 +171,7 @@ export function ThemeSwitcher({
             padding: 6,
             animation: "scaleIn 0.15s ease",
           }}
+          className="no-scrollbar"
         >
           {/* 头部：返回 / 标题 / 随机 / 关闭 */}
           <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 2px 8px" }}>
@@ -201,7 +209,7 @@ export function ThemeSwitcher({
               <div style={{ fontSize: 11, color: "var(--text-level-4)", padding: "0 4px 6px", display: "flex", alignItems: "center", gap: 6 }}>
                 <Star style={{ width: 11, height: 11, color: "var(--color-warning)", fill: "var(--color-warning)" }} />
                 <span>{t("home.hero.favorites")}</span>
-                <span style={{ marginLeft: "auto" }}>{favorites.length}/{MAX_FAVORITES}</span>
+                <span style={{ marginLeft: "auto" }}>{favorites.length}</span>
               </div>
 
               {favoriteThemes.length === 0 ? (

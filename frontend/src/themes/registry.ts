@@ -1,22 +1,33 @@
 import type { HeroTheme, ThemeCategory } from "./types";
 import { CyberTerminalTheme } from "@/components/hero/themes/CyberTerminalTheme";
-import { Bit8BootTheme } from "@/components/hero/themes/Bit8BootTheme";
 import { AIAwakeningTheme } from "@/components/hero/themes/AIAwakeningTheme";
 import { GitDeveloperTheme } from "@/components/hero/themes/GitDeveloperTheme";
 import { RetroDosTheme } from "@/components/hero/themes/RetroDosTheme";
-import { StaticTitle } from "@/components/hero/StaticTitle";
-import { LinuxKernelTheme } from "@/components/hero/themes/LinuxKernelTheme";
 import { AssemblyCodeTheme } from "@/components/hero/themes/AssemblyCodeTheme";
 import { VscodeIdeTheme } from "@/components/hero/themes/VscodeIdeTheme";
-import { GitCommitTheme } from "@/components/hero/themes/GitCommitTheme";
-import { MatrixDataTheme } from "@/components/hero/themes/MatrixDataTheme";
-import { CrtMonitorTheme } from "@/components/hero/themes/CrtMonitorTheme";
-import { MechanicalTerminalTheme } from "@/components/hero/themes/MechanicalTerminalTheme";
 import { OpenSourceTheme } from "@/components/hero/themes/OpenSourceTheme";
-import { BlueprintEngineeringTheme } from "@/components/hero/themes/BlueprintEngineeringTheme";
 import { NeuralNetworkTheme } from "@/components/hero/themes/NeuralNetworkTheme";
-import { AgentInitTheme } from "@/components/hero/themes/AgentInitTheme";
 import { QuantumCoreTheme } from "@/components/hero/themes/QuantumCoreTheme";
+import { AgentInitTheme } from "@/components/hero/themes/AgentInitTheme";
+import { BlueprintEngineeringTheme } from "@/components/hero/themes/BlueprintEngineeringTheme";
+import { AppleMinimalTheme } from "@/components/hero/themes/AppleMinimalTheme";
+import { FutureOsTheme } from "@/components/hero/themes/FutureOsTheme";
+import { PixelRpgTheme } from "@/components/hero/themes/PixelRpgTheme";
+import { NeoBrutalismTheme } from "@/components/hero/themes/NeoBrutalismTheme";
+import { CyberpunkNeonTheme } from "@/components/hero/themes/CyberpunkNeonTheme";
+import { RetroTerminalTheme } from "@/components/hero/themes/RetroTerminalTheme";
+import { VaporwaveTheme } from "@/components/hero/themes/VaporwaveTheme";
+import { GlitchArtTheme } from "@/components/hero/themes/GlitchArtTheme";
+import { ClaymorphismTheme } from "@/components/hero/themes/ClaymorphismTheme";
+import { BauhausTheme } from "@/components/hero/themes/BauhausTheme";
+import { WabiSabiTheme } from "@/components/hero/themes/WabiSabiTheme";
+import { MetroTheme } from "@/components/hero/themes/MetroTheme";
+import { SteampunkTheme } from "@/components/hero/themes/SteampunkTheme";
+import { NeumorphismTheme } from "@/components/hero/themes/NeumorphismTheme";
+import { EditorialTheme } from "@/components/hero/themes/EditorialTheme";
+import { RetroConsoleTheme } from "@/components/hero/themes/RetroConsoleTheme";
+import { Win9xDesktopTheme } from "@/components/hero/themes/Win9xDesktopTheme";
+import { GameBoyTheme } from "@/components/hero/themes/GameBoyTheme";
 
 /**
  * Hero 主题分类（完整列表分组用，20+ 主题时的扩展基础）。
@@ -25,9 +36,12 @@ import { QuantumCoreTheme } from "@/components/hero/themes/QuantumCoreTheme";
 export const THEME_CATEGORIES: ThemeCategory[] = [
   { id: "classic", label: "Classic" },
   { id: "terminal", label: "Terminal" },
+  { id: "system", label: "System" },
   { id: "retro", label: "Retro" },
-  { id: "cinematic", label: "Cinematic" },
   { id: "developer", label: "Developer" },
+  { id: "cinematic", label: "Cinematic" },
+  { id: "ai", label: "AI Future" },
+  { id: "design", label: "Design" },
 ];
 
 /**
@@ -35,33 +49,48 @@ export const THEME_CATEGORIES: ThemeCategory[] = [
  * 新主题只需在此追加一条记录即可被 ThemeManager 识别。
  */
 export const HERO_THEMES: HeroTheme[] = [
-  // ===== 原有主题 =====
-  { id: "classic", name: "Classic", category: "classic", accent: "#0071e3", component: StaticTitle },
+  // ===== Terminal 终端 =====
   { id: "cyber-terminal", name: "Cyber Terminal", category: "terminal", accent: "#00ff9c", component: CyberTerminalTheme },
-  { id: "8bit-boot", name: "8-Bit Boot", category: "retro", accent: "#22c55e", component: Bit8BootTheme },
-  { id: "ai-awakening", name: "AI Awakening", category: "cinematic", accent: "#8b5cf6", component: AIAwakeningTheme },
-  { id: "git-developer", name: "Git Developer", category: "developer", accent: "#f97316", component: GitDeveloperTheme },
+  { id: "retro-terminal", name: "Retro Terminal", category: "terminal", accent: "#00FF00", component: RetroTerminalTheme },
+
+  // ===== Retro 复古 =====
   { id: "retro-dos", name: "Retro DOS", category: "retro", accent: "#38bdf8", component: RetroDosTheme },
+  { id: "pixel-rpg", name: "Pixel RPG", category: "retro", accent: "#2ECC71", component: PixelRpgTheme },
+  { id: "retro-console", name: "Retro Console", category: "retro", accent: "#E60012", component: RetroConsoleTheme },
+  { id: "game-boy", name: "Game Boy", category: "retro", accent: "#8BAC0F", component: GameBoyTheme },
+  { id: "steampunk", name: "Steampunk", category: "retro", accent: "#CD7F32", component: SteampunkTheme },
 
-  // ===== A. 开发者文化 =====
-  { id: "linux-kernel", name: "Linux Kernel", category: "developer", accent: "#a3e635", component: LinuxKernelTheme },
+  // ===== Developer 开发者 =====
+  { id: "git-developer", name: "Git Developer", category: "developer", accent: "#f97316", component: GitDeveloperTheme },
   { id: "assembly-code", name: "Assembly Code", category: "developer", accent: "#f87171", component: AssemblyCodeTheme },
-  { id: "vscode-ide", name: "VS Code / IDE", category: "developer", accent: "#007acc", component: VscodeIdeTheme },
-  { id: "git-commit", name: "Git Commit", category: "developer", accent: "#f97316", component: GitCommitTheme },
-  { id: "open-source", name: "Open Source", category: "developer", accent: "#3b82f6", component: OpenSourceTheme },
-  { id: "mechanical-terminal", name: "Mechanical Terminal", category: "terminal", accent: "#d4a574", component: MechanicalTerminalTheme },
+  { id: "vscode-ide", name: "VS Code IDE", category: "developer", accent: "#3b82f6", component: VscodeIdeTheme },
+  { id: "open-source", name: "Open Source", category: "developer", accent: "#6366f1", component: OpenSourceTheme },
 
-  // ===== B. 计算机历史 / 复古 =====
-  { id: "crt-monitor", name: "CRT Monitor", category: "retro", accent: "#facc15", component: CrtMonitorTheme },
+  // ===== Cinematic 影院 / 视觉氛围 =====
+  { id: "ai-awakening", name: "AI Awakening", category: "cinematic", accent: "#8b5cf6", component: AIAwakeningTheme },
+  { id: "cyberpunk-neon", name: "Cyberpunk Neon", category: "cinematic", accent: "#FF00FF", component: CyberpunkNeonTheme },
+  { id: "vaporwave", name: "Vaporwave", category: "cinematic", accent: "#B57EDC", component: VaporwaveTheme },
+  { id: "glitch-art", name: "Glitch Art", category: "cinematic", accent: "#00F0FF", component: GlitchArtTheme },
 
-  // ===== C. AI 未来感 =====
-  { id: "matrix-data", name: "Matrix Data", category: "cinematic", accent: "#00ff41", component: MatrixDataTheme },
-  { id: "neural-network", name: "Neural Network", category: "cinematic", accent: "#8b5cf6", component: NeuralNetworkTheme },
-  { id: "agent-init", name: "Agent Init", category: "cinematic", accent: "#06b6d4", component: AgentInitTheme },
-  { id: "quantum-core", name: "Quantum Core", category: "cinematic", accent: "#00ffff", component: QuantumCoreTheme },
+  // ===== AI 未来感 =====
+  { id: "neural-network", name: "Neural Network", category: "ai", accent: "#a78bfa", component: NeuralNetworkTheme },
+  { id: "quantum-core", name: "Quantum Core", category: "ai", accent: "#c084fc", component: QuantumCoreTheme },
+  { id: "agent-init", name: "Agent Init", category: "ai", accent: "#34d399", component: AgentInitTheme },
 
-  // ===== D. 品牌视觉 / 工程 =====
-  { id: "blueprint-engineering", name: "Blueprint Engineering", category: "developer", accent: "#60a5fa", component: BlueprintEngineeringTheme },
+  // ===== Design 设计 / 品牌视觉 =====
+  { id: "blueprint-engineering", name: "Blueprint Engineering", category: "design", accent: "#60a5fa", component: BlueprintEngineeringTheme },
+  { id: "apple-minimal", name: "Apple Minimal", category: "design", accent: "#e5e5e5", component: AppleMinimalTheme },
+  { id: "future-os", name: "Future OS", category: "design", accent: "#818cf8", component: FutureOsTheme },
+  { id: "neo-brutalism", name: "Neo-Brutalism", category: "design", accent: "#FFE83C", component: NeoBrutalismTheme },
+  { id: "claymorphism", name: "Claymorphism", category: "design", accent: "#B3E5FC", component: ClaymorphismTheme },
+  { id: "bauhaus", name: "Bauhaus", category: "design", accent: "#E3000F", component: BauhausTheme },
+  { id: "wabi-sabi", name: "Wabi-Sabi", category: "design", accent: "#6B7B3A", component: WabiSabiTheme },
+  { id: "neumorphism", name: "Neumorphism", category: "design", accent: "#E0E5EC", component: NeumorphismTheme },
+  { id: "editorial", name: "Editorial", category: "design", accent: "#C62828", component: EditorialTheme },
+
+  // ===== System 系统 UI =====
+  { id: "win9x-desktop", name: "Win9x Desktop", category: "system", accent: "#C0C0C0", component: Win9xDesktopTheme },
+  { id: "metro", name: "Metro", category: "system", accent: "#00A4EF", component: MetroTheme },
 ];
 
 export function getHeroTheme(id: string | null | undefined): HeroTheme | undefined {

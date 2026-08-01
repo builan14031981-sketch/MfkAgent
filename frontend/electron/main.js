@@ -1,8 +1,9 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } = require("electron");
 const path = require("path");
 const http = require("http");
 
 let mainWindow;
+let tray;
 
 function waitForDevServer(url, maxRetries = 60) {
   return new Promise((resolve) => {
@@ -51,6 +52,14 @@ async function createWindow() {
     },
   });
 
+  // 关闭按钮最小化到托盘（托盘「退出」才真正退出）
+  mainWindow.on("close", (e) => {
+    if (!app.isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
   mainWindow.webContents.on("did-fail-load", (event, code, desc, url) => {
     console.error(`[Electron] Failed to load ${url}: ${code} - ${desc}`);
   });
@@ -95,8 +104,31 @@ async function createWindow() {
 
 app.whenReady().then(() => {
   registerIpcHandlers();
+  createTray();
   createWindow();
 });
+
+/** 系统托盘：常驻任务栏图标，右键菜单（显示 / 退出），左键恢复窗口 */
+function createTray() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, "assets", "tray-icon.png"));
+  tray = new Tray(icon);
+  tray.setToolTip("MfkAgent");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "显示 MfkAgent", click: showWindow },
+      { type: "separator" },
+      { label: "退出", click: () => { app.isQuitting = true; app.quit(); } },
+    ])
+  );
+  tray.on("click", showWindow);
+}
+
+function showWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
 
 // 原生目录选择：供渲染进程关联本地项目工作区。
 // 必须在 app ready 后注册，确保 preload 加载时句柄已就绪。
@@ -124,7 +156,8 @@ function registerIpcHandlers() {
 }
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  // 有托盘时窗口关闭是隐藏而非销毁；仅当显式「退出」时才真正退出
+  if (process.platform !== "darwin" && app.isQuitting) {
     app.quit();
   }
 });

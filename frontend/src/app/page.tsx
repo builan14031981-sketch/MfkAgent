@@ -11,6 +11,8 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { apiGet } from "@/lib/api";
 import { ChatComposer } from "@/components/ChatComposer";
+import type { ChatMode } from "@/components/ChatInput";
+import { HeroStage } from "@/components/hero/HeroStage";
 import type { Project } from "@/hooks/useProjects";
 
 export default function Home() {
@@ -31,6 +33,7 @@ export default function Home() {
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
+  const [mode, setMode] = useState<ChatMode>("build");
 
   useEffect(() => {
     let cancelled = false;
@@ -90,7 +93,8 @@ export default function Home() {
         pendingProject?.id ?? null,
         currentModel?.id || settings?.default_model || null,
         personalityLevel,
-        pendingFiles
+        pendingFiles,
+        mode
       );
 
       const encodedMessage = encodeURIComponent(userMessage);
@@ -146,34 +150,8 @@ export default function Home() {
         minHeight: 0,
         overflowY: "auto",
       }}>
-        {/* Logo + 欢迎语 */}
-        <div style={{
-          textAlign: "center",
-          marginBottom: "32px",
-        }}>
-          <h1 style={{
-            fontSize: "44px",
-            fontWeight: "600",
-            letterSpacing: "-0.02em",
-            color: "var(--text-level-1)",
-            margin: 0,
-          }}>MfkAgent</h1>
-          <p style={{
-            fontSize: "16px",
-            color: "var(--text-level-3)",
-            marginTop: "12px",
-            marginBottom: 0,
-          }}>{welcome}</p>
-          {welcomeSubtext && (
-            <p style={{
-              fontSize: "12px",
-              color: "var(--text-level-4)",
-              marginTop: "6px",
-              marginBottom: 0,
-              fontFamily: "var(--font-family)",
-            }}>{welcomeSubtext}</p>
-          )}
-        </div>
+        {/* 启动主题舞台（Hero Theme 系统） */}
+        <HeroStage welcome={welcome} subtext={welcomeSubtext} />
 
         {/* 快捷指令 */}
         {quickStarts.length > 0 && (
@@ -229,6 +207,8 @@ export default function Home() {
         }}
         reasoningEffort={reasoningEffort}
         onReasoningChange={setReasoningEffort}
+        mode={mode}
+        onModeChange={setMode}
         allowAgentChange
         agentId={currentAgent?.id ?? null}
         onAgentChange={handleAgentChange}

@@ -59,7 +59,31 @@
       "设计一个组件方案",
       "分析项目架构",
       "写一份周报"
-    ]
+    ],
+    "hero": {
+      "title": "启动主题",
+      "switchTheme": "切换启动主题",
+      "animations": "开场动画",
+      "favorites": "收藏",
+      "seeMore": "查看更多",
+      "allThemes": "全部主题",
+      "random": "随机",
+      "back": "返回",
+      "noFavorites": "暂无收藏，点 ☆ 收藏常用主题",
+      "favorite": "收藏",
+      "unfavorite": "取消收藏",
+      "categories": {
+        "classic": "经典",
+        "terminal": "终端",
+        "system": "系统",
+        "retro": "复古",
+        "developer": "开发者",
+        "cinematic": "影院",
+        "ai": "AI 未来",
+        "design": "设计",
+        "other": "其他"
+      }
+    }
   },
   "chat": {
     "title": "Chat",
@@ -78,6 +102,10 @@
       "off": "关闭",
       "fast": "快速推理",
       "deep": "深度思考"
+    },
+    "mode": {
+      "build": "构建",
+      "plan": "规划"
     },
     "dropToAttach": "松开以添加文件到上下文",
     "dragHint": "拖拽文件到此处作为上下文",
@@ -128,6 +156,18 @@
         "source-han-sans": "思源黑体",
         "lxgw-wenkai": "霞鹜文楷",
         "ibm-plex-sans": "IBM Plex Sans"
+      },
+      "heroTheme": {
+        "title": "首页启动主题",
+        "desc": "控制首页主题入口与随机规则；收藏与切换在首页完成",
+        "entry": "启用首页主题入口",
+        "entryDesc": "关闭后首页显示静态标题，不展示主题入口",
+        "random": "启动时随机主题",
+        "randomDesc": "每次启动从范围内随机选择主题，保留探索感",
+        "scope": "随机主题范围",
+        "scopeDesc": "随机时的候选主题范围",
+        "scopeAll": "全部主题",
+        "scopeFavorites": "收藏主题"
       }
     },
     "model": {
@@ -135,6 +175,10 @@
       "defaultModel": {
         "title": "默认模型",
         "desc": "新聊天默认使用的 AI 模型"
+      },
+      "reasoningEffort": {
+        "title": "默认推理程度",
+        "desc": "未显式指定时，消息使用的推理档位"
       },
       "apiConfig": {
         "title": "API 配置",

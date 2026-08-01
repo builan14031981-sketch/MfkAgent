@@ -36,6 +36,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
+  const [mode, setMode] = useState<"build" | "plan">("build");
   const [files, setFiles] = useState<string[]>([]);
 
   const handleAttachFile = useCallback((file: File) => {
@@ -65,7 +66,8 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         project.id,
         currentModel?.id || settings?.default_model || null,
         personality,
-        files
+        files,
+        mode
       );
       onCreated();
       onClose();
@@ -176,6 +178,8 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             }}
             reasoningEffort={reasoningEffort}
             onReasoningChange={setReasoningEffort}
+            mode={mode}
+            onModeChange={setMode}
             allowAgentChange
             agentId={currentAgent}
             onAgentChange={(id) => setAgentId(id)}

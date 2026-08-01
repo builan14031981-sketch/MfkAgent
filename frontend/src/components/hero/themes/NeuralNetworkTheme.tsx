@@ -10,7 +10,6 @@ const LAYERS = [
   { y: [36, 82, 128], color: "#a78bfa" },
 ];
 const XS = [70, 210, 350];
-const TITLE_Y = 148;
 
 /** Neural Network — 神经网络节点连线（静态 SVG + 节点微脉冲，轻量） */
 export function NeuralNetworkTheme({ title, welcome, subtext, animated }: HeroThemeProps) {

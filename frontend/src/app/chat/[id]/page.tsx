@@ -17,6 +17,7 @@ import { AgentIcon } from "@/components/AgentIcon";
 import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile } from "@/components/FileDropZone";
 import { ChatComposer } from "@/components/ChatComposer";
+import type { ChatMode } from "@/components/ChatInput";
 import { MessageList } from "@/components/MessageList";
 import type { ToolCall } from "@/components/ToolCallCard";
 
@@ -60,6 +61,8 @@ export default function ChatPage() {
   }
 
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
+  const [mode, setMode] = useState<ChatMode>("build");
+  const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
   const [projectContextOpen, setProjectContextOpen] = useState(false);
   const [contextFiles, setContextFiles] = useState<string[]>([]);
   const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
@@ -68,6 +71,12 @@ export default function ChatPage() {
   if (contextInitForChatId !== chatId && currentChat) {
     setContextInitForChatId(chatId);
     setContextFiles(currentChat.context_files || []);
+  }
+
+  // 工作模式初始值：读会话快照 currentChat.mode（build/plan），切换会话时重置
+  if (modeInitForChatId !== chatId && currentChat) {
+    setModeInitForChatId(chatId);
+    setMode(currentChat.mode === "plan" ? "plan" : "build");
   }
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -540,6 +549,15 @@ export default function ChatPage() {
           }}
           reasoningEffort={reasoningEffort}
           onReasoningChange={setReasoningEffort}
+          mode={mode}
+          onModeChange={(m) => {
+            setMode(m);
+            if (chatId) {
+              updateChat(chatId, { mode: m }).catch((err) =>
+                console.error("Failed to persist mode:", err)
+              );
+            }
+          }}
           onUploadFile={handleUploadFile}
           onSelectDirectory={handleSelectDirectory}
           onClearContext={handleClearContext}

@@ -59,7 +59,31 @@
       "Design a component solution",
       "Analyze the project architecture",
       "Write a weekly report"
-    ]
+    ],
+    "hero": {
+      "title": "Hero Theme",
+      "switchTheme": "Switch hero theme",
+      "animations": "Intro animations",
+      "favorites": "Favorites",
+      "seeMore": "See more",
+      "allThemes": "All themes",
+      "random": "Random",
+      "back": "Back",
+      "noFavorites": "No favorites yet. Tap ☆ to pin themes",
+      "favorite": "Favorite",
+      "unfavorite": "Unfavorite",
+      "categories": {
+        "classic": "Classic",
+        "terminal": "Terminal",
+        "system": "System",
+        "retro": "Retro",
+        "developer": "Developer",
+        "cinematic": "Cinematic",
+        "ai": "AI Future",
+        "design": "Design",
+        "other": "Other"
+      }
+    }
   },
   "chat": {
     "title": "Chat",
@@ -78,6 +102,10 @@
       "off": "Off",
       "fast": "Fast",
       "deep": "Deep"
+    },
+    "mode": {
+      "build": "Build",
+      "plan": "Plan"
     },
     "dropToAttach": "Release to attach files as context",
     "dragHint": "Drag files here to use as context",
@@ -128,6 +156,18 @@
         "source-han-sans": "Source Han Sans",
         "lxgw-wenkai": "LXGW WenKai",
         "ibm-plex-sans": "IBM Plex Sans"
+      },
+      "heroTheme": {
+        "title": "Homepage Hero Theme",
+        "desc": "Control the homepage theme entry and random rules; favorites & switching live on the homepage",
+        "entry": "Enable hero theme entry",
+        "entryDesc": "When off, the homepage shows a static title without the theme entry",
+        "random": "Random theme on launch",
+        "randomDesc": "Pick a random theme from the scope on every launch to keep exploration",
+        "scope": "Random scope",
+        "scopeDesc": "Candidate themes for random picking",
+        "scopeAll": "All themes",
+        "scopeFavorites": "Favorites"
       }
     },
     "model": {
@@ -135,6 +175,10 @@
       "defaultModel": {
         "title": "Default Model",
         "desc": "Default AI model for new chats"
+      },
+      "reasoningEffort": {
+        "title": "Default Reasoning",
+        "desc": "Reasoning level used when not explicitly set"
       },
       "apiConfig": {
         "title": "API Configuration",
