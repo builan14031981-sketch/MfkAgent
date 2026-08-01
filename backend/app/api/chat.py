@@ -513,7 +513,7 @@ def _get_memory_prompt(agent_id: str, user_id: str = "default", project_id: Opti
         if user_memories:
             lines = ["用户记忆："]
             for m in user_memories:
-                lines.append(f"- {m.key}: {m.value}")
+                lines.append(f"- {m.value}")
             sections.append("\n".join(lines))
         if project_id is not None:
             project_memories = (
@@ -530,7 +530,7 @@ def _get_memory_prompt(agent_id: str, user_id: str = "default", project_id: Opti
             if project_memories:
                 lines = ["项目记忆："]
                 for m in project_memories:
-                    lines.append(f"- {m.key}: {m.value}")
+                    lines.append(f"- {m.value}")
                 sections.append("\n".join(lines))
         return "\n\n".join(sections)
     finally:

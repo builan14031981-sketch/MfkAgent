@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost, apiDelete, apiPatch } from "@/lib/api";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
 
 export interface Memory {
   id: number;
@@ -13,6 +13,8 @@ export interface Memory {
   created_at: string;
   updated_at: string;
 }
+
+export type MemoryScope = "agent" | "project";
 
 export function useMemory(agentId: string) {
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -37,12 +39,14 @@ export function useMemory(agentId: string) {
     fetchMemories();
   }, [fetchMemories]);
 
-  async function createMemory(key: string, value: string, memoryType: string = "preference") {
+  async function createMemory(content: string, scope: MemoryScope) {
+    const trimmed = content.trim();
+    if (!trimmed) return;
     await apiPost("/api/memory", {
       agent_id: agentId,
-      key,
-      value,
-      memory_type: memoryType,
+      key: trimmed.slice(0, 24),
+      value: trimmed,
+      memory_type: scope === "project" ? "project" : "user",
     });
     await fetchMemories();
   }
@@ -52,10 +56,5 @@ export function useMemory(agentId: string) {
     await fetchMemories();
   }
 
-  async function updateMemory(id: number, updates: { key?: string; value?: string; memory_type?: string; is_active?: boolean }) {
-    await apiPatch(`/api/memory/${id}`, updates);
-    await fetchMemories();
-  }
-
-  return { memories, loading, error, createMemory, deleteMemory, updateMemory, refetch: fetchMemories };
+  return { memories, loading, error, createMemory, deleteMemory, refetch: fetchMemories };
 }
