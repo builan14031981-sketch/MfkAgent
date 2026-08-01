@@ -128,7 +128,8 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
                 gap: "6px",
                 padding: "8px 12px",
                 borderRadius: "var(--radius-full)",
-                border: selectedAgent === agent.id ? "2px solid var(--color-primary)" : "1px solid var(--border-primary)",
+                border: "1px solid",
+                borderColor: selectedAgent === agent.id ? "var(--color-primary)" : "var(--border-primary)",
                 background: selectedAgent === agent.id ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
                 cursor: "pointer",
                 fontSize: "13px",
@@ -156,7 +157,8 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
               flex: 1,
               padding: "10px 12px",
               borderRadius: "var(--radius-md)",
-              border: activeTab === tab ? "2px solid var(--color-primary)" : "1px solid var(--border-primary)",
+              border: "1px solid",
+              borderColor: activeTab === tab ? "var(--color-primary)" : "var(--border-primary)",
               background: activeTab === tab ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
               cursor: "pointer",
               fontSize: "14px",
@@ -244,7 +246,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           color: "var(--text-level-1)",
           margin: "0 0 12px 0",
         }}>{t("memory.memoryList")}</h3>
-        {loading ? (
+        {loading && memories.length === 0 ? (
           <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
         ) : filtered.length === 0 ? (
           <div style={{
