@@ -19,6 +19,7 @@ class ProjectResponse(BaseModel):
     id: int
     name: str
     path: str
+    is_pinned: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -47,7 +48,7 @@ def _validate_project_path(raw_path: str) -> str:
 async def list_projects(page: int = 1, limit: int = 20):
     db = SessionLocal()
     try:
-        query = db.query(Project).order_by(Project.updated_at.desc())
+        query = db.query(Project).filter(Project.is_deleted == False).order_by(Project.is_pinned.desc(), Project.updated_at.desc())
         result = paginate(query, page, limit)
         result["items"] = [ProjectResponse.model_validate(p) for p in result["items"]]
         return result
@@ -62,8 +63,12 @@ async def create_project(project: ProjectCreate):
         real_path = _validate_project_path(project.path)
         name = (project.name or "").strip() or os.path.basename(real_path.rstrip("/\\")) or real_path
 
+        # 去重：同路径未删除项目直接返回；若唯一记录已被软删则恢复
         existing = db.query(Project).filter(Project.path == real_path).first()
         if existing:
+            if existing.is_deleted:
+                existing.is_deleted = False
+                existing.deleted_at = None
             existing.updated_at = datetime.utcnow()
             db.commit()
             db.refresh(existing)
@@ -82,9 +87,31 @@ async def create_project(project: ProjectCreate):
 async def get_project(project_id: int):
     db = SessionLocal()
     try:
-        project = db.query(Project).filter(Project.id == project_id).first()
+        project = db.query(Project).filter(Project.id == project_id, Project.is_deleted == False).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
+        return project
+    finally:
+        db.close()
+
+
+class ProjectUpdate(BaseModel):
+    is_pinned: Optional[bool] = None
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+async def update_project(project_id: int, update: ProjectUpdate):
+    """更新项目（支持置顶 / 取消置顶）"""
+    db = SessionLocal()
+    try:
+        project = db.query(Project).filter(Project.id == project_id, Project.is_deleted == False).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+        if update.is_pinned is not None:
+            project.is_pinned = update.is_pinned
+        project.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(project)
         return project
     finally:
         db.close()
@@ -97,7 +124,15 @@ async def delete_project(project_id: int):
         project = db.query(Project).filter(Project.id == project_id).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        db.delete(project)
+        if project.is_deleted:
+            raise HTTPException(status_code=400, detail="Project already in trash")
+        now = datetime.utcnow()
+        project.is_deleted = True
+        project.deleted_at = now
+        # 级联软删其下所有 Chat
+        db.query(Chat).filter(Chat.project_id == project_id, Chat.is_deleted == False).update(
+            {"is_deleted": True, "deleted_at": now}
+        )
         db.commit()
         return {"status": "deleted"}
     finally:

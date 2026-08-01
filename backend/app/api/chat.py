@@ -5,6 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 import json
 import os
+import time
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, Memory, Setting, Project
 from app.core.tools import FILE_TOOLS_DEFINITIONS
@@ -20,10 +21,11 @@ router = APIRouter()
 
 class ChatCreate(BaseModel):
     project_id: Optional[int] = None
-    agent_id: str = "general"
+    agent_id: Optional[str] = None
     title: str = "New Chat"
     personality_level: int = 50
     model: Optional[str] = None
+    thinking_mode: Optional[str] = None
     project_path: Optional[str] = None
     context_files: List[str] = []
 
@@ -38,6 +40,7 @@ class ChatResponse(BaseModel):
     is_pinned: bool = False
     model: Optional[str] = None
     personality_level: int = 50
+    thinking_mode: str = "none"
     context_files: List[str] = []
     created_at: datetime
     updated_at: datetime
@@ -56,6 +59,7 @@ class MessageResponse(BaseModel):
     chat_id: int
     role: str
     content: str
+    tool_calls: Optional[List[dict]] = None
     created_at: datetime
 
     class Config:
@@ -74,6 +78,7 @@ def _chat_to_response(chat) -> ChatResponse:
         is_pinned=chat.is_pinned,
         model=chat.model,
         personality_level=chat.personality_level,
+        thinking_mode=chat.thinking_mode or "none",
         context_files=chat.context_files or [],
         created_at=chat.created_at,
         updated_at=chat.updated_at,
@@ -84,7 +89,7 @@ def _chat_to_response(chat) -> ChatResponse:
 async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int = 50):
     db = SessionLocal()
     try:
-        query = db.query(Chat)
+        query = db.query(Chat).filter(Chat.is_deleted == False)
         if project_id is not None:
             query = query.filter(Chat.project_id == project_id)
         query = query.order_by(Chat.is_pinned.desc(), Chat.updated_at.desc())
@@ -99,21 +104,31 @@ async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int
 async def create_chat(chat: ChatCreate):
     db = SessionLocal()
     try:
-        project_path = chat.project_path
-        if project_path is None and chat.project_id is not None:
-            project = db.query(Project).filter(Project.id == chat.project_id).first()
-            if project:
-                project_path = project.path
+        agent_id = chat.agent_id or "general"
+        project_path = None
+        project_id = chat.project_id
+
+        # 项目继承校验：project_id 存在时，校验 Project 存在并精确绑定 project_path
+        if project_id is not None:
+            project = db.query(Project).filter(Project.id == project_id).first()
+            if not project:
+                raise HTTPException(status_code=404, detail="Project not found")
+            project_path = project.path
+
+        if project_path is None and chat.project_path:
+            project_path = chat.project_path
 
         context_files = [p for p in (chat.context_files or []) if p.strip()]
+        thinking_mode = chat.thinking_mode or "none"
 
         db_chat = Chat(
-            project_id=chat.project_id,
+            project_id=project_id,
             project_path=project_path,
-            agent_id=chat.agent_id,
+            agent_id=agent_id,
             title=chat.title,
             personality_level=chat.personality_level,
             model=chat.model,
+            thinking_mode=thinking_mode,
             context_files=context_files,
         )
         db.add(db_chat)
@@ -138,14 +153,17 @@ async def get_chat(chat_id: int):
 
 @router.delete("/{chat_id}")
 async def delete_chat(chat_id: int):
+    """软删除：移入回收站"""
     db = SessionLocal()
     try:
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if not chat:
             raise HTTPException(status_code=404, detail="Chat not found")
-        db.delete(chat)
+        chat.is_deleted = True
+        chat.deleted_at = datetime.utcnow()
+        chat.updated_at = datetime.utcnow()
         db.commit()
-        return {"status": "deleted"}
+        return {"status": "trashed"}
     finally:
         db.close()
 
@@ -329,7 +347,18 @@ async def update_chat(chat_id: int, update: ChatUpdate):
                 raise HTTPException(status_code=404, detail="Project not found")
             chat.project_id = project.id
             chat.project_path = project.path
-        chat.updated_at = datetime.utcnow()
+        # 置顶/取消置顶不刷新 updated_at：取消置顶后应回到按更新时间排序的原位置，
+        # 而非因时间被刷新而跳到列表最顶部。仅内容性变更才更新排序时间。
+        has_content_change = (
+            update.title is not None
+            or update.agent_id is not None
+            or update.model is not None
+            or update.personality_level is not None
+            or update.unbind_project
+            or update.project_id is not None
+        )
+        if has_content_change:
+            chat.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(chat)
         return _chat_to_response(chat)
@@ -368,6 +397,39 @@ async def create_message(chat_id: int, message: MessageCreate):
         db.commit()
         db.refresh(db_message)
         return db_message
+    finally:
+        db.close()
+
+
+@router.delete("/{chat_id}/messages/{message_id}")
+async def delete_message_from(chat_id: int, message_id: int):
+    """删除指定消息及其之后的所有消息（用于重生成 / 编辑时清空后续历史）"""
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+        target = (
+            db.query(Message)
+            .filter(Message.id == message_id, Message.chat_id == chat_id)
+            .first()
+        )
+        if not target:
+            raise HTTPException(status_code=404, detail="Message not found")
+
+        # 按主键自增顺序，删除该消息及其之后的所有消息
+        to_delete = (
+            db.query(Message)
+            .filter(Message.chat_id == chat_id, Message.id >= message_id)
+            .order_by(Message.id.asc())
+            .all()
+        )
+        for m in to_delete:
+            db.delete(m)
+        chat.updated_at = datetime.utcnow()
+        db.commit()
+        return {"deleted": len(to_delete)}
     finally:
         db.close()
 
@@ -591,6 +653,19 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         temperature = request.temperature
         max_tokens = request.max_tokens
         reasoning_effort = request.reasoning_effort
+        project_path = chat.project_path
+
+        agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
+        allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
+        tools_arg = None
+        if request.use_tools:
+            if project_path:
+                tools_arg = FILE_TOOLS_DEFINITIONS
+            elif allowed_tools is not None:
+                if allowed_tools:
+                    tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
+                else:
+                    tools_arg = []
 
         db.commit()
     finally:
@@ -598,6 +673,15 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
     async def generate():
         full_content = ""
+        recorded_tool_calls: List[dict] = []
+        buffer = ""
+        last_flush = time.monotonic()
+        BATCH_MAX_CHARS = 200
+        BATCH_INTERVAL = 0.02  # 20ms 微型时间窗口
+
+        def _should_flush() -> bool:
+            return len(buffer) >= BATCH_MAX_CHARS or (time.monotonic() - last_flush) >= BATCH_INTERVAL
+
         try:
             async for chunk in model_service.chat_stream(
                 model_id=effective_model,
@@ -605,16 +689,46 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 temperature=temperature,
                 max_tokens=max_tokens,
                 reasoning_effort=reasoning_effort,
+                tools=tools_arg,
+                project_path=project_path,
             ):
+                # 文本增量：攒批打包为一个 SSE 事件，减轻前端高频 DOM 渲染压力
                 if "content" in chunk:
                     full_content += chunk["content"]
+                    buffer += chunk["content"]
+                    if _should_flush():
+                        yield f"data: {json.dumps({'content': buffer})}\n\n"
+                        buffer = ""
+                        last_flush = time.monotonic()
+                    continue
+
+                # 非文本事件（工具调用/汇总/结束）：立即透传，先 flush 残留 buffer
+                if buffer:
+                    yield f"data: {json.dumps({'content': buffer})}\n\n"
+                    buffer = ""
+                    last_flush = time.monotonic()
+                if "tool_call" in chunk:
+                    recorded_tool_calls.append(chunk["tool_call"])
+                if "tool_calls" in chunk:
+                    recorded_tool_calls = chunk["tool_calls"]
+                    continue  # 汇总事件不直接透传，最终随 [DONE] 前透传 tool_calls
+                if recorded_tool_calls and "finish_reason" in chunk:
+                    yield f"data: {json.dumps({'tool_calls': recorded_tool_calls})}\n\n"
                 yield f"data: {json.dumps(chunk)}\n\n"
+
+            # 流结束：flush 剩余 buffer
+            if buffer:
+                yield f"data: {json.dumps({'content': buffer})}\n\n"
+                buffer = ""
 
             db2 = SessionLocal()
             try:
                 chat2 = db2.query(Chat).filter(Chat.id == chat_id).first()
                 ai_msg = Message(
-                    chat_id=chat_id, role="assistant", content=full_content
+                    chat_id=chat_id,
+                    role="assistant",
+                    content=full_content,
+                    tool_calls=recorded_tool_calls if recorded_tool_calls else None,
                 )
                 db2.add(ai_msg)
                 if chat2:

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import models, agents, chat, memory, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins
+from app.api import models, agents, chat, memory, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, trash
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
@@ -32,6 +32,28 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN project_path VARCHAR(500)"))
             if "context_files" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN context_files JSON"))
+            if "is_deleted" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
+            if "deleted_at" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN deleted_at DATETIME"))
+            if "thinking_mode" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN thinking_mode VARCHAR(20) DEFAULT 'none'"))
+
+    if "projects" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("projects")}
+        with engine.begin() as conn:
+            if "is_deleted" not in cols:
+                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
+            if "deleted_at" not in cols:
+                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN deleted_at DATETIME"))
+            if "is_pinned" not in cols:
+                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_pinned BOOLEAN DEFAULT 0"))
+
+    if "messages" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("messages")}
+        with engine.begin() as conn:
+            if "tool_calls" not in cols:
+                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN tool_calls JSON"))
 
 
 _ensure_schema()
@@ -71,6 +93,8 @@ app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"])
 app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
+app.include_router(trash.router, prefix="/api/trash", tags=["trash"])
+app.include_router(greetings.router, prefix="/api/system", tags=["system"])
 
 @app.get("/")
 async def root():

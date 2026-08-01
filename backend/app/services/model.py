@@ -182,8 +182,20 @@ class ModelService:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         reasoning_effort: str = None,
+        tools: List[Dict] = None,
+        project_path: str = None,
+        max_tool_rounds: int = 4,
     ) -> AsyncIterator[Dict[str, Any]]:
-        """流式聊天请求"""
+        """流式聊天请求（支持多轮 Tool Calling 自动执行环）。
+
+        yield 协议：
+          {"content": str}            文本增量
+          {"tool_call": {...}}        工具执行事件（name/arguments/result）
+          {"tool_calls": [...]}       本轮累计的工具调用汇总（含结果）
+          {"finish_reason": str}
+        """
+        from app.core.tools import execute_file_tool
+
         config = self.get_model_config(model_id)
         if not config:
             raise ValueError(f"模型 {model_id} 不存在")
@@ -196,50 +208,131 @@ class ModelService:
             "Content-Type": "application/json",
         }
 
-        payload = {
-            "model": self._resolve_api_model_name(config),
-            "messages": [msg.dict() for msg in messages],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": True,
-        }
-        if reasoning_effort and reasoning_effort != "none":
-            payload["reasoning_effort"] = reasoning_effort
+        current_messages = [msg.dict() for msg in messages]
+        all_tool_calls: List[dict] = []
 
-        async with httpx.AsyncClient() as client:
-            async with client.stream(
-                "POST",
-                f"{config.api_base}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=120.0,
-            ) as response:
-                if response.status_code != 200:
-                    raise Exception(f"API调用失败: {await response.aread()}")
+        for round_no in range(max_tool_rounds + 1):
+            payload = {
+                "model": self._resolve_api_model_name(config),
+                "messages": current_messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True,
+            }
+            if reasoning_effort and reasoning_effort != "none":
+                payload["reasoning_effort"] = reasoning_effort
+            if tools:
+                payload["tools"] = tools
 
-                buffer = ""
-                async for chunk in response.aiter_text():
-                    buffer += chunk
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
-                        if not line or line == "data: [DONE]":
-                            continue
-                        if line.startswith("data: "):
-                            try:
-                                data = json.loads(line[6:])
-                                choices = data.get("choices", [])
-                                if not choices:
-                                    continue
-                                delta = choices[0].get("delta", {})
-                                content = delta.get("content", "")
-                                finish_reason = choices[0].get("finish_reason")
-                                if content:
-                                    yield {"content": content}
-                                if finish_reason:
-                                    yield {"finish_reason": finish_reason}
-                            except (json.JSONDecodeError, IndexError, KeyError):
+            collected_tool_calls: dict = {}
+            final_finish = "stop"
+
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    f"{config.api_base}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=120.0,
+                ) as response:
+                    if response.status_code != 200:
+                        raise Exception(f"API调用失败: {await response.aread()}")
+
+                    buffer = ""
+                    async for chunk in response.aiter_text():
+                        buffer += chunk
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            line = line.strip()
+                            if not line or line == "data: [DONE]":
                                 continue
+                            if line.startswith("data: "):
+                                try:
+                                    data = json.loads(line[6:])
+                                    choices = data.get("choices", [])
+                                    if not choices:
+                                        continue
+                                    choice = choices[0]
+                                    delta = choice.get("delta", {})
+                                    content = delta.get("content", "")
+                                    finish_reason = choice.get("finish_reason")
+                                    if finish_reason:
+                                        final_finish = finish_reason
+
+                                    # 收集流式 tool_calls delta
+                                    for tc in delta.get("tool_calls", []):
+                                        idx = tc.get("index")
+                                        if idx is None:
+                                            continue
+                                        acc = collected_tool_calls.setdefault(idx, {
+                                            "id": "",
+                                            "type": "function",
+                                            "function": {"name": "", "arguments": ""},
+                                        })
+                                        if tc.get("id"):
+                                            acc["id"] = tc["id"]
+                                        if tc.get("function", {}).get("name"):
+                                            acc["function"]["name"] = tc["function"]["name"]
+                                        if tc.get("function", {}).get("arguments"):
+                                            acc["function"]["arguments"] += tc["function"]["arguments"]
+
+                                    # 普通文本增量才透传（工具调用段不输出文本）
+                                    if content and not collected_tool_calls:
+                                        yield {"content": content}
+                                except (json.JSONDecodeError, IndexError, KeyError):
+                                    continue
+
+            # 该轮结束时判断是否触发工具调用
+            if final_finish == "tool_calls" and collected_tool_calls:
+                ordered = [collected_tool_calls[i] for i in sorted(collected_tool_calls)]
+                assistant_msg = {"role": "assistant", "content": None, "tool_calls": ordered}
+                current_messages.append(assistant_msg)
+
+                for tc in ordered:
+                    func_name = tc["function"]["name"]
+                    try:
+                        func_args = json.loads(tc["function"]["arguments"] or "{}")
+                    except Exception:
+                        func_args = {}
+
+                    if func_name in ("write_file", "read_file", "list_files") and project_path:
+                        result = execute_file_tool(func_name, project_path=project_path, **func_args)
+                        result_text = result
+                    else:
+                        from app.services.tools import tool_registry
+                        r = await tool_registry.execute(func_name, **func_args)
+                        result_text = r.output if r.success else f"Error: {r.error}"
+
+                    # ToolCallCard 期望格式：{ name, path, success }（path 从 arguments 提取）
+                    rel_path = str(func_args.get("relative_path", ""))
+                    record = {
+                        "name": func_name,
+                        "path": rel_path,
+                        "success": not result_text.startswith("错误"),
+                        "arguments": func_args,
+                        "result": result_text,
+                        "tool_call_id": tc.get("id", ""),
+                    }
+                    all_tool_calls.append(record)
+                    # 向前端 SSE 推送工具调用事件（ToolCallCard 实时渲染）
+                    yield {"tool_call": {
+                        "name": func_name,
+                        "path": rel_path,
+                        "success": record["success"],
+                    }}
+
+                    current_messages.append({
+                        "tool_call_id": tc.get("id", ""),
+                        "role": "tool",
+                        "content": result_text,
+                    })
+                continue  # 继续下一轮，驱动 LLM 生成最终文本
+
+            # 正常结束：透传 finish_reason + 工具调用汇总
+            yield {"finish_reason": final_finish}
+            if all_tool_calls:
+                yield {"tool_calls": all_tool_calls}
+            return
 
     async def _chat_openai_compatible(
         self,

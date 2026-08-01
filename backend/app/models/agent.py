@@ -10,6 +10,9 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False)
     path = Column(String(500), nullable=False)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime)
+    is_pinned = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -27,9 +30,12 @@ class Chat(Base):
     is_pinned = Column(Boolean, default=False)
     personality_level = Column(Integer, default=50)
     model = Column(String(50))
+    thinking_mode = Column(String(20), default="none")
     context_files = Column(JSON, default=list)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
 
     project = relationship("Project", back_populates="chats")
     messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan")
@@ -42,6 +48,7 @@ class Message(Base):
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
+    tool_calls = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     chat = relationship("Chat", back_populates="messages")
