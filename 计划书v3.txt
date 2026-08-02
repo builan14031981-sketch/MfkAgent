@@ -907,6 +907,75 @@ MfkAgent 成为：
 
 ---
 
+# 十一、Windows 兼容性审计（2026-08-02）
+
+> 目的：记录"作为 Windows 桌面软件"的已知坑，供打包 / 交付 / 后续迭代参考。
+> 结论：开发模式可跑通，但**尚不能直接打包交付**。
+
+## 11.1 严重问题（P0：不可用 / 数据丢失）
+
+### 一、打包产物为空，生产模式白屏
+
+- `frontend/next.config.js:4` 的 `output: 'export'` 被注释掉 → `next build` 不产出 `out/`
+- `frontend/package.json:49` 打包 `files` 只收 `out/**/*`；`electron/main.js:97` 生产模式加载 `../out/index.html`
+- 结果：打包出的 exe 没有任何页面文件，运行即白屏
+
+### 二、Electron 主进程不启动后端
+
+- `electron/main.js` 完全没有 spawn uvicorn 的逻辑，只负责 loadURL / loadFile
+- 打包安装后 `MfkAgent.exe` 不会拉起后端，前端所有 API 请求（`src/lib/api.ts:1` 硬编码 `http://127.0.0.1:8001`）全部失败
+- 目前只能靠 `start-desktop.bat` 外部启动三个进程
+
+### 三、存储路径全部依赖当前工作目录（CWD）
+
+- `backend/app/core/config.py:11,48,52,55`：数据库 / 上传 / chroma / `.env` 全是相对 CWD 的路径
+- 从 IDE 或项目根目录启动时数据建到错误位置（根目录与 `backend/` 已各存在一份 `mfkagent.db`，历史数据被拆分）
+- `.env` 相对路径找不到时**静默忽略** → API Key 全空、模型列表为空、聊天不可用，且无任何报错
+
+### 四、services/tools.py 文件工具无沙箱
+
+- `backend/app/services/tools.py:148-228` FileRead / FileWrite / ListDirectory 对 `path` 零校验，LLM 可读写任意盘符（对比 `core/tools.py` 沙箱工具是安全的）
+- `FileWriteTool:187` 对无目录路径 `os.makedirs('')` 抛错被 except 吞掉
+
+### 五、孤儿进程 / 端口占用无处理
+
+- Electron 主进程退出无 `taskkill` / 进程树清理；`start` 拉起的 3 个独立窗口关闭后成孤儿进程，8001 / 3000 常驻被占
+- 端口 8001 / 3000 全链路硬编码，无占用检测：8001 被占时 uvicorn 直接崩溃、bat 空等 60s；3000 被占时可能连到他人服务
+
+## 11.2 中风险（功能受损 / 体验差）
+
+| 问题 | 位置 |
+|------|------|
+| 阻止 Windows 关机 / 注销：`close` 事件无条件下 `preventDefault()` 隐藏到托盘 | `electron/main.js:56-61` |
+| subprocess 用裸 `python` + 默认 GBK 解码子进程输出，中文输出乱码甚至崩溃 | `services/tools.py:110-116` |
+| `os.walk` 会跟进 junction 点，可遍历到项目外目录（如 node_modules 被替换为 junction） | `projects.py:290`、`knowledge.py:61` |
+| 无长路径（MAX_PATH 260）处理，深层用户项目报错 | `projects.py:290`、`core/tools.py:28` |
+| Windows 图标用 SVG（electron-builder 不支持，构建报错或退回默认图标）；.lnk 快捷方式图标同理 | `package.json:58`、`create-shortcut.vbs:12` |
+| 无 Electron 二进制国内镜像，`npm install electron` 走 GitHub 下载易失败 | `frontend/package.json` |
+| 无单实例锁（`requestSingleInstanceLock`），重复启动多实例抢端口 | `electron/main.js` |
+| `next.config.js` 与 `next.config.ts` 并存，实际 js 生效、ts 为死代码（易误导） | `frontend/` |
+| 沙箱前缀比较大小写敏感 + 盘符相对路径（`D:foo`）可溜过首道拦截，靠二次 realpath 兜底 | `projects.py:147-154` |
+| 无开机自启；托盘 / 单实例 / 后端管理均待完善 | `electron/main.js` |
+
+## 11.3 低风险 / 信息项
+
+- 导出文件名 `chat.title` 未过滤 Windows 非法字符（`\ / : * ? " < > |`）：`chat.py:292`
+- `UPLOAD_DIR` 为死配置（无任何上传接口）；根目录 `_trash/` 后端从未引用
+- `electron@28`（2024）版本较旧，可评估升级
+- `start.sh` 的 `trap kill` 仅 Unix 有效；`start.bat` / `start-desktop.bat` 依赖 python / npm 在 PATH，无 venv / 安装前置校验，python.org 未勾选 Add to PATH 时黑窗闪退
+- 根目录遗留旧版 GBK 编码的 .md 调研文档，zip 打包 / git 工具链可能踩坑
+
+## 11.4 建议修复优先级
+
+1. P0：启用 `output: 'export'`（并补 `generateStaticParams`）修复打包链路，产出 `out/`
+2. P0：Electron 主进程 spawn 后端（`spawn('python', ['-m','uvicorn',...])`），退出时用 `taskkill /pid X /T /F` 清理进程树，处理 `before-quit` / `session-end`
+3. P0：`config.py` 全部路径改为基于 `Path(__file__)` 的绝对路径，消灭数据分裂；清理根目录遗留的 `mfkagent.db` / `uploads/` / `chroma_db/`
+4. P1：`services/tools.py` 文件工具补沙箱；`subprocess` 显式 `encoding="utf-8"` + 用 `sys.executable` 替代裸 `python`
+5. P1：Windows 图标改 `.ico` / ≥256px `.png`；配置 `ELECTRON_MIRROR` 国内镜像
+6. P2：端口占用检测、`requestSingleInstanceLock`、删除冗余 `next.config.ts`、junction 过滤、长路径与 PermissionError 容错
+
+---
+
 **文档状态：**
 
 MfkAgent 开发计划书 V3.0

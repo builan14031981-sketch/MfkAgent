@@ -13,6 +13,7 @@ import { apiGet } from "@/lib/api";
 import { ChatComposer } from "@/components/ChatComposer";
 import type { ChatMode } from "@/components/ChatInput";
 import { HeroStage } from "@/components/hero/HeroStage";
+import type { QuoteCategory, QuoteItem } from "@/components/hero/QuoteMenu";
 import type { Project } from "@/hooks/useProjects";
 
 export default function Home() {
@@ -29,6 +30,7 @@ export default function Home() {
   const { settings } = useSettingsStore();
   const [welcome, setWelcome] = useState("");
   const [welcomeSubtext, setWelcomeSubtext] = useState("");
+  const [quoteCategories, setQuoteCategories] = useState<QuoteCategory[]>([]);
   const [comboPersonality, setComboPersonality] = useState<number | null>(null);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
@@ -37,14 +39,20 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    // 优先从后端欢迎语 API 获取随机极客文案
-    apiGet<{ text?: string; subtext?: string }>("/api/system/greeting")
+    // 优先从后端欢迎语 API 获取全部分组文案，随机取一条做初始欢迎语
+    apiGet<{ categories?: QuoteCategory[] }>("/api/system/greetings")
       .then((data) => {
         if (cancelled) return;
-        if (data?.text) {
-          setWelcome(data.text);
-          setWelcomeSubtext(data.subtext || "");
-          return;
+        const categories = data?.categories ?? [];
+        if (categories.length > 0) {
+          setQuoteCategories(categories);
+          const all = categories.flatMap((c) => c.items);
+          const pick = all[Math.floor(Math.random() * all.length)];
+          if (pick) {
+            setWelcome(pick.text);
+            setWelcomeSubtext(pick.subtext || "");
+            return;
+          }
         }
         throw new Error("empty greeting");
       })
@@ -57,6 +65,12 @@ export default function Home() {
       });
     return () => { cancelled = true; };
   }, [tArray]);
+
+  // 台词菜单选中：切换首页欢迎语
+  const handleSelectQuote = useCallback((item: QuoteItem) => {
+    setWelcome(item.text);
+    setWelcomeSubtext(item.subtext || "");
+  }, []);
 
   // 根据 Settings 默认模型预选
   useEffect(() => {
@@ -151,7 +165,12 @@ export default function Home() {
         overflowY: "auto",
       }}>
         {/* 启动主题舞台（Hero Theme 系统） */}
-        <HeroStage welcome={welcome} subtext={welcomeSubtext} />
+        <HeroStage
+          welcome={welcome}
+          subtext={welcomeSubtext}
+          quoteCategories={quoteCategories}
+          onSelectQuote={handleSelectQuote}
+        />
 
         {/* 快捷指令 */}
         {quickStarts.length > 0 && (
