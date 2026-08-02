@@ -45,15 +45,9 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
     setFiles((prev) => (prev.includes(path) ? prev : [...prev, path]));
   }, []);
 
-  // 防空保护：project 缺失或字段不全时直接不渲染，防止崩溃
-  if (!project || typeof project.id !== "number" || !project.name) {
-    return null;
-  }
+  const projectId = project?.id;
 
-  const currentAgent = agentId || settings?.default_agent || agents[0]?.id || "general";
-  const currentModel = selectedModel || models[0] || null;
-
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!input.trim() || isSending) return;
     const userMessage = input.trim();
     setIsSending(true);
@@ -61,10 +55,10 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
     try {
       const personality = settings?.default_personality ? Number(settings.default_personality) : 50;
       const chat = await createChat(
-        currentAgent,
+        agentId || settings?.default_agent || agents[0]?.id || "general",
         userMessage.slice(0, 50) || "New Chat",
-        project.id,
-        currentModel?.id || settings?.default_model || null,
+        projectId,
+        (selectedModel || models[0] || null)?.id || settings?.default_model || null,
         personality,
         files,
         mode
@@ -78,7 +72,12 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
       setInput(userMessage);
       setIsSending(false);
     }
-  };
+  }, [input, isSending, agentId, settings, agents, selectedModel, models, projectId, files, mode, createChat, onCreated, onClose, router]);
+
+  // 防空保护：project 缺失或字段不全时直接不渲染，防止崩溃
+  if (!project || typeof project.id !== "number" || !project.name) {
+    return null;
+  }
 
   const modal = (
     <div
@@ -90,25 +89,28 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         alignItems: "center",
         justifyContent: "center",
         padding: "16px",
-        background: "rgba(0, 0, 0, 0.4)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
+        background: "rgba(0, 0, 0, 0.3)",
+        backdropFilter: "blur(2px)",
+        WebkitBackdropFilter: "blur(2px)",
         animation: "fadeIn 0.2s ease",
       }}
-      onClick={onClose}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
           maxWidth: "672px",
+          maxHeight: "calc(100vh - 32px)",
           display: "flex",
           flexDirection: "column",
           background: "var(--bg-level-2)",
           borderRadius: "var(--radius-2xl)",
           boxShadow: "var(--shadow-lg), 0 0 0 1px var(--border-primary)",
           overflow: "hidden",
-          animation: "panelCenterOpen 0.25s ease forwards",
+          animation: "panelOpen 0.25s ease forwards",
           outline: "none",
         }}
       >
@@ -163,15 +165,21 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         </div>
 
         {/* 弹窗内容：内置 ChatInput */}
-        <div style={{ padding: "8px 24px 24px 24px" }}>
+        <div style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          padding: "8px 24px 24px 24px",
+        }}>
           <ChatInput
             value={input}
             onChange={setInput}
             onSend={handleSend}
             isSending={isSending}
             placeholder={t("chat.projectInitPlaceholder")}
+            inputMinHeight={82}
             models={models}
-            modelId={currentModel?.id || null}
+            modelId={(selectedModel || models[0] || null)?.id || null}
             onModelChange={(id) => {
               const model = models.find(m => m.id === id);
               if (model) setSelectedModel(model);
@@ -181,7 +189,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             mode={mode}
             onModeChange={setMode}
             allowAgentChange
-            agentId={currentAgent}
+            agentId={agentId || settings?.default_agent || agents[0]?.id || "general"}
             onAgentChange={(id) => setAgentId(id)}
             onUploadFile={handleAttachFile}
             onSelectDirectory={() => {}}
@@ -191,6 +199,28 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             onRemoveFile={(path) => setFiles((prev) => prev.filter((p) => p !== path))}
             projectName={project.name}
           />
+          <button
+            onClick={() => {
+              onClose();
+              router.push("/");
+            }}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "6px 0 2px 0",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "12px",
+              color: "var(--text-level-4)",
+              textAlign: "center",
+              outline: "none",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-level-2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-level-4)"; }}
+          >
+            {t("chat.projectInitSkip")}
+          </button>
         </div>
       </div>
     </div>

@@ -32,6 +32,9 @@ export interface ChatInputProps {
   placeholder: string;
   disabled?: boolean;
 
+  /** 输入区最小高度（px），引导弹窗等场景可调大；默认 72 */
+  inputMinHeight?: number;
+
   /** 外部注入 textarea ref（供引用/编辑后自动聚焦） */
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 
@@ -76,6 +79,7 @@ export function ChatInput({
   isSending,
   placeholder,
   disabled,
+  inputMinHeight,
   textareaRef: externalTextareaRef,
   draftKey,
   models,
@@ -320,7 +324,7 @@ export function ChatInput({
         <div style={{
           display: "flex",
           flexWrap: "wrap",
-          gap: "6px",
+          gap: "4px",
           padding: "10px 12px 0 12px",
         }}>
           {projectName && onRemoveProject && (
@@ -389,7 +393,7 @@ export function ChatInput({
           fontSize: "14px",
           lineHeight: "1.5rem",
           color: "var(--text-level-2)",
-          minHeight: "72px",
+          minHeight: `${inputMinHeight ?? 72}px`,
           maxHeight: "120px",
           fontFamily: "inherit",
           boxSizing: "border-box",

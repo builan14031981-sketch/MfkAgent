@@ -129,6 +129,7 @@
     "projectInitTitle": "Linked project: {name}",
     "projectInitDesc": "What would you like to do in this project?",
     "projectInitPlaceholder": "Type a task and press Enter...",
+    "projectInitSkip": "Skip, start a new chat",
     "menu": {
       "uploadFile": "Upload File",
       "linkProject": "Link Local Project",

@@ -129,6 +129,7 @@
     "projectInitTitle": "已关联项目：{name}",
     "projectInitDesc": "您想要在这个项目里面做什么？",
     "projectInitPlaceholder": "输入任务，回车开始...",
+    "projectInitSkip": "跳过，直接开始新对话",
     "menu": {
       "uploadFile": "上传文件",
       "linkProject": "关联本地项目",
