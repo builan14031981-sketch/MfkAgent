@@ -121,6 +121,7 @@
     "codeCopied": "已复制",
     "codeCollapsedHint": "内容已折叠，点击展开查看",
     "jumpToLatest": "回最新",
+    "messageOutline": "对话大纲",
     "edit": "编辑",
     "quote": "引用",
     "regenerate": "重新生成",
@@ -206,12 +207,38 @@
         "title": "预设 Agent",
         "desc": "系统提供的 AI 工作伙伴",
         "systemPrompt": "系统提示词",
-        "personality": "人格配置"
+        "personality": "人格配置",
+        "detail": "详情",
+        "manage": "管理 Agent 列表",
+        "backToSettings": "返回设置",
+        "backToAgentList": "返回列表",
+        "parameters": "参数配置",
+        "model": "默认模型",
+        "capabilities": "能力"
       }
     },
     "memory": {
       "title": "长期记忆",
       "desc": "AI 会记住你的偏好和重要信息"
+    },
+    "plugins": {
+      "title": "插件",
+      "desc": "管理 AI 扩展能力（持久化存储）",
+      "create": "新建插件",
+      "cancelCreate": "取消",
+      "name": "名称",
+      "version": "版本",
+      "description": "描述",
+      "author": "作者",
+      "config": "配置",
+      "configInvalid": "JSON 格式无效",
+      "empty": "暂无插件，点击右上角新建",
+      "delete": "删除",
+      "deleteConfirm": "确定要删除此插件吗？该操作不可逆。",
+      "statusActive": "已激活",
+      "statusInactive": "未激活",
+      "statusInstalled": "已安装",
+      "statusError": "异常"
     },
     "about": {
       "title": "关于",
@@ -221,10 +248,13 @@
     }
   },
   "memory": {
-    "title": "记忆管理",
+    "title": "长期记忆",
     "selectAgent": "选择 Agent",
-    "scopeAgent": "🌸 全局/Agent 记忆",
-    "scopeProject": "📂 当前项目记忆",
+    "selectProject": "选择项目",
+    "selectProjectPlaceholder": "选择一个项目...",
+    "scopeGlobal": "全局",
+    "scopeAgent": "Agent",
+    "scopeProject": "项目",
     "addMemory": "添加记忆",
     "inputPlaceholder": "例如：当前项目使用的是 Next.js 14",
     "add": "添加",

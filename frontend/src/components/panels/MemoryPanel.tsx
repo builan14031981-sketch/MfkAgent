@@ -7,6 +7,7 @@ import {
   Brain,
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
+import { useProjects } from "@/hooks/useProjects";
 import { useMemory, MemoryScope } from "@/hooks/useMemory";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Panel } from "./Panel";
@@ -19,22 +20,30 @@ interface MemoryPanelProps {
   embedded?: boolean;
 }
 
+const SCOPE_OPTIONS: { value: MemoryScope; key: "scopeGlobal" | "scopeAgent" | "scopeProject" }[] = [
+  { value: "global", key: "scopeGlobal" },
+  { value: "agent", key: "scopeAgent" },
+  { value: "project", key: "scopeProject" },
+];
+
 export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelProps) {
   const { agents } = useAgents();
+  const { projects } = useProjects();
   const { t } = useTranslation();
+  const [scope, setScope] = useState<MemoryScope>("global");
   const [selectedAgent, setSelectedAgent] = useState(agents[0]?.id || "");
-  const [scope, setScope] = useState<MemoryScope>("agent");
+  const [selectedProject, setSelectedProject] = useState<number | null>(projects[0]?.id ?? null);
   const [newValue, setNewValue] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent);
+  const [composerFocused, setComposerFocused] = useState(false);
+  const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent, selectedProject, scope);
 
-  const filtered = memories.filter((m) =>
-    scope === "project" ? m.memory_type === "project" : ["user", "preference"].includes(m.memory_type)
-  );
+  const agentScopeReady = scope !== "agent" || !!selectedAgent;
+  const projectScopeReady = scope !== "project" || selectedProject != null;
 
   const handleCreate = async () => {
     const content = newValue.trim();
-    if (!content || isCreating) return;
+    if (!content || isCreating || !agentScopeReady || !projectScopeReady) return;
     setIsCreating(true);
     try {
       await createMemory(content, scope);
@@ -54,54 +63,15 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
     }
   };
 
-  const scopeOptions: { value: MemoryScope; label: string }[] = [
-    { value: "agent", label: t("memory.scopeAgent") },
-    { value: "project", label: t("memory.scopeProject") },
-  ];
-
   const content = (
     <>
-      {/* Agent 选择 */}
-      <div style={{ marginBottom: "16px" }}>
-        <label style={{
-          display: "block",
-          fontSize: "12px",
-          color: "var(--text-level-3)",
-          marginBottom: "8px",
-        }}>{t("memory.selectAgent")}</label>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {agents.map((agent) => (
-            <button
-              key={agent.id}
-              onClick={() => setSelectedAgent(agent.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                padding: "6px 10px",
-                borderRadius: "var(--radius-full)",
-                border: "1px solid",
-                borderColor: selectedAgent === agent.id ? "var(--color-primary)" : "var(--border-primary)",
-                background: selectedAgent === agent.id ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
-                cursor: "pointer",
-                fontSize: "12px",
-                color: selectedAgent === agent.id ? "var(--color-primary)" : "var(--text-level-2)",
-              }}
-            >
-              <AgentIcon id={agent.id} size={13} style={{ color: selectedAgent === agent.id ? "var(--color-primary)" : "var(--text-level-3)" }} />
-              <span>{agent.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 作用域切换 */}
+      {/* 作用域切换（三 tab：全局 / Agent / 项目） */}
       <div style={{
         display: "flex",
         gap: "8px",
-        marginBottom: "16px",
+        marginBottom: "12px",
       }}>
-        {scopeOptions.map((opt) => (
+        {SCOPE_OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setScope(opt.value)}
@@ -118,64 +88,141 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
               color: scope === opt.value ? "var(--color-primary)" : "var(--text-level-2)",
             }}
           >
-            {opt.label}
+            {t(`memory.${opt.key}`)}
           </button>
         ))}
       </div>
 
-      {/* 添加记忆：单输入，直接写大白话 */}
-      <div style={{
-        padding: "14px",
-        borderRadius: "var(--radius-md)",
-        background: "var(--bg-level-2)",
-        marginBottom: "20px",
-      }}>
+      {/* Agent 选择（仅 agent 作用域） */}
+      {scope === "agent" && (
+        <div style={{ marginBottom: "12px" }}>
+          <label style={{
+            display: "block",
+            fontSize: "12px",
+            color: "var(--text-level-3)",
+            marginBottom: "8px",
+          }}>{t("memory.selectAgent")}</label>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {agents.map((agent) => (
+              <button
+                key={agent.id}
+                onClick={() => setSelectedAgent(agent.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "6px 10px",
+                  borderRadius: "var(--radius-full)",
+                  border: "1px solid",
+                  borderColor: selectedAgent === agent.id ? "var(--color-primary)" : "var(--border-primary)",
+                  background: selectedAgent === agent.id ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  color: selectedAgent === agent.id ? "var(--color-primary)" : "var(--text-level-2)",
+                }}
+              >
+                <AgentIcon id={agent.id} size={13} style={{ color: selectedAgent === agent.id ? "var(--color-primary)" : "var(--text-level-3)" }} />
+                <span>{agent.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 项目选择（仅 project 作用域） */}
+      {scope === "project" && (
+        <div style={{ marginBottom: "12px" }}>
+          <label style={{
+            display: "block",
+            fontSize: "12px",
+            color: "var(--text-level-3)",
+            marginBottom: "8px",
+          }}>{t("memory.selectProject")}</label>
+          <select
+            value={selectedProject ?? ""}
+            onChange={(e) => setSelectedProject(e.target.value ? Number(e.target.value) : null)}
+            style={{
+              width: "100%",
+              padding: "8px 12px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border-primary)",
+              background: "var(--bg-level-2)",
+              fontSize: "13px",
+              color: "var(--text-level-2)",
+              outline: "none",
+            }}
+          >
+            <option value="">{t("memory.selectProjectPlaceholder")}</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>{project.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* 添加记忆：一体化容器（透明 textarea + 内置提交按钮，focus 整卡高亮） */}
+      <div style={{ marginBottom: "12px" }}>
         <h3 style={{
           fontSize: "13px",
           fontWeight: "500",
           color: "var(--text-level-1)",
-          margin: "0 0 10px 0",
+          margin: "0 0 8px 0",
         }}>{t("memory.addMemory")}</h3>
-        <textarea
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          placeholder={t("memory.inputPlaceholder")}
-          rows={3}
+        <div
           style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: "10px 12px",
+            position: "relative",
             borderRadius: "var(--radius-md)",
-            border: "1px solid var(--border-primary)",
-            background: "var(--bg-level-1)",
-            fontSize: "14px",
-            lineHeight: "1.5",
-            color: "var(--text-level-2)",
-            outline: "none",
-            resize: "vertical",
-            fontFamily: "inherit",
-            minHeight: "76px",
+            border: "1px solid",
+            borderColor: composerFocused ? "var(--color-primary)" : "var(--border-primary)",
+            background: "var(--bg-level-2)",
+            transition: "border-color 0.15s ease",
           }}
-        />
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+        >
+          <textarea
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onFocus={() => setComposerFocused(true)}
+            onBlur={() => setComposerFocused(false)}
+            placeholder={t("memory.inputPlaceholder")}
+            rows={3}
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              display: "block",
+              padding: "10px 12px 42px",
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              fontSize: "14px",
+              lineHeight: "1.5",
+              color: "var(--text-level-2)",
+              resize: "vertical",
+              fontFamily: "inherit",
+              minHeight: "88px",
+            }}
+          />
           <button
             onClick={handleCreate}
-            disabled={!newValue.trim() || isCreating}
+            disabled={!newValue.trim() || isCreating || !agentScopeReady || !projectScopeReady}
             style={{
+              position: "absolute",
+              bottom: "8px",
+              right: "8px",
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              padding: "8px 18px",
+              gap: "4px",
+              height: "28px",
+              padding: "0 12px",
               borderRadius: "var(--radius-md)",
               border: "none",
-              background: newValue.trim() && !isCreating ? "var(--color-primary)" : "var(--bg-level-3)",
-              cursor: newValue.trim() && !isCreating ? "pointer" : "not-allowed",
-              color: newValue.trim() && !isCreating ? "white" : "var(--text-level-3)",
-              fontSize: "13px",
+              background: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "var(--color-primary)" : "var(--bg-level-3)",
+              cursor: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "pointer" : "not-allowed",
+              color: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "white" : "var(--text-level-3)",
+              fontSize: "12px",
               fontWeight: "500",
             }}
           >
-            <Plus style={{ width: "14px", height: "14px" }} />
+            <Plus style={{ width: "13px", height: "13px" }} />
             <span>{t("memory.add")}</span>
           </button>
         </div>
@@ -191,9 +238,9 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
         }}>{t("memory.memoryList")}</h3>
         {loading && memories.length === 0 ? (
           <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
-        ) : filtered.length === 0 ? (
+        ) : memories.length === 0 ? (
           <div style={{
-            padding: "24px",
+            padding: "18px",
             textAlign: "center",
             borderRadius: "var(--radius-md)",
             background: "var(--bg-level-2)",
@@ -208,7 +255,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {filtered.map((memory) => (
+            {memories.map((memory) => (
               <div
                 key={memory.id}
                 style={{
@@ -230,7 +277,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                 }}>
-                  {memory.value}
+                  {memory.content}
                 </div>
                 <button
                   onClick={() => handleDelete(memory.id)}

@@ -2,30 +2,35 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
 
-export interface Memory {
+export interface MemoryItem {
   id: number;
-  agent_id: string;
-  user_id: string;
-  key: string;
-  value: string;
-  memory_type: string;
-  is_active: boolean;
+  scope: "global" | "agent" | "project";
+  agent_id: string | null;
+  project_id: number | null;
+  content: string;
   created_at: string;
-  updated_at: string;
 }
 
-export type MemoryScope = "agent" | "project";
+export type MemoryScope = "global" | "agent" | "project";
 
-export function useMemory(agentId: string) {
-  const [memories, setMemories] = useState<Memory[]>([]);
+/**
+ * 极简记忆（memory_items 表）：按 scope 三作用域隔离
+ * - global：所有对话可见
+ * - agent：当前 Agent 专属（绑定 agentId）
+ * - project：当前项目下 Agent 共享（绑定 projectId）
+ */
+export function useMemory(agentId: string, projectId: number | null = null, scope: MemoryScope = "global") {
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMemories = useCallback(async () => {
-    if (!agentId) return;
     try {
       setLoading(true);
-      const data = await apiGet<Memory[]>(`/api/memory/${agentId}`);
+      const params = new URLSearchParams({ scope });
+      if (scope === "agent" && agentId) params.set("agent_id", agentId);
+      if (scope === "project" && projectId != null) params.set("project_id", String(projectId));
+      const data = await apiGet<MemoryItem[]>(`/api/memories?${params}`);
       setMemories(data);
       setError(null);
     } catch (err: unknown) {
@@ -33,26 +38,26 @@ export function useMemory(agentId: string) {
     } finally {
       setLoading(false);
     }
-  }, [agentId]);
+  }, [scope, agentId, projectId]);
 
   useEffect(() => {
     fetchMemories();
   }, [fetchMemories]);
 
-  async function createMemory(content: string, scope: MemoryScope) {
+  async function createMemory(content: string, targetScope: MemoryScope) {
     const trimmed = content.trim();
     if (!trimmed) return;
-    await apiPost("/api/memory", {
-      agent_id: agentId,
-      key: trimmed.slice(0, 24),
-      value: trimmed,
-      memory_type: scope === "project" ? "project" : "user",
+    await apiPost("/api/memories", {
+      scope: targetScope,
+      content: trimmed,
+      ...(targetScope === "agent" ? { agent_id: agentId } : {}),
+      ...(targetScope === "project" && projectId != null ? { project_id: projectId } : {}),
     });
     await fetchMemories();
   }
 
   async function deleteMemory(id: number) {
-    await apiDelete(`/api/memory/${id}`);
+    await apiDelete(`/api/memories/${id}`);
     await fetchMemories();
   }
 

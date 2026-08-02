@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
+import { memo, useState, useRef, useCallback, useMemo } from "react";
 import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ToolCallCardList } from "@/components/ToolCallCard";
@@ -161,8 +161,9 @@ function ActionButton({
  * 单条消息：
  * - AI 消息：复制 / 引用 / 重生成（仅 AI，hover 显示）
  * - 用户消息：复制 / 编辑（hover 显示）
+ * memo：滚动等高频场景下 MessageList 重渲染时（message/回调引用不变）跳过整条渲染
  */
-export function ChatMessage({ message, currentAgent, onQuote, onRegenerate, onEdit }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, currentAgent, onQuote, onRegenerate, onEdit }: ChatMessageProps) {
   const { t } = useTranslation();
   const { thinking, body } = useMemo(() => parseThinkBlock(message.content), [message.content]);
 
@@ -245,4 +246,4 @@ export function ChatMessage({ message, currentAgent, onQuote, onRegenerate, onEd
       </div>
     </div>
   );
-}
+});

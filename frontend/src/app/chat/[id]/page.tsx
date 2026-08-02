@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
@@ -19,6 +19,7 @@ import type { DroppedFile } from "@/components/FileDropZone";
 import { ChatComposer } from "@/components/ChatComposer";
 import type { ChatMode } from "@/components/ChatInput";
 import { MessageList } from "@/components/MessageList";
+import { MessageOutline } from "@/components/MessageOutline";
 import type { ToolCall } from "@/components/ToolCallCard";
 
 export default function ChatPage() {
@@ -45,6 +46,11 @@ export default function ChatPage() {
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
+  // 稳定引用：避免每次 render 新建对象导致 memo(MessageList) 失效
+  const currentAgentView = useMemo(
+    () => (currentAgent ? { id: currentAgent.id, name: currentAgent.name } : null),
+    [currentAgent]
+  );
   const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
   const currentModel = selectedModel || (currentChat?.model ? models.find(m => m.id === currentChat.model) || null : null) || models[0] || null;
 
@@ -64,6 +70,7 @@ export default function ChatPage() {
   const [mode, setMode] = useState<ChatMode>("build");
   const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
   const [projectContextOpen, setProjectContextOpen] = useState(false);
+  const [activeUserMessageId, setActiveUserMessageId] = useState<number | null>(null);
   const [contextFiles, setContextFiles] = useState<string[]>([]);
   const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
 
@@ -509,17 +516,28 @@ export default function ChatPage() {
         )}
       </div>
 
-      {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠） */}
-      <MessageList
-        messages={messages}
-        streamingContent={streamingContent}
-        streamingToolCalls={streamingToolCalls}
-        isStreaming={isSending}
-        currentAgent={currentAgent ? { id: currentAgent.id, name: currentAgent.name } : null}
-        onQuote={handleQuote}
-        onRegenerate={handleRegenerate}
-        onEdit={handleEdit}
-      />
+      {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠）+ 对话大纲悬浮导航 */}
+      <div style={{
+        position: "relative",
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
+      }}>
+        <MessageList
+          messages={messages}
+          streamingContent={streamingContent}
+          streamingToolCalls={streamingToolCalls}
+          isStreaming={isSending}
+          currentAgent={currentAgentView}
+          onQuote={handleQuote}
+          onRegenerate={handleRegenerate}
+          onEdit={handleEdit}
+          onActiveUserMessageChange={setActiveUserMessageId}
+          scrollPersistenceKey={chatId ? `mfk_chat_scroll_${chatId}` : undefined}
+        />
+        <MessageOutline messages={messages} activeUserMessageId={activeUserMessageId} />
+      </div>
 
       {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮） */}
       <div style={{

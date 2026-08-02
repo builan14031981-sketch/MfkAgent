@@ -9,6 +9,7 @@ import {
   Brain,
   Info,
   Bot,
+  Puzzle,
 } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -16,7 +17,8 @@ import { useModels } from "@/hooks/useModels";
 import { useAgents } from "@/hooks/useAgents";
 import { Panel } from "./Panel";
 import { MemoryPanel } from "./MemoryPanel";
-import { AgentIcon } from "../AgentIcon";
+import { AgentListPanel } from "./AgentListPanel";
+import { PluginPanel } from "./PluginPanel";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const [savingApiKeys, setSavingApiKeys] = useState(false);
   const [apiKeysSaved, setApiKeysSaved] = useState(false);
   const [apiKeysSynced, setApiKeysSynced] = useState(false);
+  const [agentListOpen, setAgentListOpen] = useState(false);
 
   useEffect(() => {
     // 仅首次未加载时拉取，避免每次打开面板重复全量 GET + loading 翻转
@@ -91,12 +94,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "general", label: t("settings.general.title"), icon: Monitor },
     { id: "model", label: t("settings.model.title"), icon: Cpu },
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
-    { id: "memory", label: t("settings.memory.title"), icon: Brain },
+    { id: "plugins", label: t("settings.plugins.title"), icon: Puzzle },
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
   return (
-    <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")} width="700px" height="min(680px, 82vh)" variant="center">
+    <>
+      <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")} width="700px" height="min(680px, 82vh)" variant="center">
       <div style={{
         display: "flex",
         gap: "24px",
@@ -584,7 +588,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {/* AI 行为 */}
           {activeSection === "ai" && (
             <div>
-              {/* 默认 Agent */}
               <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -685,91 +688,67 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 <span>{t("settings.ai.defaultPersonality.veryRational")}</span>
               </div>
 
-              {/* 预设 Agent 列表 */}
-              <div style={{ marginTop: "32px" }}>
-                <h3 style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "var(--text-level-1)",
-                  margin: "0 0 8px 0",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}>
-                  <Bot style={{ width: "16px", height: "16px" }} />
-                  {t("settings.ai.agents.title")}
-                </h3>
-                <p style={{
-                  fontSize: "12px",
-                  color: "var(--text-level-3)",
-                  margin: "0 0 16px 0",
-                }}>{t("settings.ai.agents.desc")}</p>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {/* 研发核心三角置顶：代码审查 AI、前端 UI 设计 AI、后端 AI；旧预设 warm/rational 不展示 */}
-                  {[...agents]
-                    .sort((a, b) => {
-                      const order = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
-                      const ai = order.indexOf(a.id) === -1 ? 99 : order.indexOf(a.id);
-                      const bi = order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id);
-                      return ai - bi;
-                    })
-                    .filter((agent) => !["warm", "rational"].includes(agent.id))
-                    .map((agent) => (
-                    <div
-                      key={agent.id}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: "var(--radius-md)",
-                        background: "var(--bg-level-2)",
-                        border: "1px solid var(--border-primary)",
-                      }}
-                    >
-                      <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "10px",
-                        marginBottom: "8px",
-                      }}>
-                        <AgentIcon id={agent.id} size={18} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
-                        <div>
-                          <p style={{
-                            fontSize: "13px",
-                            fontWeight: "500",
-                            color: "var(--text-level-1)",
-                            margin: 0,
-                          }}>{agent.name}</p>
-                          <p style={{
-                            fontSize: "11px",
-                            color: "var(--text-level-3)",
-                            margin: "1px 0 0 0",
-                          }}>{agent.description}</p>
-                        </div>
-                      </div>
-                      <div style={{
-                        padding: "8px 10px",
-                        borderRadius: "var(--radius-sm)",
-                        background: "var(--bg-level-1)",
-                        fontSize: "11px",
-                        color: "var(--text-level-3)",
-                        fontFamily: "monospace",
-                        whiteSpace: "pre-wrap",
-                        maxHeight: "72px",
-                        overflowY: "auto",
-                        lineHeight: "1.5",
-                      }}>
-                        {agent.system_prompt}
-                      </div>
-                    </div>
-                  ))}
+              {/* 预设 Agent：统一入口（列表在独立二级面板） */}
+              <div style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "12px",
+                marginTop: "32px",
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "var(--text-level-1)",
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}>
+                    <Bot style={{ width: "16px", height: "16px" }} />
+                    {t("settings.ai.agents.title")}
+                  </h3>
+                  <p style={{
+                    fontSize: "12px",
+                    color: "var(--text-level-3)",
+                    margin: "4px 0 0 0",
+                  }}>{t("settings.ai.agents.desc")}</p>
                 </div>
+                <button
+                  onClick={() => setAgentListOpen(true)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "8px 14px",
+                    borderRadius: "var(--radius-md)",
+                    border: "1px solid var(--color-primary)",
+                    background: "var(--color-primary-lighter)",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    color: "var(--color-primary)",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  {t("settings.ai.agents.manage")} ›
+                </button>
+              </div>
+
+              {/* AI 长期记忆（三作用域：全局 / Agent / 项目） */}
+              <div style={{ marginTop: "32px" }}>
+                <MemoryPanel embedded isOpen onClose={() => {}} />
               </div>
             </div>
           )}
 
-          {/* 记忆 */}
-          {activeSection === "memory" && (
-            <MemoryPanel embedded isOpen onClose={() => {}} />
+          {/* 插件 */}
+          {activeSection === "plugins" && (
+            <div>
+              <PluginPanel />
+            </div>
           )}
 
           {/* 关于 */}
@@ -806,7 +785,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           )}
         </div>
       </div>
-    </Panel>
+      </Panel>
+      <AgentListPanel isOpen={agentListOpen} onClose={() => setAgentListOpen(false)} />
+    </>
   );
 }
 

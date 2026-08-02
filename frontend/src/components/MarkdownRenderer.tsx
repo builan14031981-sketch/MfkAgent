@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { memo, useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -62,7 +62,7 @@ function parseCodeBlock(meta: string, code: string): CodeBlockInfo {
  * - 代码块：Action Bar（语言 | 行数 | 折叠/展开 | 复制），超过 15 行默认折叠
  * - 行内代码 / 粗体 / 标题 / 无序列表 / 分隔线
  */
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const { t } = useTranslation();
   const blocks = useMemo(() => {
     const lines = content.split("\n");
@@ -169,7 +169,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       {blocks.length === 0 ? content : blocks}
     </div>
   );
-}
+});
 
 interface CodeBlockProps {
   info: CodeBlockInfo;

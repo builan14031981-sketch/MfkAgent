@@ -121,6 +121,7 @@
     "codeCopied": "Copied",
     "codeCollapsedHint": "Content collapsed, click to expand",
     "jumpToLatest": "Latest",
+    "messageOutline": "Outline",
     "edit": "Edit",
     "quote": "Quote",
     "regenerate": "Regenerate",
@@ -206,12 +207,38 @@
         "title": "Preset Agents",
         "desc": "System provided AI work partners",
         "systemPrompt": "System Prompt",
-        "personality": "Personality Config"
+        "personality": "Personality Config",
+        "detail": "Details",
+        "manage": "Manage Agents",
+        "backToSettings": "Back to Settings",
+        "backToAgentList": "Back to list",
+        "parameters": "Parameters",
+        "model": "Default model",
+        "capabilities": "Capabilities"
       }
     },
     "memory": {
       "title": "Long-term Memory",
       "desc": "AI will remember your preferences and important information"
+    },
+    "plugins": {
+      "title": "Plugins",
+      "desc": "Manage AI extensions (persisted in DB)",
+      "create": "New Plugin",
+      "cancelCreate": "Cancel",
+      "name": "Name",
+      "version": "Version",
+      "description": "Description",
+      "author": "Author",
+      "config": "Config",
+      "configInvalid": "Invalid JSON",
+      "empty": "No plugins yet. Click New Plugin to create one.",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this plugin? This action cannot be undone.",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "statusInstalled": "Installed",
+      "statusError": "Error"
     },
     "about": {
       "title": "About",
@@ -221,10 +248,13 @@
     }
   },
   "memory": {
-    "title": "Memory Management",
+    "title": "Long-term Memory",
     "selectAgent": "Select Agent",
-    "scopeAgent": "🌸 Global / Agent",
-    "scopeProject": "📂 Current project",
+    "selectProject": "Select Project",
+    "selectProjectPlaceholder": "Choose a project...",
+    "scopeGlobal": "Global",
+    "scopeAgent": "Agent",
+    "scopeProject": "Project",
     "addMemory": "Add Memory",
     "inputPlaceholder": "e.g., This project uses Next.js 14",
     "add": "Add",
