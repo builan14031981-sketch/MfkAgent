@@ -10,6 +10,8 @@ from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, MemoryItem, Setting, Project
 from app.core.tools import FILE_TOOLS_DEFINITIONS
 from app.core.git_tools import GIT_TOOLS_DEFINITIONS
+from app.core.search_tools import SEARCH_TOOLS_DEFINITIONS
+from app.core.command_tools import COMMAND_TOOLS_DEFINITIONS
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
 from app.core.pagination import paginate
@@ -497,6 +499,23 @@ def _get_agent_prompt(agent_id: str) -> str:
         db.close()
 
 
+_VERIFY_WORKFLOW_PROMPT = """
+
+## 编码工作流程（绑定项目时生效）
+
+当你在修改项目代码时，请遵循以下"改后自验"闭环，而不是改完就结束：
+
+1. 修改文件后，调用 `run_command` 验证你的改动没有引入错误：
+   - Python 项目：`python -m py_compile <改动的文件>` 检查语法
+   - 有测试则运行 `pytest` 或 `python -m unittest` 确认不破坏现有功能
+   - 前端/TS 项目：优先 `npm run lint`、`npm run typecheck` 或 `npm run build`
+2. 如果验证输出报错，**不要放弃**：根据报错修复代码，然后重新运行验证，直到通过。
+3. 完成后用 `git diff` 或 `git status` 向用户总结你改了哪些文件。
+4. 使用 `search_files` 在项目中定位函数/报错关键词，使用 `read_file` 读取上下文后再动手。
+
+注意：`run_command` 只允许只读验证命令（测试/lint/语法检查/查看 git 状态），
+禁止试图执行写入、网络或安装类命令。
+"""
 
 
 
@@ -584,6 +603,10 @@ async def send_message(chat_id: int, request: SendRequest):
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
 
+        # 绑定项目时追加"改后自验"工作流指引（工具未启用也应保留——run_command 走 Function Calling 分支）
+        if chat.project_path and request.use_tools:
+            model_messages[0] = ModelMessage(role="system", content=full_prompt + _VERIFY_WORKFLOW_PROMPT)
+
         # 释放写事务：模型工具（如 add_memory）在独立 Session 中写库，
         # 若此处仍持有未提交的写锁，SQLite 会报 database is locked
         db.commit()
@@ -599,8 +622,8 @@ async def send_message(chat_id: int, request: SendRequest):
                 if allowed_tools is not None:
                     extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
                 if chat.project_path:
-                    # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）+ Git 工具
-                    tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS
+                    # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）+ Git 工具 + 搜索工具 + 只读命令
+                    tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS + SEARCH_TOOLS_DEFINITIONS + COMMAND_TOOLS_DEFINITIONS
                     if chat_mode == "plan":
                         # plan 只读模式：仅提供读取/浏览工具，禁止写文件与 git 写操作
                         tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
@@ -688,6 +711,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
 
+        if chat.project_path and request.use_tools:
+            model_messages[0] = ModelMessage(role="system", content=full_prompt + _VERIFY_WORKFLOW_PROMPT)
+
         effective_model = chat.model or request.model or _get_default_model()
         temperature = request.temperature
         max_tokens = request.max_tokens
@@ -707,7 +733,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             if allowed_tools is not None:
                 extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
             if project_path:
-                tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS
+                tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS + SEARCH_TOOLS_DEFINITIONS + COMMAND_TOOLS_DEFINITIONS
                 if chat_mode == "plan":
                     # plan 只读模式：仅提供读取/浏览工具，禁止写文件与 git 写操作
                     tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]

@@ -5,6 +5,8 @@ import httpx
 import json
 from app.core.config import settings
 from app.core.git_tools import GIT_TOOLS, execute_git_tool
+from app.core.search_tools import SEARCH_TOOLS, execute_search_tool
+from app.core.command_tools import COMMAND_TOOLS, execute_command_tool
 
 class ModelProvider(str, Enum):
     MIMO = "mimo"
@@ -361,6 +363,15 @@ class ModelService:
                         else:
                             result = execute_git_tool(func_name, project_path=project_path, **func_args)
                         result_text = result
+                    elif func_name in SEARCH_TOOLS and project_path:
+                        result = execute_search_tool(func_name, project_path=project_path, **func_args)
+                        result_text = result
+                    elif func_name in COMMAND_TOOLS and project_path:
+                        if read_only:
+                            result = "错误: 当前为 plan 只读模式，禁止执行命令。查看状态可先切换到 build 模式。"
+                        else:
+                            result = execute_command_tool(func_name, project_path=project_path, **func_args)
+                        result_text = result
                     else:
                         from app.services.tools import tool_registry
                         r = await tool_registry.execute(func_name, **{**ctx, **func_args})
@@ -378,10 +389,12 @@ class ModelService:
                     }
                     all_tool_calls.append(record)
                     # 向前端 SSE 推送工具调用事件（ToolCallCard 实时渲染）
+                    # 带上 arguments：前端卡片可展示 query/command/relative_path 等，无需从 result 猜测
                     yield {"tool_call": {
                         "name": func_name,
                         "path": rel_path,
                         "success": record["success"],
+                        "arguments": func_args,
                     }}
 
                     current_messages.append({
@@ -481,6 +494,15 @@ class ModelService:
                             result = "错误: 当前为 plan 只读模式，git 提交/回滚类操作被禁止。查看状态可先切换到 build 模式。"
                         else:
                             result = execute_git_tool(func_name, project_path=project_path, **func_args)
+                        content = result
+                    elif func_name in SEARCH_TOOLS and project_path:
+                        result = execute_search_tool(func_name, project_path=project_path, **func_args)
+                        content = result
+                    elif func_name in COMMAND_TOOLS and project_path:
+                        if read_only:
+                            result = "错误: 当前为 plan 只读模式，禁止执行命令。查看状态可先切换到 build 模式。"
+                        else:
+                            result = execute_command_tool(func_name, project_path=project_path, **func_args)
                         content = result
                     else:
                         r = await tool_registry.execute(func_name, **{**ctx, **func_args})
