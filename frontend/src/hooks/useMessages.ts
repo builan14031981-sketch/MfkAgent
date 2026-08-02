@@ -57,7 +57,8 @@ export function useMessages(chatId: number | null) {
     onError: (error: string) => void,
     personalityLevel?: number,
     reasoningEffort?: "none" | "low" | "high",
-    onToolCall?: (toolCall: ToolCall) => void
+    onToolCall?: (toolCall: ToolCall) => void,
+    onToolCallsBatch?: (toolCalls: ToolCall[]) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
 
@@ -127,14 +128,20 @@ export function useMessages(chatId: number | null) {
                 return;
               }
               if (parsed.tool_call) {
-                // 工具调用事件：实时回调，供 ToolCallCard 渲染
-                if (onToolCall && parsed.tool_call.name && parsed.tool_call.path) {
+                // 实时工具执行事件：name 非空即渲染（path 可能为空，如 search_files/run_command/git 工具）
+                if (onToolCall && parsed.tool_call.name) {
                   onToolCall({
                     name: parsed.tool_call.name,
                     path: parsed.tool_call.path,
                     success: parsed.tool_call.success,
+                    arguments: parsed.tool_call.arguments,
                   });
                 }
+                continue;
+              }
+              if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
+                // 本轮工具调用汇总事件（含完整 result）：一次交给前端补齐卡片结果
+                onToolCallsBatch?.(parsed.tool_calls as ToolCall[]);
                 continue;
               }
               if (parsed.content) {

@@ -214,7 +214,14 @@ export default function ChatPage() {
           setIsSending(false);
         },
         personalityLevel,
-        reasoningEffort
+        reasoningEffort,
+        (toolCall) => {
+          setStreamingToolCalls((prev) => {
+            const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
+            return exists ? prev : [...prev, toolCall];
+          });
+        },
+        (batch) => setStreamingToolCalls(batch)
       );
     } catch (err) {
       console.error("Failed to regenerate:", err);
@@ -274,7 +281,8 @@ export default function ChatPage() {
                 const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
                 return exists ? prev : [...prev, toolCall];
               });
-            }
+            },
+            (batch) => setStreamingToolCalls(batch)
           );
         } catch (err) {
           console.error("Failed to auto-send:", err);
@@ -375,7 +383,8 @@ export default function ChatPage() {
             const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
             return exists ? prev : [...prev, toolCall];
           });
-        }
+        },
+        (batch) => setStreamingToolCalls(batch)
       );
     } catch (err) {
       console.error("Failed to send message:", err);
