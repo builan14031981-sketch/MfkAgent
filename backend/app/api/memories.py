@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import List, Optional
 from datetime import datetime
 from app.core.database import SessionLocal
@@ -7,24 +7,39 @@ from app.models.agent import MemoryItem
 
 router = APIRouter()
 
-SCOPES = {"global", "project"}
+SCOPES = {"global", "agent", "project"}
 
 
 class MemoryItemCreate(BaseModel):
     scope: str = "global"
     content: str
+    agent_id: Optional[str] = None
+    project_id: Optional[int] = None
 
     @field_validator("scope")
     @classmethod
     def check_scope(cls, v):
         if v not in SCOPES:
-            raise ValueError("scope must be global or project")
+            raise ValueError("scope must be one of global/agent/project")
         return v
+
+    @model_validator(mode="after")
+    def check_context(self):
+        if self.scope == "agent" and not self.agent_id:
+            raise ValueError("agent scope 需要 agent_id")
+        if self.scope == "project" and not self.project_id:
+            raise ValueError("project scope 需要 project_id")
+        if self.scope == "global":
+            self.agent_id = None
+            self.project_id = None
+        return self
 
 
 class MemoryItemResponse(BaseModel):
     id: int
     scope: str
+    agent_id: Optional[str]
+    project_id: Optional[int]
     content: str
     created_at: datetime
 
@@ -39,7 +54,12 @@ async def create_memory_item(memory: MemoryItemCreate):
         raise HTTPException(status_code=400, detail="content 不能为空")
     db = SessionLocal()
     try:
-        item = MemoryItem(scope=memory.scope, content=content)
+        item = MemoryItem(
+            scope=memory.scope,
+            agent_id=memory.agent_id,
+            project_id=memory.project_id,
+            content=content,
+        )
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -49,14 +69,22 @@ async def create_memory_item(memory: MemoryItemCreate):
 
 
 @router.get("", response_model=List[MemoryItemResponse])
-async def list_memory_items(scope: Optional[str] = None):
+async def list_memory_items(
+    scope: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    project_id: Optional[int] = None,
+):
     if scope is not None and scope not in SCOPES:
-        raise HTTPException(status_code=400, detail="scope must be global or project")
+        raise HTTPException(status_code=400, detail="scope must be one of global/agent/project")
     db = SessionLocal()
     try:
         query = db.query(MemoryItem)
         if scope is not None:
             query = query.filter(MemoryItem.scope == scope)
+        if agent_id is not None:
+            query = query.filter(MemoryItem.agent_id == agent_id)
+        if project_id is not None:
+            query = query.filter(MemoryItem.project_id == project_id)
         return query.order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc()).all()
     finally:
         db.close()

@@ -283,15 +283,16 @@ class AddMemoryTool(Tool):
             description=(
                 "将用户要求记住的信息持久化保存为记忆。"
                 "当用户说「添加记忆：xxx」「记住xxx」「请牢记xxx」或类似意图时，必须调用本工具保存。"
-                "scope 为 global 表示全局记忆（所有对话可见），project 表示与当前项目相关的记忆。"
+                "scope 为 global 表示全局记忆（所有对话可见）；agent 表示只给当前 Agent 记住（跨项目生效）；"
+                "project 表示与当前项目相关的记忆（仅当前项目会话可见）。agent/project 的目标由系统自动注入，无需填写。"
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "scope": {
                         "type": "string",
-                        "enum": ["global", "project"],
-                        "description": "global=全局记忆，project=项目相关记忆",
+                        "enum": ["global", "agent", "project"],
+                        "description": "global=全局记忆，agent=当前 Agent 专属，project=当前项目相关",
                     },
                     "content": {
                         "type": "string",
@@ -302,10 +303,10 @@ class AddMemoryTool(Tool):
             },
         )
 
-    async def execute(self, scope: str = "global", content: str = "", **kwargs) -> ToolResult:
+    async def execute(self, scope: str = "global", content: str = "", agent_id: str = None, project_id: int = None, **kwargs) -> ToolResult:
         try:
             from app.core.tools import add_memory as add_memory_fn
-            result = add_memory_fn(scope=scope, content=content)
+            result = add_memory_fn(scope=scope, content=content, agent_id=agent_id, project_id=project_id)
             if result.startswith("错误"):
                 return ToolResult(success=False, output="", error=result)
             return ToolResult(success=True, output=result)

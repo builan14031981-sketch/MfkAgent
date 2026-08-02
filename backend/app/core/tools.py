@@ -65,10 +65,18 @@ def list_files(project_path: str, relative_path: str = ".") -> str:
     return "\n".join(lines) if lines else "(空目录)"
 
 
-def add_memory(scope: str, content: str) -> str:
-    """将内容持久化保存为记忆。scope 只能是 global（全局）或 project（项目相关）。"""
-    if scope not in ("global", "project"):
-        return f"错误: scope 必须是 global 或 project，收到: {scope}"
+def add_memory(scope: str, content: str, agent_id: str = None, project_id: int = None) -> str:
+    """将内容持久化保存为记忆（三作用域隔离）。
+
+    scope：global=所有对话可见；agent=当前 Agent 专属（需 agent_id）；
+           project=当前项目下 Agent 共享（需 project_id）。
+    """
+    if scope not in ("global", "agent", "project"):
+        return f"错误: scope 必须是 global/agent/project，收到: {scope}"
+    if scope == "agent" and not agent_id:
+        return "错误: agent 记忆需要当前 Agent 上下文"
+    if scope == "project" and not project_id:
+        return "错误: project 记忆需要当前项目上下文"
     content = (content or "").strip()
     if not content:
         return "错误: content 不能为空"
@@ -77,7 +85,12 @@ def add_memory(scope: str, content: str) -> str:
 
     db = SessionLocal()
     try:
-        item = MemoryItem(scope=scope, content=content)
+        item = MemoryItem(
+            scope=scope,
+            agent_id=agent_id if scope == "agent" else None,
+            project_id=project_id if scope == "project" else None,
+            content=content,
+        )
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -148,39 +161,12 @@ FILE_TOOLS_DEFINITIONS: List[Dict] = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "add_memory",
-            "description": (
-                "将用户要求记住的信息持久化保存为记忆。"
-                "当用户说「添加记忆：xxx」「记住xxx」「请牢记xxx」或类似意图时，必须调用本工具保存。"
-                "scope 为 global 表示全局记忆（所有对话可见），project 表示与当前项目相关的记忆。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "scope": {
-                        "type": "string",
-                        "enum": ["global", "project"],
-                        "description": "global=全局记忆，project=项目相关记忆",
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "要记住的记忆内容",
-                    },
-                },
-                "required": ["scope", "content"],
-            },
-        },
-    },
 ]
 
 FILE_TOOLS = {
     "write_file": write_file,
     "read_file": read_file,
     "list_files": list_files,
-    "add_memory": add_memory,
 }
 
 

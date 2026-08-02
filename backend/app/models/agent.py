@@ -88,14 +88,19 @@ class Memory(Base):
 
 
 class MemoryItem(Base):
-    """极简记忆表：供 add_memory 工具 / 前端极简记忆 UI 使用。
+    """统一记忆表：供 add_memory 工具 / 前端记忆 UI 使用，三作用域隔离。
 
-    scope 取值：global（全局记忆）| project（项目相关记忆）
+    scope 取值：
+      global  — 全局记忆（所有 Agent、所有项目共享）
+      agent   — 当前 Agent 专属（跨项目，绑定 agent_id）
+      project — 当前项目专属（项目内所有 Agent 共享，绑定 project_id）
     """
     __tablename__ = "memory_items"
 
     id = Column(Integer, primary_key=True, index=True)
     scope = Column(String(20), nullable=False, default="global")
+    agent_id = Column(String(100), nullable=True)
+    project_id = Column(Integer, nullable=True)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 

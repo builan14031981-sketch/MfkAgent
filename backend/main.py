@@ -57,8 +57,61 @@ def _ensure_schema():
             if "tool_calls" not in cols:
                 conn.execute(sa.text("ALTER TABLE messages ADD COLUMN tool_calls JSON"))
 
+    if "memory_items" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("memory_items")}
+        with engine.begin() as conn:
+            if "agent_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN agent_id VARCHAR(100)"))
+            if "project_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN project_id INTEGER"))
+
 
 _ensure_schema()
+
+
+def _migrate_legacy_memory():
+    """一次性迁移：老 Memory 表 user/preference → MemoryItem(agent)，project → MemoryItem(project)。
+
+    幂等：仅当 memory_items 尚无 agent/project 数据时执行；已存在同 scope+目标+content 则跳过。
+    """
+    from sqlalchemy import inspect as _inspect
+    from app.core.database import SessionLocal
+    from app.models.agent import Memory, MemoryItem
+
+    inspector = _inspect(engine)
+    if "memories" not in inspector.get_table_names():
+        return
+    db = SessionLocal()
+    try:
+        has_new = db.query(MemoryItem).filter(MemoryItem.scope.in_(["agent", "project"])).count() > 0
+        if has_new:
+            return
+        legacy = db.query(Memory).filter(Memory.is_active == True).all()
+        added = 0
+        for m in legacy:
+            if m.memory_type in ("user", "preference") and m.agent_id:
+                scope, agent_id, project_id = "agent", m.agent_id, None
+            elif m.memory_type == "project" and m.project_id:
+                scope, agent_id, project_id = "project", None, m.project_id
+            else:
+                continue
+            exists = db.query(MemoryItem).filter(
+                MemoryItem.scope == scope,
+                MemoryItem.agent_id == agent_id,
+                MemoryItem.project_id == project_id,
+                MemoryItem.content == m.value,
+            ).first()
+            if exists:
+                continue
+            db.add(MemoryItem(scope=scope, agent_id=agent_id, project_id=project_id, content=m.value))
+            added += 1
+        if added:
+            db.commit()
+    finally:
+        db.close()
+
+
+_migrate_legacy_memory()
 
 app = FastAPI(
     title="MfkAgent API",

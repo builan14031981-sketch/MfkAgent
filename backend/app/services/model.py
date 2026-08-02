@@ -155,6 +155,24 @@ class ModelService:
         elif config.provider in (ModelProvider.DEEPSEEK, ModelProvider.GLM):
             payload["reasoning_effort"] = reasoning_effort
 
+    def _inject_memory_text(self, messages: List[Message], memory_text: str) -> List[Message]:
+        """将记忆 XML 块强制追加到 system 消息末尾（最高指令优先级）"""
+        for i, m in enumerate(messages):
+            if m.role == "system":
+                messages[i] = Message(role="system", content=m.content + "\n\n" + memory_text)
+                return messages
+        return [Message(role="system", content=memory_text)] + messages
+
+    def _log_memory_injection(self, messages: List[Message]) -> None:
+        try:
+            print("\n" + "=" * 70)
+            print("[MEMORY-INJECTION] 最终 messages[0]（system 消息）：")
+            print("-" * 70)
+            print(messages[0].content)
+            print("=" * 70 + "\n")
+        except Exception:
+            pass
+
     def reload_models(self):
         """重新加载模型配置（当设置更新时调用）"""
         self.models = self._init_models()
@@ -171,6 +189,8 @@ class ModelService:
         project_path: str = None,
         max_tool_rounds: int = 4,
         read_only: bool = False,
+        memory_context: dict = None,
+        memory_text: str = None,
     ) -> ChatResponse:
         """发送聊天请求"""
         config = self.get_model_config(model_id)
@@ -179,6 +199,10 @@ class ModelService:
 
         if not config.api_key:
             raise ValueError(f"模型 {model_id} 未配置API Key")
+
+        if memory_text:
+            messages = self._inject_memory_text(messages, memory_text)
+            self._log_memory_injection(messages)
 
         if config.provider in [
             ModelProvider.MIMO,
@@ -192,6 +216,7 @@ class ModelService:
             return await self._chat_openai_compatible(
                 config, messages, temperature, max_tokens, stream, tools,
                 reasoning_effort, project_path, max_tool_rounds, read_only,
+                memory_context,
             )
         else:
             raise ValueError(f"不支持的模型提供商: {config.provider}")
@@ -207,6 +232,8 @@ class ModelService:
         project_path: str = None,
         max_tool_rounds: int = 4,
         read_only: bool = False,
+        memory_context: dict = None,
+        memory_text: str = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """流式聊天请求（支持多轮 Tool Calling 自动执行环）。
 
@@ -229,6 +256,10 @@ class ModelService:
             "Authorization": f"Bearer {config.api_key}",
             "Content-Type": "application/json",
         }
+
+        if memory_text:
+            messages = self._inject_memory_text(messages, memory_text)
+            self._log_memory_injection(messages)
 
         current_messages = [msg.dict() for msg in messages]
         all_tool_calls: List[dict] = []
@@ -325,7 +356,7 @@ class ModelService:
                         result_text = result
                     else:
                         from app.services.tools import tool_registry
-                        r = await tool_registry.execute(func_name, **func_args)
+                        r = await tool_registry.execute(func_name, **{**ctx, **func_args})
                         result_text = r.output if r.success else f"Error: {r.error}"
 
                     # ToolCallCard 期望格式：{ name, path, success }（path 从 arguments 提取）
@@ -371,10 +402,13 @@ class ModelService:
         project_path: str = None,
         max_tool_rounds: int = 4,
         read_only: bool = False,
+        memory_context: dict = None,
     ) -> ChatResponse:
         """调用OpenAI兼容接口（支持多轮 Tool Calling 自动执行环）"""
         from app.services.tools import tool_registry
         from app.core.tools import execute_file_tool
+
+        ctx = {k: v for k, v in (memory_context or {}).items() if v is not None}
 
         headers = {
             "Authorization": f"Bearer {config.api_key}",
@@ -436,7 +470,7 @@ class ModelService:
                             result = execute_file_tool(func_name, project_path=project_path, **func_args)
                         content = result
                     else:
-                        r = await tool_registry.execute(func_name, **func_args)
+                        r = await tool_registry.execute(func_name, **{**ctx, **func_args})
                         content = r.output if r.success else f"Error: {r.error}"
 
                     tool_messages.append({

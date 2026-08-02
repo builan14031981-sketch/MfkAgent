@@ -7,13 +7,12 @@ import json
 import os
 import time
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message, Agent, Memory, MemoryItem, Setting, Project
+from app.models.agent import Chat, Message, Agent, MemoryItem, Setting, Project
 from app.core.tools import FILE_TOOLS_DEFINITIONS
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
-from app.services.knowledge import knowledge_service
 from app.services.personality import get_personality_prompt
 
 router = APIRouter()
@@ -500,40 +499,26 @@ def _get_agent_prompt(agent_id: str) -> str:
 
 
 
-def _get_memory_prompt(agent_id: str, user_id: str = "default", project_id: Optional[int] = None) -> str:
+def _build_memory_text(project_id: Optional[int] = None) -> str:
+    """查询全部记忆并格式化为 XML 文本块（供强制注入 System Prompt）。
+
+    记忆来源（废弃 RAG，改为全量拼接）：
+      - scope='global'：所有对话可见（无条件）
+      - scope='project'：当前 Chat 绑定项目下共享（需 project_id）
+
+    返回格式（无记忆则返回空串）：
+    <user_defined_memories>
+    ### 全局记忆 (Global Rules):
+    - ...
+
+    ### 当前项目特定记忆 (Project Rules):
+    - ...
+    </user_defined_memories>
+    """
     db = SessionLocal()
     try:
-        query = db.query(Memory).filter(
-            Memory.agent_id == agent_id,
-            Memory.user_id == user_id,
-            Memory.is_active == True,
-        )
-        user_memories = query.filter(Memory.memory_type.in_(["user", "preference"])).all()
         sections = []
-        if user_memories:
-            lines = ["用户记忆："]
-            for m in user_memories:
-                lines.append(f"- {m.value}")
-            sections.append("\n".join(lines))
-        if project_id is not None:
-            project_memories = (
-                db.query(Memory)
-                .filter(
-                    Memory.agent_id == agent_id,
-                    Memory.user_id == user_id,
-                    Memory.memory_type == "project",
-                    Memory.project_id == project_id,
-                    Memory.is_active == True,
-                )
-                .all()
-            )
-            if project_memories:
-                lines = ["项目记忆："]
-                for m in project_memories:
-                    lines.append(f"- {m.value}")
-                sections.append("\n".join(lines))
 
-        # 极简记忆表（MemoryItem，add_memory 工具写入）的 global 记忆：所有对话可见
         global_items = (
             db.query(MemoryItem)
             .filter(MemoryItem.scope == "global")
@@ -542,12 +527,24 @@ def _get_memory_prompt(agent_id: str, user_id: str = "default", project_id: Opti
             .all()
         )
         if global_items:
-            lines = ["长期记忆："]
-            for m in global_items:
-                lines.append(f"- {m.content}")
-            sections.append("\n".join(lines))
+            lines = "\n".join(f"- {m.content}" for m in global_items)
+            sections.append(f"### 全局记忆 (Global Rules):\n{lines}")
 
-        return "\n\n".join(sections)
+        if project_id is not None:
+            project_items = (
+                db.query(MemoryItem)
+                .filter(MemoryItem.scope == "project", MemoryItem.project_id == project_id)
+                .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
+                .limit(30)
+                .all()
+            )
+            if project_items:
+                lines = "\n".join(f"- {m.content}" for m in project_items)
+                sections.append(f"### 当前项目特定记忆 (Project Rules):\n{lines}")
+
+        if not sections:
+            return ""
+        return "<user_defined_memories>\n" + "\n\n".join(sections) + "\n</user_defined_memories>"
     finally:
         db.close()
 
@@ -578,17 +575,10 @@ async def send_message(chat_id: int, request: SendRequest):
 
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
-        memory_prompt = _get_memory_prompt(chat.agent_id, project_id=chat.project_id)
-        knowledge_context = ""
-        if chat.project_id:
-            knowledge_context = knowledge_service.get_context(chat.project_id, request.content)
+        memory_text = _build_memory_text(chat.project_id)
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
-        if memory_prompt:
-            full_prompt += "\n\n" + memory_prompt
-        if knowledge_context:
-            full_prompt += "\n\n" + knowledge_context
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
@@ -604,17 +594,20 @@ async def send_message(chat_id: int, request: SendRequest):
         try:
             tools_arg = None
             if request.use_tools:
+                extra_tools = None
+                if allowed_tools is not None:
+                    extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
                 if chat.project_path:
                     # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）
                     tools_arg = FILE_TOOLS_DEFINITIONS
                     if chat_mode == "plan":
                         # plan 只读模式：仅提供读取/浏览工具，禁止写文件
                         tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
+                    # 追加 capabilities 允许的非文件工具（如 add_memory）
+                    if extra_tools:
+                        tools_arg = tools_arg + extra_tools
                 elif allowed_tools is not None:
-                    if allowed_tools:
-                        tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
-                    else:
-                        tools_arg = []
+                    tools_arg = extra_tools or []
             ai_response = await model_service.chat(
                 model_id=chat.model or request.model or _get_default_model(),
                 messages=model_messages,
@@ -624,6 +617,8 @@ async def send_message(chat_id: int, request: SendRequest):
                 reasoning_effort=reasoning_effort,
                 project_path=chat.project_path,
                 read_only=(chat_mode == "plan"),
+                memory_context={"agent_id": chat.agent_id, "project_id": chat.project_id},
+                memory_text=memory_text,
             )
             ai_content = ai_response.content
             api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None
@@ -641,7 +636,7 @@ async def send_message(chat_id: int, request: SendRequest):
         if api_usage and isinstance(api_usage, dict) and api_usage.get("total_tokens", 0) > 0:
             token_usage = api_usage
         else:
-            prompt_tokens = count_tokens(full_prompt) + count_tokens(request.content)
+            prompt_tokens = count_tokens(full_prompt) + count_tokens(memory_text or "") + count_tokens(request.content)
             completion_tokens = count_tokens(ai_content)
             token_usage = {
                 "prompt_tokens": prompt_tokens,
@@ -684,17 +679,10 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
         system_prompt = _get_agent_prompt(chat.agent_id)
         personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
-        memory_prompt = _get_memory_prompt(chat.agent_id, project_id=chat.project_id)
-        knowledge_context = ""
-        if chat.project_id:
-            knowledge_context = knowledge_service.get_context(chat.project_id, request.content)
+        memory_text = _build_memory_text(chat.project_id)
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
-        if memory_prompt:
-            full_prompt += "\n\n" + memory_prompt
-        if knowledge_context:
-            full_prompt += "\n\n" + knowledge_context
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
@@ -705,21 +693,28 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         reasoning_effort = request.reasoning_effort or _get_default_reasoning_effort()
         project_path = chat.project_path
         chat_mode = chat.mode or "build"
+        # 捕获会话内已加载的字段为局部变量：db.commit() 后 chat 实例被 expire，
+        # 生成器（db.close() 之后执行）再访问会触发 DetachedInstanceError
+        chat_agent_id = chat.agent_id
+        chat_project_id = chat.project_id
 
         agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
         allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
         tools_arg = None
         if request.use_tools:
+            extra_tools = None
+            if allowed_tools is not None:
+                extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
             if project_path:
                 tools_arg = FILE_TOOLS_DEFINITIONS
                 if chat_mode == "plan":
                     # plan 只读模式：仅提供读取/浏览工具，禁止写文件
                     tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
+                # 追加 capabilities 允许的非文件工具（如 add_memory）
+                if extra_tools:
+                    tools_arg = tools_arg + extra_tools
             elif allowed_tools is not None:
-                if allowed_tools:
-                    tools_arg = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
-                else:
-                    tools_arg = []
+                tools_arg = extra_tools or []
 
         db.commit()
     finally:
@@ -746,6 +741,8 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 tools=tools_arg,
                 project_path=project_path,
                 read_only=(chat_mode == "plan"),
+                memory_context={"agent_id": chat_agent_id, "project_id": chat_project_id},
+                memory_text=memory_text,
             ):
                 # 文本增量：攒批打包为一个 SSE 事件，减轻前端高频 DOM 渲染压力
                 if "content" in chunk:
