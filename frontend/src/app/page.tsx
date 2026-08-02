@@ -15,6 +15,7 @@ import type { ChatMode } from "@/components/ChatInput";
 import { HeroStage } from "@/components/hero/HeroStage";
 import type { QuoteCategory, QuoteItem } from "@/components/hero/QuoteMenu";
 import type { Project } from "@/hooks/useProjects";
+import { INTERACTIVE_HERO_THEME_IDS } from "@/themes/registry";
 
 export default function Home() {
   const router = useRouter();
@@ -145,6 +146,10 @@ export default function Home() {
 
   const quickStarts = tArray("home.quickStarts");
 
+  // 当前 hero 主题 id（HeroStage 上报）；可交互主题内已内置快捷入口，首页独立快捷指令行随之隐藏
+  const [heroThemeId, setHeroThemeId] = useState<string | undefined>(undefined);
+  const interactiveTheme = heroThemeId ? INTERACTIVE_HERO_THEME_IDS.has(heroThemeId) : false;
+
   return (
     <div style={{
       flex: 1,
@@ -171,46 +176,50 @@ export default function Home() {
           quoteCategories={quoteCategories}
           onSelectQuote={handleSelectQuote}
           onQuickAction={(prompt) => setInput(prompt)}
+          onThemeChange={setHeroThemeId}
         />
-
-        {/* 快捷指令 */}
-        {quickStarts.length > 0 && (
-          <div style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "8px",
-            justifyContent: "center",
-            maxWidth: "480px",
-          }}>
-            {quickStarts.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => {
-                  setInput(prompt);
-                }}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: "var(--radius-full)",
-                  border: "1px solid var(--border-primary)",
-                  background: "var(--bg-level-2)",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  color: "var(--text-level-2)",
-                  transition: "all var(--transition-fast)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "var(--color-primary)";
-                  e.currentTarget.style.color = "var(--color-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "var(--border-primary)";
-                  e.currentTarget.style.color = "var(--text-level-2)";
-                }}
-              >{prompt}</button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* 快捷指令（非可交互主题时显示）：紧贴输入组合框上方，留轻微空隙 */}
+      {!interactiveTheme && quickStarts.length > 0 && (
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          justifyContent: "center",
+          maxWidth: "768px",
+          width: "100%",
+          margin: "0 auto",
+          padding: "0 16px 6px",
+        }}>
+          {quickStarts.map((prompt) => (
+            <button
+              key={prompt}
+              onClick={() => {
+                setInput(prompt);
+              }}
+              style={{
+                padding: "8px 14px",
+                borderRadius: "var(--radius-full)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-2)",
+                cursor: "pointer",
+                fontSize: "12px",
+                color: "var(--text-level-2)",
+                transition: "all var(--transition-fast)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+                e.currentTarget.style.color = "var(--color-primary)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border-primary)";
+                e.currentTarget.style.color = "var(--text-level-2)";
+              }}
+            >{prompt}</button>
+          ))}
+        </div>
+      )}
 
       {/* 底部区域 - 贴底 ChatComposer（一级入口：允许 Agent 切换） */}
       <ChatComposer

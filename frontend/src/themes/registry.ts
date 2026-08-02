@@ -98,6 +98,16 @@ export function getHeroTheme(id: string | null | undefined): HeroTheme | undefin
   return HERO_THEMES.find((t) => t.id === id);
 }
 
+/**
+ * 已接入「可交互快捷指令」的主题 id 集合：
+ * 这些主题内部已把 home.quickStarts 渲染为主题化按钮/菜单，首页无需再展示独立快捷指令行。
+ */
+export const INTERACTIVE_HERO_THEME_IDS: ReadonlySet<string> = new Set([
+  "retro-console",
+  "win9x-desktop",
+  "game-boy",
+]);
+
 export function pickRandomHeroTheme(pool?: HeroTheme[]): HeroTheme {
   const candidates = pool && pool.length > 0 ? pool : HERO_THEMES;
   const index = Math.floor(Math.random() * candidates.length);
