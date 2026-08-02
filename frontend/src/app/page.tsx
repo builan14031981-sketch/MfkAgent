@@ -170,6 +170,7 @@ export default function Home() {
           subtext={welcomeSubtext}
           quoteCategories={quoteCategories}
           onSelectQuote={handleSelectQuote}
+          onQuickAction={(prompt) => setInput(prompt)}
         />
 
         {/* 快捷指令 */}

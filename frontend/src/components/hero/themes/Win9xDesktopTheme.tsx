@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import type { CSSProperties } from "react";
 import type { HeroThemeProps } from "@/themes/types";
@@ -34,7 +35,13 @@ const sysFont: CSSProperties = {
 };
 
 /** Theme: Win9x Desktop — Windows 95/98 桌面窗口 + 任务栏 + 开始按钮 */
-export function Win9xDesktopTheme({ title, welcome, subtext, animated }: HeroThemeProps) {
+export function Win9xDesktopTheme({ title, welcome, subtext, animated, quickActions, onQuickAction }: HeroThemeProps) {
+  const [startOpen, setStartOpen] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const actionList = quickActions ?? [];
+  const interactive = !!onQuickAction && actionList.length > 0;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -111,17 +118,18 @@ export function Win9xDesktopTheme({ title, welcome, subtext, animated }: HeroThe
             <div style={{ ...sysFont, fontSize: 12, marginTop: 6, color: SHADOW_GRAY }}>{subtext}</div>
           )}
 
-          {/* 仿「确定/取消」按钮（凸起 bevel，按下凹陷） */}
+          {/* 仿「确定/取消」按钮（凸起 bevel，按下凹陷）；确定键绑首个快捷指令 */}
           {animated && (
             <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14 }}>
               <button
+                onClick={interactive ? () => onQuickAction?.(actionList[0]) : undefined}
                 style={{
                   ...sysFont,
                   fontSize: 12,
                   padding: "4px 18px",
                   background: WINDOW_GRAY,
                   color: BLACK,
-                  cursor: "pointer",
+                  cursor: interactive ? "pointer" : "default",
                   ...bevelOut,
                 }}
               >
@@ -134,7 +142,7 @@ export function Win9xDesktopTheme({ title, welcome, subtext, animated }: HeroThe
                   padding: "4px 18px",
                   background: WINDOW_GRAY,
                   color: BLACK,
-                  cursor: "pointer",
+                  cursor: "default",
                   ...bevelOut,
                 }}
               >
@@ -145,7 +153,7 @@ export function Win9xDesktopTheme({ title, welcome, subtext, animated }: HeroThe
         </div>
       </div>
 
-      {/* 任务栏 + 开始按钮 */}
+      {/* 任务栏 + 开始按钮（含快捷指令菜单） */}
       <div
         style={{
           marginTop: 8,
@@ -155,16 +163,18 @@ export function Win9xDesktopTheme({ title, welcome, subtext, animated }: HeroThe
           background: WINDOW_GRAY,
           padding: "3px 5px",
           ...bevelOut,
+          position: "relative",
         }}
       >
         <button
+          onClick={interactive ? () => setStartOpen((o) => !o) : undefined}
           style={{
             display: "flex",
             alignItems: "center",
             gap: 6,
-            background: WINDOW_GRAY,
+            background: startOpen && interactive ? "#D4D0C8" : WINDOW_GRAY,
             color: BLACK,
-            cursor: "pointer",
+            cursor: interactive ? "pointer" : "default",
             fontWeight: 700,
             padding: "2px 10px 2px 4px",
             ...bevelOut,
@@ -173,6 +183,58 @@ export function Win9xDesktopTheme({ title, welcome, subtext, animated }: HeroThe
           <span style={{ width: 16, height: 16, background: `linear-gradient(135deg, ${TITLEBAR_LIGHT}, ${TITLEBAR_DARK})`, display: "inline-block" }} />
           <span style={{ ...sysFont, fontSize: 13 }}>开始</span>
         </button>
+
+        {/* 开始菜单：快捷指令列表（Win9x 经典样式，向上展开） */}
+        {startOpen && interactive && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "100%",
+              left: 0,
+              marginBottom: 4,
+              minWidth: 210,
+              maxWidth: 260,
+              background: WINDOW_GRAY,
+              ...bevelOut,
+              padding: "3px 3px 3px 24px",
+              zIndex: 20,
+            }}
+          >
+            <div style={{ position: "absolute", left: 2, top: 2, bottom: 2, width: 20, background: TITLEBAR_DARK, ...bevelIn, border: "none" }} />
+            {actionList.map((a, i) => (
+              <button
+                key={a.id}
+                onClick={() => {
+                  onQuickAction?.(a);
+                  setStartOpen(false);
+                }}
+                onMouseEnter={() => setHoverIndex(i)}
+                onMouseLeave={() => setHoverIndex(null)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  width: "100%",
+                  background: hoverIndex === i ? TITLEBAR_DARK : "transparent",
+                  color: hoverIndex === i ? WHITE : BLACK,
+                  cursor: "pointer",
+                  padding: "5px 10px",
+                  ...sysFont,
+                  fontSize: 13,
+                  textAlign: "left",
+                  border: "none",
+                  marginBottom: 2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                <span style={{ width: 8, height: 8, background: DESKTOP_TEAL, flexShrink: 0 }} />
+                <span>{a.prompt}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 已启动程序占位 */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>

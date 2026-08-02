@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import type { CSSProperties } from "react";
 import type { HeroThemeProps } from "@/themes/types";
@@ -19,7 +20,13 @@ const gbFont: CSSProperties = {
 };
 
 /** Theme: Game Boy — 原版 DMG 掌机外壳，4 色绿屏 + 十字键 + A/B 键 */
-export function GameBoyTheme({ title, welcome, subtext, animated }: HeroThemeProps) {
+export function GameBoyTheme({ title, welcome, subtext, animated, quickActions, onQuickAction }: HeroThemeProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const actionList = quickActions ?? [];
+  const interactive = !!onQuickAction && actionList.length > 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -91,8 +98,61 @@ export function GameBoyTheme({ title, welcome, subtext, animated }: HeroThemePro
               color: SCREEN_INK,
               borderRadius: 2,
               boxShadow: "inset 0 0 12px rgba(15,56,15,0.35)",
+              position: "relative",
             }}
           >
+            {/* 快捷指令菜单：START 打开，覆盖屏幕 */}
+            {menuOpen && interactive && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: SCREEN_BG,
+                  padding: "12px 10px",
+                  textAlign: "left",
+                  overflowY: "auto",
+                }}
+              >
+                <div style={{ ...gbFont, fontSize: 10, color: SCREEN_MID, marginBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>QUICK START</span>
+                  <span
+                    onClick={() => setMenuOpen(false)}
+                    style={{ cursor: "pointer", fontSize: 11, color: SCREEN_INK }}
+                  >
+                    ✕ CLOSE
+                  </span>
+                </div>
+                {actionList.map((a, i) => (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      onQuickAction?.(a);
+                      setMenuOpen(false);
+                    }}
+                    onMouseEnter={() => setHoverIndex(i)}
+                    onMouseLeave={() => setHoverIndex(null)}
+                    style={{
+                      ...gbFont,
+                      fontSize: 12,
+                      color: SCREEN_INK,
+                      background: hoverIndex === i ? "rgba(15,56,15,0.18)" : "transparent",
+                      border: "none",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 4,
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "6px 4px",
+                      cursor: "pointer",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    <span style={{ flexShrink: 0 }}>{hoverIndex === i ? "►" : "·"}</span>
+                    <span>{a.prompt}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {/* 像素网格（模拟 LCD） */}
             <div
               style={{
@@ -236,7 +296,7 @@ export function GameBoyTheme({ title, welcome, subtext, animated }: HeroThemePro
         </div>
       </div>
 
-      {/* 底部铭牌 */}
+      {/* 底部铭牌（START 可点开快捷指令菜单） */}
       <div
         style={{
           ...gbFont,
@@ -246,7 +306,18 @@ export function GameBoyTheme({ title, welcome, subtext, animated }: HeroThemePro
           marginTop: 14,
         }}
       >
-        ← SELECT&nbsp;&nbsp;&nbsp;START →
+        ← SELECT&nbsp;&nbsp;
+        <span
+          onClick={interactive ? () => setMenuOpen((o) => !o) : undefined}
+          style={{
+            cursor: interactive ? "pointer" : "default",
+            color: interactive ? SHELL_DARK : "#6B6355",
+            borderBottom: interactive ? `1px dashed ${SHELL_DARK}` : "none",
+          }}
+        >
+          START
+        </span>
+        &nbsp;→
       </div>
     </motion.div>
   );

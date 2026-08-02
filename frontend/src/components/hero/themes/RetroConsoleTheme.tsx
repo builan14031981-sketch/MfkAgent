@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import type { CSSProperties } from "react";
 import type { HeroThemeProps } from "@/themes/types";
@@ -26,7 +27,15 @@ const pixelVT: CSSProperties = {
 const MENU = ["1P AGENT MODE", "2P PROJECT MODE", "OPTIONS", "QUIT"];
 
 /** Theme: Retro Console — 16-bit 家用机开机选单，像素外框 + 像素标题 + 扫描线 */
-export function RetroConsoleTheme({ title, welcome, subtext, animated }: HeroThemeProps) {
+export function RetroConsoleTheme({ title, welcome, subtext, animated, quickActions, onQuickAction }: HeroThemeProps) {
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  // 有快捷指令时选单变为可交互指令列表；否则回退静态装饰选单
+  const actionList = quickActions ?? [];
+  const interactive = !!onQuickAction && actionList.length > 0;
+  const menuItems = interactive ? actionList.map((a) => a.prompt) : MENU;
+  const activeRow = interactive ? (hoverIndex ?? 0) : 0;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -118,25 +127,33 @@ export function RetroConsoleTheme({ title, welcome, subtext, animated }: HeroThe
           ))}
         </div>
 
-        {/* 游戏选单（像素边框 + 高亮第一项） */}
+        {/* 游戏选单：有快捷指令时可交互（像素边框 + 跟随鼠标高亮） */}
         <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
-          {MENU.map((m, i) => (
-            <div
+          {menuItems.map((m, i) => (
+            <button
               key={m}
+              onClick={interactive ? () => onQuickAction?.(actionList[i]) : undefined}
+              onMouseEnter={interactive ? () => setHoverIndex(i) : undefined}
+              onMouseLeave={interactive ? () => setHoverIndex(null) : undefined}
               style={{
                 ...pixelVT,
                 fontSize: 15,
                 padding: "4px 10px",
-                border: i === 0 ? `2px solid ${GOLD}` : "2px solid #2a3160",
-                background: i === 0 ? "rgba(248,184,0,0.12)" : "rgba(20,26,51,0.6)",
-                color: i === 0 ? GOLD : DIM,
+                border: i === activeRow ? `2px solid ${GOLD}` : "2px solid #2a3160",
+                background: i === activeRow ? "rgba(248,184,0,0.12)" : "rgba(20,26,51,0.6)",
+                color: i === activeRow ? GOLD : DIM,
                 textAlign: "left",
-                boxShadow: i === 0 ? "3px 3px 0 rgba(0,0,0,0.4)" : undefined,
+                boxShadow: i === activeRow ? "3px 3px 0 rgba(0,0,0,0.4)" : undefined,
+                cursor: interactive ? "pointer" : "default",
+                width: "100%",
+                fontFamily: "inherit",
+                letterSpacing: "inherit",
+                transition: "border-color 0.1s ease, background 0.1s ease, color 0.1s ease",
               }}
             >
-              <span style={{ display: "inline-block", width: 16 }}>{i === 0 ? "►" : ""}</span>
+              <span style={{ display: "inline-block", width: 16 }}>{i === activeRow ? "►" : ""}</span>
               {m}
-            </div>
+            </button>
           ))}
         </div>
 
