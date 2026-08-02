@@ -20,6 +20,7 @@ const BRANCH = `*
 /** Theme 4: Git Developer — git commit + build success + 程序员彩蛋 */
 export function GitDeveloperTheme({ title, welcome, subtext, animated }: HeroThemeProps) {
   const [buildDone, setBuildDone] = useState(false);
+  const showBuild = animated ? buildDone : true;
 
   useEffect(() => {
     const t = setTimeout(() => setBuildDone(true), 6400);
@@ -60,10 +61,10 @@ export function GitDeveloperTheme({ title, welcome, subtext, animated }: HeroThe
       </div>
 
       <div style={{ padding: "18px 22px 22px", fontSize: 13, lineHeight: 1.9 }}>
-        <TypewriterLine text={`$ git init --agent=mfkagent`} delay={200} speed={22} color={GRAY} />
-        <TypewriterLine text={`$ git commit -m "feat: awaken MfkAgent AI"`} delay={900} speed={22} color={GRAY} />
-        <TypewriterLine text={`[main a1b2c3d] feat: awaken MfkAgent AI`} delay={1700} speed={18} color={GREEN} />
-        <TypewriterLine text=" 8 files changed, 2048 insertions(+), 0 deletions(-)" delay={2400} speed={14} color={GRAY} />
+        <TypewriterLine text={`$ git init --agent=mfkagent`} delay={200} speed={22} color={GRAY} animated={animated} />
+        <TypewriterLine text={`$ git commit -m "feat: awaken MfkAgent AI"`} delay={900} speed={22} color={GRAY} animated={animated} />
+        <TypewriterLine text={`[main a1b2c3d] feat: awaken MfkAgent AI`} delay={1700} speed={18} color={GREEN} animated={animated} />
+        <TypewriterLine text=" 8 files changed, 2048 insertions(+), 0 deletions(-)" delay={2400} speed={14} color={GRAY} animated={animated} />
 
         {/* ASCII 分支图 + 大标题 */}
         <div style={{ display: "flex", gap: 18, margin: "10px 0 8px", minHeight: 110 }}>
@@ -78,17 +79,17 @@ export function GitDeveloperTheme({ title, welcome, subtext, animated }: HeroThe
             <div style={{ fontSize: 30, fontWeight: 700, color: "var(--text-level-1)", letterSpacing: "-0.02em" }}>{title}</div>
             {welcome && (
               <div style={{ fontSize: 13, color: "var(--text-level-3)", marginTop: 6 }}>
-                <TypewriterLine text={`commit message: ${welcome}`} delay={3100} speed={16} color="var(--text-level-3)" block={false} />
+                <TypewriterLine text={`commit message: ${welcome}`} delay={3100} speed={16} color="var(--text-level-3)" block={false} animated={animated} />
               </div>
             )}
           </div>
         </div>
 
         {/* Build Success */}
-        {buildDone && (
+        {showBuild && (
           <div style={{ marginTop: 4 }}>
-            <TypewriterLine text="✔ Build successful — production ready" delay={5500} speed={18} color={GREEN} />
-            <TypewriterLine text="C:\projects\mfkagent> npm run dev  ··· ✓ ready" delay={6300} speed={18} color={GRAY} />
+            <TypewriterLine text="✔ Build successful — production ready" delay={5500} speed={18} color={GREEN} animated={animated} />
+            <TypewriterLine text="C:\projects\mfkagent> npm run dev  ··· ✓ ready" delay={6300} speed={18} color={GRAY} animated={animated} />
             {/* 程序员彩蛋 */}
             <motion.div
               initial={{ opacity: 0 }}

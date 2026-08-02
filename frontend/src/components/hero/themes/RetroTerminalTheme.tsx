@@ -48,23 +48,23 @@ export function RetroTerminalTheme({ title, welcome, subtext, animated }: HeroTh
 
       <div style={{ fontSize: 13, lineHeight: 1.7 }}>
         {BOOT_LINES.map((line, i) => (
-          <TypewriterLine key={i} text={line.text} delay={line.delay} speed={14} color={line.color} block={false} />
+          <TypewriterLine key={i} text={line.text} delay={line.delay} speed={14} color={line.color} block={false} animated={animated} />
         ))}
       </div>
 
       {/* 提示符 + 标题逐字输出 */}
       <div style={{ marginTop: 12, fontSize: 34, fontWeight: 700, letterSpacing: "0.03em" }}>
-        <TypewriterLine text={`$ ${title}`} speed={60} color={GREEN} />
+        <TypewriterLine text={`$ ${title}`} speed={60} color={GREEN} animated={animated} />
       </div>
 
       {welcome && (
         <div style={{ fontSize: 15, marginTop: 8 }}>
-          <TypewriterLine text={`mfk-agent$ ${welcome}`} delay={titleLength * 60 + 500} speed={18} color={GREEN} block={false} />
+          <TypewriterLine text={`mfk-agent$ ${welcome}`} delay={titleLength * 60 + 500} speed={18} color={GREEN} block={false} animated={animated} />
         </div>
       )}
       {subtext && (
         <div style={{ fontSize: 12, marginTop: 4, opacity: 0.75 }}>
-          <TypewriterLine text={`mfk-agent$ ${subtext}`} delay={titleLength * 60 + 1000} speed={14} color={GREEN} block={false} />
+          <TypewriterLine text={`mfk-agent$ ${subtext}`} delay={titleLength * 60 + 1000} speed={14} color={GREEN} block={false} animated={animated} />
         </div>
       )}
     </motion.div>

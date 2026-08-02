@@ -22,6 +22,7 @@ const DOS_LINES: { text: string; delay: number; color?: string }[] = [
 /** Theme 5: Retro DOS — 经典 DOS 命令行启动（CGA 蓝底） */
 export function RetroDosTheme({ title, welcome, subtext, animated }: HeroThemeProps) {
   const [titleDone, setTitleDone] = useState(false);
+  const showTitle = animated ? titleDone : true;
 
   useEffect(() => {
     const t = setTimeout(() => setTitleDone(true), 3400);
@@ -49,11 +50,11 @@ export function RetroDosTheme({ title, welcome, subtext, animated }: HeroThemePr
     >
       <div style={{ padding: "18px 24px 22px", fontSize: 13, lineHeight: 1.9 }}>
         {DOS_LINES.map((line, i) => (
-          <TypewriterLine key={i} text={line.text} delay={line.delay} speed={10} color={line.color} />
+          <TypewriterLine key={i} text={line.text} delay={line.delay} speed={10} color={line.color} animated={animated} />
         ))}
 
         {/* DOS 风格标题（蓝底白字 + 方块光标） */}
-        {titleDone && (
+        {showTitle && (
           <div style={{ marginTop: 12, textAlign: "center" }}>
             <div style={{
               display: "inline-block",
@@ -74,12 +75,12 @@ export function RetroDosTheme({ title, welcome, subtext, animated }: HeroThemePr
         {/* 欢迎语 */}
         {welcome && (
           <div style={{ marginTop: 12, textAlign: "center", fontSize: 13 }}>
-            <TypewriterLine text={`C:\\MFKAGENT>WELCOME ${welcome}`} delay={3600} speed={16} color={WHITE} block={false} />
+            <TypewriterLine text={`C:\\MFKAGENT>WELCOME ${welcome}`} delay={3600} speed={16} color={WHITE} block={false} animated={animated} />
           </div>
         )}
         {subtext && (
           <div style={{ textAlign: "center", fontSize: 12, color: DIM }}>
-            <TypewriterLine text={`C:\\MFKAGENT>REM ${subtext}`} delay={4300} speed={14} color={DIM} block={false} />
+            <TypewriterLine text={`C:\\MFKAGENT>REM ${subtext}`} delay={4300} speed={14} color={DIM} block={false} animated={animated} />
           </div>
         )}
 

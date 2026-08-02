@@ -22,6 +22,7 @@ export function CyberTerminalTheme({ title, welcome, subtext, animated }: HeroTh
   // 标题打字完成后延迟启动欢迎语
   const [titleDone, setTitleDone] = useState(false);
   const titleLength = title.length;
+  const showTitle = animated ? titleDone : true;
 
   useEffect(() => {
     const t = setTimeout(() => setTitleDone(true), 200 + titleLength * 45);
@@ -64,32 +65,32 @@ export function CyberTerminalTheme({ title, welcome, subtext, animated }: HeroTh
       <div style={{ padding: "20px 22px 24px" }}>
         {/* 大标题：逐字打字 + 绿色发光 */}
         <div style={{ fontSize: 40, fontWeight: 700, letterSpacing: "0.04em", color: GREEN, textShadow: "0 0 18px rgba(0, 255, 156, 0.45)", marginBottom: 6 }}>
-          <TypewriterLine text={title} speed={45} color={GREEN} />
+          <TypewriterLine text={title} speed={45} color={GREEN} animated={animated} />
         </div>
 
         {/* 欢迎语（终端 echo 风格） */}
         {welcome && (
           <div style={{ fontSize: 14, color: AMBER, marginBottom: 2, minHeight: "1.5em" }}>
-            <TypewriterLine text={`> ${welcome}`} delay={200 + titleLength * 45 + 350} speed={16} color={AMBER} block={false} />
+            <TypewriterLine text={`> ${welcome}`} delay={200 + titleLength * 45 + 350} speed={16} color={AMBER} block={false} animated={animated} />
           </div>
         )}
         {subtext && (
           <div style={{ fontSize: 12, color: DIM, marginBottom: 14, minHeight: "1.5em" }}>
-            <TypewriterLine text={`> ${subtext}`} delay={200 + titleLength * 45 + 900} speed={14} color={DIM} block={false} />
+            <TypewriterLine text={`> ${subtext}`} delay={200 + titleLength * 45 + 900} speed={14} color={DIM} block={false} animated={animated} />
           </div>
         )}
 
         {/* 启动命令序列 */}
         <div style={{ fontSize: 13, lineHeight: 1.8 }}>
           {BOOT_LINES.map((line, i) => (
-            <TypewriterLine key={i} {...line} />
+            <TypewriterLine key={i} {...line} animated={animated} />
           ))}
         </div>
 
         {/* 最终状态行 */}
-        {titleDone && (
+        {showTitle && (
           <div style={{ fontSize: 13, marginTop: 10, color: GREEN }}>
-            <TypewriterLine text="[OK] MFKAGENT READY — awaiting your command" delay={4300} speed={20} color={GREEN} />
+            <TypewriterLine text="[OK] MFKAGENT READY — awaiting your command" delay={4300} speed={20} color={GREEN} animated={animated} />
           </div>
         )}
         {animated && (

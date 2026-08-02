@@ -17,9 +17,10 @@ export function mulberry32(seed: number) {
  * 打字机效果 Hook：
  * - 逐字符推进，速率 speed ms/字符
  * - startDelay 延迟启动（用于脚本化多行输出序列）
+ * - animated=false 时直接输出完整文本（关闭动画后的静态展示）
  * - 自动清理定时器，卸载即停（性能友好）
  */
-export function useTypewriter(text: string, speed = 24, startDelay = 0) {
+export function useTypewriter(text: string, speed = 24, startDelay = 0, animated = true) {
   const [count, setCount] = useState(0);
   const [done, setDone] = useState(false);
 
@@ -50,7 +51,9 @@ export function useTypewriter(text: string, speed = 24, startDelay = 0) {
     };
   }, [text, speed, startDelay]);
 
-  return { text: text.slice(0, count), done };
+  // animated=false 时静态展示完整文本、无光标（派生，不改动 state）
+  const isStatic = !animated;
+  return { text: isStatic ? text : text.slice(0, count), done: isStatic || done };
 }
 
 interface TypewriterLineProps {
@@ -61,12 +64,14 @@ interface TypewriterLineProps {
   color?: string;
   /** 渲染完成前占位保持行高 */
   block?: boolean;
+  /** 关闭动画后直接完整显示、无光标（默认开启动画） */
+  animated?: boolean;
   style?: CSSProperties;
 }
 
 /** 单行打字输出（终端类主题共用），未开始前占位保持布局稳定 */
-export function TypewriterLine({ text, delay = 0, speed = 24, color, block = true, style }: TypewriterLineProps) {
-  const { text: typed, done } = useTypewriter(text, speed, delay);
+export function TypewriterLine({ text, delay = 0, speed = 24, color, block = true, animated = true, style }: TypewriterLineProps) {
+  const { text: typed, done } = useTypewriter(text, speed, delay, animated);
 
   return (
     <div
@@ -79,7 +84,7 @@ export function TypewriterLine({ text, delay = 0, speed = 24, color, block = tru
       }}
     >
       {typed}
-      {!done && <span style={{ display: "inline-block", width: "0.6em", height: "1.1em", verticalAlign: "text-bottom", background: "currentColor", animation: "heroCursor 1s steps(1) infinite" }} />}
+      {animated && !done && <span style={{ display: "inline-block", width: "0.6em", height: "1.1em", verticalAlign: "text-bottom", background: "currentColor", animation: "heroCursor 1s steps(1) infinite" }} />}
     </div>
   );
 }
