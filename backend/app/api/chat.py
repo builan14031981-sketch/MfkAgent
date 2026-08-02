@@ -7,7 +7,7 @@ import json
 import os
 import time
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message, Agent, Memory, Setting, Project
+from app.models.agent import Chat, Message, Agent, Memory, MemoryItem, Setting, Project
 from app.core.tools import FILE_TOOLS_DEFINITIONS
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
@@ -532,6 +532,21 @@ def _get_memory_prompt(agent_id: str, user_id: str = "default", project_id: Opti
                 for m in project_memories:
                     lines.append(f"- {m.value}")
                 sections.append("\n".join(lines))
+
+        # 极简记忆表（MemoryItem，add_memory 工具写入）的 global 记忆：所有对话可见
+        global_items = (
+            db.query(MemoryItem)
+            .filter(MemoryItem.scope == "global")
+            .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
+            .limit(30)
+            .all()
+        )
+        if global_items:
+            lines = ["长期记忆："]
+            for m in global_items:
+                lines.append(f"- {m.content}")
+            sections.append("\n".join(lines))
+
         return "\n\n".join(sections)
     finally:
         db.close()
@@ -577,6 +592,10 @@ async def send_message(chat_id: int, request: SendRequest):
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
+
+        # 释放写事务：模型工具（如 add_memory）在独立 Session 中写库，
+        # 若此处仍持有未提交的写锁，SQLite 会报 database is locked
+        db.commit()
 
         agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
         allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None

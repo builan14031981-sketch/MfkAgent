@@ -87,6 +87,19 @@ class Memory(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class MemoryItem(Base):
+    """极简记忆表：供 add_memory 工具 / 前端极简记忆 UI 使用。
+
+    scope 取值：global（全局记忆）| project（项目相关记忆）
+    """
+    __tablename__ = "memory_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    scope = Column(String(20), nullable=False, default="global")
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Setting(Base):
     __tablename__ = "settings"
 

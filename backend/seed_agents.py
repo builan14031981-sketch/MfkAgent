@@ -7,6 +7,11 @@ LEGACY_ICON_FALLBACK = {
     "rational": "target",
 }
 
+# 记忆指令：注入每个 Agent 的 System Prompt，指导其使用 add_memory 工具
+MEMORY_INSTRUCTION = (
+    "当用户要求你记住某事，或使用「添加记忆」指令时，请调用 add_memory 工具将其持久化。"
+)
+
 
 def _contains_emoji(value: str) -> bool:
     """检测非 ASCII 字符（emoji 均为非 ASCII，语义 ID 均为纯 ASCII）"""
@@ -100,16 +105,23 @@ def seed_agents():
     db = SessionLocal()
     try:
         for agent_data in PRESET_AGENTS:
+            identity = agent_data["identity"]
+            if "add_memory" not in identity:
+                identity += "\n" + MEMORY_INSTRUCTION
+            capabilities = list(agent_data.get("capabilities", []))
+            if "add_memory" not in capabilities:
+                capabilities.append("add_memory")
+
             existing = db.query(Agent).filter(Agent.agent_id == agent_data["agent_id"]).first()
             if not existing:
-                db.add(Agent(**agent_data))
+                db.add(Agent(**{**agent_data, "identity": identity, "capabilities": capabilities}))
                 print(f"Created agent: {agent_data['name']}")
             else:
                 existing.name = agent_data["name"]
                 existing.description = agent_data["description"]
                 existing.avatar = agent_data["avatar"]
-                existing.identity = agent_data["identity"]
-                existing.capabilities = agent_data["capabilities"]
+                existing.identity = identity
+                existing.capabilities = capabilities
                 existing.model = agent_data["model"]
                 print(f"Updated agent: {agent_data['name']}")
 

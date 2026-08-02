@@ -276,6 +276,43 @@ class DateTimeTool(Tool):
         return ToolResult(success=True, output=now.strftime("%Y-%m-%d %H:%M:%S"))
 
 
+class AddMemoryTool(Tool):
+    def __init__(self):
+        super().__init__(
+            name="add_memory",
+            description=(
+                "将用户要求记住的信息持久化保存为记忆。"
+                "当用户说「添加记忆：xxx」「记住xxx」「请牢记xxx」或类似意图时，必须调用本工具保存。"
+                "scope 为 global 表示全局记忆（所有对话可见），project 表示与当前项目相关的记忆。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "scope": {
+                        "type": "string",
+                        "enum": ["global", "project"],
+                        "description": "global=全局记忆，project=项目相关记忆",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "要记住的记忆内容",
+                    },
+                },
+                "required": ["scope", "content"],
+            },
+        )
+
+    async def execute(self, scope: str = "global", content: str = "", **kwargs) -> ToolResult:
+        try:
+            from app.core.tools import add_memory as add_memory_fn
+            result = add_memory_fn(scope=scope, content=content)
+            if result.startswith("错误"):
+                return ToolResult(success=False, output="", error=result)
+            return ToolResult(success=True, output=result)
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+
 class JsonFormatTool(Tool):
     def __init__(self):
         super().__init__(
@@ -336,3 +373,4 @@ tool_registry.register(ListDirectoryTool())
 tool_registry.register(FetchUrlTool())
 tool_registry.register(DateTimeTool())
 tool_registry.register(JsonFormatTool())
+tool_registry.register(AddMemoryTool())

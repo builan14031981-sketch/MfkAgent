@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import models, agents, chat, memory, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, trash
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, trash
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
@@ -85,6 +85,7 @@ app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
+app.include_router(memories.router, prefix="/api/memories", tags=["memories"])
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["settings"])
 app.include_router(backup.router, prefix="/api/backup", tags=["backup"])
