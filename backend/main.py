@@ -2,13 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, trash
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, devtools
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
+
+# 预置插件 seed（需在 create_all 之后，表存在才能写入）
+from app.services.plugin import plugin_manager as _pm
+_pm.seed_default_plugins()
 
 
 def _ensure_schema():
@@ -151,6 +155,7 @@ app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"]
 app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(trash.router, prefix="/api/trash", tags=["trash"])
 app.include_router(greetings.router, prefix="/api/system", tags=["system"])
+app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 
 @app.get("/")
 async def root():

@@ -9,6 +9,7 @@ import time
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, MemoryItem, Setting, Project
 from app.core.tools import FILE_TOOLS_DEFINITIONS
+from app.core.git_tools import GIT_TOOLS_DEFINITIONS
 from app.services.model import model_service, Message as ModelMessage
 from app.services.tools import tool_registry
 from app.core.pagination import paginate
@@ -598,10 +599,10 @@ async def send_message(chat_id: int, request: SendRequest):
                 if allowed_tools is not None:
                     extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
                 if chat.project_path:
-                    # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）
-                    tools_arg = FILE_TOOLS_DEFINITIONS
+                    # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）+ Git 工具
+                    tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS
                     if chat_mode == "plan":
-                        # plan 只读模式：仅提供读取/浏览工具，禁止写文件
+                        # plan 只读模式：仅提供读取/浏览工具，禁止写文件与 git 写操作
                         tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
                     # 追加 capabilities 允许的非文件工具（如 add_memory）
                     if extra_tools:
@@ -706,9 +707,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             if allowed_tools is not None:
                 extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
             if project_path:
-                tools_arg = FILE_TOOLS_DEFINITIONS
+                tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS
                 if chat_mode == "plan":
-                    # plan 只读模式：仅提供读取/浏览工具，禁止写文件
+                    # plan 只读模式：仅提供读取/浏览工具，禁止写文件与 git 写操作
                     tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
                 # 追加 capabilities 允许的非文件工具（如 add_memory）
                 if extra_tools:

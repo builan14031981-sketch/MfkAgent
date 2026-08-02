@@ -105,6 +105,26 @@ class MemoryItem(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class PluginItem(Base):
+    """持久化插件表：供插件管理面板 / PluginManager 使用。
+
+    status 取值（与 services/plugin.py PluginStatus 对齐）：
+      installed / active / inactive / error
+    """
+    __tablename__ = "plugins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    plugin_id = Column(String(100), unique=True, nullable=False, index=True)
+    name = Column(String(200), nullable=False)
+    version = Column(String(50), default="1.0.0")
+    description = Column(Text, default="")
+    author = Column(String(200), default="")
+    status = Column(String(20), default="installed")
+    config = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Setting(Base):
     __tablename__ = "settings"
 

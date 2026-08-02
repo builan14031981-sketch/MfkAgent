@@ -4,6 +4,7 @@ from enum import Enum
 import httpx
 import json
 from app.core.config import settings
+from app.core.git_tools import GIT_TOOLS, execute_git_tool
 
 class ModelProvider(str, Enum):
     MIMO = "mimo"
@@ -354,6 +355,12 @@ class ModelService:
                         else:
                             result = execute_file_tool(func_name, project_path=project_path, **func_args)
                         result_text = result
+                    elif func_name in GIT_TOOLS and project_path:
+                        if read_only:
+                            result = "错误: 当前为 plan 只读模式，git 提交/回滚类操作被禁止。查看状态可先切换到 build 模式。"
+                        else:
+                            result = execute_git_tool(func_name, project_path=project_path, **func_args)
+                        result_text = result
                     else:
                         from app.services.tools import tool_registry
                         r = await tool_registry.execute(func_name, **{**ctx, **func_args})
@@ -468,6 +475,12 @@ class ModelService:
                             result = "错误: 当前为 plan 只读模式，禁止写入或修改项目文件。如需修改请切换到 build 模式。"
                         else:
                             result = execute_file_tool(func_name, project_path=project_path, **func_args)
+                        content = result
+                    elif func_name in GIT_TOOLS and project_path:
+                        if read_only:
+                            result = "错误: 当前为 plan 只读模式，git 提交/回滚类操作被禁止。查看状态可先切换到 build 模式。"
+                        else:
+                            result = execute_git_tool(func_name, project_path=project_path, **func_args)
                         content = result
                     else:
                         r = await tool_registry.execute(func_name, **{**ctx, **func_args})
