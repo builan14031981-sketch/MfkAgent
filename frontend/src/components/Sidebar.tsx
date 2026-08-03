@@ -447,7 +447,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
 
   return (
     <aside style={{
-      width: "260px",
+      width: "var(--sidebar-width)",
       height: "100%",
       display: "flex",
       flexDirection: "column",
