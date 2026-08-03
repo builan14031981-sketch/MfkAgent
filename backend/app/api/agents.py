@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from sqlalchemy import case
 from app.core.database import SessionLocal
 from app.models.agent import Agent
@@ -28,6 +28,7 @@ class AgentInfo(BaseModel):
     identity: str = ""
     capabilities: list[str] = []
     default_model: str = ""
+    default_personality_level: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -53,6 +54,7 @@ async def list_agents():
                 identity=a.identity or "",
                 capabilities=a.capabilities or [],
                 default_model=a.model or "",
+                default_personality_level=a.default_personality_level,
             )
             for a in agents
         ]
@@ -77,6 +79,7 @@ async def get_agent(agent_id: str):
             identity=agent.identity or "",
             capabilities=agent.capabilities or [],
             default_model=agent.model or "",
+            default_personality_level=agent.default_personality_level,
         )
     finally:
         db.close()

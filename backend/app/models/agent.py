@@ -28,7 +28,7 @@ class Chat(Base):
     agent_id = Column(String(50), default="general")
     title = Column(String(200), default="New Chat")
     is_pinned = Column(Boolean, default=False)
-    personality_level = Column(Integer, default=50)
+    personality_level = Column(Integer, nullable=True)
     model = Column(String(50))
     thinking_mode = Column(String(20), default="none")
     mode = Column(String(10), default="build")
@@ -68,6 +68,8 @@ class Agent(Base):
     capabilities = Column(JSON, default=list)
     model = Column(String(50), default="mimo-v2.5-pro")
     temperature = Column(Integer, default=70)
+    # 默认人格推荐值：创建 Chat 时的 personality 快照来源。NULL = 该 Agent 默认无人格（不注入 personality prompt）
+    default_personality_level = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

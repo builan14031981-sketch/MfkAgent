@@ -25,7 +25,7 @@ class ChatCreate(BaseModel):
     project_id: Optional[int] = None
     agent_id: Optional[str] = None
     title: str = "New Chat"
-    personality_level: int = 50
+    personality_level: Optional[int] = None
     model: Optional[str] = None
     thinking_mode: Optional[str] = None
     mode: Optional[str] = None
@@ -42,7 +42,7 @@ class ChatResponse(BaseModel):
     title: str
     is_pinned: bool = False
     model: Optional[str] = None
-    personality_level: int = 50
+    personality_level: Optional[int] = None
     thinking_mode: str = "none"
     mode: str = "build"
     context_files: List[str] = []
@@ -127,12 +127,20 @@ async def create_chat(chat: ChatCreate):
         thinking_mode = chat.thinking_mode or "none"
         mode = chat.mode or "build"
 
+        # 人格快照：request 未显式提供 personality_level 时，从 Agent.default_personality_level 快照。
+        # Agent 默认 NULL（无人格）→ Chat.personality_level=NULL → 不注入 personality prompt。
+        personality_level = chat.personality_level
+        if personality_level is None and agent_id:
+            agent_ctx = db.query(Agent).filter(Agent.agent_id == agent_id).first()
+            if agent_ctx:
+                personality_level = agent_ctx.default_personality_level
+
         db_chat = Chat(
             project_id=project_id,
             project_path=project_path,
             agent_id=agent_id,
             title=chat.title,
-            personality_level=chat.personality_level,
+            personality_level=personality_level,
             model=chat.model,
             thinking_mode=thinking_mode,
             mode=mode,

@@ -23,8 +23,11 @@ PERSONALITY_PROMPTS = {
 }
 
 
-def get_personality_prompt(level: int) -> str:
-    """根据 0-100 的 personality_level 返回对应的行为 Prompt"""
+def get_personality_prompt(level: int | None) -> str:
+    """根据 0-100 的 personality_level 返回对应的行为 Prompt。
+    level 为 None 时不注入任何人格 Prompt（返回空串）。"""
+    if level is None:
+        return ""
     level = max(0, min(100, level))
     closest = min(PERSONALITY_PROMPTS.keys(), key=lambda k: abs(k - level))
     return PERSONALITY_PROMPTS[closest]
