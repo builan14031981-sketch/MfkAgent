@@ -32,7 +32,6 @@ export default function Home() {
   const [welcome, setWelcome] = useState("");
   const [welcomeSubtext, setWelcomeSubtext] = useState("");
   const [quoteCategories, setQuoteCategories] = useState<QuoteCategory[]>([]);
-  const [comboPersonality, setComboPersonality] = useState<number | null>(null);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
@@ -87,10 +86,9 @@ export default function Home() {
   const currentAgent = selectedAgent || (settings?.default_agent ? agents.find(a => a.id === settings.default_agent) || null : null) || agents[0] || null;
   const currentModel = selectedModel || models[0] || null;
 
-  const handleAgentChange = useCallback((agentId: string, personality: number) => {
+  const handleAgentChange = useCallback((agentId: string) => {
     const agent = agents.find((a) => a.id === agentId);
     if (agent) setSelectedAgent(agent);
-    setComboPersonality(personality);
   }, [agents]);
 
   const handleSend = async () => {
@@ -101,13 +99,11 @@ export default function Home() {
     setInput("");
 
     try {
-      const personalityLevel = comboPersonality ?? (settings?.default_personality ? Number(settings.default_personality) : 50);
       const chat = await createChat(
         currentAgent.id,
         userMessage.slice(0, 50) || "New Chat",
         pendingProject?.id ?? null,
         currentModel?.id || settings?.default_model || null,
-        personalityLevel,
         pendingFiles,
         mode
       );

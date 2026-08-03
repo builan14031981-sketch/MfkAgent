@@ -53,13 +53,11 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
     setIsSending(true);
     setInput("");
     try {
-      const personality = settings?.default_personality ? Number(settings.default_personality) : 50;
       const chat = await createChat(
         agentId || settings?.default_agent || agents[0]?.id || "general",
         userMessage.slice(0, 50) || "New Chat",
         projectId,
         (selectedModel || models[0] || null)?.id || settings?.default_model || null,
-        personality,
         files,
         mode
       );

@@ -268,9 +268,8 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const quickCreateChat = useCallback(async (projectId: number) => {
     const agentId = settings?.default_agent || agents[0]?.id || "general";
     const modelId = settings?.default_model || null;
-    const personality = settings?.default_personality ? Number(settings.default_personality) : 50;
     try {
-      const chat = await createChat(agentId, t("sidebar.newChatTitle"), projectId, modelId, personality);
+      const chat = await createChat(agentId, t("sidebar.newChatTitle"), projectId, modelId);
       router.push(`/chat/${chat.id}`);
     } catch (err) {
       console.error("Failed to create chat in project:", err);

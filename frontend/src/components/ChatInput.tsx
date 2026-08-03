@@ -14,16 +14,6 @@ export type ReasoningEffort = "none" | "low" | "high";
 /** 会话工作模式：build（可写）/ plan（只读） */
 export type ChatMode = "build" | "plan";
 
-// agent_id → 展示组合（label/desc/personality），仅在 allowAgentChange 时渲染
-const AGENT_COMBOS: { agentId: string; label: string; desc: string; personality: number }[] = [
-  { agentId: "coder", label: "代码审查 AI", desc: "代码审查、开发与架构", personality: 75 },
-  { agentId: "frontend_ui", label: "前端 UI 设计 AI", desc: "界面设计与前端实现", personality: 50 },
-  { agentId: "backend", label: "后端 AI", desc: "服务端与数据逻辑", personality: 75 },
-  { agentId: "general", label: "小暖", desc: "温暖陪伴", personality: 0 },
-  { agentId: "analyst", label: "锐", desc: "理性分析", personality: 100 },
-  { agentId: "writer", label: "笔神", desc: "写作创作", personality: 25 },
-];
-
 export interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -54,7 +44,7 @@ export interface ChatInputProps {
   // Agent 锁定：仅一级入口（首页）允许切换，二级对话页隐藏切换下拉
   allowAgentChange?: boolean;
   agentId?: string | null;
-  onAgentChange?: (agentId: string, personality: number) => void;
+  onAgentChange?: (agentId: string) => void;
 
   onUploadFile: (file: File) => void;
   onSelectDirectory: (path: string) => void;
@@ -106,6 +96,7 @@ export function ChatInput({
   // 互斥规则：同一时刻只允许一个下拉展开，展开新胶囊自动关闭旧胶囊
   const [activePop, setActivePop] = useState<string | null>(null);
   const [agentDropdownPos, setAgentDropdownPos] = useState({ bottom: 0, left: 0 });
+  const [modelDropdownPos, setModelDropdownPos] = useState({ bottom: 0, left: 0, width: 0 });
   const menuOpen = activePop === "menu";
   const reasoningOpen = activePop === "reasoning";
   const modeOpen = activePop === "mode";
@@ -117,6 +108,7 @@ export function ChatInput({
     setActivePop((prev) => (prev === key ? null : key));
   }, []);
   const agentBtnRef = useRef<HTMLButtonElement>(null);
+  const modelBtnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const reasoningRef = useRef<HTMLDivElement>(null);
   const modeRef = useRef<HTMLDivElement>(null);
@@ -131,6 +123,7 @@ export function ChatInput({
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
       const portal = document.getElementById("agent-dropdown-portal");
+      const modelPortal = document.getElementById("model-dropdown-portal");
       const refFor = (key: string): HTMLElement | null => {
         switch (key) {
           case "agent": return agentBtnRef.current;
@@ -144,6 +137,7 @@ export function ChatInput({
       const el = refFor(activePop);
       if (el && el.contains(target)) return;
       if (activePop === "agent" && portal?.contains(target)) return;
+      if (activePop === "model" && modelPortal?.contains(target)) return;
       setActivePop(null);
     };
     document.addEventListener("mousedown", handler);
@@ -308,8 +302,7 @@ export function ChatInput({
   const currentModeLabel = modeOptions.find((m) => m.value === mode)?.label ?? "";
   const CurrentModeIcon = modeOptions.find((m) => m.value === mode)?.icon ?? Wrench;
   const currentModelName = models.find((m) => m.id === modelId)?.name ?? modelId ?? "";
-  const currentAgentCombo = AGENT_COMBOS.find((c) => c.agentId === agentId);
-  const currentAgentLabel = currentAgentCombo?.label ?? agents.find((a) => a.id === agentId)?.name ?? "";
+  const currentAgentName = agents.find((a) => a.id === agentId)?.name ?? agentId ?? "";
 
   return (
     <div style={{
@@ -515,9 +508,9 @@ export function ChatInput({
                   onClick={() => {
                     const rect = agentBtnRef.current?.getBoundingClientRect();
                     if (rect) {
-                      // 以按钮底部为锚点：bottom = 视口高度 - 按钮底部 → 菜单物理向上弹出
+                      // 以按钮顶边为锚点：bottom = 视口高度 - 按钮顶边 → 菜单底边在按钮上方，向上弹出不遮胶囊
                       setAgentDropdownPos({
-                        bottom: window.innerHeight - rect.bottom,
+                        bottom: window.innerHeight - rect.top,
                         left: Math.max(8, Math.min(rect.left, window.innerWidth - 170)),
                       });
                     }
@@ -538,7 +531,7 @@ export function ChatInput({
                   }}
                 >
                   <AgentIcon id={agentId ?? undefined} size={14} style={{ flexShrink: 0 }} />
-                  <span style={{ fontWeight: 500 }}>{currentAgentLabel || agentId}</span>
+                  <span style={{ fontWeight: 500 }}>{currentAgentName || agentId}</span>
                   <ChevronDown style={{
                     ...chevronStyle,
                     transform: agentOpen ? "rotate(180deg)" : "rotate(0deg)",
@@ -563,13 +556,13 @@ export function ChatInput({
                     boxShadow: "var(--shadow-lg)",
                     zIndex: 9999,
                   }}>
-                    {AGENT_COMBOS.map((combo) => {
-                      const active = combo.agentId === agentId;
+                    {agents.map((agent) => {
+                      const active = agent.id === agentId;
                       return (
                         <button
-                          key={combo.agentId}
+                          key={agent.id}
                           onClick={() => {
-                            onAgentChange?.(combo.agentId, combo.personality);
+                            onAgentChange?.(agent.id);
                             setActivePop(null);
                           }}
                           style={{
@@ -596,19 +589,19 @@ export function ChatInput({
                             if (!active) e.currentTarget.style.background = "transparent";
                           }}
                         >
-                          <AgentIcon id={combo.agentId} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
+                          <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{
                               fontSize: "12px",
                               fontWeight: "500",
                               lineHeight: 1.25,
                               color: active ? "var(--color-primary)" : "var(--text-level-1)",
-                            }}>{combo.label}</div>
+                            }}>{agent.name}</div>
                             <div style={{
                               fontSize: "10px",
                               lineHeight: 1.25,
                               color: "var(--text-level-4)",
-                            }}>{combo.desc}</div>
+                            }}>{agent.description}</div>
                           </div>
                           {active && (
                             <span style={{
@@ -637,7 +630,18 @@ export function ChatInput({
               flexShrink: 0,
             }} ref={modelRef}>
               <button
-                onClick={() => togglePop("model")}
+                ref={modelBtnRef}
+                onClick={() => {
+                  const rect = modelBtnRef.current?.getBoundingClientRect();
+                  if (rect) {
+                    setModelDropdownPos({
+                      bottom: window.innerHeight - rect.top,
+                      left: Math.max(8, Math.min(rect.left, window.innerWidth - 200)),
+                      width: Math.max(180, Math.min(rect.width, 220)),
+                    });
+                  }
+                  togglePop("model");
+                }}
                 title={currentModelName}
                 style={{
                   ...pillStyle,
@@ -667,8 +671,25 @@ export function ChatInput({
                 }} />
               </button>
 
-              {modelOpen && (
-                <div style={popoverStyle}>
+              {modelOpen && createPortal(
+                <div id="model-dropdown-portal" className="no-scrollbar" style={{
+                  position: "fixed",
+                  bottom: modelDropdownPos.bottom + 8,
+                  left: modelDropdownPos.left,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "2px",
+                  width: modelDropdownPos.width,
+                  maxHeight: "260px",
+                  overflowY: "auto",
+                  padding: "4px",
+                  borderRadius: "var(--radius-xl)",
+                  background: "var(--bg-level-2)",
+                  border: "1px solid var(--border-secondary)",
+                  boxShadow: "var(--shadow-lg)",
+                  zIndex: 9999,
+                  animation: "panelOpen 0.15s ease forwards",
+                }}>
                   {models.map((model) => {
                     const active = model.id === modelId;
                     return (
@@ -696,7 +717,8 @@ export function ChatInput({
                       </button>
                     );
                   })}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}

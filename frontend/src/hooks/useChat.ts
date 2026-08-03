@@ -68,13 +68,13 @@ export function useChat(projectId?: number | null, page: number = 1, limit: numb
     window.dispatchEvent(new Event(CHATS_CHANGED_EVENT));
   }, [fetchChats]);
 
-  async function createChat(agentId: string, title: string, projectId?: number | null, model?: string | null, personalityLevel?: number, contextFiles?: string[], mode?: "build" | "plan") {
+  // 创建 Chat：人格由后端从 Agent 快照生成，前端不传 personality_level
+  async function createChat(agentId: string, title: string, projectId?: number | null, model?: string | null, contextFiles?: string[], mode?: "build" | "plan") {
     const data = await apiPost<Chat>("/api/chat", {
       project_id: projectId || null,
       agent_id: agentId,
       title: title,
       model: model || null,
-      personality_level: personalityLevel,
       context_files: contextFiles || [],
       mode: mode || "build",
     });

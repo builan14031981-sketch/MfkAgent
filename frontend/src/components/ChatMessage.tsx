@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useCallback, useMemo } from "react";
+import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ToolCallCardList } from "@/components/ToolCallCard";
@@ -80,26 +80,45 @@ function ThinkingPanel({ thinking }: { thinking: string }) {
   );
 }
 
-/** 复制按钮：真实 clipboard + 2 秒绿色 Check 反馈 */
+/** 复制按钮：真实 clipboard + 勾选反馈。
+ * hover 常驻：鼠标在按钮上就一直显示勾；移开才启动 1.2s 复位计时，
+ * 短暂移回则取消计时继续显示勾，避免"去粘贴/读内容再回来已复位"的丢失感。 */
 function CopyButton({ text }: { text: string }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const resetSoon = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(false), 1200);
+  }, []);
+
+  const cancelReset = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => setCopied(false), 2000);
+      cancelReset();
     } catch (err) {
       console.error("Copy failed:", err);
     }
-  }, [text]);
+  }, [text, cancelReset]);
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   return (
     <button
       onClick={handleCopy}
+      onMouseEnter={cancelReset}
+      onMouseLeave={resetSoon}
       title={copied ? t("common.copied") : t("common.copy")}
       style={{
         display: "flex",
@@ -109,9 +128,9 @@ function CopyButton({ text }: { text: string }) {
         height: "28px",
         borderRadius: "var(--radius-sm)",
         border: "none",
-        background: copied ? "var(--color-success)" : "transparent",
+        background: copied ? "var(--color-copied)" : "transparent",
         cursor: "pointer",
-        color: copied ? "white" : "var(--text-level-4)",
+        color: copied ? "var(--color-copied-text)" : "var(--text-level-4)",
         outline: "none",
       }}
     >

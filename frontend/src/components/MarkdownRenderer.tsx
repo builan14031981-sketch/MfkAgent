@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useMemo } from "react";
+import { memo, useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -180,16 +180,33 @@ interface CodeBlockProps {
 function CodeBlock({ info, t }: CodeBlockProps) {
   const [collapsed, setCollapsed] = useState(info.isCollapsible);
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelReset = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  const resetSoon = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopied(false), 1200);
+  };
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(info.code);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      cancelReset();
     } catch {
       // Clipboard unavailable
     }
   };
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   return (
     <div style={{
@@ -239,6 +256,8 @@ function CodeBlock({ info, t }: CodeBlockProps) {
         )}
         <button
           onClick={handleCopy}
+          onMouseEnter={(e) => { cancelReset(); e.currentTarget.style.background = "var(--bg-level-2)"; }}
+          onMouseLeave={(e) => { resetSoon(); e.currentTarget.style.background = "transparent"; }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -249,11 +268,9 @@ function CodeBlock({ info, t }: CodeBlockProps) {
             background: "transparent",
             cursor: "pointer",
             fontSize: "11px",
-            color: copied ? "var(--color-success)" : "var(--text-level-3)",
+            color: copied ? "var(--color-copied)" : "var(--text-level-3)",
             outline: "none",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-2)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
           {copied ? <Check style={{ width: "12px", height: "12px" }} /> : <Copy style={{ width: "12px", height: "12px" }} />}
           {copied ? t("chat.codeCopied") : t("chat.codeCopy")}

@@ -76,6 +76,10 @@
   --color-warning: #FF9500;
   --color-error: #FF3B30;
   --color-info: #007AFF;
+
+  /* 复制成功反馈 - 低饱和米灰中性色（贴近背景，柔和不刺眼） */
+  --color-copied: #d9cfc0;
+  --color-copied-text: #8a7a5f;
 }
 
 /* ========================================
@@ -121,6 +125,10 @@
   --color-warning: #ff9f0a;
   --color-error: #ff453a;
   --color-info: #0a84ff;
+
+  /* 复制成功反馈 - 深色模式下低饱和灰米色（贴近背景） */
+  --color-copied: #4a4640;
+  --color-copied-text: #a99d8a;
 }
 
 /* ========================================
