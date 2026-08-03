@@ -58,7 +58,8 @@ export function useMessages(chatId: number | null) {
     personalityLevel?: number,
     reasoningEffort?: "none" | "low" | "high",
     onToolCall?: (toolCall: ToolCall) => void,
-    onToolCallsBatch?: (toolCalls: ToolCall[]) => void
+    onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
+    onComplete?: (finalContent: string, toolCalls: ToolCall[]) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
 
@@ -79,6 +80,10 @@ export function useMessages(chatId: number | null) {
     const THROTTLE_MS = 30;
     let buffer = "";
     let timer: ReturnType<typeof setTimeout> | null = null;
+
+    // 流式过程中累积完整内容 + tool_calls（用于 onComplete 一次性交付）
+    let fullContent = "";
+    const accumulatedToolCalls: ToolCall[] = [];
 
     const flush = () => {
       if (buffer === "") return;
@@ -116,8 +121,8 @@ export function useMessages(chatId: number | null) {
             const data = line.slice(6).trim();
             if (data === "[DONE]") {
               flushNowAndClear();
+              onComplete?.(fullContent, accumulatedToolCalls);
               onFinish();
-              await fetchMessages();
               return;
             }
             try {
@@ -130,21 +135,28 @@ export function useMessages(chatId: number | null) {
               if (parsed.tool_call) {
                 // 实时工具执行事件：name 非空即渲染（path 可能为空，如 search_files/run_command/git 工具）
                 if (onToolCall && parsed.tool_call.name) {
-                  onToolCall({
+                  const tc: ToolCall = {
                     name: parsed.tool_call.name,
                     path: parsed.tool_call.path,
                     success: parsed.tool_call.success,
                     arguments: parsed.tool_call.arguments,
-                  });
+                  };
+                  onToolCall(tc);
+                  accumulatedToolCalls.push(tc);
                 }
                 continue;
               }
               if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
                 // 本轮工具调用汇总事件（含完整 result）：一次交给前端补齐卡片结果
-                onToolCallsBatch?.(parsed.tool_calls as ToolCall[]);
+                const batch = parsed.tool_calls as ToolCall[];
+                onToolCallsBatch?.(batch);
+                // 替换为完整汇总数据（含 result）
+                accumulatedToolCalls.length = 0;
+                accumulatedToolCalls.push(...batch);
                 continue;
               }
               if (parsed.content) {
+                fullContent += parsed.content;
                 buffer += parsed.content;
                 scheduleFlush();
               }
@@ -156,12 +168,17 @@ export function useMessages(chatId: number | null) {
       }
 
       flushNowAndClear();
+      onComplete?.(fullContent, accumulatedToolCalls);
       onFinish();
-      await fetchMessages();
     } finally {
       flushNowAndClear();
     }
   }
 
-  return { messages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages };
+  /** 乐观追加消息到本地列表（不触发服务端请求） */
+  const appendMessage = useCallback((message: Message) => {
+    setMessages((prev) => [...prev, message]);
+  }, []);
+
+  return { messages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages, appendMessage };
 }

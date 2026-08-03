@@ -49,6 +49,9 @@ export const THEME_CATEGORIES: ThemeCategory[] = [
  * 新主题只需在此追加一条记录即可被 ThemeManager 识别。
  */
 export const HERO_THEMES: HeroTheme[] = [
+  // ===== Classic 原生 =====
+  { id: "apple-minimal", name: "Apple Minimal", category: "classic", accent: "#e5e5e5", component: AppleMinimalTheme },
+
   // ===== Terminal 终端 =====
   { id: "cyber-terminal", name: "Cyber Terminal", category: "terminal", accent: "#00ff9c", component: CyberTerminalTheme },
   { id: "retro-terminal", name: "Retro Terminal", category: "terminal", accent: "#00FF00", component: RetroTerminalTheme },
@@ -79,7 +82,6 @@ export const HERO_THEMES: HeroTheme[] = [
 
   // ===== Design 设计 / 品牌视觉 =====
   { id: "blueprint-engineering", name: "Blueprint Engineering", category: "design", accent: "#60a5fa", component: BlueprintEngineeringTheme },
-  { id: "apple-minimal", name: "Apple Minimal", category: "design", accent: "#e5e5e5", component: AppleMinimalTheme },
   { id: "future-os", name: "Future OS", category: "design", accent: "#818cf8", component: FutureOsTheme },
   { id: "neo-brutalism", name: "Neo-Brutalism", category: "design", accent: "#FFE83C", component: NeoBrutalismTheme },
   { id: "claymorphism", name: "Claymorphism", category: "design", accent: "#B3E5FC", component: ClaymorphismTheme },

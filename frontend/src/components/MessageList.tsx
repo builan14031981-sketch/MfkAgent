@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from "react";
+import { useRef, useCallback, useEffect, useMemo, memo } from "react";
 import { ArrowDown } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ChatMessage } from "@/components/ChatMessage";
@@ -41,7 +41,6 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
-  const prevStreamingRef = useRef(isStreaming);
   const lastActiveRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
@@ -204,20 +203,26 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
     return () => cancelAnimationFrame(raf);
   }, [messages, streamingContent, isEmptyState, updateNearBottom, scrollToBottom]);
 
-  // 流式结束瞬间（streaming → idle）强制吸底，防止 Markdown 全量重绘导致跳回顶部
-  useLayoutEffect(() => {
-    const prev = prevStreamingRef.current;
-    prevStreamingRef.current = isStreaming;
-    if (prev && !isStreaming) {
-      // 等一帧让 Markdown 渲染完，再锁死滚动锚点到最新
+  // 监听发送状态或流式开始（false -> true）：强制重置吸底锁并滚动到底部
+  const isActive = isStreaming;
+  const prevActiveRef = useRef(isActive);
+
+  useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = isActive;
+
+    if (isActive && !wasActive) {
+      // 用户刚点击发送或开始流式 -> 强行重置吸底意图
+      isNearBottomRef.current = true;
+      updateJumpButton(false);
+
       const raf = requestAnimationFrame(() => {
         const el = containerRef.current;
-        if (!el || !isNearBottomRef.current) return;
-        el.scrollTop = el.scrollHeight;
+        if (el) el.scrollTop = el.scrollHeight;
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, [isStreaming]);
+  }, [isActive]);
 
   // 用户主动滚回最新
   const jumpToLatest = useCallback(() => {

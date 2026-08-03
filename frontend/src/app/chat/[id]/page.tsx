@@ -41,7 +41,7 @@ export default function ChatPage() {
   const { models } = useModels();
   const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
-  const { messages, sendMessageStream, deleteMessagesFrom } = useMessages(chatId);
+  const { messages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
   const { settings } = useSettingsStore();
 
   const currentChat = chats.find((c) => c.id === chatId);
@@ -205,12 +205,13 @@ export default function ChatPage() {
         modelId,
         (chunk) => setStreamingContent((prev) => prev + chunk),
         () => {
-          setStreamingContent("");
+          setStreamingToolCalls([]);
           setIsSending(false);
         },
         (error) => {
           console.error("Regenerate stream error:", error);
           setStreamingContent("");
+          setStreamingToolCalls([]);
           setIsSending(false);
         },
         personalityLevel,
@@ -221,14 +222,27 @@ export default function ChatPage() {
             return exists ? prev : [...prev, toolCall];
           });
         },
-        (batch) => setStreamingToolCalls(batch)
+        (batch) => setStreamingToolCalls(batch),
+        (finalContent, toolCalls) => {
+          setStreamingContent("");
+          const aiMsg: Message = {
+            id: Date.now(),
+            chat_id: chatId!,
+            role: "assistant",
+            content: finalContent,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+            created_at: new Date().toISOString(),
+          };
+          appendMessage(aiMsg);
+          refetch().catch(() => { /* 静默失败 */ });
+        }
       );
     } catch (err) {
       console.error("Failed to regenerate:", err);
       setIsSending(false);
       setStreamingContent("");
     }
-  }, [messages, isSending, deleteMessagesFrom, sendMessageStream, currentModel?.id, personalityLevel, reasoningEffort]);
+  }, [messages, isSending, deleteMessagesFrom, sendMessageStream, currentModel?.id, personalityLevel, reasoningEffort, appendMessage, refetch, chatId]);
 
   // 从URL参数获取用户输入，自动发送消息
   useEffect(() => {
@@ -256,6 +270,17 @@ export default function ChatPage() {
         setIsSending(true);
         setStreamingContent("");
         setStreamingToolCalls([]);
+
+        // 乐观更新：先追加用户消息到本地列表
+        const tempUserMsg: Message = {
+          id: Date.now(),
+          chat_id: chatId!,
+          role: "user",
+          content: userMessage,
+          created_at: new Date().toISOString(),
+        };
+        appendMessage(tempUserMsg);
+
         try {
           await sendMessageStream(
             userMessage,
@@ -264,7 +289,6 @@ export default function ChatPage() {
               setStreamingContent((prev) => prev + chunk);
             },
             () => {
-              setStreamingContent("");
               setStreamingToolCalls([]);
               setIsSending(false);
             },
@@ -282,7 +306,22 @@ export default function ChatPage() {
                 return exists ? prev : [...prev, toolCall];
               });
             },
-            (batch) => setStreamingToolCalls(batch)
+            (batch) => setStreamingToolCalls(batch),
+            (finalContent, toolCalls) => {
+              // onComplete: 流式内容完整接收，追加 AI 消息到本地列表
+              setStreamingContent("");
+              const aiMsg: Message = {
+                id: Date.now() + 1,
+                chat_id: chatId!,
+                role: "assistant",
+                content: finalContent,
+                tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+                created_at: new Date().toISOString(),
+              };
+              appendMessage(aiMsg);
+              // 后台静默同步真实 ID
+              refetch().catch(() => { /* 静默失败 */ });
+            }
           );
         } catch (err) {
           console.error("Failed to auto-send:", err);
@@ -294,7 +333,7 @@ export default function ChatPage() {
 
       autoSend();
     }
-  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream, personalityLevel, reasoningEffort, currentModel?.id]);
+  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream, personalityLevel, reasoningEffort, currentModel?.id, appendMessage, refetch]);
 
   if (!chatId) {
     return (
@@ -356,6 +395,16 @@ export default function ChatPage() {
     setStreamingContent("");
     setStreamingToolCalls([]);
 
+    // 乐观更新：先追加用户消息到本地列表（无需等待服务端）
+    const tempUserMsg: Message = {
+      id: Date.now(),
+      chat_id: chatId!,
+      role: "user",
+      content: userMessage,
+      created_at: new Date().toISOString(),
+    };
+    appendMessage(tempUserMsg);
+
     try {
       const contextPrefix = await buildContextPrefix();
       const finalMessage = contextPrefix ? `${contextPrefix}${userMessage}` : userMessage;
@@ -366,7 +415,6 @@ export default function ChatPage() {
           setStreamingContent((prev) => prev + chunk);
         },
         () => {
-          setStreamingContent("");
           setStreamingToolCalls([]);
           setIsSending(false);
         },
@@ -384,7 +432,22 @@ export default function ChatPage() {
             return exists ? prev : [...prev, toolCall];
           });
         },
-        (batch) => setStreamingToolCalls(batch)
+        (batch) => setStreamingToolCalls(batch),
+        (finalContent, toolCalls) => {
+          // onComplete: 流式内容完整接收，追加 AI 消息到本地列表
+          setStreamingContent("");
+          const aiMsg: Message = {
+            id: Date.now() + 1,
+            chat_id: chatId!,
+            role: "assistant",
+            content: finalContent,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+            created_at: new Date().toISOString(),
+          };
+          appendMessage(aiMsg);
+          // 后台静默同步真实 ID（不触发 loading，不驱动滚动）
+          refetch().catch(() => { /* 静默失败 */ });
+        }
       );
     } catch (err) {
       console.error("Failed to send message:", err);

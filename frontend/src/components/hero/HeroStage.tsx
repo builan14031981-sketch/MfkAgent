@@ -4,7 +4,7 @@ import { useEffect, useMemo } from "react";
 import { MotionConfig } from "framer-motion";
 import { useHeroTheme } from "@/hooks/useHeroTheme";
 import { useTranslation } from "@/hooks/useTranslation";
-import { StaticTitle } from "./StaticTitle";
+import { AppleMinimalTheme } from "./themes/AppleMinimalTheme";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { QuoteMenu, QuoteCategory, QuoteItem } from "./QuoteMenu";
 import type { QuickAction } from "@/themes/types";
@@ -47,7 +47,7 @@ export function HeroStage({ title = "MfkAgent", welcome, subtext, quoteCategorie
   };
 
   if (!entryEnabled) {
-    return <StaticTitle title={title} welcome={welcome} subtext={subtext} />;
+    return <AppleMinimalTheme title={title} welcome={welcome} subtext={subtext} animated={false} />;
   }
 
   return (
@@ -63,7 +63,7 @@ export function HeroStage({ title = "MfkAgent", welcome, subtext, quoteCategorie
             onQuickAction={handleQuickAction}
           />
         ) : (
-          <StaticTitle title={title} welcome={welcome} subtext={subtext} />
+          <AppleMinimalTheme title={title} welcome={welcome} subtext={subtext} animated={false} />
         )}
       </MotionConfig>
       <ThemeSwitcher
