@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # 百川智能配置
     BAICHUAN_API_KEY: str = ""
     
+    # FreeLLMAPI 本地聚合网关配置
+    FREELLMAPI_API_KEY: str = "freellmapi-928ea815aac47d9db52bbf3a9029541d13e2afa78ba5297a"
+    FREELLMAPI_API_BASE: str = "http://127.0.0.1:31415/v1"
+    
     # CORS配置
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"]
     

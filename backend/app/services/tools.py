@@ -57,8 +57,8 @@ class WebSearchTool(Tool):
 
     async def execute(self, query: str = "", **kwargs) -> ToolResult:
         try:
-            import httpx
-            async with httpx.AsyncClient() as client:
+            from app.core.proxy import build_httpx_client
+            async with build_httpx_client() as client:
                 response = await client.get(
                     "https://api.github.com/search/repositories",
                     params={"q": query, "per_page": 5},
@@ -247,8 +247,8 @@ class FetchUrlTool(Tool):
 
     async def execute(self, url: str = "", **kwargs) -> ToolResult:
         try:
-            import httpx
-            async with httpx.AsyncClient() as client:
+            from app.core.proxy import build_httpx_client
+            async with build_httpx_client() as client:
                 response = await client.get(url, timeout=10.0, follow_redirects=True)
                 if response.status_code == 200:
                     content = response.text[:5000]

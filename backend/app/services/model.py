@@ -18,6 +18,7 @@ class ModelProvider(str, Enum):
     MOONSHOT = "moonshot"
     MINIMAX = "minimax"
     BAICHUAN = "baichuan"
+    FREELLMAPI = "freellmapi"
 
 class ModelConfig(BaseModel):
     provider: ModelProvider
@@ -119,6 +120,50 @@ class ModelService:
                 api_key=self._get_api_key(settings.MOONSHOT_API_KEY, "api_key_moonshot"),
                 api_base="https://api.moonshot.cn/v1",
             ),
+            # FreeLLMAPI 本地聚合网关（http://127.0.0.1:31415/v1）
+            # 内部 ID 加 freellm- 前缀避免与官方同名模型冲突；model_name 透传上游真实模型名
+            "freellm-deepseek-v4-flash": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="deepseek-v4-flash",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
+            "freellm-qwen3-coder-30b": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="qwen3-coder-30b",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
+            "freellm-reka-edge": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="reka-edge",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
+            "freellm-reka-flash": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="reka-flash",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
+            "freellm-cydonia-24b-v4.3": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="cydonia-24b-v4.3",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
+            "freellm-auto": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="auto",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
+            "freellm-fusion": ModelConfig(
+                provider=ModelProvider.FREELLMAPI,
+                model_name="fusion",
+                api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
+                api_base=settings.FREELLMAPI_API_BASE,
+            ),
         }
     
     def get_available_models(self) -> List[Dict[str, Any]]:
@@ -215,6 +260,7 @@ class ModelService:
             ModelProvider.MOONSHOT,
             ModelProvider.MINIMAX,
             ModelProvider.BAICHUAN,
+            ModelProvider.FREELLMAPI,
         ]:
             return await self._chat_openai_compatible(
                 config, messages, temperature, max_tokens, stream, tools,

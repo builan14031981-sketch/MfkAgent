@@ -551,6 +551,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     { key: "api_key_qwen", label: "通义千问", placeholder: "sk-..." },
                     { key: "api_key_glm", label: "智谱 AI", placeholder: "sk-..." },
                     { key: "api_key_moonshot", label: "Moonshot", placeholder: "sk-..." },
+                    { key: "api_key_freellm", label: "FreeLLMAPI", placeholder: "freellmapi-..." },
                   ].map((apiKey) => (
                     <div key={apiKey.key} style={{
                       display: "flex",
