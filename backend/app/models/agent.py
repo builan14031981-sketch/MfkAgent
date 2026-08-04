@@ -49,6 +49,7 @@ class Message(Base):
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
+    thinking = Column(Text, nullable=True)
     tool_calls = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
 

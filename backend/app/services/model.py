@@ -46,16 +46,30 @@ class ChatResponse(BaseModel):
     finish_reason: str
     usage: Any
 
-# DeepSeek 官方 API 模型名映射（内部展示 ID → 官方 API 名称）
-DEEPSEEK_MODEL_MAPPING = {
-    "deepseek-v4-flash": "deepseek-chat",
-    "deepseek-v4-pro": "deepseek-reasoner",
-}
-
-
 class ModelService:
     def __init__(self):
         self.models = self._init_models()
+
+    @staticmethod
+    def _upstream_error_message(status_code: int, raw: str) -> str:
+        """从上游 API 错误响应中提取一句话人话，避免把整段原始字节串刷给前端。
+
+        上游 OpenAI 兼容错误体形如：
+          {"error": {"message": "...", "type": "provider_error", "code": "upstream_failed"}}
+        无法解析时回退为 HTTP 状态码 + 截断原文。
+        """
+        try:
+            import json as _json
+            parsed = _json.loads(raw)
+            msg = parsed.get("error", {}).get("message")
+            if msg and isinstance(msg, str):
+                # 免费模型常见的 503 队列满，附加中文提示
+                if "503" in msg or "queue is full" in msg.lower() or "upstream" in msg.lower():
+                    return f"模型服务暂时不可用（{status_code}），上游队列繁忙，请稍后重试：{msg[:200]}"
+                return f"模型服务返回错误（{status_code}）：{msg[:300]}"
+        except Exception:
+            pass
+        return f"模型服务返回错误（{status_code}）：{raw[:300]}"
 
     def _get_api_key(self, env_key: str, setting_key: str) -> str:
         from app.core.database import SessionLocal
@@ -184,24 +198,42 @@ class ModelService:
         return self.models.get(model_id)
 
     def _resolve_api_model_name(self, config: ModelConfig) -> str:
-        """将内部模型 ID 转换为官方 API 使用的模型名"""
-        if config.provider == ModelProvider.DEEPSEEK:
-            return DEEPSEEK_MODEL_MAPPING.get(config.model_name, config.model_name)
+        """将内部模型 ID 转换为官方 API 使用的模型名。
+
+        DeepSeek V4-Flash / V4-Pro 即为官方 API 模型名（deepseek-chat / deepseek-reasoner 旧名已于 2026-07 停用），
+        直接透传 config.model_name，不做任何映射。
+        """
         return config.model_name
 
     def _apply_reasoning_payload(self, payload: dict, config: ModelConfig, reasoning_effort: str) -> None:
         """按 provider 官方规范设置思考/推理参数。
 
-        阿里百炼 OpenAI 兼容接口：
-          - QWEN（qwen-plus / qwen-flash 等混合思考模式，默认关闭）：enable_thinking 布尔开关
-          - DEEPSEEK-V4 / GLM：reasoning_effort 力度档位（low/high 等）
+        档位语义（前端三档：none / high / max）：
+          - none：显式关闭思考（各 provider 发送官方关闭字段，不依赖模型默认）
+          - high：开启思考，官方标准档
+          - max：开启思考，官方最高档（DeepSeek V4 / GLM-5.2）
+
+        provider 差异：
+          - DEEPSEEK（V4-Flash / V4-Pro）：thinking: {type: enabled|disabled} + reasoning_effort(high/max)
+          - GLM：thinking: {type: enabled|disabled} + reasoning_effort(high/max)
+          - QWEN：enable_thinking 布尔开关（无强度档位）
         """
-        if not reasoning_effort or reasoning_effort == "none":
+        if not reasoning_effort:
             return
-        if config.provider == ModelProvider.QWEN:
-            payload["enable_thinking"] = True
-        elif config.provider in (ModelProvider.DEEPSEEK, ModelProvider.GLM):
-            payload["reasoning_effort"] = reasoning_effort
+        effort = reasoning_effort if reasoning_effort in ("high", "max") else "high"
+        if config.provider == ModelProvider.DEEPSEEK:
+            if reasoning_effort == "none":
+                payload["thinking"] = {"type": "disabled"}
+            else:
+                payload["thinking"] = {"type": "enabled", "reasoning_effort": effort}
+        elif config.provider == ModelProvider.GLM:
+            if reasoning_effort == "none":
+                payload["thinking"] = {"type": "disabled"}
+            else:
+                payload["thinking"] = {"type": "enabled"}
+                payload["reasoning_effort"] = effort
+        elif config.provider == ModelProvider.QWEN:
+            payload["enable_thinking"] = reasoning_effort != "none"
 
     def _inject_memory_text(self, messages: List[Message], memory_text: str) -> List[Message]:
         """将记忆 XML 块强制追加到 system 消息末尾（最高指令优先级）"""
@@ -321,7 +353,7 @@ class ModelService:
                 "max_tokens": max_tokens,
                 "stream": True,
             }
-            if reasoning_effort and reasoning_effort != "none":
+            if reasoning_effort:
                 self._apply_reasoning_payload(payload, config, reasoning_effort)
             if tools:
                 payload["tools"] = tools
@@ -338,7 +370,7 @@ class ModelService:
                     timeout=120.0,
                 ) as response:
                     if response.status_code != 200:
-                        raise Exception(f"API调用失败: {await response.aread()}")
+                        raise Exception(self._upstream_error_message(response.status_code, await response.aread()))
 
                     buffer = ""
                     async for chunk in response.aiter_text():
@@ -357,6 +389,7 @@ class ModelService:
                                     choice = choices[0]
                                     delta = choice.get("delta", {})
                                     content = delta.get("content", "")
+                                    reasoning_content = delta.get("reasoning_content", "")
                                     finish_reason = choice.get("finish_reason")
                                     if finish_reason:
                                         final_finish = finish_reason
@@ -381,6 +414,9 @@ class ModelService:
                                     # 普通文本增量才透传（工具调用段不输出文本）
                                     if content and not collected_tool_calls:
                                         yield {"content": content}
+                                    # 思考段增量独立透传（thinking != content，前端据此实时渲染思考中/灰色思考块）
+                                    if reasoning_content and not collected_tool_calls:
+                                        yield {"thinking": reasoning_content}
                                 except (json.JSONDecodeError, IndexError, KeyError):
                                     continue
 
@@ -488,7 +524,7 @@ class ModelService:
             "max_tokens": max_tokens,
             "stream": stream,
         }
-        if reasoning_effort and reasoning_effort != "none":
+        if reasoning_effort:
             self._apply_reasoning_payload(payload, config, reasoning_effort)
 
         if tools:
@@ -505,7 +541,7 @@ class ModelService:
                     timeout=60.0,
                 )
                 if response.status_code != 200:
-                    raise Exception(f"API调用失败: {response.text}")
+                    raise Exception(self._upstream_error_message(response.status_code, response.text))
 
                 data = response.json()
                 choice = data["choices"][0]

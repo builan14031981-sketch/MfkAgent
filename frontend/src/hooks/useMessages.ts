@@ -8,6 +8,7 @@ export interface Message {
   chat_id: number;
   role: "user" | "assistant" | "system";
   content: string;
+  thinking?: string;
   tool_calls?: ToolCall[];
   created_at: string;
 }
@@ -17,12 +18,23 @@ export function useMessages(chatId: number | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** 乐观临时消息 id 阈值：page 用 Date.now() 生成临时 id（约 1.7e12），DB 自增 id 远小于此 */
+  const TEMP_ID_THRESHOLD = 1_000_000_000_000;
+
   const fetchMessages = useCallback(async () => {
     if (!chatId) return;
     try {
       setLoading(true);
       const data = await apiGet<Message[]>(`/api/chat/${chatId}/messages`);
-      setMessages(data);
+      // 合并语义：服务端返回非空 → 整体覆盖（加载历史 / 流结束 refetch 均如此）。
+      // 服务端返回空但本地存在"乐观临时消息"（如首页新建会话时 autoSend 先乐观追加、
+      // 而 GET /messages 先于 POST /send/stream 的 db.commit 完成，读到空表）→ 保留本地
+      // 乐观消息，避免覆盖导致新建会话首屏一片空白（连用户消息都不显示）。
+      setMessages((prev) => {
+        if (data.length > 0) return data;
+        const optimistic = prev.filter((m) => m.id >= TEMP_ID_THRESHOLD);
+        return optimistic.length > 0 ? optimistic : data;
+      });
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -35,7 +47,7 @@ export function useMessages(chatId: number | null) {
     fetchMessages();
   }, [fetchMessages]);
 
-  async function sendMessage(content: string, model: string = "mimo-v2.5-pro", personalityLevel?: number, reasoningEffort?: "none" | "low" | "high") {
+  async function sendMessage(content: string, model: string = "mimo-v2.5-pro", personalityLevel?: number, reasoningEffort?: "none" | "high" | "max") {
     if (!chatId) throw new Error("No chat selected");
     const data = await apiPost(`/api/chat/${chatId}/send`, { content, model, personality_level: personalityLevel, reasoning_effort: reasoningEffort });
     await fetchMessages();
@@ -56,10 +68,11 @@ export function useMessages(chatId: number | null) {
     onFinish: () => void,
     onError: (error: string) => void,
     personalityLevel?: number,
-    reasoningEffort?: "none" | "low" | "high",
+    reasoningEffort?: "none" | "high" | "max",
+    onThinking?: (thinking: string) => void,
     onToolCall?: (toolCall: ToolCall) => void,
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
-    onComplete?: (finalContent: string, toolCalls: ToolCall[]) => void
+    onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
 
@@ -83,6 +96,7 @@ export function useMessages(chatId: number | null) {
 
     // 流式过程中累积完整内容 + tool_calls（用于 onComplete 一次性交付）
     let fullContent = "";
+    let fullThinking = "";
     const accumulatedToolCalls: ToolCall[] = [];
 
     const flush = () => {
@@ -121,7 +135,7 @@ export function useMessages(chatId: number | null) {
             const data = line.slice(6).trim();
             if (data === "[DONE]") {
               flushNowAndClear();
-              onComplete?.(fullContent, accumulatedToolCalls);
+              onComplete?.(fullContent, accumulatedToolCalls, fullThinking);
               onFinish();
               return;
             }
@@ -131,6 +145,12 @@ export function useMessages(chatId: number | null) {
                 flushNowAndClear();
                 onError(parsed.error);
                 return;
+              }
+              if (parsed.thinking) {
+                // 思考段增量：立即透传，前端实时渲染"思考中/灰色思考块"
+                fullThinking += parsed.thinking;
+                onThinking?.(parsed.thinking);
+                continue;
               }
               if (parsed.tool_call) {
                 // 实时工具执行事件：name 非空即渲染（path 可能为空，如 search_files/run_command/git 工具）
@@ -168,7 +188,7 @@ export function useMessages(chatId: number | null) {
       }
 
       flushNowAndClear();
-      onComplete?.(fullContent, accumulatedToolCalls);
+      onComplete?.(fullContent, accumulatedToolCalls, fullThinking);
       onFinish();
     } finally {
       flushNowAndClear();

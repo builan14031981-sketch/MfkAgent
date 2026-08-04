@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useCallback, useEffect, useMemo, memo } from "react";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, AlertTriangle, RotateCw } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
-import { ChatMessage } from "@/components/ChatMessage";
+import { ChatMessage, ThinkingPanel } from "@/components/ChatMessage";
 import { AgentIcon } from "@/components/AgentIcon";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ToolCallCardList } from "@/components/ToolCallCard";
@@ -13,11 +13,14 @@ import { useTranslation } from "@/hooks/useTranslation";
 interface MessageListProps {
   messages: Message[];
   streamingContent: string;
+  streamingThinking?: string;
   streamingToolCalls?: ToolCall[];
+  streamingError?: string | null;
   isStreaming: boolean;
   currentAgent?: { id: string; name: string } | null;
   onQuote: (content: string) => void;
   onRegenerate: (messageId: number) => void;
+  onRetry?: () => void;
   onEdit: (message: Message) => void;
   /** 当前视口对应的用户消息 id 变化时回调（供对话大纲定位/高亮） */
   onActiveUserMessageChange?: (messageId: number | null) => void;
@@ -37,7 +40,7 @@ const BOTTOM_THRESHOLD = 120;
  * 若此处每帧重渲染会全量重跑 400 条消息的 Markdown 树导致卡顿，
  * memo 确保父级 re-render 时消息树跳过。
  */
-export const MessageList = memo(function MessageList({ messages, streamingContent, streamingToolCalls, isStreaming, currentAgent, onQuote, onRegenerate, onEdit, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
+export const MessageList = memo(function MessageList({ messages, streamingContent, streamingThinking, streamingToolCalls, streamingError, isStreaming, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -46,7 +49,7 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
 
   // 空状态：渲染期派生，避免 effect 中 setState
-  const isEmptyState = messages.length === 0 && !streamingContent;
+  const isEmptyState = messages.length === 0 && !streamingContent && !streamingThinking;
 
   const userMessageIds = useMemo(
     () => messages.filter((m) => m.role === "user").map((m) => m.id),
@@ -201,7 +204,7 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
       scrollToBottom();
     });
     return () => cancelAnimationFrame(raf);
-  }, [messages, streamingContent, isEmptyState, updateNearBottom, scrollToBottom]);
+  }, [messages, streamingContent, streamingThinking, streamingError, isEmptyState, updateNearBottom, scrollToBottom]);
 
   // 监听发送状态或流式开始（false -> true）：强制重置吸底锁并滚动到底部
   const isActive = isStreaming;
@@ -274,20 +277,70 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
                 />
               </div>
             ))}
-            {streamingToolCalls && streamingToolCalls.length > 0 && (
+            {(streamingThinking || (streamingToolCalls && streamingToolCalls.length > 0) || streamingContent) && (
               <div style={{ marginBottom: "12px" }}>
-                <ToolCallCardList toolCalls={streamingToolCalls} />
-              </div>
-            )}
-            {streamingContent && (
-              <div style={{ marginBottom: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                   {currentAgent && <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />}
                   <span style={{ fontSize: "13px", fontWeight: 500, lineHeight: 1.25, color: "var(--text-level-3)" }}>
                     {currentAgent?.name || "AI"}
                   </span>
                 </div>
-                <MarkdownRenderer content={streamingContent} />
+                {streamingThinking && <ThinkingPanel thinking={streamingThinking} />}
+                {streamingToolCalls && streamingToolCalls.length > 0 && (
+                  <ToolCallCardList toolCalls={streamingToolCalls} />
+                )}
+                {streamingContent && <MarkdownRenderer content={streamingContent} />}
+              </div>
+            )}
+            {streamingError && (
+              <div style={{
+                marginBottom: "16px",
+                maxWidth: "800px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--color-error)",
+                background: "color-mix(in srgb, var(--color-error) 8%, var(--bg-level-3))",
+                padding: "12px 14px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <AlertTriangle style={{ width: "16px", height: "16px", color: "var(--color-error)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-error)", lineHeight: 1.3 }}>
+                    {t("chat.streamErrorTitle")}
+                  </span>
+                </div>
+                <p style={{
+                  margin: 0,
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  color: "var(--text-level-2)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}>{streamingError}</p>
+                {onRetry && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px" }}>
+                    <button
+                      onClick={onRetry}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "7px 16px",
+                        borderRadius: "var(--radius-md)",
+                        border: "none",
+                        background: "var(--color-primary)",
+                        color: "white",
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        transition: "background 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-primary-hover)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "var(--color-primary)")}
+                    >
+                      <RotateCw style={{ width: "13px", height: "13px" }} />
+                      {t("chat.streamRetry")}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

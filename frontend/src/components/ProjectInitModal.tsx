@@ -35,7 +35,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
   const [isSending, setIsSending] = useState(false);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-  const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
   const [mode, setMode] = useState<"build" | "plan">("build");
   const [files, setFiles] = useState<string[]>([]);
 

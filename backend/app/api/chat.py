@@ -63,6 +63,7 @@ class MessageResponse(BaseModel):
     chat_id: int
     role: str
     content: str
+    thinking: Optional[str] = None
     tool_calls: Optional[List[dict]] = None
     created_at: datetime
 
@@ -485,7 +486,7 @@ def _get_default_model() -> str:
 
 
 def _get_default_reasoning_effort() -> str:
-    """读取设置中的默认推理程度（none/low/high），供未显式指定时兜底"""
+    """读取设置中的默认推理程度（none/high/max），供未显式指定时兜底"""
     db = SessionLocal()
     try:
         setting = db.query(Setting).filter(Setting.key == "default_reasoning_effort").first()
@@ -757,6 +758,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
     async def generate():
         full_content = ""
+        full_thinking = ""
         recorded_tool_calls: List[dict] = []
         buffer = ""
         last_flush = time.monotonic()
@@ -779,6 +781,12 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 memory_context={"agent_id": chat_agent_id, "project_id": chat_project_id},
                 memory_text=memory_text,
             ):
+                # 思考段增量：立即透传（不攒批），前端第一时间显示"思考中/灰色思考块"
+                if "thinking" in chunk:
+                    full_thinking += chunk["thinking"]
+                    yield f"data: {json.dumps({'thinking': chunk['thinking']})}\n\n"
+                    continue
+
                 # 文本增量：攒批打包为一个 SSE 事件，减轻前端高频 DOM 渲染压力
                 if "content" in chunk:
                     full_content += chunk["content"]
@@ -815,6 +823,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     chat_id=chat_id,
                     role="assistant",
                     content=full_content,
+                    thinking=full_thinking or None,
                     tool_calls=recorded_tool_calls if recorded_tool_calls else None,
                 )
                 db2.add(ai_msg)

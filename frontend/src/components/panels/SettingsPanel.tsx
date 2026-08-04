@@ -487,8 +487,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}
                   >
                     <option value="none">{t("chat.reasoning.off")}</option>
-                    <option value="low">{t("chat.reasoning.fast")}</option>
-                    <option value="high">{t("chat.reasoning.deep")}</option>
+                    <option value="high">{t("chat.reasoning.fast")}</option>
+                    <option value="max">{t("chat.reasoning.deep")}</option>
                   </select>
                 </div>
               </div>

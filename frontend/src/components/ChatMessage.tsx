@@ -27,7 +27,7 @@ function parseThinkBlock(content: string): { thinking: string | null; body: stri
 }
 
 /** 思考过程折叠面板：灰色背景、较小字号、左侧边框，默认展开 */
-function ThinkingPanel({ thinking }: { thinking: string }) {
+export function ThinkingPanel({ thinking }: { thinking: string }) {
   const { t } = useTranslation();
   const { settings } = useSettingsStore();
   const [open, setOpen] = useState(() => settings?.show_reasoning_by_default !== "false");
@@ -184,7 +184,15 @@ function ActionButton({
  */
 export const ChatMessage = memo(function ChatMessage({ message, currentAgent, onQuote, onRegenerate, onEdit }: ChatMessageProps) {
   const { t } = useTranslation();
-  const { thinking, body } = useMemo(() => parseThinkBlock(message.content), [message.content]);
+  // 优先使用独立的 thinking 字段（流式/后端持久化）；老会话 thinking 内嵌在 content
+  // 的 think 标签中时回退用 parseThinkBlock 从正文剥离，保证历史消息仍能展示思考块。
+  const { thinking, body } = useMemo(
+    () =>
+      message.thinking
+        ? { thinking: message.thinking, body: message.content }
+        : parseThinkBlock(message.content),
+    [message.content, message.thinking]
+  );
 
   if (message.role === "user") {
     return (

@@ -32,7 +32,9 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamingThinking, setStreamingThinking] = useState("");
   const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
+  const [streamingError, setStreamingError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [personalityLevel, setPersonalityLevel] = useState(50);
   const [personalityInitForChatId, setPersonalityInitForChatId] = useState<number | null>(null);
@@ -66,7 +68,7 @@ export default function ChatPage() {
     );
   }
 
-  const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
   const [mode, setMode] = useState<ChatMode>("build");
   const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
   const [projectContextOpen, setProjectContextOpen] = useState(false);
@@ -176,6 +178,83 @@ export default function ChatPage() {
     });
   }, [deleteMessagesFrom]);
 
+  // 共享发送管线：对指定用户消息跑流式，处理 thinking/tool/error/complete 全流程。
+  // handleRegenerate / handleRetry 复用，保证重试与重生成的错误展示一致。
+  const runSendForUser = useCallback(async (userMsg: Message) => {
+    setIsSending(true);
+    setStreamingContent("");
+    setStreamingThinking("");
+    setStreamingToolCalls([]);
+    setStreamingError(null);
+    const modelId = currentModel?.id || "mimo-v2.5-pro";
+    try {
+      await sendMessageStream(
+        userMsg.content,
+        modelId,
+        (chunk) => setStreamingContent((prev) => prev + chunk),
+        () => {
+          setStreamingToolCalls([]);
+          setIsSending(false);
+        },
+        (error) => {
+          setStreamingContent("");
+          setStreamingThinking("");
+          setStreamingToolCalls([]);
+          setIsSending(false);
+          setStreamingError(error);
+        },
+        personalityLevel,
+        reasoningEffort,
+        (thinking) => setStreamingThinking((prev) => prev + thinking),
+        (toolCall) => {
+          setStreamingToolCalls((prev) => {
+            const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
+            return exists ? prev : [...prev, toolCall];
+          });
+        },
+        (batch) => setStreamingToolCalls(batch),
+        (finalContent, toolCalls, finalThinking) => {
+          setStreamingContent("");
+          setStreamingThinking("");
+          setStreamingToolCalls([]);
+          setStreamingError(null);
+          const aiMsg: Message = {
+            id: Date.now(),
+            chat_id: chatId!,
+            role: "assistant",
+            content: finalContent,
+            thinking: finalThinking || undefined,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+            created_at: new Date().toISOString(),
+          };
+          appendMessage(aiMsg);
+          refetch().catch(() => { /* 静默失败 */ });
+        }
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setStreamingContent("");
+      setStreamingThinking("");
+      setStreamingToolCalls([]);
+      setIsSending(false);
+      setStreamingError(msg);
+    }
+  }, [sendMessageStream, currentModel?.id, personalityLevel, reasoningEffort, appendMessage, refetch, chatId]);
+
+  // 重试：对最近一条用户消息重新流式生成（错误后 AI 消息未持久化，无需删历史）
+  const handleRetry = useCallback(async () => {
+    if (isSending) return;
+    let userMsg: Message | null = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        userMsg = messages[i];
+        break;
+      }
+    }
+    if (!userMsg) return;
+    await runSendForUser(userMsg);
+  }, [isSending, messages, runSendForUser]);
+
   // 重新生成：删除该 AI 消息及其后历史，找到前一条用户消息重新流式生成
   const handleRegenerate = useCallback(async (messageId: number) => {
     if (isSending) return;
@@ -196,53 +275,8 @@ export default function ChatPage() {
       console.error("Failed to clear history on regenerate:", err);
       return;
     }
-    setIsSending(true);
-    setStreamingContent("");
-    const modelId = currentModel?.id || "mimo-v2.5-pro";
-    try {
-      await sendMessageStream(
-        userMsg.content,
-        modelId,
-        (chunk) => setStreamingContent((prev) => prev + chunk),
-        () => {
-          setStreamingToolCalls([]);
-          setIsSending(false);
-        },
-        (error) => {
-          console.error("Regenerate stream error:", error);
-          setStreamingContent("");
-          setStreamingToolCalls([]);
-          setIsSending(false);
-        },
-        personalityLevel,
-        reasoningEffort,
-        (toolCall) => {
-          setStreamingToolCalls((prev) => {
-            const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
-            return exists ? prev : [...prev, toolCall];
-          });
-        },
-        (batch) => setStreamingToolCalls(batch),
-        (finalContent, toolCalls) => {
-          setStreamingContent("");
-          const aiMsg: Message = {
-            id: Date.now(),
-            chat_id: chatId!,
-            role: "assistant",
-            content: finalContent,
-            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-            created_at: new Date().toISOString(),
-          };
-          appendMessage(aiMsg);
-          refetch().catch(() => { /* 静默失败 */ });
-        }
-      );
-    } catch (err) {
-      console.error("Failed to regenerate:", err);
-      setIsSending(false);
-      setStreamingContent("");
-    }
-  }, [messages, isSending, deleteMessagesFrom, sendMessageStream, currentModel?.id, personalityLevel, reasoningEffort, appendMessage, refetch, chatId]);
+    await runSendForUser(userMsg);
+  }, [isSending, messages, deleteMessagesFrom, runSendForUser]);
 
   // 从URL参数获取用户输入，自动发送消息
   useEffect(() => {
@@ -269,7 +303,9 @@ export default function ChatPage() {
       const autoSend = async () => {
         setIsSending(true);
         setStreamingContent("");
+        setStreamingThinking("");
         setStreamingToolCalls([]);
+        setStreamingError(null);
 
         // 乐观更新：先追加用户消息到本地列表
         const tempUserMsg: Message = {
@@ -293,13 +329,15 @@ export default function ChatPage() {
               setIsSending(false);
             },
             (error) => {
-              console.error("Auto-send stream error:", error);
               setStreamingContent("");
+              setStreamingThinking("");
               setStreamingToolCalls([]);
               setIsSending(false);
+              setStreamingError(error);
             },
             personalityLevel,
             reasoningEffort,
+            (thinking) => setStreamingThinking((prev) => prev + thinking),
             (toolCall) => {
               setStreamingToolCalls((prev) => {
                 const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
@@ -307,14 +345,18 @@ export default function ChatPage() {
               });
             },
             (batch) => setStreamingToolCalls(batch),
-            (finalContent, toolCalls) => {
+            (finalContent, toolCalls, finalThinking) => {
               // onComplete: 流式内容完整接收，追加 AI 消息到本地列表
               setStreamingContent("");
+              setStreamingThinking("");
+              setStreamingToolCalls([]);
+              setStreamingError(null);
               const aiMsg: Message = {
                 id: Date.now() + 1,
                 chat_id: chatId!,
                 role: "assistant",
                 content: finalContent,
+                thinking: finalThinking || undefined,
                 tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
                 created_at: new Date().toISOString(),
               };
@@ -324,10 +366,12 @@ export default function ChatPage() {
             }
           );
         } catch (err) {
-          console.error("Failed to auto-send:", err);
+          const msg = err instanceof Error ? err.message : String(err);
           setIsSending(false);
           setStreamingContent("");
+          setStreamingThinking("");
           setStreamingToolCalls([]);
+          setStreamingError(msg);
         }
       };
 
@@ -393,7 +437,9 @@ export default function ChatPage() {
     setInput("");
     setIsSending(true);
     setStreamingContent("");
+    setStreamingThinking("");
     setStreamingToolCalls([]);
+    setStreamingError(null);
 
     // 乐观更新：先追加用户消息到本地列表（无需等待服务端）
     const tempUserMsg: Message = {
@@ -419,13 +465,15 @@ export default function ChatPage() {
           setIsSending(false);
         },
         (error) => {
-          console.error("Stream error:", error);
           setStreamingContent("");
+          setStreamingThinking("");
           setStreamingToolCalls([]);
           setIsSending(false);
+          setStreamingError(error);
         },
         personalityLevel,
         reasoningEffort,
+        (thinking) => setStreamingThinking((prev) => prev + thinking),
         (toolCall) => {
           setStreamingToolCalls((prev) => {
             const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
@@ -433,14 +481,18 @@ export default function ChatPage() {
           });
         },
         (batch) => setStreamingToolCalls(batch),
-        (finalContent, toolCalls) => {
+        (finalContent, toolCalls, finalThinking) => {
           // onComplete: 流式内容完整接收，追加 AI 消息到本地列表
           setStreamingContent("");
+          setStreamingThinking("");
+          setStreamingToolCalls([]);
+          setStreamingError(null);
           const aiMsg: Message = {
             id: Date.now() + 1,
             chat_id: chatId!,
             role: "assistant",
             content: finalContent,
+            thinking: finalThinking || undefined,
             tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
             created_at: new Date().toISOString(),
           };
@@ -450,10 +502,12 @@ export default function ChatPage() {
         }
       );
     } catch (err) {
-      console.error("Failed to send message:", err);
+      const msg = err instanceof Error ? err.message : String(err);
       setIsSending(false);
       setStreamingContent("");
+      setStreamingThinking("");
       setStreamingToolCalls([]);
+      setStreamingError(msg);
     }
   };
 
@@ -599,11 +653,14 @@ export default function ChatPage() {
         <MessageList
           messages={messages}
           streamingContent={streamingContent}
+          streamingThinking={streamingThinking}
           streamingToolCalls={streamingToolCalls}
+          streamingError={streamingError}
           isStreaming={isSending}
           currentAgent={currentAgentView}
           onQuote={handleQuote}
           onRegenerate={handleRegenerate}
+          onRetry={handleRetry}
           onEdit={handleEdit}
           onActiveUserMessageChange={setActiveUserMessageId}
           scrollPersistenceKey={chatId ? `mfk_chat_scroll_${chatId}` : undefined}

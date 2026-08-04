@@ -10,7 +10,7 @@ import { useAgents } from "@/hooks/useAgents";
 import { AgentIcon } from "@/components/AgentIcon";
 import type { Model } from "@/hooks/useModels";
 
-export type ReasoningEffort = "none" | "low" | "high";
+export type ReasoningEffort = "none" | "high" | "max";
 /** 会话工作模式：build（可写）/ plan（只读） */
 export type ChatMode = "build" | "plan";
 
@@ -289,8 +289,8 @@ export function ChatInput({
 
   const reasoningModes: { value: ReasoningEffort; label: string }[] = [
     { value: "none", label: t("chat.reasoning.off") },
-    { value: "low", label: t("chat.reasoning.fast") },
-    { value: "high", label: t("chat.reasoning.deep") },
+    { value: "high", label: t("chat.reasoning.fast") },
+    { value: "max", label: t("chat.reasoning.deep") },
   ];
 
   const modeOptions: { value: ChatMode; label: string; icon: typeof Wrench }[] = [

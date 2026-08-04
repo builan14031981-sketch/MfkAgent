@@ -104,8 +104,8 @@
     "reasoning": {
       "title": "思考模式",
       "off": "关闭",
-      "fast": "快速推理",
-      "deep": "深度思考"
+      "fast": "high",
+      "deep": "max"
     },
     "mode": {
       "build": "构建",
@@ -121,6 +121,8 @@
     "codeCopied": "已复制",
     "codeCollapsedHint": "内容已折叠，点击展开查看",
     "jumpToLatest": "回最新",
+    "streamErrorTitle": "响应失败",
+    "streamRetry": "重试",
     "messageOutline": "对话大纲",
     "edit": "编辑",
     "quote": "引用",

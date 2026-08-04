@@ -34,7 +34,7 @@ export default function Home() {
   const [quoteCategories, setQuoteCategories] = useState<QuoteCategory[]>([]);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
-  const [reasoningEffort, setReasoningEffort] = useState<"none" | "low" | "high">("none");
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
   const [mode, setMode] = useState<ChatMode>("build");
 
   useEffect(() => {

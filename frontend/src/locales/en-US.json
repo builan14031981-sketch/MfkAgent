@@ -104,8 +104,8 @@
     "reasoning": {
       "title": "Reasoning Mode",
       "off": "Off",
-      "fast": "Fast",
-      "deep": "Deep"
+      "fast": "high",
+      "deep": "max"
     },
     "mode": {
       "build": "Build",
@@ -121,6 +121,8 @@
     "codeCopied": "Copied",
     "codeCollapsedHint": "Content collapsed, click to expand",
     "jumpToLatest": "Latest",
+    "streamErrorTitle": "Response failed",
+    "streamRetry": "Retry",
     "messageOutline": "Outline",
     "edit": "Edit",
     "quote": "Quote",
