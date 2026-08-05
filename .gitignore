@@ -40,3 +40,8 @@ _trash/
 
 # Electron
 electron/node_modules/
+
+# Local tooling / secrets
+opencode.json
+.trae/
+
