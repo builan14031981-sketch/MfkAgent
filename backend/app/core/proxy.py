@@ -7,6 +7,13 @@
 import os
 from typing import Optional
 
+# 默认浏览器 User-Agent：避免 fetch_url / web_search 请求被反爬站点直接拒绝（412/403）
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/126.0.0.0 Safari/537.36"
+)
+
 
 def _detect_windows_proxy() -> Optional[str]:
     """读取 Windows 系统代理设置（Internet Options → Connections → LAN 代理）。
@@ -54,8 +61,16 @@ def resolve_proxy() -> Optional[str]:
 
 
 def build_httpx_client(timeout: float = 10.0, **kwargs):
-    """构造带代理的 httpx.AsyncClient。无代理时等价于直连。"""
+    """构造带代理的 httpx.AsyncClient。无代理时等价于直连。
+
+    默认携带浏览器 User-Agent（DEFAULT_USER_AGENT），避免部分网站因缺少浏览器标识
+    返回 412 Precondition Failed / 403 Forbidden；调用方可传入 headers 覆盖默认 UA。
+    """
     import httpx
+
+    headers = kwargs.pop("headers", None) or {}
+    headers.setdefault("User-Agent", DEFAULT_USER_AGENT)
+    kwargs["headers"] = headers
 
     proxy = resolve_proxy()
     if proxy:

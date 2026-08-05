@@ -8,15 +8,11 @@ import os
 import time
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, MemoryItem, Setting, Project
-from app.core.tools import FILE_TOOLS_DEFINITIONS
-from app.core.git_tools import GIT_TOOLS_DEFINITIONS
-from app.core.search_tools import SEARCH_TOOLS_DEFINITIONS
-from app.core.command_tools import COMMAND_TOOLS_DEFINITIONS
 from app.services.model import model_service, Message as ModelMessage
-from app.services.tools import tool_registry
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
 from app.services.personality import get_personality_prompt
+from app.core.tool_runtime import tool_runtime
 
 router = APIRouter()
 
@@ -512,15 +508,16 @@ _VERIFY_WORKFLOW_PROMPT = """
 
 ## 编码工作流程（绑定项目时生效）
 
-当你在修改项目代码时，请遵循以下"改后自验"闭环，而不是改完就结束：
+当你修改项目代码时，必须遵循以下"改后自验"闭环，改完不得直接结束：
 
-1. 修改文件后，调用 `run_command` 验证你的改动没有引入错误：
+1. **每次调用 `write_file` 修改代码后，你都必须调用 `run_command` 验证你的改动没有引入错误**，这是强制步骤，不是可选项：
    - Python 项目：`python -m py_compile <改动的文件>` 检查语法
    - 有测试则运行 `pytest` 或 `python -m unittest` 确认不破坏现有功能
    - 前端/TS 项目：优先 `npm run lint`、`npm run typecheck` 或 `npm run build`
-2. 如果验证输出报错，**不要放弃**：根据报错修复代码，然后重新运行验证，直到通过。
-3. 完成后用 `git diff` 或 `git status` 向用户总结你改了哪些文件。
-4. 使用 `search_files` 在项目中定位函数/报错关键词，使用 `read_file` 读取上下文后再动手。
+2. 如果验证输出报错，**不要结束任务**：根据报错修复代码，然后重新运行验证，直到全部通过。
+3. 只有在验证通过后，才允许输出最终回答。
+4. 完成后用 `git diff` 或 `git status` 向用户总结你改了哪些文件。
+5. 使用 `search_files` 在项目中定位函数/报错关键词，使用 `read_file` 读取上下文后再动手。
 
 注意：`run_command` 只允许只读验证命令（测试/lint/语法检查/查看 git 状态），
 禁止试图执行写入、网络或安装类命令。
@@ -608,39 +605,24 @@ async def send_message(chat_id: int, request: SendRequest):
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
+        
+        # 使用 Tool Runtime V5 Final 进行工具决策
+        tool_context = tool_runtime.process(message=request.content, chat=chat)
+        full_prompt += "\n\n" + tool_context["system_policy"]
+        
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
-
-        # 绑定项目时追加"改后自验"工作流指引（工具未启用也应保留——run_command 走 Function Calling 分支）
-        if chat.project_path and request.use_tools:
-            model_messages[0] = ModelMessage(role="system", content=full_prompt + _VERIFY_WORKFLOW_PROMPT)
 
         # 释放写事务：模型工具（如 add_memory）在独立 Session 中写库，
         # 若此处仍持有未提交的写锁，SQLite 会报 database is locked
         db.commit()
 
-        agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
-        allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
         chat_mode = chat.mode or "build"
         reasoning_effort = request.reasoning_effort or _get_default_reasoning_effort()
+        
         try:
-            tools_arg = None
-            if request.use_tools:
-                extra_tools = None
-                if allowed_tools is not None:
-                    extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
-                if chat.project_path:
-                    # 绑定项目：挂载本地文件操作工具（沙箱限定项目目录）+ Git 工具 + 搜索工具 + 只读命令
-                    tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS + SEARCH_TOOLS_DEFINITIONS + COMMAND_TOOLS_DEFINITIONS
-                    if chat_mode == "plan":
-                        # plan 只读模式：仅提供读取/浏览工具，禁止写文件与 git 写操作
-                        tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
-                    # 追加 capabilities 允许的非文件工具（如 add_memory）
-                    if extra_tools:
-                        tools_arg = tools_arg + extra_tools
-                elif allowed_tools is not None:
-                    tools_arg = extra_tools or []
+            tools_arg = tool_context["tools"] if tool_context["need_tools"] else None
             ai_response = await model_service.chat(
                 model_id=chat.model or request.model or _get_default_model(),
                 messages=model_messages,
@@ -716,12 +698,18 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         full_prompt = system_prompt
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
+        
+        # 使用 Tool Runtime V5 Final 进行工具决策
+        if request.use_tools:
+            tool_context = tool_runtime.process(message=request.content, chat=chat)
+            full_prompt += "\n\n" + tool_context["system_policy"]
+            tools_arg = tool_context["tools"] if tool_context["need_tools"] else None
+        else:
+            tools_arg = None
+        
         model_messages = [ModelMessage(role="system", content=full_prompt)]
         for msg in history:
             model_messages.append(ModelMessage(role=msg.role, content=msg.content))
-
-        if chat.project_path and request.use_tools:
-            model_messages[0] = ModelMessage(role="system", content=full_prompt + _VERIFY_WORKFLOW_PROMPT)
 
         effective_model = chat.model or request.model or _get_default_model()
         temperature = request.temperature
@@ -733,24 +721,6 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         # 生成器（db.close() 之后执行）再访问会触发 DetachedInstanceError
         chat_agent_id = chat.agent_id
         chat_project_id = chat.project_id
-
-        agent_for_caps = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
-        allowed_tools = set(agent_for_caps.capabilities) if agent_for_caps else None
-        tools_arg = None
-        if request.use_tools:
-            extra_tools = None
-            if allowed_tools is not None:
-                extra_tools = [t for t in tool_registry.get_definitions() if t["function"]["name"] in allowed_tools]
-            if project_path:
-                tools_arg = FILE_TOOLS_DEFINITIONS + GIT_TOOLS_DEFINITIONS + SEARCH_TOOLS_DEFINITIONS + COMMAND_TOOLS_DEFINITIONS
-                if chat_mode == "plan":
-                    # plan 只读模式：仅提供读取/浏览工具，禁止写文件与 git 写操作
-                    tools_arg = [t for t in tools_arg if t["function"]["name"] != "write_file"]
-                # 追加 capabilities 允许的非文件工具（如 add_memory）
-                if extra_tools:
-                    tools_arg = tools_arg + extra_tools
-            elif allowed_tools is not None:
-                tools_arg = extra_tools or []
 
         db.commit()
     finally:
@@ -781,39 +751,41 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 memory_context={"agent_id": chat_agent_id, "project_id": chat_project_id},
                 memory_text=memory_text,
             ):
+                etype = chunk.get("type")
+
                 # 思考段增量：立即透传（不攒批），前端第一时间显示"思考中/灰色思考块"
-                if "thinking" in chunk:
-                    full_thinking += chunk["thinking"]
-                    yield f"data: {json.dumps({'thinking': chunk['thinking']})}\n\n"
+                if etype == "thinking":
+                    content = chunk.get("content", "")
+                    full_thinking += content
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': content})}\n\n"
                     continue
 
                 # 文本增量：攒批打包为一个 SSE 事件，减轻前端高频 DOM 渲染压力
-                if "content" in chunk:
-                    full_content += chunk["content"]
-                    buffer += chunk["content"]
+                if etype == "text":
+                    content = chunk.get("content", "")
+                    full_content += content
+                    buffer += content
                     if _should_flush():
-                        yield f"data: {json.dumps({'content': buffer})}\n\n"
+                        yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
                         buffer = ""
                         last_flush = time.monotonic()
                     continue
 
-                # 非文本事件（工具调用/汇总/结束）：立即透传，先 flush 残留 buffer
+                # 工具调用汇总：仅记录，不直接透传（前端用 tool_start/tool_result 实时渲染）
+                if etype == "tool_calls":
+                    recorded_tool_calls = chunk.get("calls") or recorded_tool_calls
+                    continue
+
+                # 其余事件（tool_start/tool_result/finish/error）：先 flush 残留 buffer，再原样透传
                 if buffer:
-                    yield f"data: {json.dumps({'content': buffer})}\n\n"
+                    yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
                     buffer = ""
                     last_flush = time.monotonic()
-                if "tool_call" in chunk:
-                    recorded_tool_calls.append(chunk["tool_call"])
-                if "tool_calls" in chunk:
-                    recorded_tool_calls = chunk["tool_calls"]
-                    continue  # 汇总事件不直接透传，最终随 [DONE] 前透传 tool_calls
-                if recorded_tool_calls and "finish_reason" in chunk:
-                    yield f"data: {json.dumps({'tool_calls': recorded_tool_calls})}\n\n"
                 yield f"data: {json.dumps(chunk)}\n\n"
 
             # 流结束：flush 剩余 buffer
             if buffer:
-                yield f"data: {json.dumps({'content': buffer})}\n\n"
+                yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
                 buffer = ""
 
             db2 = SessionLocal()
@@ -835,7 +807,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
             yield "data: [DONE]\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(
         generate(),

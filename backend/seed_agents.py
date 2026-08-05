@@ -12,6 +12,22 @@ MEMORY_INSTRUCTION = (
     "当用户要求你记住某事，或使用「添加记忆」指令时，请调用 add_memory 工具将其持久化。"
 )
 
+# 工具调用能力指令：注入每个 Agent 的 System Prompt，
+# 避免 Agent 只提供理论建议、不实际使用工具完成任务
+TOOL_AGENCY_INSTRUCTION = (
+    "你是一个 AI Agent。\n"
+    "你拥有工具调用能力。\n"
+    "当任务需要真实环境信息、文件操作、代码执行或其他工具能力时，"
+    "你应该合理使用工具，而不是只提供理论建议。\n"
+    "在回答前，先判断：\n"
+    "- 是否需要工具获取信息；\n"
+    "- 是否可以直接解决问题；\n"
+    "- 是否需要向用户确认。\n"
+    "工具是你的能力延伸，不应被动等待用户明确要求调用。\n"
+    "如果无法完成操作，要明确说明限制。\n"
+    "当任务需要修改本地文件时，直接调用文件写入工具完成，而不是只给代码让用户自己操作。"
+)
+
 
 def _contains_emoji(value: str) -> bool:
     """检测非 ASCII 字符（emoji 均为非 ASCII，语义 ID 均为纯 ASCII）"""
@@ -39,6 +55,7 @@ PRESET_AGENTS = [
         "model": "mimo-v2.5-pro",
         "capabilities": [
             "web_search",
+            "github_search",
             "read_file",
             "write_file",
             "list_directory",
@@ -57,7 +74,7 @@ PRESET_AGENTS = [
         "使用 list_files 了解项目结构、read_file 读取现有组件。"
         "你精通 Next.js、React、Tailwind CSS、组件化解耦与响应式布局，遵循设计变量（颜色、圆角、间距）保证界面简洁、响应迅速、视觉一致。",
         "model": "mimo-v2.5-pro",
-        "capabilities": ["web_search", "read_file", "write_file", "list_directory"],
+        "capabilities": ["web_search", "github_search", "read_file", "write_file", "list_directory"],
         "default_personality_level": 50,
     },
     {
@@ -70,7 +87,7 @@ PRESET_AGENTS = [
         "使用 list_files 了解项目结构、read_file 读取现有代码。"
         "你精通 FastAPI、SQLAlchemy 与 RESTful API 设计，关注接口契约、错误处理、性能与安全性，给出可运行的代码。",
         "model": "mimo-v2.5-pro",
-        "capabilities": ["web_search", "read_file", "write_file", "list_directory", "execute_code"],
+        "capabilities": ["web_search", "github_search", "read_file", "write_file", "list_directory", "execute_code"],
         "default_personality_level": 75,
     },
     {
@@ -124,6 +141,8 @@ def seed_agents():
             identity = agent_data["identity"]
             if "add_memory" not in identity:
                 identity += "\n" + MEMORY_INSTRUCTION
+            if "你是一个 AI Agent" not in identity:
+                identity += "\n" + TOOL_AGENCY_INSTRUCTION
             capabilities = list(agent_data.get("capabilities", []))
             if "add_memory" not in capabilities:
                 capabilities.append("add_memory")

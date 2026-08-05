@@ -4,9 +4,8 @@ from enum import Enum
 import httpx
 import json
 from app.core.config import settings
-from app.core.git_tools import GIT_TOOLS, execute_git_tool
-from app.core.search_tools import SEARCH_TOOLS, execute_search_tool
-from app.core.command_tools import COMMAND_TOOLS, execute_command_tool
+from app.core.tool_runtime.executor import execute_tool as _execute_tool
+from app.core.tool_runtime.events import ToolEventSource
 
 class ModelProvider(str, Enum):
     MIMO = "mimo"
@@ -19,6 +18,7 @@ class ModelProvider(str, Enum):
     MINIMAX = "minimax"
     BAICHUAN = "baichuan"
     FREELLMAPI = "freellmapi"
+    GOOGLE = "google"
 
 class ModelConfig(BaseModel):
     provider: ModelProvider
@@ -27,6 +27,7 @@ class ModelConfig(BaseModel):
     api_base: str
     max_tokens: int = 4096
     temperature: float = 0.7
+    priority: int = 0  # 0 = 主力模型（可用），1 = 备用模型（可能不可用）
 
 class Message(BaseModel):
     role: str
@@ -91,12 +92,14 @@ class ModelService:
                 model_name="mimo-v2.5-pro",
                 api_key=self._get_api_key(settings.MIMO_API_KEY, "api_key_mimo"),
                 api_base=settings.MIMO_API_BASE,
+                priority=2,  # API Key 无效，隐藏
             ),
             "mimo-v2.5": ModelConfig(
                 provider=ModelProvider.MIMO,
                 model_name="mimo-v2.5",
                 api_key=self._get_api_key(settings.MIMO_API_KEY, "api_key_mimo"),
                 api_base=settings.MIMO_API_BASE,
+                priority=2,  # API Key 无效，隐藏
             ),
             "deepseek-v4-flash": ModelConfig(
                 provider=ModelProvider.DEEPSEEK,
@@ -141,47 +144,73 @@ class ModelService:
                 model_name="deepseek-v4-flash",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
             ),
             "freellm-qwen3-coder-30b": ModelConfig(
                 provider=ModelProvider.FREELLMAPI,
                 model_name="qwen3-coder-30b",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
             ),
             "freellm-reka-edge": ModelConfig(
                 provider=ModelProvider.FREELLMAPI,
                 model_name="reka-edge",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
             ),
             "freellm-reka-flash": ModelConfig(
                 provider=ModelProvider.FREELLMAPI,
                 model_name="reka-flash",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
             ),
             "freellm-cydonia-24b-v4.3": ModelConfig(
                 provider=ModelProvider.FREELLMAPI,
                 model_name="cydonia-24b-v4.3",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
             ),
             "freellm-auto": ModelConfig(
                 provider=ModelProvider.FREELLMAPI,
                 model_name="auto",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
             ),
             "freellm-fusion": ModelConfig(
                 provider=ModelProvider.FREELLMAPI,
                 model_name="fusion",
                 api_key=self._get_api_key(settings.FREELLMAPI_API_KEY, "api_key_freellm"),
                 api_base=settings.FREELLMAPI_API_BASE,
+                priority=2,  # 本地网关未运行，隐藏
+            ),
+            # Google Gemini 系列（免费额度，所有模型都支持函数调用）
+            "gemini-3.5-flash": ModelConfig(
+                provider=ModelProvider.GOOGLE,
+                model_name="gemini-3.5-flash",  # 稳定版，最智能
+                api_key=self._get_api_key(settings.GOOGLE_API_KEY, "api_key_google"),
+                api_base="https://generativelanguage.googleapis.com/v1beta/openai",
+            ),
+            "gemini-3-flash": ModelConfig(
+                provider=ModelProvider.GOOGLE,
+                model_name="gemini-3-flash-preview",  # 预览版需要 -preview 后缀
+                api_key=self._get_api_key(settings.GOOGLE_API_KEY, "api_key_google"),
+                api_base="https://generativelanguage.googleapis.com/v1beta/openai",
+            ),
+            "gemini-3.1-flash-lite": ModelConfig(
+                provider=ModelProvider.GOOGLE,
+                model_name="gemini-3.1-flash-lite",  # 稳定版，成本效益最高
+                api_key=self._get_api_key(settings.GOOGLE_API_KEY, "api_key_google"),
+                api_base="https://generativelanguage.googleapis.com/v1beta/openai",
             ),
         }
     
     def get_available_models(self) -> List[Dict[str, Any]]:
-        """获取所有可用模型列表"""
+        """获取所有可用模型列表（按优先级排序：主力模型在前，备用模型在后）"""
         models = []
         for model_id, config in self.models.items():
             if config.api_key:
@@ -190,7 +219,9 @@ class ModelService:
                     "name": model_id,
                     "provider": config.provider.value,
                     "max_tokens": config.max_tokens,
+                    "priority": config.priority,
                 })
+        models.sort(key=lambda m: m["priority"])
         return models
     
     def get_model_config(self, model_id: str) -> Optional[ModelConfig]:
@@ -267,7 +298,7 @@ class ModelService:
         tools: List[Dict] = None,
         reasoning_effort: str = None,
         project_path: str = None,
-        max_tool_rounds: int = 4,
+        max_tool_rounds: int = 8,
         read_only: bool = False,
         memory_context: dict = None,
         memory_text: str = None,
@@ -293,6 +324,7 @@ class ModelService:
             ModelProvider.MINIMAX,
             ModelProvider.BAICHUAN,
             ModelProvider.FREELLMAPI,
+            ModelProvider.GOOGLE,
         ]:
             return await self._chat_openai_compatible(
                 config, messages, temperature, max_tokens, stream, tools,
@@ -311,27 +343,31 @@ class ModelService:
         reasoning_effort: str = None,
         tools: List[Dict] = None,
         project_path: str = None,
-        max_tool_rounds: int = 4,
+        max_tool_rounds: int = 8,
         read_only: bool = False,
         memory_context: dict = None,
         memory_text: str = None,
     ) -> AsyncIterator[Dict[str, Any]]:
         """流式聊天请求（支持多轮 Tool Calling 自动执行环）。
 
-        yield 协议：
-          {"content": str}            文本增量
-          {"tool_call": {...}}        工具执行事件（name/arguments/result）
-          {"tool_calls": [...]}       本轮累计的工具调用汇总（含结果）
-          {"finish_reason": str}
+        yield 协议（统一信封，顶层 type 判别）：
+          {"type": "text", "content": str}                    文本增量
+          {"type": "thinking", "content": str}                思考段增量
+          {"type": "tool_start", ...}                         工具开始事件
+          {"type": "tool_result", ...}                        工具结束事件（含结果/耗时）
+          {"type": "tool_calls", "calls": [...]}              本轮累计的工具调用汇总（含结果，供持久化）
+          {"type": "finish", "finish_reason": str}
+          {"type": "error", "message": str}
         """
-        from app.core.tools import execute_file_tool
-
         config = self.get_model_config(model_id)
         if not config:
             raise ValueError(f"模型 {model_id} 不存在")
 
         if not config.api_key:
             raise ValueError(f"模型 {model_id} 未配置API Key")
+
+        # 工具执行上下文：注入 agent_id / project_id 供 add_memory 等工具使用
+        ctx = {k: v for k, v in (memory_context or {}).items() if v is not None}
 
         headers = {
             "Authorization": f"Bearer {config.api_key}",
@@ -346,6 +382,9 @@ class ModelService:
         all_tool_calls: List[dict] = []
 
         for round_no in range(max_tool_rounds + 1):
+            # 轮次预算：前 max_tool_rounds 轮允许工具调用，最后一轮强制移除工具，
+            # 保证模型必须输出文本总结，避免"工具轮耗尽后静默结束 → 空回复"。
+            round_tools = tools if round_no < max_tool_rounds else None
             payload = {
                 "model": self._resolve_api_model_name(config),
                 "messages": current_messages,
@@ -355,8 +394,8 @@ class ModelService:
             }
             if reasoning_effort:
                 self._apply_reasoning_payload(payload, config, reasoning_effort)
-            if tools:
-                payload["tools"] = tools
+            if round_tools:
+                payload["tools"] = round_tools
 
             collected_tool_calls: dict = {}
             final_finish = "stop"
@@ -413,84 +452,94 @@ class ModelService:
 
                                     # 普通文本增量才透传（工具调用段不输出文本）
                                     if content and not collected_tool_calls:
-                                        yield {"content": content}
+                                        yield {"type": "text", "content": content}
                                     # 思考段增量独立透传（thinking != content，前端据此实时渲染思考中/灰色思考块）
                                     if reasoning_content and not collected_tool_calls:
-                                        yield {"thinking": reasoning_content}
+                                        yield {"type": "thinking", "content": reasoning_content}
                                 except (json.JSONDecodeError, IndexError, KeyError):
                                     continue
 
             # 该轮结束时判断是否触发工具调用
-            if final_finish == "tool_calls" and collected_tool_calls:
+            if final_finish == "tool_calls" and collected_tool_calls and round_tools:
                 ordered = [collected_tool_calls[i] for i in sorted(collected_tool_calls)]
                 assistant_msg = {"role": "assistant", "content": None, "tool_calls": ordered}
                 current_messages.append(assistant_msg)
 
                 for tc in ordered:
-                    func_name = tc["function"]["name"]
-                    try:
-                        func_args = json.loads(tc["function"]["arguments"] or "{}")
-                    except Exception:
-                        func_args = {}
-
-                    if func_name in ("write_file", "read_file", "list_files") and project_path:
-                        if read_only and func_name == "write_file":
-                            result = "错误: 当前为 plan 只读模式，禁止写入或修改项目文件。如需修改请切换到 build 模式。"
-                        else:
-                            result = execute_file_tool(func_name, project_path=project_path, **func_args)
-                        result_text = result
-                    elif func_name in GIT_TOOLS and project_path:
-                        if read_only:
-                            result = "错误: 当前为 plan 只读模式，git 提交/回滚类操作被禁止。查看状态可先切换到 build 模式。"
-                        else:
-                            result = execute_git_tool(func_name, project_path=project_path, **func_args)
-                        result_text = result
-                    elif func_name in SEARCH_TOOLS and project_path:
-                        result = execute_search_tool(func_name, project_path=project_path, **func_args)
-                        result_text = result
-                    elif func_name in COMMAND_TOOLS and project_path:
-                        if read_only:
-                            result = "错误: 当前为 plan 只读模式，禁止执行命令。查看状态可先切换到 build 模式。"
-                        else:
-                            result = execute_command_tool(func_name, project_path=project_path, **func_args)
-                        result_text = result
-                    else:
-                        from app.services.tools import tool_registry
-                        r = await tool_registry.execute(func_name, **{**ctx, **func_args})
-                        result_text = r.output if r.success else f"Error: {r.error}"
-
-                    # ToolCallCard 期望格式：{ name, path, success }（path 从 arguments 提取）
-                    rel_path = str(func_args.get("relative_path", ""))
-                    record = {
-                        "name": func_name,
-                        "path": rel_path,
-                        "success": not result_text.startswith("错误"),
-                        "arguments": func_args,
-                        "result": result_text,
-                        "tool_call_id": tc.get("id", ""),
-                    }
+                    event_source = ToolEventSource()
+                    record = await _execute_tool(
+                        tool_call=tc,
+                        project_path=project_path,
+                        read_only=read_only,
+                        ctx=ctx,
+                        emit=event_source.emit,
+                    )
                     all_tool_calls.append(record)
-                    # 向前端 SSE 推送工具调用事件（ToolCallCard 实时渲染）
-                    # 带上 arguments：前端卡片可展示 query/command/relative_path 等，无需从 result 猜测
-                    yield {"tool_call": {
-                        "name": func_name,
-                        "path": rel_path,
-                        "success": record["success"],
-                        "arguments": func_args,
-                    }}
+                    # 流式工具事件：tool_start → tool_result 按序透传（ToolCallCard v2 实时渲染）
+                    for event in event_source.drain():
+                        yield event
 
                     current_messages.append({
                         "tool_call_id": tc.get("id", ""),
                         "role": "tool",
-                        "content": result_text,
+                        "content": record["result"],
                     })
                 continue  # 继续下一轮，驱动 LLM 生成最终文本
 
             # 正常结束：透传 finish_reason + 工具调用汇总
-            yield {"finish_reason": final_finish}
+            yield {"type": "finish", "finish_reason": final_finish}
             if all_tool_calls:
-                yield {"tool_calls": all_tool_calls}
+                yield {"type": "tool_calls", "calls": all_tool_calls}
             return
+
+        # 兜底：工具轮把循环耗尽仍无总结（理论上一轮无工具必然产出文本，
+        # 但部分厂商可能在无工具轮仍回空）→ 再补一次无工具收尾请求。
+        if all_tool_calls:
+            try:
+                summary_messages = current_messages
+                payload = {
+                    "model": self._resolve_api_model_name(config),
+                    "messages": summary_messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "stream": True,
+                }
+                if reasoning_effort:
+                    self._apply_reasoning_payload(payload, config, reasoning_effort)
+                async with httpx.AsyncClient() as client:
+                    async with client.stream(
+                        "POST",
+                        f"{config.api_base}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                        timeout=120.0,
+                    ) as response:
+                        if response.status_code != 200:
+                            raise Exception(self._upstream_error_message(response.status_code, await response.aread()))
+                        buffer = ""
+                        async for chunk in response.aiter_text():
+                            buffer += chunk
+                            while "\n" in buffer:
+                                line, buffer = buffer.split("\n", 1)
+                                line = line.strip()
+                                if not line or line == "data: [DONE]":
+                                    continue
+                                if line.startswith("data: "):
+                                    try:
+                                        data = json.loads(line[6:])
+                                        choices = data.get("choices", [])
+                                        if not choices:
+                                            continue
+                                        delta = choices[0].get("delta", {})
+                                        content = delta.get("content", "")
+                                        if content:
+                                            yield {"type": "text", "content": content}
+                                    except (json.JSONDecodeError, IndexError, KeyError):
+                                        continue
+                yield {"type": "finish", "finish_reason": "stop"}
+                yield {"type": "tool_calls", "calls": all_tool_calls}
+            except Exception as e:
+                yield {"type": "error", "message": f"工具执行完成，但最终总结生成失败: {e}"}
 
     async def _chat_openai_compatible(
         self,
@@ -502,14 +551,11 @@ class ModelService:
         tools: List[Dict] = None,
         reasoning_effort: str = None,
         project_path: str = None,
-        max_tool_rounds: int = 4,
+        max_tool_rounds: int = 8,
         read_only: bool = False,
         memory_context: dict = None,
     ) -> ChatResponse:
         """调用OpenAI兼容接口（支持多轮 Tool Calling 自动执行环）"""
-        from app.services.tools import tool_registry
-        from app.core.tools import execute_file_tool
-
         ctx = {k: v for k, v in (memory_context or {}).items() if v is not None}
 
         headers = {
@@ -517,23 +563,26 @@ class ModelService:
             "Content-Type": "application/json",
         }
 
-        payload = {
-            "model": self._resolve_api_model_name(config),
-            "messages": [msg.dict() for msg in messages],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stream": stream,
-        }
-        if reasoning_effort:
-            self._apply_reasoning_payload(payload, config, reasoning_effort)
-
-        if tools:
-            payload["tools"] = tools
-
         async with httpx.AsyncClient() as client:
             round_no = 0
             data = None
+            # 累积消息历史（含各轮 assistant tool_calls + tool 结果），避免每轮从原始 messages 重建导致前轮上下文丢失
+            tool_messages = [msg.dict() for msg in messages]
             while True:
+                # 工具轮次预算：前 max_tool_rounds 轮允许工具，之后移除工具强制模型输出总结
+                round_tools = tools if round_no < max_tool_rounds else None
+                payload = {
+                    "model": self._resolve_api_model_name(config),
+                    "messages": tool_messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                    "stream": stream,
+                }
+                if reasoning_effort:
+                    self._apply_reasoning_payload(payload, config, reasoning_effort)
+                if round_tools:
+                    payload["tools"] = round_tools
+
                 response = await client.post(
                     f"{config.api_base}/chat/completions",
                     headers=headers,
@@ -547,66 +596,60 @@ class ModelService:
                 choice = data["choices"][0]
                 message = choice["message"]
 
-                # 无工具调用：返回最终结果
-                if choice.get("finish_reason") != "tool_calls" or not message.get("tool_calls"):
+                # 无工具调用，或已达工具轮次上限：视为最终结果
+                if (
+                    choice.get("finish_reason") != "tool_calls"
+                    or not message.get("tool_calls")
+                    or not round_tools
+                ):
                     break
 
                 round_no += 1
-                if round_no > max_tool_rounds:
-                    break
 
-                # 执行工具调用，将结果追加到消息历史
-                tool_messages = [msg.dict() for msg in messages]
+                # 执行工具调用，将结果追加到累积消息历史
                 tool_messages.append(message)
                 for tool_call in message["tool_calls"]:
-                    func_name = tool_call["function"]["name"]
-                    try:
-                        func_args = json.loads(tool_call["function"]["arguments"])
-                    except Exception:
-                        func_args = {}
-
-                    if func_name in ("write_file", "read_file", "list_files") and project_path:
-                        if read_only and func_name == "write_file":
-                            result = "错误: 当前为 plan 只读模式，禁止写入或修改项目文件。如需修改请切换到 build 模式。"
-                        else:
-                            result = execute_file_tool(func_name, project_path=project_path, **func_args)
-                        content = result
-                    elif func_name in GIT_TOOLS and project_path:
-                        if read_only:
-                            result = "错误: 当前为 plan 只读模式，git 提交/回滚类操作被禁止。查看状态可先切换到 build 模式。"
-                        else:
-                            result = execute_git_tool(func_name, project_path=project_path, **func_args)
-                        content = result
-                    elif func_name in SEARCH_TOOLS and project_path:
-                        result = execute_search_tool(func_name, project_path=project_path, **func_args)
-                        content = result
-                    elif func_name in COMMAND_TOOLS and project_path:
-                        if read_only:
-                            result = "错误: 当前为 plan 只读模式，禁止执行命令。查看状态可先切换到 build 模式。"
-                        else:
-                            result = execute_command_tool(func_name, project_path=project_path, **func_args)
-                        content = result
-                    else:
-                        r = await tool_registry.execute(func_name, **{**ctx, **func_args})
-                        content = r.output if r.success else f"Error: {r.error}"
-
+                    record = await _execute_tool(
+                        tool_call=tool_call,
+                        project_path=project_path,
+                        read_only=read_only,
+                        ctx=ctx,
+                    )
                     tool_messages.append({
                         "tool_call_id": tool_call["id"],
                         "role": "tool",
-                        "content": content,
+                        "content": record["result"],
                     })
-
-                payload["messages"] = tool_messages
 
             if not data:
                 raise Exception("API 未返回结果")
 
             choice = data["choices"][0]
             message = choice["message"]
+            content = message.get("content") or ""
+
+            # 轮次耗尽导致最后一条仍是 tool_call 消息（content 为空）→ 补一次无工具请求取总结
+            if not content and message.get("tool_calls"):
+                final_payload = dict(payload)
+                final_payload["messages"] = tool_messages
+                final_payload.pop("tools", None)
+                final_resp = await client.post(
+                    f"{config.api_base}/chat/completions",
+                    headers=headers,
+                    json=final_payload,
+                    timeout=60.0,
+                )
+                if final_resp.status_code != 200:
+                    raise Exception(self._upstream_error_message(final_resp.status_code, final_resp.text))
+                data = final_resp.json()
+                choice = data["choices"][0]
+                message = choice["message"]
+                content = message.get("content") or ""
+
             return ChatResponse(
                 id=data.get("id", ""),
                 model=data.get("model", config.model_name),
-                content=message.get("content", ""),
+                content=content,
                 finish_reason=choice.get("finish_reason", "stop"),
                 usage=data.get("usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}),
             )

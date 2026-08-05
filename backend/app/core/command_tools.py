@@ -16,6 +16,7 @@ from app.core.tools import ToolExecutionError
 # 允许执行的安全命令白名单（前缀匹配，每个子参数独立校验）
 # 形如: ("命令", [参数前缀...])，参数满足任一前缀即可；空列表 = 只允许裸命令
 _ALLOWED_COMMANDS: List[tuple] = [
+    # 测试/验证类
     ("pytest", []),
     ("python", ["-m", "pytest"]),
     ("python", ["-m", "unittest"]),
@@ -36,6 +37,15 @@ _ALLOWED_COMMANDS: List[tuple] = [
     ("git", ["log"]),
     ("git", ["show"]),
     ("git", ["branch"]),
+    # 网络诊断类（只读，用于检查网络状态）
+    ("ipconfig", []),
+    ("netstat", []),
+    ("ping", ["-n"]),  # -n 指定次数，防止无限 ping
+    ("nslookup", []),
+    ("tracert", []),
+    ("systeminfo", []),
+    ("hostname", []),
+    ("whoami", []),
 ]
 
 # 危险的 shell 元字符/重定向，一律拒绝（防注入）
@@ -72,7 +82,9 @@ def _is_allowed(argv: List[str]) -> str:
 
 
 def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
-    """在项目内执行只读安全命令（白名单），返回 stdout+stderr 合并输出。"""
+    """在项目内执行只读安全命令（白名单），返回 stdout+stderr 合并输出。
+    如果没有 project_path，允许执行系统级命令（如 ipconfig、netstat 等）。
+    """
     command = (command or "").strip()
     if not command:
         return "错误: command 不能为空"
@@ -85,17 +97,21 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     if reason:
         return reason
 
-    if not project_path:
-        return "错误: project_path 不能为空"
-    proj_real = os.path.realpath(project_path)
-    if not os.path.isdir(proj_real):
-        return f"错误: 项目目录不存在: {project_path}"
+    # 确定工作目录：有 project_path 则用项目目录，否则用当前目录（允许系统级命令）
+    if project_path:
+        proj_real = os.path.realpath(project_path)
+        if not os.path.isdir(proj_real):
+            return f"错误: 项目目录不存在: {project_path}"
+        cwd = proj_real
+    else:
+        # 没有绑定项目，允许执行系统级命令（如 ipconfig、netstat）
+        cwd = os.getcwd()
 
     timeout = max(1, min(int(timeout or TIMEOUT), 120))
     try:
         proc = subprocess.run(
             argv,
-            cwd=proj_real,
+            cwd=cwd,
             capture_output=True,
             text=False,
             timeout=timeout,
@@ -126,17 +142,18 @@ COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
         "function": {
             "name": "run_command",
             "description": (
-                "在项目内执行只读安全命令来验证代码（如 pytest / python -m py_compile / "
-                "python -m mypy / ruff / npm run lint|test|build|typecheck / git status|diff|log|show）。"
-                "只允许白名单内的查看/测试类命令，禁止任何写入、网络或交互式命令。"
-                "适合在改动代码后运行测试或检查语法，获取报错后修复。"
+                "执行只读安全命令。支持两类场景：\n"
+                "1. 项目内验证代码：pytest / python -m py_compile / npm run lint|test|build / git status|diff|log\n"
+                "2. 系统级诊断命令：ipconfig / netstat / ping -n 3 8.8.8.8 / nslookup / tracert / systeminfo / hostname / whoami\n"
+                "所有命令必须在白名单内，禁止写入、网络请求或交互式命令。"
+                "当用户询问系统信息、网络状态、代理设置等时，应主动调用此工具执行相应命令获取真实数据。"
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "要执行的只读命令，如 'python -m py_compile app.py'",
+                        "description": "要执行的只读命令，如 'ipconfig'、'netstat -an'、'ping -n 3 8.8.8.8'、'python -m py_compile app.py'",
                     },
                     "timeout": {
                         "type": "integer",

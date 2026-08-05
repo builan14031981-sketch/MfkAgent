@@ -38,17 +38,23 @@ class Tool:
         raise NotImplementedError
 
 
-class WebSearchTool(Tool):
+class GitHubSearchTool(Tool):
+    """GitHub 仓库搜索：仅搜索 GitHub 代码仓库，不搜索互联网网页。"""
+
     def __init__(self):
         super().__init__(
-            name="web_search",
-            description="搜索互联网获取信息（使用 GitHub API）",
+            name="github_search",
+            description=(
+                "搜索 GitHub 开源代码仓库（仅限代码仓库搜索，不搜索互联网网页）。"
+                "当用户需要查找开源项目、代码库、某个功能的现成实现时使用；"
+                "普通网页/资讯/社区讨论请使用 web_search。"
+            ),
             parameters={
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "搜索关键词",
+                        "description": "搜索关键词（用于搜索 GitHub 仓库，支持语言过滤如 'python agent'）",
                     },
                 },
                 "required": ["query"],
@@ -56,189 +62,279 @@ class WebSearchTool(Tool):
         )
 
     async def execute(self, query: str = "", **kwargs) -> ToolResult:
+        import asyncio
+        import httpx
         try:
-            from app.core.proxy import build_httpx_client
-            async with build_httpx_client() as client:
-                response = await client.get(
-                    "https://api.github.com/search/repositories",
-                    params={"q": query, "per_page": 5},
-                    timeout=10.0,
-                    headers={"Accept": "application/vnd.github.v3+json"},
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    results = []
-                    
-                    total = data.get("total_count", 0)
-                    results.append(f"找到 {total} 个相关项目:")
-                    
-                    for item in data.get("items", [])[:5]:
-                        name = item.get("full_name", "")
-                        desc = item.get("description", "无描述")
-                        stars = item.get("stargazers_count", 0)
-                        results.append(f"• {name} (⭐{stars}): {desc}")
-                    
-                    if results:
-                        return ToolResult(success=True, output="\n".join(results))
-                    else:
-                        return ToolResult(success=True, output="未找到相关结果")
-                else:
-                    return ToolResult(success=False, output="", error="搜索请求失败")
+            from app.core.proxy import build_httpx_client, resolve_proxy
+            headers = {
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "MfkAgent/1.0",
+            }
+            params = {"q": query, "per_page": 5}
+            last_error = ""
+
+            # 优先走系统代理；代理 TLS 偶发失败时回退直连
+            client_factories = []
+            if resolve_proxy():
+                client_factories.append(lambda: build_httpx_client(timeout=15.0))
+            client_factories.append(lambda: httpx.AsyncClient(timeout=15.0))
+
+            for factory in client_factories:
+                for attempt in range(2):
+                    try:
+                        async with factory() as client:
+                            response = await client.get(
+                                "https://api.github.com/search/repositories",
+                                params=params,
+                                timeout=15.0,
+                                headers=headers,
+                            )
+                            if response.status_code == 200:
+                                data = response.json()
+                                results = []
+
+                                total = data.get("total_count", 0)
+                                results.append(f"找到 {total} 个相关 GitHub 项目:")
+
+                                for item in data.get("items", [])[:5]:
+                                    name = item.get("full_name", "")
+                                    desc = item.get("description", "无描述")
+                                    stars = item.get("stargazers_count", 0)
+                                    results.append(f"• {name} (⭐{stars}): {desc}")
+
+                                if results:
+                                    return ToolResult(success=True, output="\n".join(results))
+                                else:
+                                    return ToolResult(success=True, output="未找到相关 GitHub 项目")
+                            else:
+                                last_error = f"GitHub API 请求失败（{response.status_code}）"
+                    except Exception as e:
+                        last_error = f"搜索失败: {str(e)}"
+                    if attempt < 1:
+                        await asyncio.sleep(1)
+
+            return ToolResult(success=False, output="", error=last_error or "搜索失败")
         except Exception as e:
-            return ToolResult(success=False, output="", error=str(e))
+            return ToolResult(success=False, output="", error=f"搜索失败: {str(e)}")
 
 
-class CodeExecutionTool(Tool):
+class WebSearchTool(Tool):
+    """通用网页搜索：Baidu 主引擎 + DuckDuckGo 兜底，支持中文，返回结构化网页结果。"""
+
     def __init__(self):
         super().__init__(
-            name="execute_code",
-            description="执行 Python 代码并返回结果",
+            name="web_search",
+            description=(
+                "搜索互联网网页（通用网页搜索，支持中文）。"
+                "返回结构化结果列表：title / url / snippet。"
+                "当用户需要查资讯、社区讨论、百科、新闻、产品资料等真实网页信息时使用；"
+                "查找开源代码仓库请用 github_search。"
+            ),
             parameters={
                 "type": "object",
                 "properties": {
-                    "code": {
+                    "query": {
                         "type": "string",
-                        "description": "要执行的 Python 代码",
+                        "description": "搜索关键词（支持中文，例如：火影忍者手游 玩家 社区）",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "返回结果条数，默认 5，最大 10",
                     },
                 },
-                "required": ["code"],
+                "required": ["query"],
             },
         )
 
-    async def execute(self, code: str = "", **kwargs) -> ToolResult:
-        try:
-            result = subprocess.run(
-                ["python", "-c", code],
-                capture_output=True,
-                text=True,
-                timeout=30,
-                cwd=os.getcwd(),
+    @staticmethod
+    def _extract_text(html: str) -> str:
+        """用 HTMLParser 提取可见文本，跳过 script/style，忽略属性噪声。"""
+        from html.parser import HTMLParser
+
+        class TextExtractor(HTMLParser):
+            def __init__(self):
+                super().__init__(convert_charrefs=True)
+                self.parts = []
+                self.skip = 0
+
+            def handle_starttag(self, tag, attrs):
+                if tag in ("script", "style"):
+                    self.skip += 1
+
+            def handle_endtag(self, tag):
+                if tag in ("script", "style") and self.skip:
+                    self.skip -= 1
+
+            def handle_data(self, data):
+                if not self.skip:
+                    t = data.strip()
+                    if t:
+                        self.parts.append(t)
+
+        p = TextExtractor()
+        p.feed(html)
+        return " ".join(p.parts)
+
+    @staticmethod
+    def _clean_text(raw: str) -> str:
+        return WebSearchTool._extract_text(raw)
+
+    async def _search_baidu(self, query: str, max_results: int) -> list:
+        from app.core.proxy import build_httpx_client
+        import re as _re
+        # Baidu 对缺少浏览器头（Accept/Accept-Language）的请求返回 302 验证码重定向
+        headers = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Referer": "https://www.baidu.com/",
+        }
+        results: list = []
+        async with build_httpx_client(timeout=20.0, headers=headers) as client:
+            response = await client.get(
+                "https://www.baidu.com/s",
+                params={"wd": query},
+                timeout=20.0,
+                headers=headers,
+                follow_redirects=False,
             )
-            if result.returncode == 0:
-                return ToolResult(success=True, output=result.stdout)
-            else:
-                return ToolResult(
-                    success=False,
-                    output=result.stdout,
-                    error=result.stderr,
-                )
-        except subprocess.TimeoutExpired:
-            return ToolResult(success=False, output="", error="代码执行超时（30秒）")
-        except Exception as e:
-            return ToolResult(success=False, output="", error=str(e))
+            if response.status_code not in (200, 301, 302):
+                raise RuntimeError(f"Baidu 搜索请求失败（HTTP {response.status_code}）")
+            if response.status_code in (301, 302) or "<h3" not in response.text:
+                # 兜底：跟随重定向再试一次
+                redirect_url = _re.search(r'href="([^"]+)"', response.text)
+                if redirect_url and "captcha" not in redirect_url.group(1):
+                    response = await client.get(
+                        "https://www.baidu.com/s",
+                        params={"wd": query},
+                        timeout=20.0,
+                        headers=headers,
+                        follow_redirects=True,
+                    )
+            if response.status_code != 200 or "<h3" not in response.text:
+                raise RuntimeError("Baidu 触发安全验证，无法获取结果")
+            html = response.text
+            parts = html.split("<h3")[1:]
+            for part in parts[: max_results * 2]:
+                am = _re.search(r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', part, _re.S)
+                if not am:
+                    continue
+                url = am.group(1)
+                if url.startswith("javascript"):
+                    continue
+                title = self._clean_text(am.group(2))
+                if not title:
+                    continue
+                # 摘要：取 h3 结束后的块内文本，去掉标题前缀
+                after = part[part.find("</h3"):]
+                snippet = self._clean_text(after)
+                if snippet.startswith(title):
+                    snippet = snippet[len(title):].strip()
+                results.append({
+                    "title": title[:150],
+                    "url": url[:300],
+                    "snippet": snippet[:300],
+                })
+                if len(results) >= max_results:
+                    break
+        return results
 
-
-class FileReadTool(Tool):
-    def __init__(self):
-        super().__init__(
-            name="read_file",
-            description="读取文件内容",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "文件路径",
-                    },
-                },
-                "required": ["path"],
-            },
-        )
-
-    async def execute(self, path: str = "", **kwargs) -> ToolResult:
-        try:
-            if not os.path.exists(path):
-                return ToolResult(success=False, output="", error="文件不存在")
-            if not os.path.isfile(path):
-                return ToolResult(success=False, output="", error="不是文件")
-            file_size = os.path.getsize(path)
-            if file_size > 100 * 1024:
-                return ToolResult(success=False, output="", error="文件过大（最大100KB）")
-            with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-            return ToolResult(success=True, output=content)
-        except Exception as e:
-            return ToolResult(success=False, output="", error=str(e))
-
-
-class FileWriteTool(Tool):
-    def __init__(self):
-        super().__init__(
-            name="write_file",
-            description="写入文件内容",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "文件路径",
-                    },
-                    "content": {
-                        "type": "string",
-                        "description": "文件内容",
-                    },
-                },
-                "required": ["path", "content"],
-            },
-        )
-
-    async def execute(self, path: str = "", content: str = "", **kwargs) -> ToolResult:
-        try:
-            os.makedirs(os.path.dirname(path), exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-            return ToolResult(success=True, output="文件写入成功")
-        except Exception as e:
-            return ToolResult(success=False, output="", error=str(e))
-
-
-class ListDirectoryTool(Tool):
-    def __init__(self):
-        super().__init__(
-            name="list_directory",
-            description="列出目录内容",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "目录路径",
-                    },
-                },
-                "required": ["path"],
-            },
-        )
-
-    async def execute(self, path: str = "", **kwargs) -> ToolResult:
-        try:
-            if not os.path.exists(path):
-                return ToolResult(success=False, output="", error="目录不存在")
-            if not os.path.isdir(path):
-                return ToolResult(success=False, output="", error="不是目录")
-            items = []
-            for item in os.listdir(path):
-                full_path = os.path.join(path, item)
-                if os.path.isdir(full_path):
-                    items.append(f"  {item}/")
+    async def _search_duckduckgo(self, query: str, max_results: int) -> list:
+        from app.core.proxy import build_httpx_client
+        import re as _re
+        from urllib.parse import urlparse, urljoin, unquote
+        results: list = []
+        async with build_httpx_client(timeout=20.0) as client:
+            response = await client.get(
+                "https://html.duckduckgo.com/html/",
+                params={"q": query, "kl": "cn-zh"},
+                timeout=20.0,
+                follow_redirects=True,
+            )
+            if response.status_code != 200:
+                raise RuntimeError(f"DuckDuckGo 搜索请求失败（HTTP {response.status_code}）")
+            html = response.text
+            blocks = _re.split(r'<div class="result results_links', html)[1:]
+            for block in blocks[:max_results * 2]:
+                title_m = _re.search(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', block, _re.S)
+                if not title_m:
+                    continue
+                raw_url = title_m.group(1)
+                uddg = _re.search(r"uddg=([^&]+)", raw_url)
+                if uddg:
+                    final_url = unquote(uddg.group(1))
                 else:
-                    size = os.path.getsize(full_path)
-                    items.append(f"  {item} ({size} bytes)")
-            return ToolResult(success=True, output="\n".join(items))
+                    final_url = urljoin("https://html.duckduckgo.com/", raw_url)
+                parsed = urlparse(final_url)
+                if not parsed.scheme:
+                    final_url = "https://" + final_url
+                title = self._clean_text(title_m.group(2))
+                snippet_m = _re.search(r'class="result__snippet"[^>]*>(.*?)</a>', block, _re.S)
+                snippet = self._clean_text(snippet_m.group(1)) if snippet_m else ""
+                results.append({
+                    "title": title[:150],
+                    "url": final_url[:300],
+                    "snippet": snippet[:300],
+                })
+                if len(results) >= max_results:
+                    break
+        return results
+
+    async def execute(self, query: str = "", max_results: int = 5, **kwargs) -> ToolResult:
+        import json as _json
+        try:
+            if not query or not query.strip():
+                return ToolResult(success=False, output="", error="搜索关键词不能为空")
+
+            try:
+                max_results = max(1, min(int(max_results), 10))
+            except (TypeError, ValueError):
+                max_results = 5
+
+            last_error = ""
+            # 主引擎：Baidu（中文结果质量高、国内可达）
+            try:
+                results = await self._search_baidu(query, max_results)
+                if results:
+                    return ToolResult(
+                        success=True,
+                        output=_json.dumps(results, ensure_ascii=False, indent=2),
+                    )
+                last_error = "Baidu 无结果"
+            except Exception as e:
+                last_error = f"Baidu 失败: {str(e)}"
+
+            # 兜底引擎：DuckDuckGo
+            try:
+                results = await self._search_duckduckgo(query, max_results)
+                if results:
+                    return ToolResult(
+                        success=True,
+                        output=_json.dumps(results, ensure_ascii=False, indent=2),
+                    )
+                last_error += "；DuckDuckGo 无结果"
+            except Exception as e:
+                last_error += f"；DuckDuckGo 失败: {str(e)}"
+
+            return ToolResult(
+                success=False,
+                output="",
+                error=f"搜索失败: {last_error}（可尝试更换关键词或使用 fetch_url 直接访问已知网址）",
+            )
         except Exception as e:
-            return ToolResult(success=False, output="", error=str(e))
+            return ToolResult(success=False, output="", error=f"搜索失败: {str(e)}")
 
 
 class FetchUrlTool(Tool):
     def __init__(self):
         super().__init__(
             name="fetch_url",
-            description="获取网页内容",
+            description="获取网页纯文本内容（仅支持静态页面，不支持 JavaScript 渲染，超时 15 秒）",
             parameters={
                 "type": "object",
                 "properties": {
                     "url": {
                         "type": "string",
-                        "description": "要获取的URL",
+                        "description": "要获取的 URL（必须以 http:// 或 https:// 开头）",
                     },
                 },
                 "required": ["url"],
@@ -247,9 +343,11 @@ class FetchUrlTool(Tool):
 
     async def execute(self, url: str = "", **kwargs) -> ToolResult:
         try:
+            if not url.startswith(("http://", "https://")):
+                return ToolResult(success=False, output="", error="URL 必须以 http:// 或 https:// 开头")
             from app.core.proxy import build_httpx_client
-            async with build_httpx_client() as client:
-                response = await client.get(url, timeout=10.0, follow_redirects=True)
+            async with build_httpx_client(timeout=15.0) as client:
+                response = await client.get(url, timeout=15.0, follow_redirects=True)
                 if response.status_code == 200:
                     content = response.text[:5000]
                     return ToolResult(success=True, output=content)
@@ -366,12 +464,14 @@ class ToolRegistry:
 
 tool_registry = ToolRegistry()
 
-tool_registry.register(WebSearchTool())
-tool_registry.register(CodeExecutionTool())
-tool_registry.register(FileReadTool())
-tool_registry.register(FileWriteTool())
-tool_registry.register(ListDirectoryTool())
-tool_registry.register(FetchUrlTool())
-tool_registry.register(DateTimeTool())
-tool_registry.register(JsonFormatTool())
-tool_registry.register(AddMemoryTool())
+# 注册安全工具（所有工具都有明确的用途和限制）
+tool_registry.register(GitHubSearchTool())       # GitHub 仓库搜索
+tool_registry.register(WebSearchTool())          # 通用网页搜索（DuckDuckGo）
+tool_registry.register(FetchUrlTool())           # 获取网页内容（有超时限制）
+tool_registry.register(DateTimeTool())           # 获取当前时间
+tool_registry.register(JsonFormatTool())         # 格式化 JSON
+tool_registry.register(AddMemoryTool())          # 保存记忆
+
+# 注意：文件操作工具（read_file/write_file/list_files）已在 core/tools.py 中实现
+# 带有沙箱保护，只在有 project_path 时通过 FILE_TOOLS_DEFINITIONS 提供
+# 不在 tool_registry 中重复注册，避免安全隐患

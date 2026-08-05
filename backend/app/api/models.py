@@ -12,6 +12,7 @@ class ModelInfo(BaseModel):
     name: str
     provider: str
     max_tokens: int
+    priority: int = 0
 
 class ChatRequest(BaseModel):
     model: str
