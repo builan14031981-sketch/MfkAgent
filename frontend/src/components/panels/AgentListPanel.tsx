@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
+import { apiGet } from "@/lib/api";
 import { Panel } from "./Panel";
 import { AgentIcon } from "../AgentIcon";
 
@@ -12,12 +13,32 @@ interface AgentListPanelProps {
   onClose: () => void;
 }
 
+interface Tool {
+  name: string;
+  description: string;
+}
+
 /** 预设 Agent 二级面板：主列表 + 详情（Master-Detail），左上角返回设置 */
 export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
-  const { agents } = useAgents();
+  const { agents, updateAgent } = useAgents();
   const { t } = useTranslation();
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
+  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
+  const [editingCapabilities, setEditingCapabilities] = useState<string[] | null>(null);
+  const [saving, setSaving] = useState(false);
   const activeAgent = activeAgentId ? agents.find((a) => a.id === activeAgentId) || null : null;
+
+  // 获取可用工具列表
+  useEffect(() => {
+    apiGet<{ tools: Tool[] }>("/api/tools")
+      .then((data) => setAvailableTools(data.tools))
+      .catch(() => {});
+  }, []);
+
+  // 切换 Agent 时重置编辑状态
+  useEffect(() => {
+    setEditingCapabilities(null);
+  }, [activeAgentId]);
 
   const visibleAgents = [...agents]
     .sort((a, b) => {
@@ -124,14 +145,123 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
               background: "var(--bg-level-2)",
               border: "1px solid var(--border-primary)",
             }}>
-              <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 4px 0" }}>
+              <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 12px 0" }}>
                 <span style={{ color: "var(--text-level-4)" }}>{t("settings.ai.agents.model")}: </span>
                 {activeAgent.default_model || "-"}
               </p>
-              <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>
-                <span style={{ color: "var(--text-level-4)" }}>{t("settings.ai.agents.capabilities")}: </span>
-                {(activeAgent.capabilities || []).join("、") || "-"}
-              </p>
+
+              {/* 工具配置区域 */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", color: "var(--text-level-4)" }}>
+                    {t("settings.ai.agents.capabilities")}:
+                  </span>
+                  {editingCapabilities === null ? (
+                    <button
+                      onClick={() => setEditingCapabilities(activeAgent.capabilities || [])}
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--color-primary)",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "2px 6px",
+                      }}
+                    >
+                      {t("common.edit")}
+                    </button>
+                  ) : (
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        onClick={async () => {
+                          if (!activeAgent) return;
+                          setSaving(true);
+                          try {
+                            await updateAgent(activeAgent.id, { capabilities: editingCapabilities });
+                            setEditingCapabilities(null);
+                          } catch (err) {
+                            console.error("Failed to update capabilities:", err);
+                          } finally {
+                            setSaving(false);
+                          }
+                        }}
+                        disabled={saving}
+                        style={{
+                          fontSize: "11px",
+                          color: "var(--color-primary)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: saving ? "not-allowed" : "pointer",
+                          padding: "2px 6px",
+                          opacity: saving ? 0.6 : 1,
+                        }}
+                      >
+                        {t("common.save")}
+                      </button>
+                      <button
+                        onClick={() => setEditingCapabilities(null)}
+                        disabled={saving}
+                        style={{
+                          fontSize: "11px",
+                          color: "var(--text-level-3)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: saving ? "not-allowed" : "pointer",
+                          padding: "2px 6px",
+                          opacity: saving ? 0.6 : 1,
+                        }}
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {editingCapabilities === null ? (
+                  // 只读模式：显示已选工具
+                  <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>
+                    {(activeAgent.capabilities || []).length > 0
+                      ? (activeAgent.capabilities || []).join("、")
+                      : "-"}
+                  </p>
+                ) : (
+                  // 编辑模式：显示多选框
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {availableTools.map((tool) => (
+                      <label
+                        key={tool.name}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: "8px",
+                          fontSize: "12px",
+                          color: "var(--text-level-2)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editingCapabilities.includes(tool.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditingCapabilities([...editingCapabilities, tool.name]);
+                            } else {
+                              setEditingCapabilities(editingCapabilities.filter((n) => n !== tool.name));
+                            }
+                          }}
+                          style={{ marginTop: "2px" }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: "500" }}>{tool.name}</div>
+                          <div style={{ fontSize: "11px", color: "var(--text-level-4)", marginTop: "1px" }}>
+                            {tool.description}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

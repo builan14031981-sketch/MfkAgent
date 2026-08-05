@@ -2,25 +2,24 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Folder } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
 import { useChat } from "@/hooks/useChat";
 import { useMessages } from "@/hooks/useMessages";
 import type { Message } from "@/hooks/useMessages";
+import { useChatStream } from "@/hooks/useChatStream";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { apiGet } from "@/lib/api";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
-import { AgentIcon } from "@/components/AgentIcon";
 import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile } from "@/components/FileDropZone";
 import { ChatComposer } from "@/components/ChatComposer";
 import type { ChatMode } from "@/components/ChatInput";
 import { MessageList } from "@/components/MessageList";
 import { MessageOutline } from "@/components/MessageOutline";
-import type { ToolCall } from "@/components/ToolCallCard";
+import { ChatHeader } from "@/components/ChatHeader";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -30,11 +29,6 @@ export default function ChatPage() {
   const { t } = useTranslation();
 
   const [input, setInput] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [streamingContent, setStreamingContent] = useState("");
-  const [streamingThinking, setStreamingThinking] = useState("");
-  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCall[]>([]);
-  const [streamingError, setStreamingError] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [personalityLevel, setPersonalityLevel] = useState(50);
   const [personalityInitForChatId, setPersonalityInitForChatId] = useState<number | null>(null);
@@ -45,6 +39,15 @@ export default function ChatPage() {
   const { chats, updateChat } = useChat();
   const { messages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
   const { settings } = useSettingsStore();
+
+  const {
+    isSending,
+    streamingContent,
+    streamingThinking,
+    streamingToolCalls,
+    streamingError,
+    sendStream,
+  } = useChatStream({ chatId, sendMessageStream, appendMessage, refetch });
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
@@ -69,12 +72,21 @@ export default function ChatPage() {
   }
 
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
+  const [reasoningInitForChatId, setReasoningInitForChatId] = useState<number | null>(null);
   const [mode, setMode] = useState<ChatMode>("build");
   const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
   const [projectContextOpen, setProjectContextOpen] = useState(false);
   const [activeUserMessageId, setActiveUserMessageId] = useState<number | null>(null);
   const [contextFiles, setContextFiles] = useState<string[]>([]);
   const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
+
+  // 思考程度初始值：优先读设置中的默认推理强度（default_reasoning_effort），
+  // 会话切换时重置（settings 未就绪则暂不初始化，待其加载后重渲染时生效）。
+  if (reasoningInitForChatId !== chatId && settings?.default_reasoning_effort) {
+    setReasoningInitForChatId(chatId);
+    const def = settings.default_reasoning_effort;
+    setReasoningEffort(def === "high" || def === "max" ? def : "none");
+  }
 
   // 上下文文件初始值：读会话快照 currentChat.context_files（首页草稿预挂载时随创建请求一起提交）。
   if (contextInitForChatId !== chatId && currentChat) {
@@ -178,69 +190,6 @@ export default function ChatPage() {
     });
   }, [deleteMessagesFrom]);
 
-  // 共享发送管线：对指定用户消息跑流式，处理 thinking/tool/error/complete 全流程。
-  // handleRegenerate / handleRetry 复用，保证重试与重生成的错误展示一致。
-  const runSendForUser = useCallback(async (userMsg: Message) => {
-    setIsSending(true);
-    setStreamingContent("");
-    setStreamingThinking("");
-    setStreamingToolCalls([]);
-    setStreamingError(null);
-    const modelId = currentModel?.id || "mimo-v2.5-pro";
-    try {
-      await sendMessageStream(
-        userMsg.content,
-        modelId,
-        (chunk) => setStreamingContent((prev) => prev + chunk),
-        () => {
-          setStreamingToolCalls([]);
-          setIsSending(false);
-        },
-        (error) => {
-          setStreamingContent("");
-          setStreamingThinking("");
-          setStreamingToolCalls([]);
-          setIsSending(false);
-          setStreamingError(error);
-        },
-        personalityLevel,
-        reasoningEffort,
-        (thinking) => setStreamingThinking((prev) => prev + thinking),
-        (toolCall) => {
-          setStreamingToolCalls((prev) => {
-            const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
-            return exists ? prev : [...prev, toolCall];
-          });
-        },
-        (batch) => setStreamingToolCalls(batch),
-        (finalContent, toolCalls, finalThinking) => {
-          setStreamingContent("");
-          setStreamingThinking("");
-          setStreamingToolCalls([]);
-          setStreamingError(null);
-          const aiMsg: Message = {
-            id: Date.now(),
-            chat_id: chatId!,
-            role: "assistant",
-            content: finalContent,
-            thinking: finalThinking || undefined,
-            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-            created_at: new Date().toISOString(),
-          };
-          appendMessage(aiMsg);
-          refetch().catch(() => { /* 静默失败 */ });
-        }
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setStreamingContent("");
-      setStreamingThinking("");
-      setStreamingToolCalls([]);
-      setIsSending(false);
-      setStreamingError(msg);
-    }
-  }, [sendMessageStream, currentModel?.id, personalityLevel, reasoningEffort, appendMessage, refetch, chatId]);
-
   // 重试：对最近一条用户消息重新流式生成（错误后 AI 消息未持久化，无需删历史）
   const handleRetry = useCallback(async () => {
     if (isSending) return;
@@ -252,8 +201,8 @@ export default function ChatPage() {
       }
     }
     if (!userMsg) return;
-    await runSendForUser(userMsg);
-  }, [isSending, messages, runSendForUser]);
+    await sendStream(userMsg.content, { modelId: currentModel?.id, personalityLevel, reasoningEffort, appendUserMessage: false });
+  }, [isSending, messages, sendStream, currentModel?.id, personalityLevel, reasoningEffort]);
 
   // 重新生成：删除该 AI 消息及其后历史，找到前一条用户消息重新流式生成
   const handleRegenerate = useCallback(async (messageId: number) => {
@@ -275,8 +224,8 @@ export default function ChatPage() {
       console.error("Failed to clear history on regenerate:", err);
       return;
     }
-    await runSendForUser(userMsg);
-  }, [isSending, messages, deleteMessagesFrom, runSendForUser]);
+    await sendStream(userMsg.content, { modelId: currentModel?.id, personalityLevel, reasoningEffort, appendUserMessage: false });
+  }, [isSending, messages, deleteMessagesFrom, sendStream, currentModel?.id, personalityLevel, reasoningEffort]);
 
   // 从URL参数获取用户输入，自动发送消息
   useEffect(() => {
@@ -299,85 +248,76 @@ export default function ChatPage() {
       const newUrl = `/chat/${chatId}`;
       window.history.replaceState({}, "", newUrl);
 
-      // 自动发送消息
-      const autoSend = async () => {
-        setIsSending(true);
-        setStreamingContent("");
-        setStreamingThinking("");
-        setStreamingToolCalls([]);
-        setStreamingError(null);
-
-        // 乐观更新：先追加用户消息到本地列表
-        const tempUserMsg: Message = {
-          id: Date.now(),
-          chat_id: chatId!,
-          role: "user",
-          content: userMessage,
-          created_at: new Date().toISOString(),
-        };
-        appendMessage(tempUserMsg);
-
-        try {
-          await sendMessageStream(
-            userMessage,
-            currentModel?.id || "mimo-v2.5-pro",
-            (chunk) => {
-              setStreamingContent((prev) => prev + chunk);
-            },
-            () => {
-              setStreamingToolCalls([]);
-              setIsSending(false);
-            },
-            (error) => {
-              setStreamingContent("");
-              setStreamingThinking("");
-              setStreamingToolCalls([]);
-              setIsSending(false);
-              setStreamingError(error);
-            },
-            personalityLevel,
-            reasoningEffort,
-            (thinking) => setStreamingThinking((prev) => prev + thinking),
-            (toolCall) => {
-              setStreamingToolCalls((prev) => {
-                const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
-                return exists ? prev : [...prev, toolCall];
-              });
-            },
-            (batch) => setStreamingToolCalls(batch),
-            (finalContent, toolCalls, finalThinking) => {
-              // onComplete: 流式内容完整接收，追加 AI 消息到本地列表
-              setStreamingContent("");
-              setStreamingThinking("");
-              setStreamingToolCalls([]);
-              setStreamingError(null);
-              const aiMsg: Message = {
-                id: Date.now() + 1,
-                chat_id: chatId!,
-                role: "assistant",
-                content: finalContent,
-                thinking: finalThinking || undefined,
-                tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-                created_at: new Date().toISOString(),
-              };
-              appendMessage(aiMsg);
-              // 后台静默同步真实 ID
-              refetch().catch(() => { /* 静默失败 */ });
-            }
-          );
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          setIsSending(false);
-          setStreamingContent("");
-          setStreamingThinking("");
-          setStreamingToolCalls([]);
-          setStreamingError(msg);
-        }
-      };
-
-      autoSend();
+      // 自动发送消息（复用统一流式管线）
+      sendStream(userMessage, {
+        modelId: currentModel?.id || "mimo-v2.5-pro",
+        personalityLevel,
+        reasoningEffort,
+      });
     }
-  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendMessageStream, personalityLevel, reasoningEffort, currentModel?.id, appendMessage, refetch]);
+  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendStream, personalityLevel, reasoningEffort, currentModel?.id]);
+
+  const buildContextPrefix = useCallback(async () => {
+    if (!chatId || contextFiles.length === 0 || !currentProject) return "";
+    try {
+      const parts: string[] = [];
+      for (const filePath of contextFiles) {
+        try {
+          const params = new URLSearchParams({ path: filePath });
+          const data = await apiGet<{ content: string }>(`/api/projects/${currentProject.id}/file?${params}`);
+          parts.push(`[文件: ${filePath}]\n${data.content}`);
+        } catch (err) {
+          console.error(`Failed to read context file ${filePath}:`, err);
+        }
+      }
+      if (parts.length === 0) return "";
+      return `[项目文件上下文]\n${parts.join("\n\n")}\n\n`;
+    } catch (err) {
+      console.error("Failed to build context prefix:", err);
+      return "";
+    }
+  }, [chatId, contextFiles, currentProject]);
+
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isSending) return;
+
+    const userMessage = input.trim();
+    setInput("");
+
+    // 复用统一流式管线；发送前拼接项目文件上下文（用户消息乐观追加用原始文本）
+    await sendStream(userMessage, {
+      modelId: currentModel?.id || "mimo-v2.5-pro",
+      personalityLevel,
+      reasoningEffort,
+      buildContent: async (content) => {
+        const contextPrefix = await buildContextPrefix();
+        return contextPrefix ? `${contextPrefix}${content}` : content;
+      },
+    });
+  }, [input, isSending, sendStream, currentModel?.id, personalityLevel, reasoningEffort, buildContextPrefix]);
+
+  // 模型切换：本地选中 + 持久化到会话快照
+  const handleModelChange = useCallback((id: string) => {
+    const model = models.find((m) => m.id === id);
+    if (model) {
+      setSelectedModel(model);
+      if (chatId) {
+        updateChat(chatId, { model: model.id }).catch((err) =>
+          console.error("Failed to persist model:", err)
+        );
+      }
+    }
+  }, [models, chatId, updateChat]);
+
+  // 工作模式切换：本地选中 + 持久化到会话快照
+  const handleModeChange = useCallback((m: ChatMode) => {
+    setMode(m);
+    if (chatId) {
+      updateChat(chatId, { mode: m }).catch((err) =>
+        console.error("Failed to persist mode:", err)
+      );
+    }
+  }, [chatId, updateChat]);
 
   if (!chatId) {
     return (
@@ -408,109 +348,6 @@ export default function ChatPage() {
     );
   }
 
-  const buildContextPrefix = async () => {
-    if (!chatId || contextFiles.length === 0 || !currentProject) return "";
-    try {
-      const parts: string[] = [];
-      for (const filePath of contextFiles) {
-        try {
-          const params = new URLSearchParams({ path: filePath });
-          const data = await apiGet<{ content: string }>(`/api/projects/${currentProject.id}/file?${params}`);
-          parts.push(`[文件: ${filePath}]\n${data.content}`);
-        } catch (err) {
-          console.error(`Failed to read context file ${filePath}:`, err);
-        }
-      }
-      if (parts.length === 0) return "";
-      return `[项目文件上下文]\n${parts.join("\n\n")}\n\n`;
-    } catch (err) {
-      console.error("Failed to build context prefix:", err);
-      return "";
-    }
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || isSending) return;
-
-    const userMessage = input.trim();
-    const modelId = currentModel?.id || "mimo-v2.5-pro";
-    setInput("");
-    setIsSending(true);
-    setStreamingContent("");
-    setStreamingThinking("");
-    setStreamingToolCalls([]);
-    setStreamingError(null);
-
-    // 乐观更新：先追加用户消息到本地列表（无需等待服务端）
-    const tempUserMsg: Message = {
-      id: Date.now(),
-      chat_id: chatId!,
-      role: "user",
-      content: userMessage,
-      created_at: new Date().toISOString(),
-    };
-    appendMessage(tempUserMsg);
-
-    try {
-      const contextPrefix = await buildContextPrefix();
-      const finalMessage = contextPrefix ? `${contextPrefix}${userMessage}` : userMessage;
-      await sendMessageStream(
-        finalMessage,
-        modelId,
-        (chunk) => {
-          setStreamingContent((prev) => prev + chunk);
-        },
-        () => {
-          setStreamingToolCalls([]);
-          setIsSending(false);
-        },
-        (error) => {
-          setStreamingContent("");
-          setStreamingThinking("");
-          setStreamingToolCalls([]);
-          setIsSending(false);
-          setStreamingError(error);
-        },
-        personalityLevel,
-        reasoningEffort,
-        (thinking) => setStreamingThinking((prev) => prev + thinking),
-        (toolCall) => {
-          setStreamingToolCalls((prev) => {
-            const exists = prev.some((t) => t.path === toolCall.path && t.name === toolCall.name);
-            return exists ? prev : [...prev, toolCall];
-          });
-        },
-        (batch) => setStreamingToolCalls(batch),
-        (finalContent, toolCalls, finalThinking) => {
-          // onComplete: 流式内容完整接收，追加 AI 消息到本地列表
-          setStreamingContent("");
-          setStreamingThinking("");
-          setStreamingToolCalls([]);
-          setStreamingError(null);
-          const aiMsg: Message = {
-            id: Date.now() + 1,
-            chat_id: chatId!,
-            role: "assistant",
-            content: finalContent,
-            thinking: finalThinking || undefined,
-            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-            created_at: new Date().toISOString(),
-          };
-          appendMessage(aiMsg);
-          // 后台静默同步真实 ID（不触发 loading，不驱动滚动）
-          refetch().catch(() => { /* 静默失败 */ });
-        }
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setIsSending(false);
-      setStreamingContent("");
-      setStreamingThinking("");
-      setStreamingToolCalls([]);
-      setStreamingError(msg);
-    }
-  };
-
   const handleStartEditTitle = () => {
     setEditTitle(currentChat?.title || "");
     setIsEditingTitle(true);
@@ -528,119 +365,19 @@ export default function ChatPage() {
 
   return (
     <>
-      {/* 聊天头部 */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "8px 24px",
-        background: "transparent",
-        flexShrink: 0,
-      }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}>
-          {currentAgent && (
-            <AgentIcon id={currentAgent.id} size={18} style={{ color: "var(--color-primary)" }} />
-          )}
-          {isEditingTitle ? (
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              onBlur={handleSaveTitle}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveTitle();
-                if (e.key === "Escape") setIsEditingTitle(false);
-              }}
-              autoFocus
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: "var(--text-level-1)",
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                padding: 0,
-                margin: 0,
-                width: "200px",
-              }}
-            />
-          ) : (
-            <h1
-              onClick={handleStartEditTitle}
-              style={{
-                fontSize: "16px",
-                fontWeight: "600",
-                color: "var(--text-level-1)",
-                margin: 0,
-                cursor: "pointer",
-              }}
-            >{currentChat?.title || "Chat"}</h1>
-          )}
-        </div>
-        {currentAgent && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            {currentProject && (
-              <span style={{
-                fontSize: "12px",
-                color: "var(--color-primary)",
-                padding: "4px 8px",
-                borderRadius: "var(--radius-full)",
-                background: "var(--color-primary-lighter)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-              }}>
-                <Folder style={{ width: "12px", height: "12px" }} />
-                {currentProject.name}
-              </span>
-            )}
-            {currentProject && (
-              <button
-                onClick={() => setProjectContextOpen(true)}
-                title={t("chat.projectContext")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "var(--radius-full)",
-                  border: "1px solid var(--border-primary)",
-                  background: "var(--bg-level-2)",
-                  cursor: "pointer",
-                  color: "var(--text-level-2)",
-                  transition: "all 0.6s ease",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-level-3)";
-                  e.currentTarget.style.borderColor = "var(--color-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--bg-level-2)";
-                  e.currentTarget.style.borderColor = "var(--border-primary)";
-                }}
-              >
-                <Folder style={{ width: "14px", height: "14px" }} />
-              </button>
-            )}
-            <span style={{
-              fontSize: "12px",
-              color: "var(--text-level-3)",
-              padding: "4px 8px",
-              borderRadius: "var(--radius-full)",
-              background: "var(--bg-level-3)",
-            }}>{currentAgent.name}</span>
-          </div>
-        )}
-      </div>
+      {/* 聊天头部（memo：流式期间跳过重渲染） */}
+      <ChatHeader
+        chat={currentChat}
+        agent={currentAgent}
+        project={currentProject}
+        isEditingTitle={isEditingTitle}
+        editTitle={editTitle}
+        onEditTitleChange={setEditTitle}
+        onStartEditTitle={handleStartEditTitle}
+        onSaveTitle={handleSaveTitle}
+        onCancelEditTitle={() => setIsEditingTitle(false)}
+        onOpenProjectContext={() => setProjectContextOpen(true)}
+      />
 
       {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠）+ 对话大纲悬浮导航 */}
       <div style={{
@@ -683,28 +420,11 @@ export default function ChatPage() {
           draftKey={chatId ? `mfk_draft_${chatId}` : undefined}
           models={models}
           modelId={currentModel?.id || null}
-          onModelChange={(id) => {
-            const model = models.find(m => m.id === id);
-            if (model) {
-              setSelectedModel(model);
-              if (chatId) {
-                updateChat(chatId, { model: model.id }).catch((err) =>
-                  console.error("Failed to persist model:", err)
-                );
-              }
-            }
-          }}
+          onModelChange={handleModelChange}
           reasoningEffort={reasoningEffort}
           onReasoningChange={setReasoningEffort}
           mode={mode}
-          onModeChange={(m) => {
-            setMode(m);
-            if (chatId) {
-              updateChat(chatId, { mode: m }).catch((err) =>
-                console.error("Failed to persist mode:", err)
-              );
-            }
-          }}
+          onModeChange={handleModeChange}
           onUploadFile={handleUploadFile}
           onSelectDirectory={handleSelectDirectory}
           onClearContext={handleClearContext}

@@ -70,7 +70,9 @@ export function useMessages(chatId: number | null) {
     personalityLevel?: number,
     reasoningEffort?: "none" | "high" | "max",
     onThinking?: (thinking: string) => void,
-    onToolCall?: (toolCall: ToolCall) => void,
+    onToolStart?: (evt: { tool_call_id: string; tool: string; input: Record<string, unknown> }) => void,
+    onToolOutput?: (evt: { tool_call_id: string; delta: string }) => void,
+    onToolResult?: (evt: { tool_call_id?: string; tool?: string; success?: boolean; result?: string; duration_ms?: number; error?: string }) => void,
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void
   ) {
@@ -82,7 +84,20 @@ export function useMessages(chatId: number | null) {
       body: JSON.stringify({ content, model, personality_level: personalityLevel, reasoning_effort: reasoningEffort }),
     });
 
-    if (!response.ok) throw new Error("Failed to send message");
+    if (!response.ok) {
+      let detail = `Failed to send message (HTTP ${response.status})`;
+      try {
+        const body = await response.text();
+        if (body) {
+          const parsed = JSON.parse(body);
+          if (parsed && typeof parsed.error === "string") detail = parsed.error;
+          else if (parsed && typeof parsed.detail === "string") detail = parsed.detail;
+        }
+      } catch {
+        /* 读 body 失败则保留默认信息 */
+      }
+      throw new Error(detail);
+    }
 
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No reader available");
@@ -97,7 +112,7 @@ export function useMessages(chatId: number | null) {
     // 流式过程中累积完整内容 + tool_calls（用于 onComplete 一次性交付）
     let fullContent = "";
     let fullThinking = "";
-    const accumulatedToolCalls: ToolCall[] = [];
+    const toolCallMap = new Map<string, ToolCall>();
 
     const flush = () => {
       if (buffer === "") return;
@@ -135,44 +150,109 @@ export function useMessages(chatId: number | null) {
             const data = line.slice(6).trim();
             if (data === "[DONE]") {
               flushNowAndClear();
-              onComplete?.(fullContent, accumulatedToolCalls, fullThinking);
+              onComplete?.(fullContent, Array.from(toolCallMap.values()), fullThinking);
               onFinish();
               return;
             }
             try {
               const parsed = JSON.parse(data);
+
+              if (parsed && typeof parsed === "object" && parsed.type) {
+                // ---- v2 统一信封：按 type 分发 ----
+                switch (parsed.type) {
+                  case "text": {
+                    fullContent += parsed.content ?? "";
+                    buffer += parsed.content ?? "";
+                    scheduleFlush();
+                    break;
+                  }
+                  case "thinking": {
+                    const th = parsed.content ?? "";
+                    fullThinking += th;
+                    onThinking?.(th);
+                    break;
+                  }
+                  case "tool_start": {
+                    onToolStart?.(parsed);
+                    toolCallMap.set(parsed.tool_call_id, {
+                      tool: parsed.tool,
+                      name: parsed.tool,
+                      input: parsed.input ?? {},
+                      arguments: parsed.input ?? {},
+                      status: "running",
+                      tool_call_id: parsed.tool_call_id,
+                    });
+                    break;
+                  }
+                  case "tool_output": {
+                    onToolOutput?.(parsed);
+                    break;
+                  }
+                  case "tool_result": {
+                    onToolResult?.(parsed);
+                    const prev = toolCallMap.get(parsed.tool_call_id) ?? {};
+                    toolCallMap.set(parsed.tool_call_id, {
+                      ...prev,
+                      tool: parsed.tool ?? prev.tool,
+                      name: parsed.tool ?? prev.tool,
+                      success: parsed.success,
+                      status: parsed.success ? "success" : "failed",
+                      result: parsed.result,
+                      duration_ms: parsed.duration_ms,
+                      error: parsed.error,
+                      tool_call_id: parsed.tool_call_id,
+                    });
+                    break;
+                  }
+                  case "tool_calls": {
+                    // 本轮工具调用汇总（含完整 result）：一次补齐，供 onComplete 持久化
+                    const calls: ToolCall[] = Array.isArray(parsed.calls) ? parsed.calls : [];
+                    onToolCallsBatch?.(calls);
+                    for (const c of calls) {
+                      if (c.tool_call_id) toolCallMap.set(c.tool_call_id, c);
+                    }
+                    break;
+                  }
+                  case "error": {
+                    flushNowAndClear();
+                    onError(parsed.message ?? "Unknown error");
+                    return;
+                  }
+                  case "finish":
+                  default:
+                    break;
+                }
+                continue;
+              }
+
+              // ---- legacy 兜底（旧后端协议）----
               if (parsed.error) {
                 flushNowAndClear();
                 onError(parsed.error);
                 return;
               }
               if (parsed.thinking) {
-                // 思考段增量：立即透传，前端实时渲染"思考中/灰色思考块"
                 fullThinking += parsed.thinking;
                 onThinking?.(parsed.thinking);
                 continue;
               }
               if (parsed.tool_call) {
-                // 实时工具执行事件：name 非空即渲染（path 可能为空，如 search_files/run_command/git 工具）
-                if (onToolCall && parsed.tool_call.name) {
-                  const tc: ToolCall = {
-                    name: parsed.tool_call.name,
-                    path: parsed.tool_call.path,
-                    success: parsed.tool_call.success,
-                    arguments: parsed.tool_call.arguments,
-                  };
-                  onToolCall(tc);
-                  accumulatedToolCalls.push(tc);
-                }
+                // 旧单事件终态：兼容映射为 tool_result
+                const tc: ToolCall = {
+                  ...parsed.tool_call,
+                  status: parsed.tool_call.success ? "success" : "failed",
+                };
+                const id = tc.tool_call_id;
+                if (id) toolCallMap.set(id, tc);
+                onToolResult?.(tc);
                 continue;
               }
               if (parsed.tool_calls && Array.isArray(parsed.tool_calls)) {
-                // 本轮工具调用汇总事件（含完整 result）：一次交给前端补齐卡片结果
                 const batch = parsed.tool_calls as ToolCall[];
                 onToolCallsBatch?.(batch);
-                // 替换为完整汇总数据（含 result）
-                accumulatedToolCalls.length = 0;
-                accumulatedToolCalls.push(...batch);
+                for (const c of batch) {
+                  if (c.tool_call_id) toolCallMap.set(c.tool_call_id, c);
+                }
                 continue;
               }
               if (parsed.content) {
@@ -188,7 +268,7 @@ export function useMessages(chatId: number | null) {
       }
 
       flushNowAndClear();
-      onComplete?.(fullContent, accumulatedToolCalls, fullThinking);
+      onComplete?.(fullContent, Array.from(toolCallMap.values()), fullThinking);
       onFinish();
     } finally {
       flushNowAndClear();

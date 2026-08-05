@@ -111,6 +111,31 @@
       "build": "构建",
       "plan": "规划"
     },
+    "personality": {
+      "title": "人格",
+      "levels": {
+        "warm": {
+          "name": "温和",
+          "desc": "更体贴、注重感受，语气温暖"
+        },
+        "gentle": {
+          "name": "偏温和",
+          "desc": "兼顾理解，表达偏感性"
+        },
+        "balanced": {
+          "name": "平衡",
+          "desc": "理性与感性均衡"
+        },
+        "rational": {
+          "name": "偏理性",
+          "desc": "逻辑优先，表达简洁"
+        },
+        "strong": {
+          "name": "强理性",
+          "desc": "严格逻辑、客观直接"
+        }
+      }
+    },
     "dropToAttach": "松开以添加文件到上下文",
     "dragHint": "拖拽文件到此处作为上下文",
     "attachedFiles": "已附加文件",
@@ -264,7 +289,10 @@
     "memoryList": "记忆列表",
     "noMemories": "暂无记忆",
     "noMemoriesDesc": "添加记忆让 AI 更了解你",
-    "delete": "删除"
+    "delete": "删除",
+    "deleteConfirm": "确认删除？",
+    "scopeLabel": "作用域",
+    "createdAt": "创建于"
   },
   "project": {
     "title": "Project",

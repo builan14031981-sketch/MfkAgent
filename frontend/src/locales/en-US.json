@@ -111,6 +111,31 @@
       "build": "Build",
       "plan": "Plan"
     },
+    "personality": {
+      "title": "Personality",
+      "levels": {
+        "warm": {
+          "name": "Warm",
+          "desc": "More caring, emotional, warm tone"
+        },
+        "gentle": {
+          "name": "Gentle",
+          "desc": "Empathetic, slightly emotional"
+        },
+        "balanced": {
+          "name": "Balanced",
+          "desc": "Balanced between logic and emotion"
+        },
+        "rational": {
+          "name": "Rational",
+          "desc": "Logic first, concise"
+        },
+        "strong": {
+          "name": "Very Rational",
+          "desc": "Strict logic, objective and direct"
+        }
+      }
+    },
     "dropToAttach": "Release to attach files as context",
     "dragHint": "Drag files here to use as context",
     "attachedFiles": "Attached Files",
@@ -264,7 +289,10 @@
     "memoryList": "Memory List",
     "noMemories": "No memories yet",
     "noMemoriesDesc": "Add memories to help AI understand you better",
-    "delete": "Delete"
+    "delete": "Delete",
+    "deleteConfirm": "Confirm delete?",
+    "scopeLabel": "Scope",
+    "createdAt": "Created"
   },
   "project": {
     "title": "Project",

@@ -36,6 +36,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
   const [newValue, setNewValue] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
   const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent, selectedProject, scope);
 
   const agentScopeReady = scope !== "agent" || !!selectedAgent;
@@ -56,11 +57,34 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
   };
 
   const handleDelete = async (id: number) => {
+    if (confirmingDeleteId !== id) {
+      setConfirmingDeleteId(id);
+      // 自动取消确认态
+      window.setTimeout(() => {
+        setConfirmingDeleteId((cur) => (cur === id ? null : cur));
+      }, 3000);
+      return;
+    }
+    setConfirmingDeleteId(null);
     try {
       await deleteMemory(id);
     } catch (err) {
       console.error("Failed to delete memory:", err);
     }
+  };
+
+  /** scope → 标签文案 */
+  const scopeLabel = (scopeVal: MemoryScope): string => {
+    const opt = SCOPE_OPTIONS.find((o) => o.value === scopeVal);
+    return opt ? t(`memory.${opt.key}`) : scopeVal;
+  };
+
+  /** 格式化创建时间：MM-DD HH:mm */
+  const formatTime = (iso: string): string => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   const content = (
@@ -255,53 +279,97 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {memories.map((memory) => (
-              <div
-                key={memory.id}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-md)",
-                  background: "var(--bg-level-2)",
-                  border: "1px solid var(--border-secondary)",
-                }}
-              >
-                <div style={{
-                  flex: 1,
-                  minWidth: 0,
-                  fontSize: "13px",
-                  lineHeight: "1.5",
-                  color: "var(--text-level-1)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}>
-                  {memory.content}
-                </div>
-                <button
-                  onClick={() => handleDelete(memory.id)}
-                  title={t("memory.delete")}
+            {memories.map((memory) => {
+              const isConfirming = confirmingDeleteId === memory.id;
+              const createdTime = formatTime(memory.created_at);
+              return (
+                <div
+                  key={memory.id}
                   style={{
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "28px",
-                    height: "28px",
-                    borderRadius: "var(--radius-sm)",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    color: "var(--text-level-4)",
-                    flexShrink: 0,
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    padding: "10px 12px",
+                    borderRadius: "var(--radius-md)",
+                    background: "var(--bg-level-2)",
+                    border: "1px solid",
+                    borderColor: isConfirming ? "var(--color-error)" : "var(--border-secondary)",
+                    transition: "border-color 0.15s ease",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-error-lighter)"; e.currentTarget.style.color = "var(--color-error)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-4)"; }}
                 >
-                  <Trash2 style={{ width: "14px", height: "14px" }} />
-                </button>
-              </div>
-            ))}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* 元信息行：scope 标签 + 时间 */}
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      marginBottom: "4px",
+                    }}>
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "1px 7px",
+                        borderRadius: "var(--radius-full)",
+                        background: "var(--color-primary-lighter)",
+                        border: "1px solid var(--color-primary-light)",
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        lineHeight: 1.4,
+                        color: "var(--color-primary)",
+                      }}>{scopeLabel(memory.scope)}</span>
+                      {createdTime && (
+                        <span style={{
+                          fontSize: "11px",
+                          color: "var(--text-level-4)",
+                        }}>{t("memory.createdAt")} {createdTime}</span>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: "13px",
+                      lineHeight: "1.5",
+                      color: "var(--text-level-1)",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}>
+                      {memory.content}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(memory.id)}
+                    title={isConfirming ? t("memory.deleteConfirm") : t("memory.delete")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "28px",
+                      padding: isConfirming ? "0 10px" : "0",
+                      borderRadius: "var(--radius-sm)",
+                      border: isConfirming ? "1px solid var(--color-error)" : "none",
+                      background: isConfirming ? "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-2))" : "transparent",
+                      cursor: "pointer",
+                      color: isConfirming ? "var(--color-error)" : "var(--text-level-4)",
+                      flexShrink: 0,
+                      fontSize: "12px",
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      transition: "background 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isConfirming) { e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-2))"; e.currentTarget.style.color = "var(--color-error)"; }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isConfirming) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-4)"; }
+                    }}
+                  >
+                    {isConfirming ? (
+                      <span>{t("memory.deleteConfirm")}</span>
+                    ) : (
+                      <Trash2 style={{ width: "14px", height: "14px" }} />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

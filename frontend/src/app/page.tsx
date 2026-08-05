@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
@@ -82,6 +82,16 @@ export default function Home() {
       }
     }
   }, [modelsLoading, models, settings?.default_model, selectedModel]);
+
+  // 根据 Settings 默认推理强度预选（仅首次设置，避免覆盖用户手动切换）
+  const defaultReasoningAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultReasoningAppliedRef.current) return;
+    const def = settings?.default_reasoning_effort;
+    if (!def) return; // settings 未加载，等下一次变更
+    defaultReasoningAppliedRef.current = true;
+    if (def === "high" || def === "max") setReasoningEffort(def);
+  }, [settings?.default_reasoning_effort]);
 
   const currentAgent = selectedAgent || (settings?.default_agent ? agents.find(a => a.id === settings.default_agent) || null : null) || agents[0] || null;
   const currentModel = selectedModel || models[0] || null;

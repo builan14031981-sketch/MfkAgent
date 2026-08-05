@@ -225,7 +225,7 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, [isActive]);
+  }, [isActive, updateJumpButton]);
 
   // 用户主动滚回最新
   const jumpToLatest = useCallback(() => {

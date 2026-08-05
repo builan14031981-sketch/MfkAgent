@@ -7,6 +7,7 @@ export interface Model {
   name: string;
   provider: string;
   max_tokens?: number;
+  priority?: number;
 }
 
 export function useModels() {

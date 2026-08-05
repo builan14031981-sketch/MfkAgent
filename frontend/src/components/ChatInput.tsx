@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
-import { Plus, FileUp, FolderPlus, Trash2, Send, Brain, Folder, X, Check, ChevronDown, Wrench, Compass } from "lucide-react";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
+import { Send, Folder, X } from "lucide-react";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { FilePill } from "@/components/FileDropZone";
-import { useAgents } from "@/hooks/useAgents";
-import { AgentIcon } from "@/components/AgentIcon";
+import { AgentSelector } from "@/components/chat-input/AgentSelector";
+import { ModelSelector } from "@/components/chat-input/ModelSelector";
+import { ModeSelector } from "@/components/chat-input/ModeSelector";
+import { ReasoningSelector } from "@/components/chat-input/ReasoningSelector";
+import { UploadMenu } from "@/components/chat-input/UploadMenu";
 import type { Model } from "@/hooks/useModels";
 
 export type ReasoningEffort = "none" | "high" | "max";
@@ -61,8 +62,11 @@ export interface ChatInputProps {
  * 一体化紧凑输入卡片：
  * textarea + 底部工具栏（+ 菜单 / 模型选择 / 思考胶囊 / 发送按钮）合并为单卡片，
  * 1px 淡边框 + 柔和阴影。草稿状态（文件 / 项目 Pill）渲染在 textarea 上方。
+ *
+ * 下拉选择器（Agent / Model / Mode / Reasoning / Upload）已拆分到
+ * `components/chat-input/*`，本组件只负责互斥展开协调、草稿持久化与发送。
  */
-export function ChatInput({
+export const ChatInput = memo(function ChatInput({
   value,
   onChange,
   onSend,
@@ -91,58 +95,23 @@ export function ChatInput({
   projectName,
   onRemoveProject,
 }: ChatInputProps) {
-  const { t } = useTranslation();
-  const { agents, loading: agentsLoading } = useAgents();
   // 互斥规则：同一时刻只允许一个下拉展开，展开新胶囊自动关闭旧胶囊
   const [activePop, setActivePop] = useState<string | null>(null);
-  const [agentDropdownPos, setAgentDropdownPos] = useState({ bottom: 0, left: 0 });
-  const [modelDropdownPos, setModelDropdownPos] = useState({ bottom: 0, left: 0, width: 0 });
-  const menuOpen = activePop === "menu";
-  const reasoningOpen = activePop === "reasoning";
-  const modeOpen = activePop === "mode";
-  const modelOpen = activePop === "model";
-  const agentOpen = activePop === "agent";
 
-  // 展开/收起指定胶囊（再次点击同胶囊则收起）
-  const togglePop = useCallback((key: string | null) => {
-    setActivePop((prev) => (prev === key ? null : key));
-  }, []);
-  const agentBtnRef = useRef<HTMLButtonElement>(null);
-  const modelBtnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const reasoningRef = useRef<HTMLDivElement>(null);
-  const modeRef = useRef<HTMLDivElement>(null);
-  const modelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalTextareaRef ?? internalTextareaRef;
 
-  // 点击外部关闭当前展开的弹出层（互斥：同一时刻仅一个）
-  useEffect(() => {
-    if (!activePop) return;
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      const portal = document.getElementById("agent-dropdown-portal");
-      const modelPortal = document.getElementById("model-dropdown-portal");
-      const refFor = (key: string): HTMLElement | null => {
-        switch (key) {
-          case "agent": return agentBtnRef.current;
-          case "menu": return menuRef.current;
-          case "reasoning": return reasoningRef.current;
-          case "mode": return modeRef.current;
-          case "model": return modelRef.current;
-          default: return null;
-        }
-      };
-      const el = refFor(activePop);
-      if (el && el.contains(target)) return;
-      if (activePop === "agent" && portal?.contains(target)) return;
-      if (activePop === "model" && modelPortal?.contains(target)) return;
-      setActivePop(null);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [activePop]);
+  const menuOpen = activePop === "menu";
+  const agentOpen = activePop === "agent";
+  const modelOpen = activePop === "model";
+  const modeOpen = activePop === "mode";
+  const reasoningOpen = activePop === "reasoning";
+
+  const closePop = useCallback(() => setActivePop(null), []);
+  const togglePop = useCallback((key: string | null) => {
+    setActivePop((prev) => (prev === key ? null : key));
+  }, []);
 
   // 自适应高度
   useEffect(() => {
@@ -197,12 +166,12 @@ export function ChatInput({
   }, [draftKey]);
 
   const handlePickFile = () => {
-    setActivePop(null);
+    closePop();
     fileInputRef.current?.click();
   };
 
   const handlePickDirectory = async () => {
-    setActivePop(null);
+    closePop();
     const dir = await selectDirectory();
     if (dir) onSelectDirectory(dir);
   };
@@ -218,91 +187,6 @@ export function ChatInput({
       }
     }
   };
-
-  // 统一 Toolbar Pill 控件外观：28px 高、12px 字、medium、px-2.5、同背景同箭头
-  const pillStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "6px",
-    height: "28px",
-    padding: "0 10px",
-    borderRadius: "var(--radius-full)",
-    border: "1px solid var(--border-primary)",
-    background: "var(--bg-level-3)",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: 500,
-    color: "var(--text-level-2)",
-    whiteSpace: "nowrap",
-    transition: "all var(--transition-fast)",
-    flexShrink: 0,
-    outline: "none",
-  };
-
-  const chevronStyle: React.CSSProperties = {
-    width: "12px",
-    height: "12px",
-    color: "var(--text-level-4)",
-    marginLeft: "4px",
-    flexShrink: 0,
-  };
-
-  // 下拉面板：统一向上弹出（bottom-full mb-1.5）、最高层级 z-[100]、紧凑高密度
-  const popoverStyle: React.CSSProperties = {
-    position: "absolute",
-    bottom: "calc(100% + 6px)",
-    left: 0,
-    display: "flex",
-    flexDirection: "column",
-    gap: "2px",
-    minWidth: "140px",
-    padding: "4px",
-    borderRadius: "var(--radius-xl)",
-    background: "var(--bg-level-2)",
-    border: "1px solid var(--border-primary)",
-    boxShadow: "var(--shadow-lg)",
-    zIndex: 100,
-    animation: "panelOpen 0.15s ease forwards",
-    transformOrigin: "bottom left",
-  };
-
-  // 下拉选项：text-xs、font-medium、px-2.5 py-1.5、leading-tight
-  const popoverItemStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    width: "100%",
-    padding: "6px 10px",
-    border: "none",
-    background: "transparent",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: 500,
-    lineHeight: 1.25,
-    whiteSpace: "nowrap",
-    color: "var(--text-level-2)",
-    borderRadius: "var(--radius-sm)",
-    textAlign: "left",
-    outline: "none",
-  };
-
-  const reasoningModes: { value: ReasoningEffort; label: string }[] = [
-    { value: "none", label: t("chat.reasoning.off") },
-    { value: "high", label: t("chat.reasoning.fast") },
-    { value: "max", label: t("chat.reasoning.deep") },
-  ];
-
-  const modeOptions: { value: ChatMode; label: string; icon: typeof Wrench }[] = [
-    { value: "build", label: t("chat.mode.build"), icon: Wrench },
-    { value: "plan", label: t("chat.mode.plan"), icon: Compass },
-  ];
-
-  const currentReasoningLabel = reasoningModes.find((m) => m.value === reasoningEffort)?.label ?? "";
-  const currentModeLabel = modeOptions.find((m) => m.value === mode)?.label ?? "";
-  const CurrentModeIcon = modeOptions.find((m) => m.value === mode)?.icon ?? Wrench;
-  const currentModelName = models.find((m) => m.id === modelId)?.name ?? modelId ?? "";
-  const currentAgentName = agents.find((a) => a.id === agentId)?.name ?? agentId ?? "";
 
   return (
     <div style={{
@@ -408,433 +292,79 @@ export function ChatInput({
           minWidth: 0,
         }}>
           {/* + 极简菜单按钮（最左第一位）28x28 */}
-          <div style={{ position: "relative", flexShrink: 0 }} ref={menuRef}>
-            <button
-              onClick={() => togglePop("menu")}
-              title={t("chat.menu.uploadFile")}
-              style={{
-                ...pillStyle,
-                width: "28px",
-                padding: "0",
-                borderRadius: "var(--radius-full)",
-                background: menuOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
-                color: menuOpen ? "var(--color-primary)" : "var(--text-level-2)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-level-4)";
-                e.currentTarget.style.color = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = menuOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
-                e.currentTarget.style.color = menuOpen ? "var(--color-primary)" : "var(--text-level-2)";
-              }}
-            >
-              <Plus style={{
-                width: "16px",
-                height: "16px",
-                transform: menuOpen ? "rotate(45deg)" : "rotate(0deg)",
-                transition: "transform var(--transition-normal)",
-              }} />
-            </button>
+          <UploadMenu
+            open={menuOpen}
+            onToggle={() => togglePop("menu")}
+            onClose={closePop}
+            onPickFile={handlePickFile}
+            onPickDirectory={handlePickDirectory}
+            onClearContext={() => {
+              closePop();
+              onClearContext();
+            }}
+            hasContext={hasContext}
+          />
 
-            {/* Quick Menu 毛玻璃卡片 */}
-            {menuOpen && (
-              <div style={popoverStyle}>
-                <button
-                  onClick={handlePickFile}
-                  style={popoverItemStyle}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                >
-                  <FileUp style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
-                  <span>{t("chat.menu.uploadFile")}</span>
-                </button>
-                <button
-                  onClick={handlePickDirectory}
-                  style={popoverItemStyle}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                >
-                  <FolderPlus style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
-                  <span>{t("chat.menu.linkProject")}</span>
-                </button>
-                <div style={{
-                  height: "1px",
-                  background: "var(--border-secondary)",
-                  margin: "4px 0",
-                }} />
-                <button
-                  onClick={() => {
-                    setActivePop(null);
-                    onClearContext();
-                  }}
-                  disabled={!hasContext}
-                  style={{
-                    ...popoverItemStyle,
-                    color: hasContext ? "var(--color-error)" : "var(--text-level-4)",
-                    cursor: hasContext ? "pointer" : "not-allowed",
-                  }}
-                  onMouseEnter={(e) => { if (hasContext) e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                >
-                  <Trash2 style={{ width: "15px", height: "15px", color: hasContext ? "var(--color-error)" : "var(--text-level-4)", flexShrink: 0 }} />
-                  <span>{t("chat.menu.clearContext")}</span>
-                </button>
-              </div>
-            )}
-
-            {/* 隐藏的文件选择 input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) onUploadFile(file);
-                e.target.value = "";
-              }}
-            />
-          </div>
+          {/* 隐藏的文件选择 input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onUploadFile(file);
+              e.target.value = "";
+            }}
+          />
 
           {/* Agent 选择器（仅一级入口 allowAgentChange 时展示，向上弹出） */}
           {allowAgentChange && (
-            agentsLoading ? (
-              <span style={{ fontSize: "12px", color: "var(--text-level-3)", flexShrink: 0 }}>{t("common.loading")}</span>
-            ) : (
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button
-                  ref={agentBtnRef}
-                  onClick={() => {
-                    const rect = agentBtnRef.current?.getBoundingClientRect();
-                    if (rect) {
-                      // 以按钮顶边为锚点：bottom = 视口高度 - 按钮顶边 → 菜单底边在按钮上方，向上弹出不遮胶囊
-                      setAgentDropdownPos({
-                        bottom: window.innerHeight - rect.top,
-                        left: Math.max(8, Math.min(rect.left, window.innerWidth - 170)),
-                      });
-                    }
-                    togglePop("agent");
-                  }}
-                  style={{
-                    ...pillStyle,
-                    background: agentOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
-                    color: agentOpen ? "var(--color-primary)" : "var(--text-level-2)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--bg-level-4)";
-                    e.currentTarget.style.color = "var(--color-primary)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = agentOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
-                    e.currentTarget.style.color = agentOpen ? "var(--color-primary)" : "var(--text-level-2)";
-                  }}
-                >
-                  <AgentIcon id={agentId ?? undefined} size={14} style={{ flexShrink: 0 }} />
-                  <span style={{ fontWeight: 500 }}>{currentAgentName || agentId}</span>
-                  <ChevronDown style={{
-                    ...chevronStyle,
-                    transform: agentOpen ? "rotate(180deg)" : "rotate(0deg)",
-                    transition: "transform var(--transition-normal)",
-                  }} />
-                </button>
-                {agentOpen && createPortal(
-                  <div id="agent-dropdown-portal" className="no-scrollbar" style={{
-                    position: "fixed",
-                    bottom: agentDropdownPos.bottom + 8,
-                    left: agentDropdownPos.left,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "2px",
-                    minWidth: "160px",
-                    maxHeight: "220px",
-                    overflowY: "auto",
-                    padding: "6px",
-                    borderRadius: "var(--radius-xl)",
-                    background: "var(--bg-level-2)",
-                    border: "1px solid var(--border-secondary)",
-                    boxShadow: "var(--shadow-lg)",
-                    zIndex: 9999,
-                  }}>
-                    {agents.map((agent) => {
-                      const active = agent.id === agentId;
-                      return (
-                        <button
-                          key={agent.id}
-                          onClick={() => {
-                            onAgentChange?.(agent.id);
-                            setActivePop(null);
-                          }}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            width: "100%",
-                            padding: "6px 10px",
-                            border: "none",
-                            borderRadius: "var(--radius-sm)",
-                            background: active ? "var(--color-primary-lighter)" : "transparent",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontSize: "12px",
-                            fontWeight: 500,
-                            lineHeight: 1.25,
-                            outline: "none",
-                            transition: "background 0.1s",
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!active) e.currentTarget.style.background = "var(--bg-level-3)";
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!active) e.currentTarget.style.background = "transparent";
-                          }}
-                        >
-                          <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{
-                              fontSize: "12px",
-                              fontWeight: "500",
-                              lineHeight: 1.25,
-                              color: active ? "var(--color-primary)" : "var(--text-level-1)",
-                            }}>{agent.name}</div>
-                            <div style={{
-                              fontSize: "10px",
-                              lineHeight: 1.25,
-                              color: "var(--text-level-4)",
-                            }}>{agent.description}</div>
-                          </div>
-                          {active && (
-                            <span style={{
-                              width: "6px", height: "6px",
-                              borderRadius: "50%",
-                              background: "var(--color-primary)",
-                              flexShrink: 0,
-                            }} />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>,
-                  document.body
-                )}
-              </div>
-            )
+            <AgentSelector
+              open={agentOpen}
+              onToggle={() => togglePop("agent")}
+              onClose={closePop}
+              selectedId={agentId}
+              onSelect={(id) => onAgentChange?.(id)}
+            />
           )}
 
           {/* 模型选择 - 下拉胶囊按钮 + Popover（向上弹出，完整显示） */}
-          {models.length > 0 && (
-            <div style={{
-              position: "relative",
-              minWidth: 0,
-              maxWidth: "200px",
-              flexShrink: 0,
-            }} ref={modelRef}>
-              <button
-                ref={modelBtnRef}
-                onClick={() => {
-                  const rect = modelBtnRef.current?.getBoundingClientRect();
-                  if (rect) {
-                    setModelDropdownPos({
-                      bottom: window.innerHeight - rect.top,
-                      left: Math.max(8, Math.min(rect.left, window.innerWidth - 200)),
-                      width: Math.max(180, Math.min(rect.width, 220)),
-                    });
-                  }
-                  togglePop("model");
-                }}
-                title={currentModelName}
-                style={{
-                  ...pillStyle,
-                  maxWidth: "200px",
-                  background: modelOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
-                  color: modelOpen ? "var(--color-primary)" : "var(--text-level-2)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-level-4)";
-                  e.currentTarget.style.color = "var(--color-primary)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = modelOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
-                  e.currentTarget.style.color = modelOpen ? "var(--color-primary)" : "var(--text-level-2)";
-                }}
-              >
-                <span style={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  minWidth: 0,
-                }}>{currentModelName}</span>
-                <ChevronDown style={{
-                  ...chevronStyle,
-                  transform: modelOpen ? "rotate(180deg)" : "rotate(0deg)",
-                  transition: "transform var(--transition-normal)",
-                }} />
-              </button>
-
-              {modelOpen && createPortal(
-                <div id="model-dropdown-portal" className="no-scrollbar" style={{
-                  position: "fixed",
-                  bottom: modelDropdownPos.bottom + 8,
-                  left: modelDropdownPos.left,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "2px",
-                  width: modelDropdownPos.width,
-                  maxHeight: "260px",
-                  overflowY: "auto",
-                  padding: "4px",
-                  borderRadius: "var(--radius-xl)",
-                  background: "var(--bg-level-2)",
-                  border: "1px solid var(--border-secondary)",
-                  boxShadow: "var(--shadow-lg)",
-                  zIndex: 9999,
-                  animation: "panelOpen 0.15s ease forwards",
-                }}>
-                  {models.map((model) => {
-                    const active = model.id === modelId;
-                    return (
-                      <button
-                        key={model.id}
-                        onClick={() => {
-                          onModelChange(model.id);
-                          setActivePop(null);
-                        }}
-                        style={{
-                          ...popoverItemStyle,
-                          color: active ? "var(--color-primary)" : "var(--text-level-2)",
-                          fontWeight: active ? 600 : 500,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <span style={{
-                          flex: 1,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}>{model.name}</span>
-                        {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
-                      </button>
-                    );
-                  })}
-                </div>,
-                document.body
-              )}
-            </div>
-          )}
+          <ModelSelector
+            models={models}
+            selectedId={modelId}
+            onSelect={(id) => {
+              closePop();
+              onModelChange(id);
+            }}
+            open={modelOpen}
+            onToggle={() => togglePop("model")}
+            onClose={closePop}
+          />
 
           {/* 工作模式 - 下拉胶囊按钮 + Popover（build 可写 / plan 只读） */}
-          <div style={{ position: "relative", flexShrink: 0 }} ref={modeRef}>
-            <button
-              onClick={() => togglePop("mode")}
-              title={currentModeLabel}
-              style={{
-                ...pillStyle,
-                background: modeOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
-                color: modeOpen ? "var(--color-primary)" : "var(--text-level-2)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-level-4)";
-                e.currentTarget.style.color = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = modeOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
-                e.currentTarget.style.color = modeOpen ? "var(--color-primary)" : "var(--text-level-2)";
-              }}
-            >
-              <CurrentModeIcon style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
-              <span>{currentModeLabel}</span>
-              <ChevronDown style={{
-                ...chevronStyle,
-                transform: modeOpen ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform var(--transition-normal)",
-              }} />
-            </button>
-
-            {modeOpen && (
-              <div style={{ ...popoverStyle, minWidth: 112 }}>
-                {modeOptions.map((opt) => {
-                  const active = mode === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        onModeChange(opt.value);
-                        setActivePop(null);
-                      }}
-                      style={{
-                        ...popoverItemStyle,
-                        color: active ? "var(--color-primary)" : "var(--text-level-2)",
-                        fontWeight: active ? 600 : 400,
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <opt.icon style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>{opt.label}</span>
-                      {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ModeSelector
+            mode={mode}
+            onModeChange={(m) => {
+              closePop();
+              onModeChange(m);
+            }}
+            open={modeOpen}
+            onToggle={() => togglePop("mode")}
+            onClose={closePop}
+          />
 
           {/* 思考模式 - 下拉胶囊按钮 + Popover */}
-          <div style={{ position: "relative", flexShrink: 0 }} ref={reasoningRef}>
-            <button
-              onClick={() => togglePop("reasoning")}
-              title={currentReasoningLabel}
-              style={{
-                ...pillStyle,
-                background: reasoningOpen ? "var(--bg-level-4)" : "var(--bg-level-3)",
-                color: reasoningOpen ? "var(--color-primary)" : "var(--text-level-2)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-level-4)";
-                e.currentTarget.style.color = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = reasoningOpen ? "var(--bg-level-4)" : "var(--bg-level-3)";
-                e.currentTarget.style.color = reasoningOpen ? "var(--color-primary)" : "var(--text-level-2)";
-              }}
-            >
-              <Brain style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
-              <span>{currentReasoningLabel}</span>
-              <ChevronDown style={{
-                ...chevronStyle,
-                transform: reasoningOpen ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform var(--transition-normal)",
-              }} />
-            </button>
-
-            {reasoningOpen && (
-              <div style={popoverStyle}>
-                {reasoningModes.map((mode) => {
-                  const active = reasoningEffort === mode.value;
-                  return (
-                    <button
-                      key={mode.value}
-                      onClick={() => {
-                        onReasoningChange(mode.value);
-                        setActivePop(null);
-                      }}
-                      style={{
-                        ...popoverItemStyle,
-                        color: active ? "var(--color-primary)" : "var(--text-level-2)",
-                        fontWeight: active ? 600 : 400,
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <span style={{ flex: 1 }}>{mode.label}</span>
-                      {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <ReasoningSelector
+            reasoningEffort={reasoningEffort}
+            onReasoningChange={(e) => {
+              closePop();
+              onReasoningChange(e);
+            }}
+            open={reasoningOpen}
+            onToggle={() => togglePop("reasoning")}
+            onClose={closePop}
+          />
         </div>
 
         {/* 发送按钮 28x28 - 卡片右下角 */}
@@ -877,4 +407,4 @@ export function ChatInput({
       </div>
     </div>
   );
-}
+});

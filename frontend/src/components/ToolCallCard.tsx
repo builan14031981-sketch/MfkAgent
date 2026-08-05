@@ -1,149 +1,231 @@
 "use client";
 
-import { useMemo } from "react";
-import { FileCode, FileText, Search, Terminal, GitBranch, Bookmark } from "lucide-react";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { resolveToolMeta } from "@/lib/toolMeta";
 
+export type ToolStatus = "pending" | "running" | "success" | "failed" | "cancelled";
+
+/**
+ * ToolCall 数据（兼容 v2 事件流 + 旧持久化记录）：
+ * - v2 实时事件：tool / tool_call_id / input / success / result / duration_ms
+ * - 旧记录（Message.tool_calls）：name / path / success / arguments / result
+ */
 export interface ToolCall {
-  name: string;
+  name?: string;
+  tool?: string;
   path?: string;
   success?: boolean;
-  /** 工具执行结果全文（汇总事件 / 持久化记录提供） */
+  status?: ToolStatus;
   result?: string;
-  /** 工具调用参数（后端实时/汇总事件已透传） */
   arguments?: Record<string, unknown>;
+  input?: Record<string, unknown>;
+  duration_ms?: number;
+  error?: string;
+  tool_call_id?: string;
 }
 
-function argString(args: Record<string, unknown> | undefined, key: string): string {
-  if (!args) return "";
-  const v = args[key];
-  if (typeof v === "string") return v;
-  if (typeof v === "number") return String(v);
-  return "";
-}
-
-/** 从 result 提取首行作为摘要（\n 前截断 80 字符） */
 function resultSummary(result: string | undefined, maxLen = 80): string {
   if (!result) return "";
   const firstLine = result.split("\n")[0].trim();
   return firstLine.length > maxLen ? `${firstLine.slice(0, maxLen)}…` : firstLine;
 }
 
+/** 归一化：兼容新老字段，补全 tool / input / status（前端去重与渲染统一入口） */
+export function normalizeToolCall(tc: ToolCall): ToolCall {
+  const tool = tc.tool ?? tc.name ?? "";
+  const input = tc.input ?? tc.arguments ?? {};
+  const status: ToolStatus =
+    tc.status ??
+    (tc.success === false ? "failed" : tc.success === true ? "success" : "pending");
+  return { ...tc, tool, input, status };
+}
+
 /**
- * 工具调用事件卡片（按工具名分流图标与内容）：
- * - write_file: FileCode（绿）+ 路径 + "已写入"
- * - read_file / list_files: FileText + 路径
- * - search_files: Search + `搜索 "query"` + 命中条数
- * - run_command: Terminal + `$ 命令` + `[exit code n]`
- * - git_*: GitBranch + 结果摘要
- * - add_memory: Bookmark + scope + 内容摘要
- * 失败态（success=false 或 result 以"错误"开头）：红色边框 + 错误摘要。
+ * ToolCallCard v2 —— 数据驱动 + 状态机渲染：
+ * - pending / running / success / failed / cancelled
+ * - 图标与标题由 tool + input 派生（lib/toolMeta），不再按 name 硬编码
+ * - 工具名标签（tool）+ result 完整内容可展开查看（F-2）
  */
 export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
-  const { t } = useTranslation();
-  const { name, path, success, result, arguments: args } = toolCall;
+  const normalized = useMemo(() => normalizeToolCall(toolCall), [toolCall]);
+  const { tool, input, status, result, duration_ms } = normalized;
+  const [expanded, setExpanded] = useState(false);
 
-  const failed = success === false || (typeof result === "string" && /^错误/.test(result.trim()));
+  const { icon: Icon, color, title } = useMemo(
+    () => resolveToolMeta(tool ?? "", input),
+    [tool, input]
+  );
 
-  const isWrite = name === "write_file";
-  const isRead = name === "read_file" || name === "list_files";
-  const isSearch = name === "search_files";
-  const isCommand = name === "run_command";
-  const isGit = name.startsWith("git_");
-  const isMemory = name === "add_memory";
+  const failed = status === "failed";
+  const cancelled = status === "cancelled";
+  const running = status === "running";
 
-  const summary = useMemo(() => resultSummary(result), [result]);
   const exitCode = useMemo(() => {
     if (!result) return "";
     const m = result.match(/\[exit code (\d+)\]/);
     return m ? m[1] : "";
   }, [result]);
 
-  let Icon = FileText;
-  let iconColor = "var(--color-info)";
-  if (isWrite) {
-    Icon = FileCode;
-    iconColor = "var(--color-success)";
-  } else if (isSearch) {
-    Icon = Search;
-    iconColor = "var(--color-info)";
-  } else if (isCommand) {
-    Icon = Terminal;
-    iconColor = "var(--color-warning)";
-  } else if (isGit) {
-    Icon = GitBranch;
-    iconColor = "var(--color-info)";
-  } else if (isMemory) {
-    Icon = Bookmark;
-    iconColor = "var(--color-warning)";
-  }
+  const hint = useMemo(() => {
+    if (running) return "";
+    if (cancelled) return "已取消";
+    if (failed) {
+      if (normalized.error) return resultSummary(normalized.error, 60);
+      const s = resultSummary(result, 60);
+      return s || "失败";
+    }
+    if (exitCode) return `[exit code ${exitCode}]`;
+    return resultSummary(result, 80);
+  }, [running, cancelled, failed, normalized.error, exitCode, result]);
 
-  // 主文本 + 右侧提示
-  let mainText = path || "";
-  let hint: string | null = null;
-  if (isWrite) {
-    hint = t("chat.toolWritten");
-  } else if (isSearch) {
-    const q = argString(args, "query");
-    mainText = q ? `搜索 "${q}"` : summary || name;
-  } else if (isCommand) {
-    const cmd = argString(args, "command");
-    mainText = cmd ? `$ ${cmd}` : summary || name;
-    hint = exitCode ? `[exit code ${exitCode}]` : summary || null;
-  } else if (isGit) {
-    mainText = summary || name;
-  } else if (isMemory) {
-    const scope = argString(args, "scope");
-    mainText = summary || name;
-    hint = scope ? `scope: ${scope}` : null;
-  } else if (isRead) {
-    mainText = path || summary || name;
-  }
-  if (!mainText) mainText = name;
+  const displayColor = failed ? "var(--color-error)" : cancelled ? "var(--text-level-4)" : color;
+
+  const borderColor = failed
+    ? "var(--color-error)"
+    : cancelled
+    ? "var(--border-primary)"
+    : running
+    ? "var(--color-info)"
+    : "var(--border-primary)";
+
+  // 结果详情：失败时优先展示 error，否则展示完整 result（F-2 可展开）
+  const detail = failed && normalized.error ? normalized.error : result;
+  const hasDetail = typeof detail === "string" && detail.trim() !== "";
+
+  const toggleExpand = () => {
+    if (hasDetail) setExpanded((v) => !v);
+  };
 
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      marginBottom: "8px",
-      padding: "6px 12px",
-      borderRadius: "var(--radius-md)",
-      background: failed ? "color-mix(in srgb, var(--color-error) 8%, var(--bg-level-3))" : "var(--bg-level-3)",
-      border: `1px solid ${failed ? "var(--color-error)" : "var(--border-primary)"}`,
-    }}>
-      <Icon style={{ width: "14px", height: "14px", color: iconColor, flexShrink: 0 }} />
-      <code style={{
-        fontSize: "12px",
-        color: failed ? "var(--color-error)" : "var(--text-level-2)",
-        fontFamily: "var(--font-geist-mono), var(--font-family)",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        minWidth: 0,
-      }}>{mainText}</code>
-      {hint && (
-        <span style={{
-          fontSize: "11px",
-          color: failed ? "var(--color-error)" : "var(--text-level-4)",
-          marginLeft: "auto",
-          flexShrink: 0,
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "4px",
+        marginBottom: "8px",
+        padding: "6px 12px",
+        borderRadius: "var(--radius-md)",
+        background: failed
+          ? "color-mix(in srgb, var(--color-error) 8%, var(--bg-level-3))"
+          : running
+          ? "color-mix(in srgb, var(--color-info) 6%, var(--bg-level-3))"
+          : "var(--bg-level-3)",
+        border: `1px solid ${borderColor}`,
+        opacity: cancelled ? 0.6 : 1,
+        cursor: hasDetail ? "pointer" : "default",
+        transition: "border-color 0.15s ease, background 0.15s ease",
+      }}
+      onClick={toggleExpand}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+        <Icon style={{ width: "14px", height: "14px", color: displayColor, flexShrink: 0 }} />
+        {/* 工具名标签 */}
+        {tool && (
+          <span style={{
+            flexShrink: 0,
+            padding: "0 6px",
+            borderRadius: "var(--radius-xs)",
+            fontSize: "10px",
+            fontWeight: 600,
+            lineHeight: "16px",
+            fontFamily: "var(--font-geist-mono), var(--font-family)",
+            color: displayColor,
+            background: "color-mix(in srgb, var(--bg-level-2) 60%, transparent)",
+            border: "1px solid",
+            borderColor: "color-mix(in srgb, var(--border-primary) 80%, transparent)",
+          }}>{tool}</span>
+        )}
+        <code style={{
+          fontSize: "12px",
+          color: failed ? "var(--color-error)" : "var(--text-level-2)",
+          fontFamily: "var(--font-geist-mono), var(--font-family)",
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-          maxWidth: "40%",
-        }}>{hint}</span>
+          minWidth: 0,
+          flex: 1,
+        }}>{title}</code>
+        {running && (
+          <Loader2
+            className="animate-spin"
+            style={{ width: "12px", height: "12px", color: "var(--color-info)", flexShrink: 0, marginLeft: "auto" }}
+          />
+        )}
+        {!running && duration_ms !== undefined && duration_ms !== null && (
+          <span style={{
+            fontSize: "11px",
+            color: "var(--text-level-4)",
+            marginLeft: "auto",
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+          }}>{duration_ms}ms</span>
+        )}
+        {!running && (duration_ms === undefined || duration_ms === null) && hint && !hasDetail && (
+          <span style={{
+            fontSize: "11px",
+            color: failed ? "var(--color-error)" : "var(--text-level-4)",
+            marginLeft: "auto",
+            flexShrink: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            maxWidth: "40%",
+          }}>{hint}</span>
+        )}
+        {hasDetail && (
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "2px",
+            fontSize: "11px",
+            color: "var(--text-level-4)",
+            marginLeft: "auto",
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+          }}>
+            {expanded ? "收起" : "展开"}
+            {expanded
+              ? <ChevronUp style={{ width: "12px", height: "12px" }} />
+              : <ChevronDown style={{ width: "12px", height: "12px" }} />}
+          </span>
+        )}
+      </div>
+      {expanded && hasDetail && (
+        <div style={{
+          marginTop: "4px",
+          padding: "8px 10px",
+          borderRadius: "var(--radius-sm)",
+          background: "color-mix(in srgb, var(--bg-level-2) 70%, transparent)",
+          border: "1px solid",
+          borderColor: "color-mix(in srgb, var(--border-primary) 60%, transparent)",
+        }}>
+          <pre style={{
+            margin: 0,
+            maxHeight: "320px",
+            overflow: "auto",
+            fontSize: "12px",
+            lineHeight: "1.6",
+            fontFamily: "var(--font-geist-mono), var(--font-family)",
+            color: failed ? "var(--color-error)" : "var(--text-level-2)",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}>{detail}</pre>
+        </div>
       )}
     </div>
   );
 }
 
 export function ToolCallCardList({ toolCalls }: { toolCalls: ToolCall[] }) {
-  if (toolCalls.length === 0) return null;
+  if (!toolCalls || toolCalls.length === 0) return null;
   return (
     <>
       {toolCalls.map((tc, i) => (
-        <ToolCallCard key={`${tc.name}-${i}`} toolCall={tc} />
+        <ToolCallCard
+          key={tc.tool_call_id ?? `${tc.path ?? ""}${tc.name ?? tc.tool}-${i}`}
+          toolCall={tc}
+        />
       ))}
     </>
   );

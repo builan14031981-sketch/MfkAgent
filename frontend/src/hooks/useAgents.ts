@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet, apiPatch } from "@/lib/api";
 
 export interface Agent {
   id: string;
@@ -35,5 +35,10 @@ export function useAgents() {
     fetchAgents();
   }, [fetchAgents]);
 
-  return { agents, loading, error };
+  async function updateAgent(id: string, updates: Partial<Agent>) {
+    await apiPatch(`/api/agents/${id}`, updates);
+    await fetchAgents();
+  }
+
+  return { agents, loading, error, updateAgent };
 }
