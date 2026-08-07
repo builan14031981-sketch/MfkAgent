@@ -223,7 +223,8 @@ export function useMessages(chatId: number | null) {
                   }
                   case "task_started":
                   case "task_completed":
-                  case "task_failed": {
+                  case "task_failed":
+                  case "task_skipped": {
                     // 多 Agent 任务协同事件：解析 payload 并组装 TaskNode 后分发
                     const task: TaskNode = {
                       task_id: parsed.task_id,

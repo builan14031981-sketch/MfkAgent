@@ -97,6 +97,8 @@ class RuntimeEventType(str, Enum):
     TASK_STARTED = "task_started"
     TASK_COMPLETED = "task_completed"
     TASK_FAILED = "task_failed"
+    # G4-C: 依赖失败/图中断导致的后继任务跳过
+    TASK_SKIPPED = "task_skipped"
     # G6-A: Token 水位监控
     TOKEN_USAGE = "token_usage"
     FINISH = "finish"

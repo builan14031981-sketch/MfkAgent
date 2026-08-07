@@ -137,6 +137,70 @@ class AgentRuntime:
             return False
         return self.task_graph_state.update_task_status(task_id, new_status)
 
+    # ──── G4-C: TaskGraph 任务事件 / 失败处理辅助 ────
+
+    def _task_event_payload(self, task, status: str, error: Optional[str] = None) -> dict:
+        """构建任务级事件 payload（含 step_index / total_steps 进度字段）。
+
+        G4-C current_step 同步：不修改 Plan，进度由 TaskGraphState 追踪并随事件透出。
+        """
+        payload = {
+            "task_id": task.id,
+            "action": task.action,
+            "status": status,
+        }
+        if self.task_graph_state is not None:
+            payload["step_index"] = self.task_graph_state.get_step_index(task.id)
+            payload["total_steps"] = self.task_graph_state.total_steps
+        if error:
+            payload["error"] = str(error)[:200]
+        return payload
+
+    def _handle_task_failure(self, run_id, current_task, error) -> None:
+        """单任务异常处理（run 非流式路径）：failed + 级联 skip 依赖 + 事件。
+
+        G4-C 状态一致性：当前节点 → failed，依赖链上 pending 节点 → skipped；
+        AgentRun 本身仍正常收尾（completed），失败以 task_failed / task_skipped 事件记录。
+        """
+        if self.task_graph_state is None:
+            return
+        skipped = self.task_graph_state.mark_failed(current_task.id, str(error)[:200])
+        runtime_event_recorder.emit(
+            run_id,
+            "task_failed",
+            self._task_event_payload(current_task, "failed", error=str(error)),
+        )
+        for skip_id in skipped:
+            skip_node = self.task_graph_state.get_task(skip_id)
+            if skip_node is not None:
+                runtime_event_recorder.emit(
+                    run_id,
+                    "task_skipped",
+                    self._task_event_payload(skip_node, "skipped"),
+                )
+
+    def _skip_remaining_and_emit(self, run_id) -> None:
+        """图中断兜底（run 非流式路径）：剩余 pending 节点全部 skipped + 事件。
+
+        保证 is_all_done() 收敛到 True，不存在"永远 pending"的悬空节点。
+        """
+        if self.task_graph_state is None:
+            return
+        for skip_id in self.task_graph_state.mark_pending_skipped():
+            skip_node = self.task_graph_state.get_task(skip_id)
+            if skip_node is not None:
+                runtime_event_recorder.emit(
+                    run_id,
+                    "task_skipped",
+                    self._task_event_payload(skip_node, "skipped"),
+                )
+
+    def _task_graph_summary(self) -> Optional[dict]:
+        """任务图进度摘要（run 结果 metadata 用）；无图返回 None。"""
+        if self.task_graph_state is None:
+            return None
+        return self.task_graph_state.get_progress()
+
     # ──── G6-B: 智能会话压缩引擎 ────
 
     DEFAULT_KEEP_RECENT = 4
@@ -500,13 +564,13 @@ class AgentRuntime:
                 if has_task_graph:
                     current_task = self.get_next_ready_task()
                     if current_task is None:
+                        # G4-C: 图中断/阻塞（无就绪节点且未全部终态）→ 剩余 pending 全部 skipped
+                        if not self.task_graph_state.is_all_done():
+                            self._skip_remaining_and_emit(run_id)
                         break
                     self.update_task_status(current_task.id, "running")
-                    runtime_event_recorder.emit(run_id, "task_started", {
-                        "task_id": current_task.id,
-                        "action": current_task.action,
-                        "status": "running",
-                    })
+                    runtime_event_recorder.emit(run_id, "task_started",
+                        self._task_event_payload(current_task, "running"))
                     loop_messages.append({
                         "role": "user",
                         "content": f"【当前任务】{current_task.action}",
@@ -519,79 +583,85 @@ class AgentRuntime:
                 round_no = 0
                 task_content = ""
 
-                while round_no < MAX_ROUNDS:
-                    round_tools = context.tools if round_no < MAX_ROUNDS - 1 else None
+                # G4-C: 单任务异常边界 — 任务失败不使整个 AgentRun failed，
+                # 而是 failed + 级联 skip 依赖 + task_failed/task_skipped 事件后收尾
+                try:
+                    while round_no < MAX_ROUNDS:
+                        round_tools = context.tools if round_no < MAX_ROUNDS - 1 else None
 
-                    result = await model_service.call_once(
-                        model_id=context.model_id,
-                        messages=loop_messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        tools=round_tools,
-                        reasoning_effort=reasoning_effort,
-                        memory_text=context.memory_text if round_no == 0 and not has_task_graph else None,
-                    )
-
-                    final_usage = result.usage
-                    final_finish_reason = result.finish_reason
-                    # G6-A: emit token_usage 事件
-                    if final_usage:
-                        runtime_event_recorder.emit(run_id, "token_usage",
-                            self._build_token_usage_event(final_usage, context.model_id))
-
-                    if not result.tool_calls or not round_tools:
-                        task_content = result.content
-                        break
-
-                    round_no += 1
-
-                    self._record_state(run_id, RuntimePhase.TOOL_EXECUTION, "tool execution")
-                    async for event in self._exec_tool_calls_with_verification(
-                        result.tool_calls,
-                        ctx,
-                        context.project_path,
-                        read_only,
-                        loop_messages,
-                        all_tool_calls,
-                        support_approval=False,
-                    ):
-                        runtime_event_recorder.emit(
-                            run_id,
-                            event.get("type", "event"),
-                            {k: v for k, v in event.items() if k != "type"},
+                        result = await model_service.call_once(
+                            model_id=context.model_id,
+                            messages=loop_messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            tools=round_tools,
+                            reasoning_effort=reasoning_effort,
+                            memory_text=context.memory_text if round_no == 0 and not has_task_graph else None,
                         )
 
-                    self._record_state(run_id, RuntimePhase.VERIFYING, "verification")
-                    self._record_state(run_id, RuntimePhase.LLM_CALL, "next round")
+                        final_usage = result.usage
+                        final_finish_reason = result.finish_reason
+                        # G6-A: emit token_usage 事件
+                        if final_usage:
+                            runtime_event_recorder.emit(run_id, "token_usage",
+                                self._build_token_usage_event(final_usage, context.model_id))
 
-                # 轮次耗尽时无最终内容 → 补一次无工具调用获取总结
-                if not task_content:
-                    result = await model_service.call_once(
-                        model_id=context.model_id,
-                        messages=loop_messages,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                        tools=None,
-                        reasoning_effort=reasoning_effort,
-                        memory_text=None,
-                    )
-                    task_content = result.content
-                    final_usage = result.usage
-                    final_finish_reason = "max_rounds"
+                        if not result.tool_calls or not round_tools:
+                            task_content = result.content
+                            break
 
-                final_content = task_content
+                        round_no += 1
 
-                # G4-B: 任务完成 → emit + 继续下一个
-                if has_task_graph and current_task:
-                    self.update_task_status(current_task.id, "completed")
-                    runtime_event_recorder.emit(run_id, "task_completed", {
-                        "task_id": current_task.id,
-                        "action": current_task.action,
-                        "status": "completed",
-                    })
-                    continue
+                        self._record_state(run_id, RuntimePhase.TOOL_EXECUTION, "tool execution")
+                        async for event in self._exec_tool_calls_with_verification(
+                            result.tool_calls,
+                            ctx,
+                            context.project_path,
+                            read_only,
+                            loop_messages,
+                            all_tool_calls,
+                            support_approval=False,
+                        ):
+                            runtime_event_recorder.emit(
+                                run_id,
+                                event.get("type", "event"),
+                                {k: v for k, v in event.items() if k != "type"},
+                            )
 
-                break  # 无 Plan → 结束
+                        self._record_state(run_id, RuntimePhase.VERIFYING, "verification")
+                        self._record_state(run_id, RuntimePhase.LLM_CALL, "next round")
+
+                    # 轮次耗尽时无最终内容 → 补一次无工具调用获取总结
+                    if not task_content:
+                        result = await model_service.call_once(
+                            model_id=context.model_id,
+                            messages=loop_messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            tools=None,
+                            reasoning_effort=reasoning_effort,
+                            memory_text=None,
+                        )
+                        task_content = result.content
+                        final_usage = result.usage
+                        final_finish_reason = "max_rounds"
+
+                    final_content = task_content
+
+                    # G4-B: 任务完成 → emit + 继续下一个
+                    if has_task_graph and current_task:
+                        self.update_task_status(current_task.id, "completed")
+                        runtime_event_recorder.emit(run_id, "task_completed",
+                            self._task_event_payload(current_task, "completed"))
+                        continue
+
+                    break  # 无 Plan → 结束
+                except Exception as e:
+                    # G4-C: 单任务异常 → failed + 级联 skip 依赖 + 事件；运行正常收尾
+                    if has_task_graph and current_task:
+                        self._handle_task_failure(run_id, current_task, e)
+                        break
+                    raise
 
             # ──── Phase E5: → completing → completed ────
             self._record_state(run_id, RuntimePhase.COMPLETING, "finishing")
@@ -616,6 +686,8 @@ class AgentRuntime:
                     "reason": decision.reason,
                     # G6-A: Token 水位信息
                     "token_watermark": self._build_token_usage_event(final_usage, context.model_id) if final_usage else None,
+                    # G4-C: TaskGraph 进度摘要（含 completed/failed/skipped/current_step）
+                    "task_graph": self._task_graph_summary(),
                 },
             )
         except asyncio.CancelledError:
@@ -743,14 +815,21 @@ class AgentRuntime:
             if has_task_graph:
                 current_task = self.get_next_ready_task()
                 if current_task is None:
+                    # G4-C: 图中断/阻塞 → 剩余 pending 全部 skipped（收敛 is_all_done）
+                    if not self.task_graph_state.is_all_done():
+                        for skip_id in self.task_graph_state.mark_pending_skipped():
+                            skip_node = self.task_graph_state.get_task(skip_id)
+                            if skip_node is not None:
+                                yield {
+                                    "type": "task_skipped",
+                                    **self._task_event_payload(skip_node, "skipped"),
+                                }
                     break  # 全部完成或被阻塞
 
                 self.update_task_status(current_task.id, "running")
                 yield {
                     "type": "task_started",
-                    "task_id": current_task.id,
-                    "action": current_task.action,
-                    "status": "running",
+                    **self._task_event_payload(current_task, "running"),
                 }
                 # 注入任务上下文，让 LLM 知道当前执行步骤
                 current_messages.append({
@@ -830,9 +909,7 @@ class AgentRuntime:
                         self.update_task_status(current_task.id, "completed")
                         yield {
                             "type": "task_completed",
-                            "task_id": current_task.id,
-                            "action": current_task.action,
-                            "status": "completed",
+                            **self._task_event_payload(current_task, "completed"),
                         }
                         task_done = True
                         break  # 跳出内层 for，回到外层 while 取下一个任务
@@ -851,9 +928,7 @@ class AgentRuntime:
                         self.update_task_status(current_task.id, "completed")
                         yield {
                             "type": "task_completed",
-                            "task_id": current_task.id,
-                            "action": current_task.action,
-                            "status": "completed",
+                            **self._task_event_payload(current_task, "completed"),
                         }
                     continue  # 回到外层 while 取下一个任务
 
@@ -878,16 +953,22 @@ class AgentRuntime:
                 return
 
             except Exception as e:
-                # G4-B: 任务执行异常 → 标记 failed
+                # G4-C: 单任务异常 → failed + 级联 skip 依赖 + task_failed/task_skipped 事件
                 if has_task_graph and current_task:
-                    self.update_task_status(current_task.id, "failed")
+                    skipped = self.task_graph_state.mark_failed(
+                        current_task.id, str(e)[:200]
+                    )
                     yield {
                         "type": "task_failed",
-                        "task_id": current_task.id,
-                        "action": current_task.action,
-                        "status": "failed",
-                        "error": str(e)[:200],
+                        **self._task_event_payload(current_task, "failed", error=str(e)),
                     }
+                    for skip_id in skipped:
+                        skip_node = self.task_graph_state.get_task(skip_id)
+                        if skip_node is not None:
+                            yield {
+                                "type": "task_skipped",
+                                **self._task_event_payload(skip_node, "skipped"),
+                            }
                     break  # 失败后终止任务循环
                 raise  # 无 Plan 路径：原样抛出
 

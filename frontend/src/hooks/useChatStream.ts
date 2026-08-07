@@ -281,20 +281,22 @@ export function useChatStream({
           },
           // onTaskEvent：多 Agent 任务协同事件
           // - task_started：新增 running 任务，记录索引
+          // - task_skipped：新增/原地更新为 skipped（任务未执行，可能无前置 started）
           // - task_completed/failed：按 task_id 原地更新状态（不移动位置）
           (evt: TaskEvent) => {
             const node = evt.task;
-            if (evt.type === "task_started") {
+            if (evt.type === "task_started" || evt.type === "task_skipped") {
+              const status = evt.type === "task_started" ? "running" : "skipped";
               setTasks((prev) => {
-                // 防重：已存在同 task_id 则更新（后端可能重发）
+                // 防重：已存在同 task_id 则更新（后端可能重发 / skipped 无前置 started）
                 const existingIdx = taskIndexRef.current.get(node.task_id);
                 if (existingIdx != null && existingIdx < prev.length && prev[existingIdx].task_id === node.task_id) {
                   const next = prev.slice();
-                  next[existingIdx] = { ...prev[existingIdx], ...node, status: "running" };
+                  next[existingIdx] = { ...prev[existingIdx], ...node, status };
                   return next;
                 }
                 taskIndexRef.current.set(node.task_id, prev.length);
-                return [...prev, { ...node, status: "running" }];
+                return [...prev, { ...node, status }];
               });
             } else {
               // task_completed / task_failed

@@ -15,6 +15,7 @@ export type RuntimeEventType =
   | "task_started"
   | "task_completed"
   | "task_failed"
+  | "task_skipped"
   | "verification"
   | "sub_agent"
   | "vision"
@@ -89,7 +90,7 @@ export interface TextEvent extends RuntimeEventBase {
 // ============================================================================
 
 /** 任务生命周期状态 */
-export type TaskStatus = "pending" | "running" | "completed" | "failed";
+export type TaskStatus = "pending" | "running" | "completed" | "failed" | "skipped";
 
 /**
  * 任务节点（运行时累积状态）。
@@ -130,11 +131,18 @@ export interface TaskFailedEvent extends RuntimeEventBase {
   task: TaskNode;
 }
 
-/** 三种 Task 事件的联合，便于 hook 统一接收 */
+/** task_skipped 事件：依赖失败/图中断导致的任务跳过（不进入执行队列） */
+export interface TaskSkippedEvent extends RuntimeEventBase {
+  type: "task_skipped";
+  task: TaskNode;
+}
+
+/** 四种 Task 事件的联合，便于 hook 统一接收 */
 export type TaskEvent =
   | TaskStartedEvent
   | TaskCompletedEvent
-  | TaskFailedEvent;
+  | TaskFailedEvent
+  | TaskSkippedEvent;
 
 /**
  * 未来扩展事件（verification / sub_agent / vision / memory）：
@@ -160,4 +168,5 @@ export type RuntimeEvent =
   | TaskStartedEvent
   | TaskCompletedEvent
   | TaskFailedEvent
+  | TaskSkippedEvent
   | ExtensionEvent;

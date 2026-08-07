@@ -325,6 +325,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
                     case "task_started":
                     case "task_completed":
                     case "task_failed":
+                    case "task_skipped":
                       return null;
                     // 未来扩展事件（verification / sub_agent / vision / memory）：
                     // 以通用占位块呈现，字段就绪后可替换为专用组件

@@ -26,6 +26,8 @@ class TaskGraphState:
         self._node_index: Dict[str, TaskNode] = {
             n.id: n for n in self._graph.nodes
         }
+        # G4-C: 当前执行节点追踪（current_step 进度同步，不修改 Plan）
+        self._current_task_id: Optional[str] = None
 
     # ──── 状态初始化 ────
 
@@ -75,7 +77,7 @@ class TaskGraphState:
 
         Args:
             task_id: 节点 ID（如 task_0）
-            new_status: 新状态字符串（如 running / completed / failed）
+            new_status: 新状态字符串（如 running / completed / failed / skipped）
 
         Returns:
             bool: True 表示更新成功，False 表示节点未找到
@@ -91,6 +93,14 @@ class TaskGraphState:
             return False
 
         node.status = status_enum
+
+        # G4-C: current_step 追踪 — running 记录当前节点；终态清空
+        if status_enum == TaskNodeStatus.RUNNING:
+            self._current_task_id = task_id
+        elif status_enum in (TaskNodeStatus.COMPLETED, TaskNodeStatus.FAILED, TaskNodeStatus.SKIPPED):
+            if self._current_task_id == task_id:
+                self._current_task_id = None
+
         return True
 
     # ──── 查询辅助 ────
@@ -116,6 +126,113 @@ class TaskGraphState:
     def get_task(self, task_id: str) -> Optional[TaskNode]:
         """按 ID 获取节点。"""
         return self._node_index.get(task_id)
+
+    # ──── G4-C: 失败级联 / 图中断 / 进度同步 ────
+
+    @property
+    def current_task_id(self) -> Optional[str]:
+        """当前正在执行的节点 ID（无则 None）。"""
+        return self._current_task_id
+
+    def get_step_index(self, task_id: str) -> int:
+        """节点在图的执行顺序序号（0-based）；不存在返回 -1。"""
+        for i, n in enumerate(self._graph.nodes):
+            if n.id == task_id:
+                return i
+        return -1
+
+    @property
+    def total_steps(self) -> int:
+        return len(self._graph.nodes)
+
+    def mark_failed(self, task_id: str, error: Optional[str] = None) -> list:
+        """将节点标记为 failed，并级联跳过所有（直接/间接）依赖它的待执行节点。
+
+        G4-C 状态一致性：单 Task 异常 → 该节点 failed，其后继节点（依赖链）全部
+        skipped（不再阻塞于半终态），返回被跳过的节点 ID 列表。
+
+        Args:
+            task_id: 失败的节点 ID
+            error: 失败原因（记录到节点，透出给事件；不修改 Plan）
+
+        Returns:
+            list: 被级联标记为 skipped 的节点 ID 列表（不含 task_id 本身）
+        """
+        node = self._node_index.get(task_id)
+        if node is None:
+            return []
+
+        node.status = TaskNodeStatus.FAILED
+        if self._current_task_id == task_id:
+            self._current_task_id = None
+
+        # 仅对失败节点的后继（依赖链上仍 pending 的节点）标记 skipped
+        skipped: list = []
+        for dep_id in self._iter_transitive_dependents(task_id):
+            dep_node = self._node_index.get(dep_id)
+            if dep_node is not None and dep_node.status == TaskNodeStatus.PENDING:
+                dep_node.status = TaskNodeStatus.SKIPPED
+                skipped.append(dep_id)
+        return skipped
+
+    def mark_pending_skipped(self, reason: Optional[str] = None) -> list:
+        """将所有仍处于 PENDING 的节点标记为 skipped（图中断兜底）。
+
+        用于：任务循环因阻塞/中断退出时，保证不存在"永远 pending"的悬空节点，
+        使 is_all_done() 收敛到 True。
+
+        Returns:
+            list: 被标记为 skipped 的节点 ID 列表
+        """
+        skipped = [
+            n.id for n in self._graph.nodes if n.status == TaskNodeStatus.PENDING
+        ]
+        for task_id in skipped:
+            self._node_index[task_id].status = TaskNodeStatus.SKIPPED
+        return skipped
+
+    def get_progress(self) -> dict:
+        """G4-C 进度快照（供事件/metadata 输出，不修改 Plan）。
+
+        Returns:
+            dict: {
+                current_task_id, step_index, total_steps,
+                completed, failed, skipped, pending, running,
+                is_all_done, has_failed
+            }
+        """
+        counts = {status.value: 0 for status in TaskNodeStatus}
+        for n in self._graph.nodes:
+            counts[n.status.value] = counts.get(n.status.value, 0) + 1
+        return {
+            "current_task_id": self._current_task_id,
+            "step_index": self.get_step_index(self._current_task_id) if self._current_task_id else -1,
+            "total_steps": len(self._graph.nodes),
+            "completed": counts.get("completed", 0),
+            "failed": counts.get("failed", 0),
+            "skipped": counts.get("skipped", 0),
+            "pending": counts.get("pending", 0),
+            "running": counts.get("running", 0),
+            "is_all_done": self.is_all_done(),
+            "has_failed": self.has_failed(),
+        }
+
+    def _iter_transitive_dependents(self, task_id: str):
+        """迭代 task_id 的所有传递后继节点（BFS，按依赖关系向下一层展开）。
+
+        后继定义：存在一条路径 task_id → n（经 depends_on / edges）。
+        """
+        visited = {task_id}
+        queue = [task_id]
+        while queue:
+            current = queue.pop(0)
+            for n in self._graph.nodes:
+                if n.id in visited:
+                    continue
+                if current in n.depends_on:
+                    visited.add(n.id)
+                    queue.append(n.id)
+                    yield n.id
 
     # ──── 内部方法 ────
 
