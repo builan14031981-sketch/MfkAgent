@@ -1,12 +1,45 @@
 """开发辅助接口：生成"对话大纲压测"真实会话（纯假数据，零 AI 调用）"""
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+from typing import Dict, Any
 
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message
+from app.services.tools import tool_registry
 
 router = APIRouter()
+
+
+class DevToolCallRequest(BaseModel):
+    """开发调试用裸工具调用（仅 DEBUG 模式可用，绕过 AgentRuntime 闭环）。"""
+    tool_name: str
+    arguments: Dict[str, Any] = {}
+
+
+class DevToolCallResponse(BaseModel):
+    success: bool
+    output: str
+    error: str
+
+
+@router.post("/tools/call", response_model=DevToolCallResponse)
+async def dev_call_tool(request: DevToolCallRequest):
+    """开发调试：直接执行注册工具（绕过 Runtime 闭环）。
+
+    仅 DEBUG 模式可用；生产（DEBUG=False）返回 404 视为不存在。
+    注意：这不是产品执行路径，产品侧所有工具调用必须经过 AgentRuntime。
+    """
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="仅调试模式可用")
+    result = await tool_registry.execute(request.tool_name, **request.arguments)
+    return DevToolCallResponse(
+        success=result.success,
+        output=result.output,
+        error=result.error,
+    )
+
 
 SHORT_QUESTIONS = [
     "如何优化 React 渲染性能？",

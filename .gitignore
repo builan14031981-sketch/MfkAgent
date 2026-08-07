@@ -44,4 +44,6 @@ electron/node_modules/
 # Local tooling / secrets
 opencode.json
 .trae/
+backend/seed_siliconflow_key.py
+backend/test_siliconflow_api.py
 

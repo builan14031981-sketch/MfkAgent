@@ -28,8 +28,17 @@ class ToolRuntime:
         self._selector = ToolSelector()
         self._permission = PermissionFilter()
 
-    def process(self, message: str, chat) -> Dict:
+    def process(
+        self,
+        message: str,
+        chat,
+        agent_capabilities=None,
+    ) -> Dict:
         """唯一入口：接收用户消息和 Chat 对象，返回工具决策结果。
+
+        Phase B-2 架构：权限决定工具可见性，模型决定调用。
+        工具目录由 PermissionFilter.resolve 根据 chat（模式/项目/capabilities）决定，
+        与消息内容无关；意图只作为软提示注入 system prompt，不 gate 工具。
 
         Args:
             message: 用户消息文本
@@ -38,38 +47,32 @@ class ToolRuntime:
                 - mode: str ("build" | "plan")
                 - agent_id: str
                 - project_id: int | None
+            agent_capabilities: Agent 的 capabilities（可选，仅控制高级能力）
 
         Returns:
             {
-                "need_tools": bool,           # 是否需要工具
+                "need_tools": bool,           # 会话是否可见工具（目录非空）
                 "tools": List[Dict],          # 工具定义列表（可直接传给 model_service）
                 "system_policy": str,         # 全局工具策略（需注入 system prompt）
                 "decision": {                 # 决策详情
                     "layer": str,
+                    "intent": str,
                     "reason": str,
                     "confidence": float,
                 },
             }
         """
-        # 1. 意图分析（三层判断）
+        # 1. 权限 → 会话可见工具全集（与消息内容无关）
+        tool_names = self._permission.resolve(chat, agent_capabilities)
+
+        # 2. 意图分析 → 供 decision 使用（soft_hint 由 chat.py 在 ⑦ 层自行注入）
         intent_result = self._intent.analyze(message)
 
-        # 2. 工具规划
-        tool_names = self._planner.plan(intent_result, chat)
-
-        # 3. 权限过滤
-        tool_names = self._permission.filter(tool_names, chat)
-
-        # 4. 工具选择（获取定义）
+        # 3. 工具选择（获取定义）
         tools = self._selector.select(tool_names, chat)
 
-        # 5. 构建全局策略
+        # 4. 构建全局策略（兼容导出；chat.py 现自行按 ①-⑧ 组装，soft_hint 由调用方注入 ⑦ 层）
         policy = build_policy(chat)
-
-        # 如果 Layer 3 触发了自检提示词，将其注入策略
-        self_check = intent_result.get("self_check_prompt", "")
-        if self_check:
-            policy = policy + "\n\n" + self_check
 
         return {
             "need_tools": len(tools) > 0,
@@ -77,6 +80,7 @@ class ToolRuntime:
             "system_policy": policy,
             "decision": {
                 "layer": intent_result["layer"],
+                "intent": intent_result.get("intent", "general_chat"),
                 "reason": intent_result["reason"],
                 "confidence": intent_result["confidence"],
             },

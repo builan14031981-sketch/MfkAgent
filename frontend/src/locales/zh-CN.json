@@ -1,324 +1,376 @@
 {
-  "common": {
-    "loading": "加载中...",
-    "error": "错误",
-    "success": "成功",
-    "cancel": "取消",
-    "confirm": "确认",
-    "save": "保存",
-    "delete": "删除",
-    "edit": "编辑",
-    "create": "创建",
-    "back": "返回",
-    "close": "关闭",
-    "copy": "复制",
-    "copied": "已复制",
-    "search": "搜索",
-    "noData": "暂无数据",
-    "clear": "清空",
-    "saved": "已保存",
-    "saving": "保存中..."
+ "common": {
+  "loading": "加载中...",
+  "error": "错误",
+  "success": "成功",
+  "cancel": "取消",
+  "confirm": "确认",
+  "save": "保存",
+  "delete": "删除",
+  "edit": "编辑",
+  "create": "创建",
+  "back": "返回",
+  "close": "关闭",
+  "copy": "复制",
+  "copied": "已复制",
+  "search": "搜索",
+  "noData": "暂无数据",
+  "clear": "清空",
+  "saved": "已保存",
+  "saving": "保存中..."
+ },
+ "sidebar": {
+  "newTask": "New Task",
+  "chats": "Chats",
+  "settings": "Settings",
+  "memory": "Memory",
+  "noChats": "还没有聊天",
+  "noChatsDesc": "开始一次新的对话",
+  "rename": "重命名",
+  "pin": "置顶",
+  "unpin": "取消置顶",
+  "delete": "删除",
+  "projectWorkspace": "项目工作区",
+  "generalChats": "通用对话",
+  "openProject": "打开 / 新建项目工作区",
+  "openProjectDesc": "选择或创建一个项目，让 AI 进入工作区",
+  "noProjects": "暂无项目",
+  "noProjectsDesc": "打开或新建一个项目工作区",
+  "newProject": "新建项目",
+  "projectName": "项目名称",
+  "projectPath": "项目路径",
+  "createProject": "创建",
+  "pickDirectory": "选择文件夹",
+  "newChatInProject": "在此项目中新建会话",
+  "newChatTitle": "新会话"
+ },
+ "home": {
+  "welcome": [
+   "嗨，今天感觉怎么样？",
+   "今天想做哪个项目？",
+   "有什么新的灵感吗？",
+   "准备好开始工作了吗？",
+   "需要我帮你做什么？"
+  ],
+  "inputPlaceholder": "输入内容开始工作...",
+  "agentSwitch": "切换 Agent",
+  "quickStarts": [
+   "帮我审查一段代码",
+   "设计一个组件方案",
+   "分析项目架构",
+   "写一份周报"
+  ],
+  "hero": {
+   "title": "启动主题",
+   "switchTheme": "切换启动主题",
+   "animations": "开场动画",
+   "favorites": "收藏",
+   "seeMore": "查看更多",
+   "allThemes": "全部主题",
+   "random": "随机",
+   "back": "返回",
+   "quoteMenu": "台词菜单",
+   "switchQuote": "切换欢迎语",
+   "quoteShort": "台词",
+   "quoteRandom": "随机一句",
+   "noFavorites": "暂无收藏，点 ☆ 收藏常用主题",
+   "favorite": "收藏",
+   "unfavorite": "取消收藏",
+   "categories": {
+    "classic": "经典",
+    "terminal": "终端",
+    "system": "系统",
+    "retro": "复古",
+    "developer": "开发者",
+    "cinematic": "影院",
+    "ai": "AI 未来",
+    "design": "设计",
+    "other": "其他"
+   }
+  }
+ },
+ "chat": {
+  "title": "Chat",
+  "startConversation": "开始对话",
+  "startConversationDesc": "输入消息开始与 {name} 交流",
+  "inputPlaceholder": "输入消息...",
+   "sending": "发送中...",
+   "orb": {
+    "working": "正在等待响应",
+    "solving": "正在思考",
+    "searching": "正在调用工具",
+    "listening": "等待你的批准",
+    "composing": "正在生成"
+   },
+   "context": {
+    "dashboard": "上下文",
+    "warning": "⚠️ 上下文已达 {pct}%，建议压缩会话",
+    "compress": "压缩"
+   },
+  "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
+  "noProjectHint": "当前未关联本地项目，文件操作将默认保存在软件数据目录",
+  "invalidId": "无效的聊天 ID",
+  "backToHome": "返回首页",
+  "projectContext": "项目上下文",
+  "selectedFiles": "已选文件",
+  "noFilesSelected": "勾选项目文件以带入聊天上下文",
+  "reasoning": {
+   "title": "思考模式",
+   "off": "关闭",
+   "fast": "high",
+   "deep": "max"
   },
-  "sidebar": {
-    "newTask": "New Task",
-    "chats": "Chats",
-    "settings": "Settings",
-    "memory": "Memory",
-    "noChats": "还没有聊天",
-    "noChatsDesc": "开始一次新的对话",
-    "rename": "重命名",
-    "pin": "置顶",
-    "unpin": "取消置顶",
-    "delete": "删除",
-    "projectWorkspace": "项目工作区",
-    "generalChats": "通用对话",
-    "openProject": "打开 / 新建项目工作区",
-    "openProjectDesc": "选择或创建一个项目，让 AI 进入工作区",
-    "noProjects": "暂无项目",
-    "noProjectsDesc": "打开或新建一个项目工作区",
-    "newProject": "新建项目",
-    "projectName": "项目名称",
-    "projectPath": "项目路径",
-    "createProject": "创建",
-    "pickDirectory": "选择文件夹",
-    "newChatInProject": "在此项目中新建会话",
-    "newChatTitle": "新会话"
+  "mode": {
+   "build": "构建",
+   "plan": "规划"
   },
-  "home": {
-    "welcome": [
-      "嗨，今天感觉怎么样？",
-      "今天想做哪个项目？",
-      "有什么新的灵感吗？",
-      "准备好开始工作了吗？",
-      "需要我帮你做什么？"
-    ],
-    "inputPlaceholder": "输入内容开始工作...",
-    "agentSwitch": "切换 Agent",
-    "quickStarts": [
-      "帮我审查一段代码",
-      "设计一个组件方案",
-      "分析项目架构",
-      "写一份周报"
-    ],
-    "hero": {
-      "title": "启动主题",
-      "switchTheme": "切换启动主题",
-      "animations": "开场动画",
-      "favorites": "收藏",
-      "seeMore": "查看更多",
-      "allThemes": "全部主题",
-      "random": "随机",
-      "back": "返回",
-      "quoteMenu": "台词菜单",
-      "switchQuote": "切换欢迎语",
-      "quoteShort": "台词",
-      "quoteRandom": "随机一句",
-      "noFavorites": "暂无收藏，点 ☆ 收藏常用主题",
-      "favorite": "收藏",
-      "unfavorite": "取消收藏",
-      "categories": {
-        "classic": "经典",
-        "terminal": "终端",
-        "system": "系统",
-        "retro": "复古",
-        "developer": "开发者",
-        "cinematic": "影院",
-        "ai": "AI 未来",
-        "design": "设计",
-        "other": "其他"
-      }
+  "personality": {
+   "title": "人格",
+   "levels": {
+    "warm": {
+     "name": "温和",
+     "desc": "更体贴、注重感受，语气温暖"
+    },
+    "gentle": {
+     "name": "偏温和",
+     "desc": "兼顾理解，表达偏感性"
+    },
+    "balanced": {
+     "name": "平衡",
+     "desc": "理性与感性均衡"
+    },
+    "rational": {
+     "name": "偏理性",
+     "desc": "逻辑优先，表达简洁"
+    },
+    "strong": {
+     "name": "强理性",
+     "desc": "严格逻辑、客观直接"
     }
+   }
   },
-  "chat": {
-    "title": "Chat",
-    "startConversation": "开始对话",
-    "startConversationDesc": "输入消息开始与 {name} 交流",
-    "inputPlaceholder": "输入消息...",
-    "sending": "发送中...",
-    "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
-    "invalidId": "无效的聊天 ID",
-    "backToHome": "返回首页",
-    "projectContext": "项目上下文",
-    "selectedFiles": "已选文件",
-    "noFilesSelected": "勾选项目文件以带入聊天上下文",
-    "reasoning": {
-      "title": "思考模式",
-      "off": "关闭",
-      "fast": "high",
-      "deep": "max"
-    },
-    "mode": {
-      "build": "构建",
-      "plan": "规划"
-    },
-    "personality": {
-      "title": "人格",
-      "levels": {
-        "warm": {
-          "name": "温和",
-          "desc": "更体贴、注重感受，语气温暖"
-        },
-        "gentle": {
-          "name": "偏温和",
-          "desc": "兼顾理解，表达偏感性"
-        },
-        "balanced": {
-          "name": "平衡",
-          "desc": "理性与感性均衡"
-        },
-        "rational": {
-          "name": "偏理性",
-          "desc": "逻辑优先，表达简洁"
-        },
-        "strong": {
-          "name": "强理性",
-          "desc": "严格逻辑、客观直接"
-        }
-      }
-    },
-    "dropToAttach": "松开以添加文件到上下文",
-    "dragHint": "拖拽文件到此处作为上下文",
-    "attachedFiles": "已附加文件",
-    "toolWritten": "已自动写入硬盘",
-    "codeExpand": "展开",
-    "codeCollapse": "折叠",
-    "codeCopy": "复制",
-    "codeCopied": "已复制",
-    "codeCollapsedHint": "内容已折叠，点击展开查看",
-    "jumpToLatest": "回最新",
-    "streamErrorTitle": "响应失败",
-    "streamRetry": "重试",
-    "messageOutline": "对话大纲",
+  "dropToAttach": "松开以添加文件到上下文",
+  "dragHint": "拖拽文件到此处作为上下文",
+  "attachedFiles": "已附加文件",
+  "toolWritten": "已自动写入硬盘",
+  "codeExpand": "展开",
+  "codeCollapse": "折叠",
+  "codeCopy": "复制",
+  "codeCopied": "已复制",
+  "codeCollapsedHint": "内容已折叠，点击展开查看",
+  "jumpToLatest": "回最新",
+  "streamErrorTitle": "响应失败",
+  "streamRetry": "重试",
+  "messageOutline": "对话大纲",
+  "edit": "编辑",
+  "quote": "引用",
+  "regenerate": "重新生成",
+  "thinking": "思考过程",
+  "projectInitTitle": "已关联项目：{name}",
+  "projectInitDesc": "您想要在这个项目里面做什么？",
+  "projectInitPlaceholder": "输入任务，回车开始...",
+  "projectInitSkip": "跳过，直接开始新对话",
+  "projectInitDefaultTitle": "{name} 的新对话",
+  "menu": {
+   "uploadFile": "上传文件",
+   "linkProject": "关联本地项目",
+   "clearContext": "清除上下文"
+  },
+  "projectLinked": "已关联项目",
+  "projectLinkFailed": "关联项目失败",
+  "approvalTitle": "等待你的确认",
+  "approvalApprove": "批准执行",
+  "approvalDeny": "拒绝",
+  "riskLevel": {
+   "read_only": "只读",
+   "write": "写入",
+   "destructive": "破坏性"
+  }
+ },
+ "settings": {
+  "title": "设置",
+  "general": {
+   "title": "通用",
+   "theme": {
+    "title": "外观",
+    "desc": "选择界面主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+   },
+   "language": {
+    "title": "语言",
+    "desc": "界面显示语言",
+    "zh-CN": "中文",
+    "en-US": "English"
+   },
+   "font": {
+    "title": "字体",
+    "desc": "选择界面字体风格",
+    "system": "系统默认",
+    "source-han-sans": "思源黑体",
+    "lxgw-wenkai": "霞鹜文楷",
+    "ibm-plex-sans": "IBM Plex Sans"
+   },
+   "heroTheme": {
+    "title": "首页启动主题",
+    "desc": "控制首页主题入口与随机规则；收藏与切换在首页完成",
+    "entry": "启用首页主题入口",
+    "entryDesc": "关闭后首页显示静态标题，不展示主题入口",
+    "random": "启动时随机主题",
+    "randomDesc": "每次启动从范围内随机选择主题，保留探索感",
+    "scope": "随机主题范围",
+    "scopeDesc": "随机时的候选主题范围",
+    "scopeAll": "全部主题",
+    "scopeFavorites": "收藏主题"
+   }
+  },
+  "model": {
+   "title": "模型",
+   "defaultModel": {
+    "title": "默认模型",
+    "desc": "新聊天默认使用的 AI 模型"
+   },
+   "reasoningEffort": {
+    "title": "默认推理程度",
+    "desc": "未显式指定时，消息使用的推理档位"
+   },
+   "apiConfig": {
+    "title": "API 配置",
+    "desc": "配置各提供商的 API Key，保存后生效"
+   },
+   "providers": {
+    "title": "模型提供商",
+    "desc": "配置各提供商的 API Key 与端点，Key 仅存储在本机",
+    "free": "免费",
+    "configured": "已配置",
+    "notConfigured": "未配置",
+    "configure": "配置",
+    "clearKey": "清除 Key",
+    "keyLabel": "API Key",
+    "baseLabel": "API Base（留空恢复默认）"
+   },
+   "custom": {
+    "title": "自定义模型",
+    "desc": "接入任意 OpenAI 兼容端点，model_id 与内置重名时覆盖内置",
+    "add": "添加",
     "edit": "编辑",
-    "quote": "引用",
-    "regenerate": "重新生成",
-    "thinking": "思考过程",
-    "projectInitTitle": "已关联项目：{name}",
-    "projectInitDesc": "您想要在这个项目里面做什么？",
-    "projectInitPlaceholder": "输入任务，回车开始...",
-    "projectInitSkip": "跳过，直接开始新对话",
-    "menu": {
-      "uploadFile": "上传文件",
-      "linkProject": "关联本地项目",
-      "clearContext": "清除上下文"
-    },
-    "projectLinked": "已关联项目",
-    "projectLinkFailed": "关联项目失败"
+    "delete": "删除",
+    "enabled": "启用/停用",
+    "name": "显示名称",
+    "modelId": "模型 ID",
+    "provider": "提供商",
+    "modelName": "上游模型名",
+    "apiBase": "API Base",
+    "apiKey": "API Key",
+    "maxTokens": "最大 Token",
+    "temperature": "温度",
+    "noCustom": "暂无自定义模型",
+    "confirmDelete": "确定删除该自定义模型？"
+   }
   },
-  "settings": {
-    "title": "设置",
-    "general": {
-      "title": "通用",
-      "theme": {
-        "title": "外观",
-        "desc": "选择界面主题",
-        "light": "浅色",
-        "dark": "深色",
-        "system": "跟随系统"
-      },
-      "language": {
-        "title": "语言",
-        "desc": "界面显示语言",
-        "zh-CN": "中文",
-        "en-US": "English"
-      },
-      "font": {
-        "title": "字体",
-        "desc": "选择界面字体风格",
-        "system": "系统默认",
-        "source-han-sans": "思源黑体",
-        "lxgw-wenkai": "霞鹜文楷",
-        "ibm-plex-sans": "IBM Plex Sans"
-      },
-      "heroTheme": {
-        "title": "首页启动主题",
-        "desc": "控制首页主题入口与随机规则；收藏与切换在首页完成",
-        "entry": "启用首页主题入口",
-        "entryDesc": "关闭后首页显示静态标题，不展示主题入口",
-        "random": "启动时随机主题",
-        "randomDesc": "每次启动从范围内随机选择主题，保留探索感",
-        "scope": "随机主题范围",
-        "scopeDesc": "随机时的候选主题范围",
-        "scopeAll": "全部主题",
-        "scopeFavorites": "收藏主题"
-      }
-    },
-    "model": {
-      "title": "模型",
-      "defaultModel": {
-        "title": "默认模型",
-        "desc": "新聊天默认使用的 AI 模型"
-      },
-      "reasoningEffort": {
-        "title": "默认推理程度",
-        "desc": "未显式指定时，消息使用的推理档位"
-      },
-      "apiConfig": {
-        "title": "API 配置",
-        "desc": "配置各提供商的 API Key，保存后生效"
-      }
-    },
-    "ai": {
-      "title": "AI 行为",
-      "defaultAgent": {
-        "title": "默认 Agent",
-        "desc": "新聊天默认使用的 AI 工作伙伴"
-      },
-      "defaultPersonality": {
-        "title": "默认人格",
-        "desc": "调整 AI 的理性/感性倾向",
-        "veryEmotional": "极度感性",
-        "balanced": "平衡",
-        "veryRational": "极度理性"
-      },
-      "agents": {
-        "title": "预设 Agent",
-        "desc": "系统提供的 AI 工作伙伴",
-        "systemPrompt": "系统提示词",
-        "personality": "人格配置",
-        "detail": "详情",
-        "manage": "管理 Agent 列表",
-        "backToSettings": "返回设置",
-        "backToAgentList": "返回列表",
-        "parameters": "参数配置",
-        "model": "默认模型",
-        "capabilities": "能力"
-      }
-    },
-    "memory": {
-      "title": "长期记忆",
-      "desc": "AI 会记住你的偏好和重要信息"
-    },
-    "plugins": {
-      "title": "插件",
-      "desc": "管理 AI 扩展能力（持久化存储）",
-      "create": "新建插件",
-      "cancelCreate": "取消",
-      "name": "名称",
-      "version": "版本",
-      "description": "描述",
-      "author": "作者",
-      "config": "配置",
-      "configInvalid": "JSON 格式无效",
-      "empty": "暂无插件，点击右上角新建",
-      "delete": "删除",
-      "deleteConfirm": "确定要删除此插件吗？该操作不可逆。",
-      "statusActive": "已激活",
-      "statusInactive": "未激活",
-      "statusInstalled": "已安装",
-      "statusError": "异常"
-    },
-    "about": {
-      "title": "关于",
-      "version": "版本: v1.0.0",
-      "description": "专业的 AI 工作助手",
-      "aiMayError": "MfkAgent 可能会犯错，请核实重要信息"
-    }
+  "ai": {
+   "title": "AI 行为",
+   "defaultAgent": {
+    "title": "默认 Agent",
+    "desc": "新聊天默认使用的 AI 工作伙伴"
+   },
+   "defaultPersonality": {
+    "title": "默认人格",
+    "desc": "调整 AI 的理性/感性倾向",
+    "veryEmotional": "极度感性",
+    "balanced": "平衡",
+    "veryRational": "极度理性"
+   },
+   "agents": {
+    "title": "预设 Agent",
+    "desc": "系统提供的 AI 工作伙伴",
+    "systemPrompt": "系统提示词",
+    "personality": "人格配置",
+    "detail": "详情",
+    "manage": "管理 Agent 列表",
+    "backToSettings": "返回设置",
+    "backToAgentList": "返回列表",
+    "parameters": "参数配置",
+    "modelGlobal": "模型选择在每次聊天中独立配置，Agent 不绑定默认模型",
+    "capabilities": "能力",
+    "capabilitiesHint": "能力倾向标签影响 Agent 的行为倾向，不影响工具权限"
+   }
   },
   "memory": {
-    "title": "长期记忆",
-    "selectAgent": "选择 Agent",
-    "selectProject": "选择项目",
-    "selectProjectPlaceholder": "选择一个项目...",
-    "scopeGlobal": "全局",
-    "scopeAgent": "Agent",
-    "scopeProject": "项目",
-    "addMemory": "添加记忆",
-    "inputPlaceholder": "例如：当前项目使用的是 Next.js 14",
-    "add": "添加",
-    "memoryList": "记忆列表",
-    "noMemories": "暂无记忆",
-    "noMemoriesDesc": "添加记忆让 AI 更了解你",
-    "delete": "删除",
-    "deleteConfirm": "确认删除？",
-    "scopeLabel": "作用域",
-    "createdAt": "创建于"
+   "title": "长期记忆",
+   "desc": "AI 会记住你的偏好和重要信息"
   },
-  "project": {
-    "title": "Project",
-    "openProject": "打开一个项目",
-    "openProjectDesc": "让AI帮助你工作"
+  "plugins": {
+   "title": "插件",
+   "desc": "管理 AI 扩展能力（持久化存储）",
+   "create": "新建插件",
+   "cancelCreate": "取消",
+   "name": "名称",
+   "version": "版本",
+   "description": "描述",
+   "author": "作者",
+   "config": "配置",
+   "configInvalid": "JSON 格式无效",
+   "empty": "暂无插件，点击右上角新建",
+   "delete": "删除",
+   "deleteConfirm": "确定要删除此插件吗？该操作不可逆。",
+   "statusActive": "已激活",
+   "statusInactive": "未激活",
+   "statusInstalled": "已安装",
+   "statusError": "异常"
   },
-  "projects": {
-    "fileBrowser": "文件浏览",
-    "fileSearch": "文件搜索",
-    "fileContent": "文件内容",
-    "rootDirectory": "根目录",
-    "emptyDirectory": "空目录",
-    "emptyDirectoryDesc": "此目录下没有文件",
-    "searchPlaceholder": "搜索文件名...",
-    "searchHint": "输入关键词搜索文件",
-    "noResults": "未找到匹配的文件",
-    "noResultsDesc": "尝试其他关键词",
-    "selectFile": "请选择文件",
-    "searching": "搜索中...",
-    "loadingFile": "加载文件中..."
-  },
-  "tools": {
-    "title": "工具",
-    "parameters": "参数",
-    "execute": "执行",
-    "executing": "执行中...",
-    "result": "结果"
+  "about": {
+   "title": "关于",
+   "version": "版本: v1.0.0",
+   "description": "专业的 AI 工作助手",
+   "aiMayError": "MfkAgent 可能会犯错，请核实重要信息"
   }
+ },
+ "memory": {
+  "title": "长期记忆",
+  "selectAgent": "选择 Agent",
+  "selectProject": "选择项目",
+  "selectProjectPlaceholder": "选择一个项目...",
+  "scopeGlobal": "全局",
+  "scopeAgent": "Agent",
+  "scopeProject": "项目",
+  "addMemory": "添加记忆",
+  "inputPlaceholder": "例如：当前项目使用的是 Next.js 14",
+  "add": "添加",
+  "memoryList": "记忆列表",
+  "noMemories": "暂无记忆",
+  "noMemoriesDesc": "添加记忆让 AI 更了解你",
+  "delete": "删除",
+  "deleteConfirm": "确认删除？",
+  "scopeLabel": "作用域",
+  "createdAt": "创建于"
+ },
+ "project": {
+  "title": "Project",
+  "openProject": "打开一个项目",
+  "openProjectDesc": "让AI帮助你工作"
+ },
+ "projects": {
+  "fileBrowser": "文件浏览",
+  "fileSearch": "文件搜索",
+  "fileContent": "文件内容",
+  "rootDirectory": "根目录",
+  "emptyDirectory": "空目录",
+  "emptyDirectoryDesc": "此目录下没有文件",
+  "searchPlaceholder": "搜索文件名...",
+  "searchHint": "输入关键词搜索文件",
+  "noResults": "未找到匹配的文件",
+  "noResultsDesc": "尝试其他关键词",
+  "selectFile": "请选择文件",
+  "searching": "搜索中...",
+  "loadingFile": "加载文件中..."
+ },
+ "tools": {
+  "title": "工具",
+  "parameters": "参数",
+  "execute": "执行",
+  "executing": "执行中...",
+  "result": "结果"
+ }
 }

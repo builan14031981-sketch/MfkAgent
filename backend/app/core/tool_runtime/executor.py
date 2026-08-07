@@ -10,6 +10,7 @@
 - ToolCallCard 格式化
 """
 
+import asyncio
 import json
 import time
 from typing import Callable, Dict, Any, Optional
@@ -19,7 +20,9 @@ from app.core.git_tools import GIT_TOOLS, execute_git_tool
 from app.core.search_tools import SEARCH_TOOLS, execute_search_tool
 from app.core.command_tools import COMMAND_TOOLS, execute_command_tool
 from app.services.tools import tool_registry
-from app.core.tool_runtime.events import make_tool_start, make_tool_result
+from app.core.tool_runtime.events import make_tool_start, make_tool_result, make_tool_approval
+from app.core.tool_runtime.risk_engine import command_risk_engine, evaluate_tool, Verdict
+from app.core.tool_runtime.approval import approval_registry
 
 
 async def execute_tool(
@@ -67,42 +70,36 @@ async def execute_tool(
 
     result_text = ""
 
-    # 文件工具
-    if func_name in ("write_file", "read_file", "list_files"):
-        if not project_path:
-            result_text = "错误: 文件操作需要绑定项目"
-        elif read_only and func_name == "write_file":
-            result_text = "错误: 当前为 plan 只读模式，禁止写入或修改项目文件。如需修改请切换到 build 模式。"
-        else:
-            result_text = execute_file_tool(func_name, project_path=project_path, **func_args)
+    # 兜底异常保护（Phase C-1）：工具执行异常绝不能打断整个 Agent loop，
+    # 统一转换为 tool_result(success=false, error) 回喂模型继续下一轮。
+    try:
+        mode = "plan" if read_only else "build"
 
-    # Git 工具
-    elif func_name in GIT_TOOLS:
-        if not project_path:
-            result_text = "错误: Git 操作需要绑定项目"
-        elif read_only:
-            result_text = "错误: 当前为 plan 只读模式，git 提交/回滚类操作被禁止。查看状态可先切换到 build 模式。"
+        # 1. 风险判定（唯一执行闸）：命令走命令引擎，文件/git 等走工具策略。
+        #    只读工具 → ALLOW 直接执行；写入工具 → build 模式 ASK / plan 模式 DENY。
+        if func_name in COMMAND_TOOLS:
+            command = str(func_args.get("command", "") or "")
+            decision = command_risk_engine.evaluate(command, mode)
         else:
-            result_text = execute_git_tool(func_name, project_path=project_path, **func_args)
+            decision = evaluate_tool(func_name, mode)
 
-    # 搜索工具
-    elif func_name in SEARCH_TOOLS:
-        if not project_path:
-            result_text = "错误: 搜索操作需要绑定项目"
+        if decision.verdict == Verdict.DENY:
+            result_text = decision.reason
+        elif decision.verdict == Verdict.ASK:
+            # 需用户确认：登记审批并返回 pending record（tool_result 由后续 complete_approval 发射）
+            return _make_pending_approval(
+                tool_call_id=tool_call_id,
+                func_name=func_name,
+                func_args=func_args,
+                decision=decision,
+                ctx=ctx,
+                read_only=read_only,
+                emit=emit,
+            )
         else:
-            result_text = execute_search_tool(func_name, project_path=project_path, **func_args)
-
-    # 命令工具
-    elif func_name in COMMAND_TOOLS:
-        if read_only:
-            result_text = "错误: 当前为 plan 只读模式，禁止执行命令。查看状态可先切换到 build 模式。"
-        else:
-            result_text = execute_command_tool(func_name, project_path=project_path or "", **func_args)
-
-    # 通用工具（web_search, fetch_url, add_memory 等）
-    else:
-        r = await tool_registry.execute(func_name, **{**ctx, **func_args})
-        result_text = r.output if r.success else f"Error: {r.error}"
+            result_text = await _run_tool(func_name, func_args, project_path, ctx)
+    except Exception as e:  # noqa: BLE001
+        result_text = f"错误: 工具执行异常: {e}"
 
     # ToolCallCard 格式化
     rel_path = str(func_args.get("relative_path", ""))
@@ -132,3 +129,157 @@ async def execute_tool(
         ))
 
     return record
+
+
+async def _run_tool(
+    func_name: str,
+    func_args: Dict[str, Any],
+    project_path: str | None,
+    ctx: Dict[str, Any],
+) -> str:
+    """执行通过风险判定后的工具调用（不重复判定）。
+
+    统一承载文件 / Git / 搜索 / 命令 / 通用工具的实体内核。
+    """
+    if func_name in ("write_file", "read_file", "list_files"):
+        if not project_path:
+            return "错误: 文件操作需要绑定项目"
+        return execute_file_tool(func_name, project_path=project_path, **func_args)
+
+    if func_name in GIT_TOOLS:
+        if not project_path:
+            return "错误: Git 操作需要绑定项目"
+        return execute_git_tool(func_name, project_path=project_path, **func_args)
+
+    if func_name in SEARCH_TOOLS:
+        if not project_path:
+            return "错误: 搜索操作需要绑定项目"
+        return execute_search_tool(func_name, project_path=project_path, **func_args)
+
+    if func_name in COMMAND_TOOLS:
+        return execute_command_tool(func_name, project_path=project_path or "", **func_args)
+
+    r = await tool_registry.execute(func_name, **{**ctx, **func_args})
+    return r.output if r.success else f"Error: {r.error}"
+
+
+def _describe_tool_command(func_name: str, func_args: Dict[str, Any]) -> str:
+    """生成审批卡片的可读描述文本。"""
+    if func_name == "run_command":
+        return str(func_args.get("command", "") or "")
+    if func_name == "write_file":
+        return f"写入文件: {func_args.get('relative_path', '')}"
+    if func_name in GIT_TOOLS:
+        return f"{func_name}({', '.join(f'{k}={v}' for k, v in func_args.items())})"
+    return func_name
+
+
+def _make_pending_approval(
+    tool_call_id: str,
+    func_name: str,
+    func_args: Dict,
+    decision,
+    ctx: Dict[str, Any],
+    read_only: bool = False,
+    emit: Optional[Callable[[Dict], None]] = None,
+) -> Dict:
+    """登记待审批工具调用，发射 tool_approval 事件，返回 status=awaiting_approval 的 pending record。
+
+    不发射 tool_result；由 model.py 在用户作出决定后调用 complete_approval 完成闭环。
+    """
+    command = _describe_tool_command(func_name, func_args)
+    chat_id = ctx.get("chat_id")
+    approval_id, info = approval_registry.register(
+        tool_call_id=tool_call_id,
+        tool=func_name,
+        command=command,
+        risk_level=decision.risk_level.value,
+        risk_reason=decision.reason,
+        chat_id=chat_id,
+    )
+
+    if emit:
+        emit(make_tool_approval(
+            approval_id=approval_id,
+            tool_call_id=tool_call_id,
+            tool=func_name,
+            command=command,
+            risk_level=decision.risk_level.value,
+            risk_reason=decision.reason,
+            chat_id=chat_id,
+        ))
+
+    return {
+        "name": func_name,
+        "tool": func_name,
+        "path": str(func_args.get("relative_path", "")),
+        "success": False,
+        "status": "awaiting_approval",
+        "arguments": func_args,
+        "result": "",
+        "duration_ms": 0,
+        "tool_call_id": tool_call_id,
+        "approval_id": approval_id,
+        "approval_future": info["future"],
+        "approval_timeout": info["timeout"],
+        "risk_level": decision.risk_level.value,
+        "risk_reason": decision.reason,
+        "read_only": read_only,
+    }
+
+
+async def complete_approval(
+    record: Dict,
+    project_path: Optional[str] = None,
+    emit: Optional[Callable[[Dict], None]] = None,
+) -> Dict:
+    """等待审批结果并完成工具闭环（Phase B-1）。
+
+    - approve → 执行命令，构造成功/失败 record，发射 tool_result
+    - deny / timeout / cancelled → 注入拒绝结果（success=False），发射 tool_result
+
+    调用方约定：在 tool_approval 事件已 yield 给前端后调用本函数。
+    """
+    try:
+        action = await asyncio.wait_for(record["approval_future"], timeout=record["approval_timeout"])
+    except asyncio.TimeoutError:
+        action = "timeout"
+    approval_registry.remove(record["approval_id"])
+
+    start = time.monotonic()
+    if action == "approve":
+        result_text = await _run_tool(record["tool"], record["arguments"], project_path, {})
+        success = not result_text.startswith("错误")
+        status = "success" if success else "failed"
+    else:
+        text = {
+            "deny": "用户拒绝了该操作，未执行。",
+            "timeout": f"审批超时（>{record['approval_timeout']:.0f}s），已自动拒绝。",
+            "cancelled": "操作已取消（会话流已结束）。",
+        }.get(action, "操作已取消。")
+        result_text = f"已取消: {text}"
+        success = False
+        status = "denied"
+
+    duration_ms = round((time.monotonic() - start) * 1000) if action == "approve" else 0
+
+    final = dict(record)
+    final.pop("approval_future", None)
+    final.pop("approval_timeout", None)
+    final.update({
+        "success": success,
+        "status": status,
+        "result": result_text,
+        "duration_ms": duration_ms,
+    })
+
+    if emit:
+        emit(make_tool_result(
+            tool_call_id=final["tool_call_id"],
+            tool=final["tool"],
+            success=success,
+            result=result_text,
+            duration_ms=duration_ms,
+        ))
+
+    return final

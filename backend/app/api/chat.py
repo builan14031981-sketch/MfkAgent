@@ -7,12 +7,12 @@ import json
 import os
 import time
 from app.core.database import SessionLocal
-from app.models.agent import Chat, Message, Agent, MemoryItem, Setting, Project
-from app.services.model import model_service, Message as ModelMessage
+from app.models.agent import Chat, Message, Agent, Project
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
-from app.services.personality import get_personality_prompt
-from app.core.tool_runtime import tool_runtime
+from app.core.tool_runtime.approval import approval_registry
+from app.core.agent_runtime import AgentRuntime, get_chat_context_builder, ContextBuildInput
+from app.core.agent_runtime.context_builder import get_default_model as _get_default_model
 
 router = APIRouter()
 
@@ -61,6 +61,7 @@ class MessageResponse(BaseModel):
     content: str
     thinking: Optional[str] = None
     tool_calls: Optional[List[dict]] = None
+    timeline: Optional[List[dict]] = None
     created_at: datetime
 
     class Config:
@@ -462,117 +463,13 @@ class SendRequest(BaseModel):
     personality_level: Optional[int] = None
     use_tools: bool = True
     reasoning_effort: Optional[str] = None
+    planning_level: Optional[int] = None  # G2-B: Planner 层级控制
 
 
 class SendResponse(BaseModel):
     user_message: MessageResponse
     ai_message: MessageResponse
     token_usage: dict
-
-
-def _get_default_model() -> str:
-    db = SessionLocal()
-    try:
-        setting = db.query(Setting).filter(Setting.key == "default_model").first()
-        if setting and setting.value:
-            return setting.value
-        return "mimo-v2.5-pro"
-    finally:
-        db.close()
-
-
-def _get_default_reasoning_effort() -> str:
-    """读取设置中的默认推理程度（none/high/max），供未显式指定时兜底"""
-    db = SessionLocal()
-    try:
-        setting = db.query(Setting).filter(Setting.key == "default_reasoning_effort").first()
-        if setting and setting.value:
-            return setting.value
-        return "none"
-    finally:
-        db.close()
-
-
-def _get_agent_prompt(agent_id: str) -> str:
-    db = SessionLocal()
-    try:
-        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
-        if agent:
-            return agent.identity or agent.system_prompt or "你是一个有帮助的AI助手。"
-        return "你是一个有帮助的AI助手。"
-    finally:
-        db.close()
-
-
-_VERIFY_WORKFLOW_PROMPT = """
-
-## 编码工作流程（绑定项目时生效）
-
-当你修改项目代码时，必须遵循以下"改后自验"闭环，改完不得直接结束：
-
-1. **每次调用 `write_file` 修改代码后，你都必须调用 `run_command` 验证你的改动没有引入错误**，这是强制步骤，不是可选项：
-   - Python 项目：`python -m py_compile <改动的文件>` 检查语法
-   - 有测试则运行 `pytest` 或 `python -m unittest` 确认不破坏现有功能
-   - 前端/TS 项目：优先 `npm run lint`、`npm run typecheck` 或 `npm run build`
-2. 如果验证输出报错，**不要结束任务**：根据报错修复代码，然后重新运行验证，直到全部通过。
-3. 只有在验证通过后，才允许输出最终回答。
-4. 完成后用 `git diff` 或 `git status` 向用户总结你改了哪些文件。
-5. 使用 `search_files` 在项目中定位函数/报错关键词，使用 `read_file` 读取上下文后再动手。
-
-注意：`run_command` 只允许只读验证命令（测试/lint/语法检查/查看 git 状态），
-禁止试图执行写入、网络或安装类命令。
-"""
-
-
-
-def _build_memory_text(project_id: Optional[int] = None) -> str:
-    """查询全部记忆并格式化为 XML 文本块（供强制注入 System Prompt）。
-
-    记忆来源（废弃 RAG，改为全量拼接）：
-      - scope='global'：所有对话可见（无条件）
-      - scope='project'：当前 Chat 绑定项目下共享（需 project_id）
-
-    返回格式（无记忆则返回空串）：
-    <user_defined_memories>
-    ### 全局记忆 (Global Rules):
-    - ...
-
-    ### 当前项目特定记忆 (Project Rules):
-    - ...
-    </user_defined_memories>
-    """
-    db = SessionLocal()
-    try:
-        sections = []
-
-        global_items = (
-            db.query(MemoryItem)
-            .filter(MemoryItem.scope == "global")
-            .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
-            .limit(30)
-            .all()
-        )
-        if global_items:
-            lines = "\n".join(f"- {m.content}" for m in global_items)
-            sections.append(f"### 全局记忆 (Global Rules):\n{lines}")
-
-        if project_id is not None:
-            project_items = (
-                db.query(MemoryItem)
-                .filter(MemoryItem.scope == "project", MemoryItem.project_id == project_id)
-                .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
-                .limit(30)
-                .all()
-            )
-            if project_items:
-                lines = "\n".join(f"- {m.content}" for m in project_items)
-                sections.append(f"### 当前项目特定记忆 (Project Rules):\n{lines}")
-
-        if not sections:
-            return ""
-        return "<user_defined_memories>\n" + "\n\n".join(sections) + "\n</user_defined_memories>"
-    finally:
-        db.close()
 
 
 @router.post("/{chat_id}/send", response_model=SendResponse)
@@ -592,56 +489,76 @@ async def send_message(chat_id: int, request: SendRequest):
             if len(request.content) > 50:
                 chat.title += "..."
 
-        history = (
-            db.query(Message)
-            .filter(Message.chat_id == chat_id)
-            .order_by(Message.created_at.asc())
-            .all()
-        )
-
-        system_prompt = _get_agent_prompt(chat.agent_id)
-        personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
-        memory_text = _build_memory_text(chat.project_id)
-        full_prompt = system_prompt
-        if personality_prompt:
-            full_prompt += "\n\n" + personality_prompt
-        
-        # 使用 Tool Runtime V5 Final 进行工具决策
-        tool_context = tool_runtime.process(message=request.content, chat=chat)
-        full_prompt += "\n\n" + tool_context["system_policy"]
-        
-        model_messages = [ModelMessage(role="system", content=full_prompt)]
-        for msg in history:
-            model_messages.append(ModelMessage(role=msg.role, content=msg.content))
-
         # 释放写事务：模型工具（如 add_memory）在独立 Session 中写库，
-        # 若此处仍持有未提交的写锁，SQLite 会报 database is locked
+        # 若此处仍持有未提交的写锁，SQLite 会报 database is locked。
+        # 同时确保 ChatContextBuilder 在新 Session 中能读到刚写入的 user_msg。
         db.commit()
 
-        chat_mode = chat.mode or "build"
-        reasoning_effort = request.reasoning_effort or _get_default_reasoning_effort()
-        
-        try:
-            tools_arg = tool_context["tools"] if tool_context["need_tools"] else None
-            ai_response = await model_service.chat(
-                model_id=chat.model or request.model or _get_default_model(),
-                messages=model_messages,
+        # Phase E3: ChatContextBuilder 统一组装（AgentContext + system prompt + messages + 参数）
+        built = await get_chat_context_builder().build(
+            ContextBuildInput(
+                chat_id=chat_id,
+                content=request.content,
+                model=request.model,
+                personality_level=request.personality_level,
+                use_tools=request.use_tools,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
-                tools=tools_arg,
-                reasoning_effort=reasoning_effort,
-                project_path=chat.project_path,
-                read_only=(chat_mode == "plan"),
-                memory_context={"agent_id": chat.agent_id, "project_id": chat.project_id},
-                memory_text=memory_text,
+                reasoning_effort=request.reasoning_effort,
+                planning_level=request.planning_level,
             )
-            ai_content = ai_response.content
-            api_usage = ai_response.usage if hasattr(ai_response, 'usage') else None
+        )
+
+        full_prompt = built.system_prompt
+        memory_text = built.memory_text
+
+        try:
+            agent_runtime = AgentRuntime()
+            agent_result = await agent_runtime.run(
+                context=built.context,
+                messages=built.messages,
+                temperature=built.temperature,
+                max_tokens=built.max_tokens,
+                reasoning_effort=built.reasoning_effort,
+                read_only=built.read_only,
+            )
+
+            ai_content = agent_result.content
+            api_usage = agent_result.usage
         except Exception as e:
             ai_content = f"[AI回复失败: {str(e)}]"
             api_usage = None
 
         ai_msg = Message(chat_id=chat_id, role="assistant", content=ai_content)
+        # 非流式路径：从 AgentResult 构造 timeline（仅有 tool_start/tool_result/text）
+        timeline = []
+        try:
+            _result = agent_result
+        except NameError:
+            _result = None
+        if _result and _result.tool_calls:
+            for tc in _result.tool_calls:
+                tc_id = tc.get("tool_call_id", "")
+                tc_name = tc.get("tool", tc.get("name", ""))
+                tc_input = tc.get("input", getattr(tc, "input", {}))
+                timeline.append({
+                    "type": "tool_start",
+                    "tool_call_id": tc_id,
+                    "tool": tc_name,
+                    "input": tc_input,
+                })
+                timeline.append({
+                    "type": "tool_result",
+                    "tool_call_id": tc_id,
+                    "tool": tc_name,
+                    "success": tc.get("success", False),
+                    "result": tc.get("result", ""),
+                    "duration_ms": tc.get("duration_ms", 0),
+                })
+        if ai_content:
+            timeline.append({"type": "text", "content": ai_content})
+        if timeline:
+            ai_msg.timeline = timeline
         db.add(ai_msg)
         chat.updated_at = datetime.utcnow()
         db.commit()
@@ -685,44 +602,33 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             if len(request.content) > 50:
                 chat.title += "..."
 
-        history = (
-            db.query(Message)
-            .filter(Message.chat_id == chat_id)
-            .order_by(Message.created_at.asc())
-            .all()
+        # 释放写事务：模型工具（如 add_memory）在独立 Session 中写库，
+        # 若此处仍持有未提交的写锁，SQLite 会报 database is locked。
+        # 同时确保 ChatContextBuilder 在新 Session 中能读到刚写入的 user_msg。
+        db.commit()
+
+        # Phase E3: ChatContextBuilder 统一组装（AgentContext + system prompt + messages + 参数）
+        built = await get_chat_context_builder().build(
+            ContextBuildInput(
+                chat_id=chat_id,
+                content=request.content,
+                model=request.model,
+                personality_level=request.personality_level,
+                use_tools=request.use_tools,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                reasoning_effort=request.reasoning_effort,
+                planning_level=request.planning_level,
+            )
         )
 
-        system_prompt = _get_agent_prompt(chat.agent_id)
-        personality_prompt = get_personality_prompt(chat.personality_level if request.personality_level is None else request.personality_level)
-        memory_text = _build_memory_text(chat.project_id)
-        full_prompt = system_prompt
-        if personality_prompt:
-            full_prompt += "\n\n" + personality_prompt
-        
-        # 使用 Tool Runtime V5 Final 进行工具决策
-        if request.use_tools:
-            tool_context = tool_runtime.process(message=request.content, chat=chat)
-            full_prompt += "\n\n" + tool_context["system_policy"]
-            tools_arg = tool_context["tools"] if tool_context["need_tools"] else None
-        else:
-            tools_arg = None
-        
-        model_messages = [ModelMessage(role="system", content=full_prompt)]
-        for msg in history:
-            model_messages.append(ModelMessage(role=msg.role, content=msg.content))
-
-        effective_model = chat.model or request.model or _get_default_model()
-        temperature = request.temperature
-        max_tokens = request.max_tokens
-        reasoning_effort = request.reasoning_effort or _get_default_reasoning_effort()
-        project_path = chat.project_path
-        chat_mode = chat.mode or "build"
-        # 捕获会话内已加载的字段为局部变量：db.commit() 后 chat 实例被 expire，
-        # 生成器（db.close() 之后执行）再访问会触发 DetachedInstanceError
-        chat_agent_id = chat.agent_id
-        chat_project_id = chat.project_id
-
-        db.commit()
+        # 捕获纯数据局部变量：生成器在 db.close() 之后执行，不得引用 ORM 实例
+        agent_context = built.context
+        model_messages = built.messages
+        temperature = built.temperature
+        max_tokens = built.max_tokens
+        reasoning_effort = built.reasoning_effort
+        read_only = built.read_only
     finally:
         db.close()
 
@@ -730,6 +636,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         full_content = ""
         full_thinking = ""
         recorded_tool_calls: List[dict] = []
+        timeline_events: List[dict] = []
         buffer = ""
         last_flush = time.monotonic()
         BATCH_MAX_CHARS = 200
@@ -739,17 +646,14 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             return len(buffer) >= BATCH_MAX_CHARS or (time.monotonic() - last_flush) >= BATCH_INTERVAL
 
         try:
-            async for chunk in model_service.chat_stream(
-                model_id=effective_model,
+            agent_runtime = AgentRuntime()
+            async for chunk in agent_runtime.run_stream(
+                context=agent_context,
                 messages=model_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 reasoning_effort=reasoning_effort,
-                tools=tools_arg,
-                project_path=project_path,
-                read_only=(chat_mode == "plan"),
-                memory_context={"agent_id": chat_agent_id, "project_id": chat_project_id},
-                memory_text=memory_text,
+                read_only=read_only,
             ):
                 etype = chunk.get("type")
 
@@ -757,6 +661,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 if etype == "thinking":
                     content = chunk.get("content", "")
                     full_thinking += content
+                    timeline_events.append({"type": "thinking", "content": content})
                     yield f"data: {json.dumps({'type': 'thinking', 'content': content})}\n\n"
                     continue
 
@@ -781,12 +686,19 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
                     buffer = ""
                     last_flush = time.monotonic()
+                # 轨迹事件写入 timeline（过滤 SSE 控制信号 finish/error）
+                if etype in ("tool_start", "tool_result", "tool_approval"):
+                    timeline_events.append(chunk)
                 yield f"data: {json.dumps(chunk)}\n\n"
 
             # 流结束：flush 剩余 buffer
             if buffer:
                 yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
                 buffer = ""
+
+            # 记录最终 text 轨迹事件（完整内容，非增量片段）
+            if full_content:
+                timeline_events.append({"type": "text", "content": full_content})
 
             db2 = SessionLocal()
             try:
@@ -797,6 +709,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     content=full_content,
                     thinking=full_thinking or None,
                     tool_calls=recorded_tool_calls if recorded_tool_calls else None,
+                    timeline=timeline_events if timeline_events else None,
                 )
                 db2.add(ai_msg)
                 if chat2:
@@ -808,9 +721,36 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             yield "data: [DONE]\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        finally:
+            # 断连/结束清理：将本会话未决审批置为 cancelled，防止 Future 泄漏
+            approval_registry.cancel_by_chat(chat_id)
 
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+class ToolApprovalRequest(BaseModel):
+    approval_id: str
+    action: str  # "approve" | "deny"
+
+
+@router.post("/{chat_id}/tool-approval")
+async def tool_approval(chat_id: int, request: ToolApprovalRequest):
+    """用户对挂起命令审批的反馈（Phase B-1）。
+
+    仅允许 approve/deny；审批不存在、不属于该会话或已处理时返回错误。
+    """
+    if request.action not in ("approve", "deny"):
+        raise HTTPException(status_code=422, detail="action 必须是 approve 或 deny")
+
+    info = approval_registry.get(request.approval_id)
+    if not info or info.get("chat_id") != chat_id:
+        raise HTTPException(status_code=404, detail="审批不存在或不属于该会话")
+
+    if not approval_registry.resolve(request.approval_id, request.action):
+        raise HTTPException(status_code=409, detail="审批已处理或已超时")
+
+    return {"status": "ok", "approval_id": request.approval_id, "action": request.action}

@@ -24,7 +24,7 @@ class SettingsBulkUpdate(BaseModel):
 DEFAULT_SETTINGS = {
     "theme": "system",
     "language": "zh-CN",
-    "default_model": "mimo-v2.5-pro",
+    "default_model": "qwen-flash",
     "default_agent": "general",
     "default_personality": "50",
     "default_reasoning_effort": "none",
@@ -38,13 +38,24 @@ DEFAULT_SETTINGS = {
 }
 
 
+def _mask_key(key: str) -> str:
+    if not key:
+        return ""
+    if len(key) <= 8:
+        return "****"
+    return f"{key[:3]}****{key[-4:]}"
+
+
 @router.get("", response_model=Dict[str, str])
 async def get_all_settings():
+    """返回全部设置；api_key_* 属敏感配置，不再走通用接口（改由 /api/models/config 脱敏返回）"""
     db = SessionLocal()
     try:
         settings = db.query(Setting).all()
         result = dict(DEFAULT_SETTINGS)
         for s in settings:
+            if s.key.startswith("api_key_"):
+                continue
             result[s.key] = s.value
         return result
     finally:
@@ -79,6 +90,7 @@ async def update_setting(key: str, request: SettingUpdate):
         db.refresh(setting)
         if key.startswith("api_key_"):
             model_service.reload_models()
+            return SettingResponse(key=setting.key, value=_mask_key(setting.value))
         return SettingResponse(key=setting.key, value=setting.value)
     finally:
         db.close()
@@ -96,9 +108,9 @@ async def update_settings(request: SettingsBulkUpdate):
             else:
                 setting = Setting(key=key, value=value)
                 db.add(setting)
-            result[key] = value
+            result[key] = _mask_key(value) if key.startswith("api_key_") else value
         db.commit()
-        if any(k.startswith("api_key_") for k in request.settings):
+        if any(k.startswith("api_key_") or k.startswith("api_base_") for k in request.settings):
             model_service.reload_models()
         return result
     finally:

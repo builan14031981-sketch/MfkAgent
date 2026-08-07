@@ -1,324 +1,376 @@
 {
-  "common": {
-    "loading": "Loading...",
-    "error": "Error",
-    "success": "Success",
-    "cancel": "Cancel",
-    "confirm": "Confirm",
-    "save": "Save",
-    "delete": "Delete",
-    "edit": "Edit",
-    "create": "Create",
-    "back": "Back",
-    "close": "Close",
-    "copy": "Copy",
-    "copied": "Copied",
-    "search": "Search",
-    "noData": "No data",
-    "clear": "Clear",
-    "saved": "Saved",
-    "saving": "Saving..."
+ "common": {
+  "loading": "Loading...",
+  "error": "Error",
+  "success": "Success",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "save": "Save",
+  "delete": "Delete",
+  "edit": "Edit",
+  "create": "Create",
+  "back": "Back",
+  "close": "Close",
+  "copy": "Copy",
+  "copied": "Copied",
+  "search": "Search",
+  "noData": "No data",
+  "clear": "Clear",
+  "saved": "Saved",
+  "saving": "Saving..."
+ },
+ "sidebar": {
+  "newTask": "New Task",
+  "chats": "Chats",
+  "settings": "Settings",
+  "memory": "Memory",
+  "noChats": "No chats yet",
+  "noChatsDesc": "Start a new conversation",
+  "rename": "Rename",
+  "pin": "Pin",
+  "unpin": "Unpin",
+  "delete": "Delete",
+  "projectWorkspace": "Workspace",
+  "generalChats": "General Chats",
+  "openProject": "Open / New Workspace",
+  "openProjectDesc": "Pick or create a project for AI to work in",
+  "noProjects": "No projects yet",
+  "noProjectsDesc": "Open or create a project workspace",
+  "newProject": "New Project",
+  "projectName": "Project Name",
+  "projectPath": "Project Path",
+  "createProject": "Create",
+  "pickDirectory": "Pick Folder",
+  "newChatInProject": "New chat in this project",
+  "newChatTitle": "New Chat"
+ },
+ "home": {
+  "welcome": [
+   "Hi, how are you feeling today?",
+   "Which project are we working on today?",
+   "Any new inspiration?",
+   "Ready to get started?",
+   "What can I help you with?"
+  ],
+  "inputPlaceholder": "Start working by typing...",
+  "agentSwitch": "Switch Agent",
+  "quickStarts": [
+   "Review a piece of code",
+   "Design a component solution",
+   "Analyze the project architecture",
+   "Write a weekly report"
+  ],
+  "hero": {
+   "title": "Hero Theme",
+   "switchTheme": "Switch hero theme",
+   "animations": "Intro animations",
+   "favorites": "Favorites",
+   "seeMore": "See more",
+   "allThemes": "All themes",
+   "random": "Random",
+   "back": "Back",
+   "quoteMenu": "Quote Menu",
+   "switchQuote": "Switch greeting",
+   "quoteShort": "Quotes",
+   "quoteRandom": "Random quote",
+   "noFavorites": "No favorites yet. Tap ☆ to pin themes",
+   "favorite": "Favorite",
+   "unfavorite": "Unfavorite",
+   "categories": {
+    "classic": "Classic",
+    "terminal": "Terminal",
+    "system": "System",
+    "retro": "Retro",
+    "developer": "Developer",
+    "cinematic": "Cinematic",
+    "ai": "AI Future",
+    "design": "Design",
+    "other": "Other"
+   }
+  }
+ },
+ "chat": {
+  "title": "Chat",
+  "startConversation": "Start Conversation",
+  "startConversationDesc": "Type a message to start talking with {name}",
+  "inputPlaceholder": "Type a message...",
+   "sending": "Sending...",
+   "orb": {
+    "working": "Waiting for response",
+    "solving": "Thinking",
+    "searching": "Using tools",
+    "listening": "Awaiting your approval",
+    "composing": "Generating"
+   },
+   "context": {
+    "dashboard": "Context",
+    "warning": "⚠️ Context at {pct}%, consider compressing the session",
+    "compress": "Compress"
+   },
+  "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
+  "noProjectHint": "No local project linked. File operations will be saved to the app data directory by default.",
+  "invalidId": "Invalid chat ID",
+  "backToHome": "Back to Home",
+  "projectContext": "Project Context",
+  "selectedFiles": "Selected Files",
+  "noFilesSelected": "Check project files to include in chat context",
+  "reasoning": {
+   "title": "Reasoning Mode",
+   "off": "Off",
+   "fast": "high",
+   "deep": "max"
   },
-  "sidebar": {
-    "newTask": "New Task",
-    "chats": "Chats",
-    "settings": "Settings",
-    "memory": "Memory",
-    "noChats": "No chats yet",
-    "noChatsDesc": "Start a new conversation",
-    "rename": "Rename",
-    "pin": "Pin",
-    "unpin": "Unpin",
-    "delete": "Delete",
-    "projectWorkspace": "Workspace",
-    "generalChats": "General Chats",
-    "openProject": "Open / New Workspace",
-    "openProjectDesc": "Pick or create a project for AI to work in",
-    "noProjects": "No projects yet",
-    "noProjectsDesc": "Open or create a project workspace",
-    "newProject": "New Project",
-    "projectName": "Project Name",
-    "projectPath": "Project Path",
-    "createProject": "Create",
-    "pickDirectory": "Pick Folder",
-    "newChatInProject": "New chat in this project",
-    "newChatTitle": "New Chat"
+  "mode": {
+   "build": "Build",
+   "plan": "Plan"
   },
-  "home": {
-    "welcome": [
-      "Hi, how are you feeling today?",
-      "Which project are we working on today?",
-      "Any new inspiration?",
-      "Ready to get started?",
-      "What can I help you with?"
-    ],
-    "inputPlaceholder": "Start working by typing...",
-    "agentSwitch": "Switch Agent",
-    "quickStarts": [
-      "Review a piece of code",
-      "Design a component solution",
-      "Analyze the project architecture",
-      "Write a weekly report"
-    ],
-    "hero": {
-      "title": "Hero Theme",
-      "switchTheme": "Switch hero theme",
-      "animations": "Intro animations",
-      "favorites": "Favorites",
-      "seeMore": "See more",
-      "allThemes": "All themes",
-      "random": "Random",
-      "back": "Back",
-      "quoteMenu": "Quote Menu",
-      "switchQuote": "Switch greeting",
-      "quoteShort": "Quotes",
-      "quoteRandom": "Random quote",
-      "noFavorites": "No favorites yet. Tap ☆ to pin themes",
-      "favorite": "Favorite",
-      "unfavorite": "Unfavorite",
-      "categories": {
-        "classic": "Classic",
-        "terminal": "Terminal",
-        "system": "System",
-        "retro": "Retro",
-        "developer": "Developer",
-        "cinematic": "Cinematic",
-        "ai": "AI Future",
-        "design": "Design",
-        "other": "Other"
-      }
+  "personality": {
+   "title": "Personality",
+   "levels": {
+    "warm": {
+     "name": "Warm",
+     "desc": "More caring, emotional, warm tone"
+    },
+    "gentle": {
+     "name": "Gentle",
+     "desc": "Empathetic, slightly emotional"
+    },
+    "balanced": {
+     "name": "Balanced",
+     "desc": "Balanced between logic and emotion"
+    },
+    "rational": {
+     "name": "Rational",
+     "desc": "Logic first, concise"
+    },
+    "strong": {
+     "name": "Very Rational",
+     "desc": "Strict logic, objective and direct"
     }
+   }
   },
-  "chat": {
-    "title": "Chat",
-    "startConversation": "Start Conversation",
-    "startConversationDesc": "Type a message to start talking with {name}",
-    "inputPlaceholder": "Type a message...",
-    "sending": "Sending...",
-    "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
-    "invalidId": "Invalid chat ID",
-    "backToHome": "Back to Home",
-    "projectContext": "Project Context",
-    "selectedFiles": "Selected Files",
-    "noFilesSelected": "Check project files to include in chat context",
-    "reasoning": {
-      "title": "Reasoning Mode",
-      "off": "Off",
-      "fast": "high",
-      "deep": "max"
-    },
-    "mode": {
-      "build": "Build",
-      "plan": "Plan"
-    },
-    "personality": {
-      "title": "Personality",
-      "levels": {
-        "warm": {
-          "name": "Warm",
-          "desc": "More caring, emotional, warm tone"
-        },
-        "gentle": {
-          "name": "Gentle",
-          "desc": "Empathetic, slightly emotional"
-        },
-        "balanced": {
-          "name": "Balanced",
-          "desc": "Balanced between logic and emotion"
-        },
-        "rational": {
-          "name": "Rational",
-          "desc": "Logic first, concise"
-        },
-        "strong": {
-          "name": "Very Rational",
-          "desc": "Strict logic, objective and direct"
-        }
-      }
-    },
-    "dropToAttach": "Release to attach files as context",
-    "dragHint": "Drag files here to use as context",
-    "attachedFiles": "Attached Files",
-    "toolWritten": "Auto-written to disk",
-    "codeExpand": "Expand",
-    "codeCollapse": "Collapse",
-    "codeCopy": "Copy",
-    "codeCopied": "Copied",
-    "codeCollapsedHint": "Content collapsed, click to expand",
-    "jumpToLatest": "Latest",
-    "streamErrorTitle": "Response failed",
-    "streamRetry": "Retry",
-    "messageOutline": "Outline",
+  "dropToAttach": "Release to attach files as context",
+  "dragHint": "Drag files here to use as context",
+  "attachedFiles": "Attached Files",
+  "toolWritten": "Auto-written to disk",
+  "codeExpand": "Expand",
+  "codeCollapse": "Collapse",
+  "codeCopy": "Copy",
+  "codeCopied": "Copied",
+  "codeCollapsedHint": "Content collapsed, click to expand",
+  "jumpToLatest": "Latest",
+  "streamErrorTitle": "Response failed",
+  "streamRetry": "Retry",
+  "messageOutline": "Outline",
+  "edit": "Edit",
+  "quote": "Quote",
+  "regenerate": "Regenerate",
+  "thinking": "Thinking",
+  "projectInitTitle": "Linked project: {name}",
+  "projectInitDesc": "What would you like to do in this project?",
+  "projectInitPlaceholder": "Type a task and press Enter...",
+  "projectInitSkip": "Skip, start a new chat",
+  "projectInitDefaultTitle": "New chat in {name}",
+  "menu": {
+   "uploadFile": "Upload File",
+   "linkProject": "Link Local Project",
+   "clearContext": "Clear Context"
+  },
+  "projectLinked": "Project linked",
+  "projectLinkFailed": "Failed to link project",
+  "approvalTitle": "Awaiting your confirmation",
+  "approvalApprove": "Approve",
+  "approvalDeny": "Deny",
+  "riskLevel": {
+   "read_only": "Read-only",
+   "write": "Write",
+   "destructive": "Destructive"
+  }
+ },
+ "settings": {
+  "title": "Settings",
+  "general": {
+   "title": "General",
+   "theme": {
+    "title": "Appearance",
+    "desc": "Choose interface theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+   },
+   "language": {
+    "title": "Language",
+    "desc": "Interface display language",
+    "zh-CN": "中文",
+    "en-US": "English"
+   },
+   "font": {
+    "title": "Font",
+    "desc": "Choose interface font style",
+    "system": "System Default",
+    "source-han-sans": "Source Han Sans",
+    "lxgw-wenkai": "LXGW WenKai",
+    "ibm-plex-sans": "IBM Plex Sans"
+   },
+   "heroTheme": {
+    "title": "Homepage Hero Theme",
+    "desc": "Control the homepage theme entry and random rules; favorites & switching live on the homepage",
+    "entry": "Enable hero theme entry",
+    "entryDesc": "When off, the homepage shows a static title without the theme entry",
+    "random": "Random theme on launch",
+    "randomDesc": "Pick a random theme from the scope on every launch to keep exploration",
+    "scope": "Random scope",
+    "scopeDesc": "Candidate themes for random picking",
+    "scopeAll": "All themes",
+    "scopeFavorites": "Favorites"
+   }
+  },
+  "model": {
+   "title": "Model",
+   "defaultModel": {
+    "title": "Default Model",
+    "desc": "Default AI model for new chats"
+   },
+   "reasoningEffort": {
+    "title": "Default Reasoning",
+    "desc": "Reasoning level used when not explicitly set"
+   },
+   "apiConfig": {
+    "title": "API Configuration",
+    "desc": "Configure API keys for each provider. Applied after saving."
+   },
+   "providers": {
+    "title": "Model Providers",
+    "desc": "Configure API keys and endpoints. Keys are stored locally only.",
+    "free": "Free",
+    "configured": "Configured",
+    "notConfigured": "Not configured",
+    "configure": "Configure",
+    "clearKey": "Clear Key",
+    "keyLabel": "API Key",
+    "baseLabel": "API Base (empty resets to default)"
+   },
+   "custom": {
+    "title": "Custom Models",
+    "desc": "Connect any OpenAI-compatible endpoint. Same model_id overrides built-in.",
+    "add": "Add",
     "edit": "Edit",
-    "quote": "Quote",
-    "regenerate": "Regenerate",
-    "thinking": "Thinking",
-    "projectInitTitle": "Linked project: {name}",
-    "projectInitDesc": "What would you like to do in this project?",
-    "projectInitPlaceholder": "Type a task and press Enter...",
-    "projectInitSkip": "Skip, start a new chat",
-    "menu": {
-      "uploadFile": "Upload File",
-      "linkProject": "Link Local Project",
-      "clearContext": "Clear Context"
-    },
-    "projectLinked": "Project linked",
-    "projectLinkFailed": "Failed to link project"
+    "delete": "Delete",
+    "enabled": "Enable/Disable",
+    "name": "Display Name",
+    "modelId": "Model ID",
+    "provider": "Provider",
+    "modelName": "Upstream Model",
+    "apiBase": "API Base",
+    "apiKey": "API Key",
+    "maxTokens": "Max Tokens",
+    "temperature": "Temperature",
+    "noCustom": "No custom models yet",
+    "confirmDelete": "Delete this custom model?"
+   }
   },
-  "settings": {
-    "title": "Settings",
-    "general": {
-      "title": "General",
-      "theme": {
-        "title": "Appearance",
-        "desc": "Choose interface theme",
-        "light": "Light",
-        "dark": "Dark",
-        "system": "System"
-      },
-      "language": {
-        "title": "Language",
-        "desc": "Interface display language",
-        "zh-CN": "中文",
-        "en-US": "English"
-      },
-      "font": {
-        "title": "Font",
-        "desc": "Choose interface font style",
-        "system": "System Default",
-        "source-han-sans": "Source Han Sans",
-        "lxgw-wenkai": "LXGW WenKai",
-        "ibm-plex-sans": "IBM Plex Sans"
-      },
-      "heroTheme": {
-        "title": "Homepage Hero Theme",
-        "desc": "Control the homepage theme entry and random rules; favorites & switching live on the homepage",
-        "entry": "Enable hero theme entry",
-        "entryDesc": "When off, the homepage shows a static title without the theme entry",
-        "random": "Random theme on launch",
-        "randomDesc": "Pick a random theme from the scope on every launch to keep exploration",
-        "scope": "Random scope",
-        "scopeDesc": "Candidate themes for random picking",
-        "scopeAll": "All themes",
-        "scopeFavorites": "Favorites"
-      }
-    },
-    "model": {
-      "title": "Model",
-      "defaultModel": {
-        "title": "Default Model",
-        "desc": "Default AI model for new chats"
-      },
-      "reasoningEffort": {
-        "title": "Default Reasoning",
-        "desc": "Reasoning level used when not explicitly set"
-      },
-      "apiConfig": {
-        "title": "API Configuration",
-        "desc": "Configure API keys for each provider. Applied after saving."
-      }
-    },
-    "ai": {
-      "title": "AI Behavior",
-      "defaultAgent": {
-        "title": "Default Agent",
-        "desc": "Default AI work partner for new chats"
-      },
-      "defaultPersonality": {
-        "title": "Default Personality",
-        "desc": "Adjust AI rational/emotional tendency",
-        "veryEmotional": "Very Emotional",
-        "balanced": "Balanced",
-        "veryRational": "Very Rational"
-      },
-      "agents": {
-        "title": "Preset Agents",
-        "desc": "System provided AI work partners",
-        "systemPrompt": "System Prompt",
-        "personality": "Personality Config",
-        "detail": "Details",
-        "manage": "Manage Agents",
-        "backToSettings": "Back to Settings",
-        "backToAgentList": "Back to list",
-        "parameters": "Parameters",
-        "model": "Default model",
-        "capabilities": "Capabilities"
-      }
-    },
-    "memory": {
-      "title": "Long-term Memory",
-      "desc": "AI will remember your preferences and important information"
-    },
-    "plugins": {
-      "title": "Plugins",
-      "desc": "Manage AI extensions (persisted in DB)",
-      "create": "New Plugin",
-      "cancelCreate": "Cancel",
-      "name": "Name",
-      "version": "Version",
-      "description": "Description",
-      "author": "Author",
-      "config": "Config",
-      "configInvalid": "Invalid JSON",
-      "empty": "No plugins yet. Click New Plugin to create one.",
-      "delete": "Delete",
-      "deleteConfirm": "Delete this plugin? This action cannot be undone.",
-      "statusActive": "Active",
-      "statusInactive": "Inactive",
-      "statusInstalled": "Installed",
-      "statusError": "Error"
-    },
-    "about": {
-      "title": "About",
-      "version": "Version: v1.0.0",
-      "description": "Professional AI Work Assistant",
-      "aiMayError": "MfkAgent may make mistakes. Please verify important information."
-    }
+  "ai": {
+   "title": "AI Behavior",
+   "defaultAgent": {
+    "title": "Default Agent",
+    "desc": "Default AI work partner for new chats"
+   },
+   "defaultPersonality": {
+    "title": "Default Personality",
+    "desc": "Adjust AI rational/emotional tendency",
+    "veryEmotional": "Very Emotional",
+    "balanced": "Balanced",
+    "veryRational": "Very Rational"
+   },
+   "agents": {
+    "title": "Preset Agents",
+    "desc": "System provided AI work partners",
+    "systemPrompt": "System Prompt",
+    "personality": "Personality Config",
+    "detail": "Details",
+    "manage": "Manage Agents",
+    "backToSettings": "Back to Settings",
+    "backToAgentList": "Back to list",
+    "parameters": "Parameters",
+    "modelGlobal": "Model is selected per chat; agents are not bound to a default model.",
+    "capabilities": "Capabilities",
+    "capabilitiesHint": "Capability tags influence behavior tendencies, not tool permissions."
+   }
   },
   "memory": {
-    "title": "Long-term Memory",
-    "selectAgent": "Select Agent",
-    "selectProject": "Select Project",
-    "selectProjectPlaceholder": "Choose a project...",
-    "scopeGlobal": "Global",
-    "scopeAgent": "Agent",
-    "scopeProject": "Project",
-    "addMemory": "Add Memory",
-    "inputPlaceholder": "e.g., This project uses Next.js 14",
-    "add": "Add",
-    "memoryList": "Memory List",
-    "noMemories": "No memories yet",
-    "noMemoriesDesc": "Add memories to help AI understand you better",
-    "delete": "Delete",
-    "deleteConfirm": "Confirm delete?",
-    "scopeLabel": "Scope",
-    "createdAt": "Created"
+   "title": "Long-term Memory",
+   "desc": "AI will remember your preferences and important information"
   },
-  "project": {
-    "title": "Project",
-    "openProject": "Open a project",
-    "openProjectDesc": "Let AI help you work"
+  "plugins": {
+   "title": "Plugins",
+   "desc": "Manage AI extensions (persisted in DB)",
+   "create": "New Plugin",
+   "cancelCreate": "Cancel",
+   "name": "Name",
+   "version": "Version",
+   "description": "Description",
+   "author": "Author",
+   "config": "Config",
+   "configInvalid": "Invalid JSON",
+   "empty": "No plugins yet. Click New Plugin to create one.",
+   "delete": "Delete",
+   "deleteConfirm": "Delete this plugin? This action cannot be undone.",
+   "statusActive": "Active",
+   "statusInactive": "Inactive",
+   "statusInstalled": "Installed",
+   "statusError": "Error"
   },
-  "projects": {
-    "fileBrowser": "File Browser",
-    "fileSearch": "File Search",
-    "fileContent": "File Content",
-    "rootDirectory": "Root",
-    "emptyDirectory": "Empty Directory",
-    "emptyDirectoryDesc": "No files in this directory",
-    "searchPlaceholder": "Search file name...",
-    "searchHint": "Enter keywords to search files",
-    "noResults": "No matching files found",
-    "noResultsDesc": "Try other keywords",
-    "selectFile": "Please select a file",
-    "searching": "Searching...",
-    "loadingFile": "Loading file..."
-  },
-  "tools": {
-    "title": "Tools",
-    "parameters": "Parameters",
-    "execute": "Execute",
-    "executing": "Executing...",
-    "result": "Result"
+  "about": {
+   "title": "About",
+   "version": "Version: v1.0.0",
+   "description": "Professional AI Work Assistant",
+   "aiMayError": "MfkAgent may make mistakes. Please verify important information."
   }
+ },
+ "memory": {
+  "title": "Long-term Memory",
+  "selectAgent": "Select Agent",
+  "selectProject": "Select Project",
+  "selectProjectPlaceholder": "Choose a project...",
+  "scopeGlobal": "Global",
+  "scopeAgent": "Agent",
+  "scopeProject": "Project",
+  "addMemory": "Add Memory",
+  "inputPlaceholder": "e.g., This project uses Next.js 14",
+  "add": "Add",
+  "memoryList": "Memory List",
+  "noMemories": "No memories yet",
+  "noMemoriesDesc": "Add memories to help AI understand you better",
+  "delete": "Delete",
+  "deleteConfirm": "Confirm delete?",
+  "scopeLabel": "Scope",
+  "createdAt": "Created"
+ },
+ "project": {
+  "title": "Project",
+  "openProject": "Open a project",
+  "openProjectDesc": "Let AI help you work"
+ },
+ "projects": {
+  "fileBrowser": "File Browser",
+  "fileSearch": "File Search",
+  "fileContent": "File Content",
+  "rootDirectory": "Root",
+  "emptyDirectory": "Empty Directory",
+  "emptyDirectoryDesc": "No files in this directory",
+  "searchPlaceholder": "Search file name...",
+  "searchHint": "Enter keywords to search files",
+  "noResults": "No matching files found",
+  "noResultsDesc": "Try other keywords",
+  "selectFile": "Please select a file",
+  "searching": "Searching...",
+  "loadingFile": "Loading file..."
+ },
+ "tools": {
+  "title": "Tools",
+  "parameters": "Parameters",
+  "execute": "Execute",
+  "executing": "Executing...",
+  "result": "Result"
+ }
 }

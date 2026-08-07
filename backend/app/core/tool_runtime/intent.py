@@ -1,4 +1,4 @@
-"""意图分析器 — 三层判断模型
+"""意图分析器 — 两层判断模型
 
 Layer 1 — 明确事实需求 (Factual Need)
   用户问题涉及真实环境状态，不获取数据无法准确回答。
@@ -7,7 +7,7 @@ Layer 2 — 用户动作意图 (Action Intent)
   用户明确要求执行操作（检查、查看、修改、调试），而非仅仅是提问。
 
 Layer 3 — 模型自判断 (Model Self-Judgment)
-  通过 system prompt 注入自检提示词，由模型在推理时自行判断是否需要工具。
+  自检提示词已并入 execution_policy（policy.py ③ 层），意图结果仅保留 soft_hint。
 """
 
 from typing import Dict, List, Tuple
@@ -130,32 +130,25 @@ class IntentAnalyzer:
             ),
         ]
 
-        # Layer 3: 自检提示词 — 注入 system prompt，由模型自行判断
-        self._self_check_prompt = """## 内部自检规则
-
-在回答用户问题之前，先执行内部自检：
-
-1. 这个问题涉及真实环境状态吗？（网络、系统、文件、配置）
-2. 不获取外部数据，我能给出可靠、确定的答案吗？
-3. 我的回答是否包含"可能是…"、"建议检查…"等不确定表述？
-
-如果问题 1 为 Yes 且问题 2 为 No，你必须先调用工具获取真实数据，再基于数据回答。
-禁止在可以获取真实信息时，仅提供假设性建议。"""
+        # Layer 3: 自检提示词已并入 execution_policy（policy.py），此处不再注入
+        self._self_check_prompt = ""
 
     def analyze(self, message: str) -> Dict:
         """分析用户意图（三层判断）
+
+        注意（Phase B-2）：意图结果仅作为"工具建议"软提示注入 system prompt，
+        不再决定工具可见性。工具可见性由 PermissionFilter.resolve 根据模式/项目决定。
 
         Args:
             message: 用户消息
 
         Returns:
             {
-                "need_tools": bool,
-                "layer": str,         # factual_need / action_intent / self_check
-                "intent": str,        # system_diagnosis / file_operation / ...
+                "suggest_tools": bool,    # 是否建议使用工具（软提示，非 gate）
+                "layer": str,             # factual_need / action_intent / self_check
+                "intent": str,            # system_diagnosis / file_operation / ...
                 "confidence": float,
                 "reason": str,
-                "self_check_prompt": str,
             }
         """
         message_lower = message.lower().strip()
@@ -172,14 +165,13 @@ class IntentAnalyzer:
         if result:
             return result
 
-        # Layer 3: 模型自判断 — 无法通过规则确定，注入自检提示词
+        # Layer 3: 模型自判断 — 无法通过规则确定，不注入额外提示
         return {
-            "need_tools": False,
+            "suggest_tools": False,
             "layer": "self_check",
             "intent": "general_chat",
             "confidence": 0.5,
             "reason": "无法通过规则确定是否需要工具，由模型自行判断",
-            "self_check_prompt": self._self_check_prompt,
         }
 
     def _check_factual_need(self, message: str) -> Dict | None:
@@ -189,12 +181,11 @@ class IntentAnalyzer:
                 match = re.search(pattern, message)
                 if match:
                     return {
-                        "need_tools": True,
+                        "suggest_tools": True,
                         "layer": "factual_need",
                         "intent": intent,
                         "confidence": 0.9,
                         "reason": f"用户问题涉及真实环境状态，需要获取数据才能准确回答（匹配: {pattern}）",
-                        "self_check_prompt": "",
                     }
         return None
 
@@ -205,21 +196,19 @@ class IntentAnalyzer:
                 match = re.search(pattern, message)
                 if match:
                     return {
-                        "need_tools": True,
+                        "suggest_tools": True,
                         "layer": "action_intent",
                         "intent": intent,
                         "confidence": 0.85,
                         "reason": f"用户明确要求执行操作，需要工具配合（匹配: {pattern}）",
-                        "self_check_prompt": "",
                     }
         return None
 
     def _no_tools_result(self, reason: str) -> Dict:
         return {
-            "need_tools": False,
+            "suggest_tools": False,
             "layer": "none",
             "intent": "general_chat",
             "confidence": 1.0,
             "reason": reason,
-            "self_check_prompt": "",
         }

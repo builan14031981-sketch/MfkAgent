@@ -93,13 +93,14 @@ export default function Home() {
     if (def === "high" || def === "max") setReasoningEffort(def);
   }, [settings?.default_reasoning_effort]);
 
-  const currentAgent = selectedAgent || (settings?.default_agent ? agents.find(a => a.id === settings.default_agent) || null : null) || agents[0] || null;
+  const activeAgents = agents.filter((a) => a.status === "active");
+  const currentAgent = selectedAgent || (settings?.default_agent ? activeAgents.find(a => a.id === settings.default_agent) || null : null) || activeAgents[0] || null;
   const currentModel = selectedModel || models[0] || null;
 
   const handleAgentChange = useCallback((agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId);
+    const agent = activeAgents.find((a) => a.id === agentId);
     if (agent) setSelectedAgent(agent);
-  }, [agents]);
+  }, [activeAgents]);
 
   const handleSend = async () => {
     if (!input.trim() || !currentAgent || isCreating) return;

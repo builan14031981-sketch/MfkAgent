@@ -27,6 +27,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -59,6 +60,8 @@ from app.core.database import engine as _engine, Base as _Base  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 
 from main import app  # noqa: E402
+
+from app.core.tool_runtime.approval import approval_registry  # noqa: E402
 
 CLIENT = TestClient(app)
 
@@ -206,6 +209,43 @@ def stream_send(chat_id: int, content: str) -> list:
     return events
 
 
+def stream_send_bg(chat_id: int, content: str, events: list, state: dict):
+    """后台线程：驱动 SSE 流并收集事件（用于流中被审批的场景）。"""
+    try:
+        with CLIENT.stream(
+            "POST",
+            f"/api/chat/{chat_id}/send/stream",
+            json={"content": content, "model": "deepseek-v4-flash", "reasoning_effort": "none"},
+        ) as resp:
+            for line in resp.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data = line[6:].strip()
+                if data == "[DONE]":
+                    events.append({"type": "[DONE]"})
+                    break
+                try:
+                    events.append(json.loads(data))
+                except json.JSONDecodeError:
+                    pass
+        state["ok"] = True
+    except Exception as e:  # noqa: BLE001
+        state["error"] = repr(e)
+
+
+def wait_pending(state: dict, timeout: float = 20.0) -> str:
+    """轮询审批注册表，返回首个 pending approval_id。"""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if state.get("error"):
+            raise AssertionError(f"流异常终止: {state['error']}")
+        p = approval_registry.pending()
+        if p:
+            return p[0]
+        time.sleep(0.05)
+    raise AssertionError(f"{timeout}s 内审批未注册。state={state}")
+
+
 def get_persisted_tool_calls(chat_id: int) -> list:
     msgs = CLIENT.get(f"/api/chat/{chat_id}/messages").json()
     for m in msgs:
@@ -330,7 +370,7 @@ def test_git_status(project_dir: Path) -> dict:
 
 
 def test_write_file(project_dir: Path) -> dict:
-    """4. 文件写入：write_file 落盘新文件。"""
+    """4. 文件写入：write_file 触发审批，批准后落盘新文件（Phase B-2 风险策略）。"""
     target = project_dir / "output" / "written.txt"
     install_fake_llm([
         tool_round("write_file", {"relative_path": "output/written.txt", "content": "Phase A write test"}, "call_write_1"),
@@ -338,17 +378,41 @@ def test_write_file(project_dir: Path) -> dict:
     ])
     pid = make_project(project_dir)
     cid = make_chat(pid)
-    events = stream_send(cid, "把内容写入 output/written.txt 这个文件")
-    s, r = verify_tool_pair(events, "write_file", call_id="call_write_1")
-    assert r["success"] is True, f"write_file 应成功，实际 success={r['success']}, result={r['result'][:120]!r}"
+
+    events, state = [], {}
+    t = threading.Thread(target=stream_send_bg, args=(cid, "把内容写入 output/written.txt 这个文件", events, state), daemon=True)
+    t.start()
+
+    aid = wait_pending(state)
+    info = approval_registry.get(aid)
+    assert info is not None and info["tool"] == "write_file", f"tool 不符: {info}"
+    assert info["risk_level"] == "write", f"write_file 风险等级应为 write: {info['risk_level']}"
+    assert info["tool_call_id"] == "call_write_1", f"tool_call_id 不符: {info['tool_call_id']}"
+
+    assert approval_registry.resolve(aid, "approve"), "resolve(approve) 失败"
+    t.join(timeout=25)
+    assert not t.is_alive(), "流未在 25s 内结束"
+
+    starts = find_events(events, "tool_start")
+    results = find_events(events, "tool_result")
+    apps = find_events(events, "tool_approval")
+    assert len(starts) == 1 and len(results) == 1 and len(apps) == 1, (len(starts), len(results), len(apps))
+    assert apps[0]["approval_id"] == aid, "tool_approval 的 approval_id 与注册表不符"
+    assert apps[0]["command"] == "写入文件: output/written.txt", f"tool_approval command 不符: {apps[0]['command']}"
+    assert starts[0]["tool_call_id"] == apps[0]["tool_call_id"] == results[0]["tool_call_id"], "tool_call_id 链路不一致"
+    assert events.index(starts[0]) < events.index(apps[0]) < events.index(results[0]), "事件顺序错误"
+
+    r = results[0]
+    assert r["success"] is True, f"批准后 write_file 应成功，实际 success={r['success']}, result={r['result'][:120]!r}"
     assert target.exists(), "write_file 未在磁盘创建文件"
     assert target.read_text(encoding="utf-8") == "Phase A write test", "写入内容与预期不符"
     return {
         "tool": "write_file",
-        "call_id": s["tool_call_id"],
+        "call_id": starts[0]["tool_call_id"],
         "success": r["success"],
         "duration_ms": r["duration_ms"],
         "file_created": True,
+        "approval_gate": True,
         "chat_id": cid,
     }
 

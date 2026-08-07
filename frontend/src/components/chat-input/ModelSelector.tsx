@@ -5,13 +5,16 @@ import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import type { Model } from "@/hooks/useModels";
 import {
-  pillStyle,
+  ghostPillStyle,
   chevronStyle,
   portalDropdownStyle,
   popoverItemStyle,
   itemHoverBackground,
   pillActiveBackground,
   pillActiveColor,
+  ghostPillHoverBackground,
+  ghostPillHoverColor,
+  ghostPillHoverShadow,
 } from "./styles";
 
 interface ModelSelectorProps {
@@ -63,18 +66,20 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
         }}
         title={currentModelName}
         style={{
-          ...pillStyle,
+          ...ghostPillStyle,
           maxWidth: "200px",
-          background: open ? pillActiveBackground : "var(--bg-level-3)",
-          color: open ? pillActiveColor : "var(--text-level-2)",
+          background: open ? pillActiveBackground : "transparent",
+          color: open ? pillActiveColor : "var(--text-level-4)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = pillActiveBackground;
-          e.currentTarget.style.color = pillActiveColor;
+          e.currentTarget.style.background = ghostPillHoverBackground;
+          e.currentTarget.style.color = ghostPillHoverColor;
+          e.currentTarget.style.boxShadow = ghostPillHoverShadow;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = open ? pillActiveBackground : "var(--bg-level-3)";
-          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-2)";
+          e.currentTarget.style.background = open ? pillActiveBackground : "transparent";
+          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-4)";
+          e.currentTarget.style.boxShadow = "none";
         }}
       >
         <span style={{

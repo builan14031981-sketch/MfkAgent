@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Moon,
   Sun,
@@ -19,43 +20,57 @@ import { Panel } from "./Panel";
 import { MemoryPanel } from "./MemoryPanel";
 import { AgentListPanel } from "./AgentListPanel";
 import { PluginPanel } from "./PluginPanel";
+import { ModelConfigSection } from "./ModelConfigSection";
+import { SwitchButton } from "@/components/SwitchButton";
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+/** 设置面板内部视图状态机：主设置 / Agent 列表 / Agent 编辑 */
+type ViewState = "main_settings" | "agent_list" | "agent_edit";
+
+/** 设置导航项 id：字面量联合，保证 activeSection 状态类型安全 */
+type SettingSectionId = "general" | "model" | "ai" | "plugins" | "about";
+
+/** 预设 Agent 排序优先级（未列出的 agent 排到最后） */
+const AGENT_ORDER = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
+
+/** 按 AGENT_ORDER 优先级排序 + 仅保留 active 状态的 agent */
+function getSortedActiveAgents(agents: { id: string; name: string; status: string }[]) {
+  return [...agents]
+    .sort((a, b) => {
+      const ai = AGENT_ORDER.indexOf(a.id);
+      const bi = AGENT_ORDER.indexOf(b.id);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    })
+    .filter((agent) => agent.status === "active");
+}
+
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
-  const { settings, loading, fetchSettings, updateSetting, updateSettings } = useSettingsStore();
+  const { settings, loading, fetchSettings, updateSetting } = useSettingsStore();
   const { t } = useTranslation();
   const { models, loading: modelsLoading } = useModels();
   const { agents } = useAgents();
   const [saving, setSaving] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState("general");
-  const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
-  const [savingApiKeys, setSavingApiKeys] = useState(false);
-  const [apiKeysSaved, setApiKeysSaved] = useState(false);
-  const [apiKeysSynced, setApiKeysSynced] = useState(false);
-  const [agentListOpen, setAgentListOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<SettingSectionId>("general");
+  const [currentView, setCurrentView] = useState<ViewState>("main_settings");
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  // 横向滑动方向：前进（进入二级/三级）= +1，返回 = -1
+  const [direction, setDirection] = useState<1 | -1>(1);
 
   useEffect(() => {
     // 仅首次未加载时拉取，避免每次打开面板重复全量 GET + loading 翻转
     if (!settings) fetchSettings();
   }, [settings, fetchSettings]);
 
-  // 当 settings 加载完成后，将当前 API Key 值同步到本地暂存（渲染期调整，避免 effect setState）
-  if (settings && !apiKeysSynced) {
-    setApiKeysSynced(true);
-    setApiKeys(prev => {
-      const next: Record<string, string> = {};
-      for (const key of Object.keys(settings)) {
-        if (key.startsWith("api_key_")) {
-          next[key] = settings[key] || "";
-        }
-      }
-      return { ...prev, ...next };
-    });
-  }
+  // 面板关闭时复位视图状态，下次打开从一级设置开始
+  const handleClose = () => {
+    setCurrentView("main_settings");
+    setEditingAgentId(null);
+    onClose();
+  };
 
   const handleUpdate = async (key: string, value: string) => {
     setSaving(key);
@@ -68,29 +83,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     }
   };
 
-  const handleSaveApiKeys = async () => {
-    setSavingApiKeys(true);
-    setApiKeysSaved(false);
-    try {
-      await updateSettings(apiKeys);
-      setApiKeysSaved(true);
-      setTimeout(() => setApiKeysSaved(false), 2000);
-    } catch (err) {
-      console.error("Failed to save API keys:", err);
-    } finally {
-      setSavingApiKeys(false);
-    }
-  };
-
   if (loading) {
     return (
-      <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")}>
+      <Panel isOpen={isOpen} onClose={handleClose} title={t("settings.title")}>
         <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
       </Panel>
     );
   }
 
-  const navItems = [
+  const navItems: { id: SettingSectionId; label: string; icon: typeof Monitor }[] = [
     { id: "general", label: t("settings.general.title"), icon: Monitor },
     { id: "model", label: t("settings.model.title"), icon: Cpu },
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
@@ -98,16 +99,59 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
+  // 单容器视图状态机：面板标题随视图联动
+  const viewTitle =
+    currentView === "main_settings"
+      ? t("settings.title")
+      : currentView === "agent_list"
+        ? t("settings.ai.agents.title")
+        : (agents.find((a) => a.id === editingAgentId)?.name ?? t("settings.ai.agents.title"));
+
+  const goToMainSettings = () => {
+    setDirection(-1);
+    setEditingAgentId(null);
+    setCurrentView("main_settings");
+  };
+  const goToAgentList = () => {
+    setDirection(-1);
+    setEditingAgentId(null);
+    setCurrentView("agent_list");
+  };
+
+  // 视图切换动画：微弱横向滑动 + 透明度渐变
+  const viewVariants = {
+    enter: (dir: number) => ({ opacity: 0, x: dir * 24 }),
+    center: { opacity: 1, x: 0 },
+    exit: (dir: number) => ({ opacity: 0, x: dir * -24 }),
+  };
+  const viewTransition = { duration: 0.2, ease: "easeInOut" as const };
+
   return (
-    <>
-      <Panel isOpen={isOpen} onClose={onClose} title={t("settings.title")} width="700px" height="min(680px, 82vh)" variant="center">
+    <Panel isOpen={isOpen} onClose={handleClose} title={viewTitle} width="700px" height="min(680px, 82vh)" variant="center">
       <div style={{
-        display: "flex",
-        gap: "24px",
-        minHeight: "400px",
+        position: "relative",
         height: "100%",
         overflow: "hidden",
       }}>
+        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+          {currentView === "main_settings" ? (
+            <motion.div
+              key="main_settings"
+              custom={direction}
+              variants={viewVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={viewTransition}
+              style={{ height: "100%" }}
+            >
+            <div style={{
+              display: "flex",
+              gap: "24px",
+              minHeight: "400px",
+              height: "100%",
+              overflow: "hidden",
+            }}>
         {/* 左侧导航 - 固定不滚动 */}
         <nav style={{
           width: "140px",
@@ -426,7 +470,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}>{t("settings.model.defaultModel.desc")}</p>
                   </div>
                   <select
-                    value={settings?.default_model || "mimo-v2.5-pro"}
+                    value={settings?.default_model || "qwen-flash"}
                     onChange={(e) => handleUpdate("default_model", e.target.value)}
                     disabled={saving === "default_model" || modelsLoading}
                     style={{
@@ -440,7 +484,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     }}
                   >
                     {modelsLoading ? (
-                      <option value="mimo-v2.5-pro">Loading...</option>
+                      <option value="qwen-flash">Loading...</option>
                     ) : (
                       models.map((model) => (
                         <option key={model.id} value={model.id}>
@@ -493,96 +537,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 </div>
               </div>
 
-              {/* API Key */}
-              <div>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "16px",
-                }}>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                  }}>{t("settings.model.apiConfig.title")}</h3>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    {apiKeysSaved && (
-                      <span style={{ fontSize: "12px", color: "var(--color-success)" }}>
-                        {t("common.saved")}
-                      </span>
-                    )}
-                    <button
-                      onClick={handleSaveApiKeys}
-                      disabled={savingApiKeys}
-                      style={{
-                        padding: "6px 16px",
-                        borderRadius: "var(--radius-sm)",
-                        border: "none",
-                        background: "var(--color-primary)",
-                        color: "white",
-                        cursor: savingApiKeys ? "not-allowed" : "pointer",
-                        fontSize: "13px",
-                        fontWeight: "500",
-                        opacity: savingApiKeys ? 0.7 : 1,
-                        transition: "all 0.6s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!savingApiKeys) e.currentTarget.style.background = "var(--color-primary-hover)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "var(--color-primary)";
-                      }}
-                    >
-                      {savingApiKeys ? t("common.saving") : t("common.save")}
-                    </button>
-                  </div>
-                </div>
-                <p style={{
-                  fontSize: "12px",
-                  color: "var(--text-level-4)",
-                  margin: "0 0 16px 0",
-                }}>{t("settings.model.apiConfig.desc")}</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {[
-                    { key: "api_key_mimo", label: "小米 MiMo", placeholder: "sk-..." },
-                    { key: "api_key_deepseek", label: "DeepSeek", placeholder: "sk-..." },
-                    { key: "api_key_qwen", label: "通义千问", placeholder: "sk-..." },
-                    { key: "api_key_glm", label: "智谱 AI", placeholder: "sk-..." },
-                    { key: "api_key_moonshot", label: "Moonshot", placeholder: "sk-..." },
-                    { key: "api_key_freellm", label: "FreeLLMAPI", placeholder: "freellmapi-..." },
-                  ].map((apiKey) => (
-                    <div key={apiKey.key} style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}>
-                      <label style={{
-                        fontSize: "13px",
-                        color: "var(--text-level-2)",
-                        minWidth: "100px",
-                      }}>{apiKey.label}</label>
-                      <input
-                        type="password"
-                        value={apiKeys[apiKey.key] || ""}
-                        onChange={(e) => setApiKeys(prev => ({ ...prev, [apiKey.key]: e.target.value }))}
-                        placeholder={apiKey.placeholder}
-                        style={{
-                          flex: 1,
-                          padding: "8px 12px",
-                          borderRadius: "var(--radius-sm)",
-                          border: "1px solid var(--border-primary)",
-                          background: "var(--bg-level-2)",
-                          fontSize: "13px",
-                          color: "var(--text-level-2)",
-                          outline: "none",
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              {/* 模型提供商 + 自定义模型 */}
+              <ModelConfigSection />
             </>
           )}
 
@@ -623,15 +579,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                     minWidth: "140px",
                   }}
                 >
-                  {[...agents]
-                    .sort((a, b) => {
-                      const order = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
-                      const ai = order.indexOf(a.id) === -1 ? 99 : order.indexOf(a.id);
-                      const bi = order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id);
-                      return ai - bi;
-                    })
-                    .filter((agent) => !["warm", "rational"].includes(agent.id))
-                    .map((agent) => (
+                  {getSortedActiveAgents(agents).map((agent) => (
                     <option key={agent.id} value={agent.id}>
                       {agent.name}
                     </option>
@@ -717,7 +665,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   }}>{t("settings.ai.agents.desc")}</p>
                 </div>
                 <button
-                  onClick={() => setAgentListOpen(true)}
+                  onClick={() => setCurrentView("agent_list")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -786,49 +734,32 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           )}
         </div>
       </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={editingAgentId ? "agent_edit" : "agent_list"}
+              custom={direction}
+              variants={viewVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={viewTransition}
+              style={{ height: "100%", overflowY: "auto", overflowX: "hidden" }}
+            >
+              <AgentListPanel
+                editingAgentId={editingAgentId}
+                onSelectAgent={(id) => {
+                  setDirection(1);
+                  setEditingAgentId(id);
+                  setCurrentView("agent_edit");
+                }}
+                onBackToSettings={goToMainSettings}
+                onBackToList={goToAgentList}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       </Panel>
-      <AgentListPanel isOpen={agentListOpen} onClose={() => setAgentListOpen(false)} />
-    </>
-  );
-}
-
-interface SwitchButtonProps {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (value: boolean) => void;
-}
-
-/** 通用开关（设置项用） */
-function SwitchButton({ checked, disabled, onChange }: SwitchButtonProps) {
-  return (
-    <button
-      onClick={() => onChange(!checked)}
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      style={{
-        width: 34,
-        height: 19,
-        borderRadius: 999,
-        border: "none",
-        background: checked ? "var(--color-primary)" : "var(--bg-level-4)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        position: "relative",
-        transition: "background 0.2s ease",
-        flexShrink: 0,
-        opacity: disabled ? 0.6 : 1,
-      }}
-    >
-      <span style={{
-        position: "absolute",
-        top: 2,
-        left: checked ? 17 : 2,
-        width: 15,
-        height: 15,
-        borderRadius: "50%",
-        background: "#fff",
-        transition: "left 0.2s ease",
-      }} />
-    </button>
   );
 }

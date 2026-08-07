@@ -3,6 +3,7 @@
 import { ChevronRight, Folder, FolderOpen, Pin, Plus, MoreHorizontal } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
+import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChatRow } from "./ChatRow";
 
@@ -18,6 +19,7 @@ interface ProjectNodeProps {
   onMoreProject: (e: React.MouseEvent, projectId: number) => void;
   onQuickCreateChat: (projectId: number) => void;
   currentChatId?: number | null;
+  streams?: Record<number, OrbStage>;
   renamingChatId: number | null;
   renameValue: string;
   onRenameValueChange: (value: string) => void;
@@ -40,6 +42,7 @@ export function ProjectNode({
   onMoreProject,
   onQuickCreateChat,
   currentChatId,
+  streams,
   renamingChatId,
   renameValue,
   onRenameValueChange,
@@ -167,6 +170,7 @@ export function ProjectNode({
               chat={chat}
               indented
               isActive={chat.id === currentChatId}
+              streamingStage={streams?.[chat.id] ?? null}
               isRenaming={renamingChatId === chat.id}
               renameValue={renameValue}
               onRenameValueChange={onRenameValueChange}

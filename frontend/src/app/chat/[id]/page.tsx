@@ -42,11 +42,13 @@ export default function ChatPage() {
 
   const {
     isSending,
-    streamingContent,
-    streamingThinking,
-    streamingToolCalls,
+    timeline,
+    tasks,
+    tokenUsage,
+    orbStage,
     streamingError,
     sendStream,
+    resolveApproval,
   } = useChatStream({ chatId, sendMessageStream, appendMessage, refetch });
 
   const currentChat = chats.find((c) => c.id === chatId);
@@ -250,7 +252,7 @@ export default function ChatPage() {
 
       // 自动发送消息（复用统一流式管线）
       sendStream(userMessage, {
-        modelId: currentModel?.id || "mimo-v2.5-pro",
+        modelId: currentModel?.id || "qwen-flash",
         personalityLevel,
         reasoningEffort,
       });
@@ -286,7 +288,7 @@ export default function ChatPage() {
 
     // 复用统一流式管线；发送前拼接项目文件上下文（用户消息乐观追加用原始文本）
     await sendStream(userMessage, {
-      modelId: currentModel?.id || "mimo-v2.5-pro",
+      modelId: currentModel?.id || "qwen-flash",
       personalityLevel,
       reasoningEffort,
       buildContent: async (content) => {
@@ -370,6 +372,8 @@ export default function ChatPage() {
         chat={currentChat}
         agent={currentAgent}
         project={currentProject}
+        streamingStage={orbStage}
+        tokenUsage={tokenUsage}
         isEditingTitle={isEditingTitle}
         editTitle={editTitle}
         onEditTitleChange={setEditTitle}
@@ -389,16 +393,18 @@ export default function ChatPage() {
       }}>
         <MessageList
           messages={messages}
-          streamingContent={streamingContent}
-          streamingThinking={streamingThinking}
-          streamingToolCalls={streamingToolCalls}
+          timeline={timeline}
+          tasks={tasks}
           streamingError={streamingError}
           isStreaming={isSending}
+          streamingStage={orbStage}
           currentAgent={currentAgentView}
           onQuote={handleQuote}
           onRegenerate={handleRegenerate}
           onRetry={handleRetry}
           onEdit={handleEdit}
+          onApproveApproval={(id) => resolveApproval(id, "approve")}
+          onDenyApproval={(id) => resolveApproval(id, "deny")}
           onActiveUserMessageChange={setActiveUserMessageId}
           scrollPersistenceKey={chatId ? `mfk_chat_scroll_${chatId}` : undefined}
         />

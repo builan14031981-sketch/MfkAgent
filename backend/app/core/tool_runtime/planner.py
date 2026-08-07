@@ -1,51 +1,49 @@
-"""工具规划器 — 根据意图分析结果决定需要哪些工具。"""
+"""工具规划器 — 意图 → 软提示（Phase B-2）
 
-from typing import Dict, List, Optional
+不再决定工具可见性（那是 PermissionFilter 的职责），只根据意图结果生成
+"任务建议"文本注入 system prompt，供模型参考，不构成任何限制。
+"""
+
+from typing import Dict, List
 
 
 class ToolPlanner:
-    """工具规划器"""
+    """工具规划器（软提示）"""
 
     def __init__(self):
-        # 意图到工具名称的映射
-        self._intent_tool_map: Dict[str, List[str]] = {
+        # 意图到建议工具的映射（仅供参考，不 gate）
+        self._intent_hint_map: Dict[str, List[str]] = {
             "system_diagnosis": ["run_command"],
             "file_operation": ["read_file", "write_file", "list_files"],
             "project_debug": ["run_command", "read_file", "git_status", "git_diff"],
-            "git_operation": ["run_command", "git_status", "git_diff", "git_log"],
+            "git_operation": ["git_status", "git_diff", "git_log", "git_commit", "git_restore"],
             "web_search": ["web_search", "fetch_url"],
             "memory_operation": ["add_memory"],
         }
 
-        # 需要项目路径的工具（无项目绑定时自动过滤）
-        self._project_only_tools = {
-            "read_file", "write_file", "list_files",
-            "git_status", "git_diff", "git_log",
-            "search_files",
-        }
-
-    def plan(self, intent_result: Dict, chat) -> List[str]:
-        """根据意图分析结果规划工具
+    def soft_hint(self, intent_result: Dict, available_tools: List[str]) -> str:
+        """根据意图生成工具建议文本（空字符串表示无建议）。
 
         Args:
             intent_result: 意图分析结果（来自 intent.py）
-            chat: Chat ORM 对象
+            available_tools: 当前会话可见工具名列表（来自 PermissionFilter.resolve）
 
         Returns:
-            工具名称列表
+            注入 system prompt 的建议文本；无建议时返回空字符串
         """
-        if not intent_result.get("need_tools"):
-            return []
+        if not intent_result.get("suggest_tools"):
+            return ""
 
         intent = intent_result.get("intent", "")
-        tool_names = self._intent_tool_map.get(intent, [])
+        suggested = self._intent_hint_map.get(intent, [])
 
-        if not tool_names:
-            return []
+        avail = set(available_tools)
+        suggested = [t for t in suggested if t in avail]
+        if not suggested:
+            return ""
 
-        # 无项目路径时过滤掉项目专有工具
-        project_path = getattr(chat, "project_path", None)
-        if not project_path:
-            tool_names = [t for t in tool_names if t not in self._project_only_tools]
-
-        return tool_names
+        return (
+            "## 任务建议（仅供参考，非限制）\n"
+            "当前任务建议优先考虑使用工具: " + ", ".join(suggested)
+            + "。你可以根据实际情况自主决定是否使用或改用其它可用工具。"
+        )

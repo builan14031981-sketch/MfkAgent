@@ -9,6 +9,9 @@ import {
   itemHoverBackground,
   pillActiveBackground,
   pillActiveColor,
+  ghostPillHoverBackground,
+  ghostPillHoverColor,
+  ghostPillHoverShadow,
 } from "./styles";
 
 interface UploadMenuProps {
@@ -54,21 +57,23 @@ export function UploadMenu({ open, onToggle, onPickFile, onPickDirectory, onClea
           height: "28px",
           padding: "0",
           borderRadius: "var(--radius-full)",
-          border: "1px solid var(--border-primary)",
-          background: open ? pillActiveBackground : "var(--bg-level-3)",
+          border: "1px solid transparent",
+          background: open ? pillActiveBackground : "transparent",
           cursor: "pointer",
-          color: open ? pillActiveColor : "var(--text-level-2)",
+          color: open ? pillActiveColor : "var(--text-level-4)",
           flexShrink: 0,
           outline: "none",
-          transition: "all var(--transition-fast)",
+          transition: "all 0.2s ease-in-out",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = pillActiveBackground;
-          e.currentTarget.style.color = pillActiveColor;
+          e.currentTarget.style.background = ghostPillHoverBackground;
+          e.currentTarget.style.color = ghostPillHoverColor;
+          e.currentTarget.style.boxShadow = ghostPillHoverShadow;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = open ? pillActiveBackground : "var(--bg-level-3)";
-          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-2)";
+          e.currentTarget.style.background = open ? pillActiveBackground : "transparent";
+          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-4)";
+          e.currentTarget.style.boxShadow = "none";
         }}
       >
         <Plus style={{

@@ -5,13 +5,16 @@ import { Brain, Check, ChevronDown } from "lucide-react";
 import type { ReasoningEffort } from "@/components/ChatInput";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
-  pillStyle,
+  ghostPillStyle,
   chevronStyle,
   popoverStyle,
   popoverItemStyle,
   itemHoverBackground,
   pillActiveBackground,
   pillActiveColor,
+  ghostPillHoverBackground,
+  ghostPillHoverColor,
+  ghostPillHoverShadow,
 } from "./styles";
 
 interface ReasoningSelectorProps {
@@ -55,21 +58,23 @@ export function ReasoningSelector({ reasoningEffort, onReasoningChange, open, on
         onClick={onToggle}
         title={currentLabel}
         style={{
-          ...pillStyle,
-          background: open ? pillActiveBackground : "var(--bg-level-3)",
-          color: open ? pillActiveColor : "var(--text-level-2)",
+          ...ghostPillStyle,
+          background: open ? pillActiveBackground : "transparent",
+          color: open ? pillActiveColor : "var(--text-level-4)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = pillActiveBackground;
-          e.currentTarget.style.color = pillActiveColor;
+          e.currentTarget.style.background = ghostPillHoverBackground;
+          e.currentTarget.style.color = ghostPillHoverColor;
+          e.currentTarget.style.boxShadow = ghostPillHoverShadow;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = open ? pillActiveBackground : "var(--bg-level-3)";
-          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-2)";
+          e.currentTarget.style.background = open ? pillActiveBackground : "transparent";
+          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-4)";
+          e.currentTarget.style.boxShadow = "none";
         }}
       >
-        <Brain style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
-        <span>{currentLabel}</span>
+        <Brain style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
+        <span style={{ fontWeight: 400 }}>{currentLabel}</span>
         <ChevronDown style={{
           ...chevronStyle,
           transform: open ? "rotate(180deg)" : "rotate(0deg)",

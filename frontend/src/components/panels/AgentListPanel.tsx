@@ -5,40 +5,38 @@ import { ChevronLeft } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
 import { apiGet } from "@/lib/api";
-import { Panel } from "./Panel";
 import { AgentIcon } from "../AgentIcon";
 
 interface AgentListPanelProps {
-  isOpen: boolean;
-  onClose: () => void;
+  /** 当前编辑中的 Agent id；null 表示列表视图，非 null 表示编辑视图 */
+  editingAgentId: string | null;
+  onSelectAgent: (id: string) => void;
+  /** 返回设置（一级设置主界面） */
+  onBackToSettings: () => void;
+  /** 返回列表（Agent 列表） */
+  onBackToList: () => void;
 }
 
-interface Tool {
-  name: string;
-  description: string;
-}
-
-/** 预设 Agent 二级面板：主列表 + 详情（Master-Detail），左上角返回设置 */
-export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
+/** 预设 Agent 管理视图（列表 / 编辑 同一容器），由 SettingsPanel 以 ViewState 控制显隐与导航 */
+export function AgentListPanel({ editingAgentId, onSelectAgent, onBackToSettings, onBackToList }: AgentListPanelProps) {
   const { agents, updateAgent } = useAgents();
   const { t } = useTranslation();
-  const [activeAgentId, setActiveAgentId] = useState<string | null>(null);
-  const [availableTools, setAvailableTools] = useState<Tool[]>([]);
+  const [capabilityTags, setCapabilityTags] = useState<Record<string, string>>({});
   const [editingCapabilities, setEditingCapabilities] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
-  const activeAgent = activeAgentId ? agents.find((a) => a.id === activeAgentId) || null : null;
+  const activeAgent = editingAgentId ? agents.find((a) => a.id === editingAgentId) || null : null;
 
-  // 获取可用工具列表
+  // 获取领域能力标签词表
   useEffect(() => {
-    apiGet<{ tools: Tool[] }>("/api/tools")
-      .then((data) => setAvailableTools(data.tools))
+    apiGet<{ tags: Record<string, string> }>("/api/agents/capability-tags")
+      .then((data) => setCapabilityTags(data.tags || {}))
       .catch(() => {});
   }, []);
 
-  // 切换 Agent 时重置编辑状态
-  useEffect(() => {
+  const handleSelectAgent = (id: string) => {
     setEditingCapabilities(null);
-  }, [activeAgentId]);
+    onSelectAgent(id);
+  };
 
   const visibleAgents = [...agents]
     .sort((a, b) => {
@@ -47,37 +45,42 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
       const bi = order.indexOf(b.id) === -1 ? 99 : order.indexOf(b.id);
       return ai - bi;
     })
-    .filter((agent) => !["warm", "rational"].includes(agent.id));
+    .filter((agent) => agent.status === "active");
 
-  const content = (
+  return (
     <>
-      {/* 返回设置（左上角，明显） */}
-      <button
-        onClick={onClose}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          padding: "6px 12px",
-          marginBottom: "16px",
-          borderRadius: "var(--radius-sm)",
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-level-2)",
-          cursor: "pointer",
-          fontSize: "13px",
-          fontWeight: "500",
-          color: "var(--text-level-1)",
-        }}
-      >
-        <ChevronLeft style={{ width: "15px", height: "15px" }} />
-        {t("settings.ai.agents.backToSettings")}
-      </button>
+      {/* 返回设置（视图右上角，一级设置时也显示） */}
+      <div style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        marginBottom: "16px",
+      }}>
+        <button
+          onClick={onBackToSettings}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "6px 12px",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--border-primary)",
+            background: "var(--bg-level-2)",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "500",
+            color: "var(--text-level-1)",
+          }}
+        >
+          <ChevronLeft style={{ width: "15px", height: "15px" }} />
+          {t("settings.ai.agents.backToSettings")}
+        </button>
+      </div>
 
       {activeAgent ? (
         <div>
-          {/* 返回列表 */}
+          {/* 返回列表（仅编辑视图显示） */}
           <button
-            onClick={() => setActiveAgentId(null)}
+            onClick={() => onBackToList()}
             style={{
               display: "flex",
               alignItems: "center",
@@ -145,9 +148,8 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
               background: "var(--bg-level-2)",
               border: "1px solid var(--border-primary)",
             }}>
-              <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 12px 0" }}>
-                <span style={{ color: "var(--text-level-4)" }}>{t("settings.ai.agents.model")}: </span>
-                {activeAgent.default_model || "-"}
+              <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>
+                {t("settings.ai.agents.modelGlobal")}
               </p>
 
               {/* 工具配置区域 */}
@@ -218,18 +220,43 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
                 </div>
 
                 {editingCapabilities === null ? (
-                  // 只读模式：显示已选工具
-                  <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>
-                    {(activeAgent.capabilities || []).length > 0
-                      ? (activeAgent.capabilities || []).join("、")
-                      : "-"}
-                  </p>
+                  // 只读模式：显示领域标签 chip + 说明
+                  <div style={{ margin: 0 }}>
+                    {(activeAgent.capabilities || []).length > 0 ? (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "6px" }}>
+                        {(activeAgent.capabilities || []).map((cap) => (
+                          <span
+                            key={cap}
+                            title={capabilityTags[cap] || cap}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              padding: "2px 8px",
+                              borderRadius: "999px",
+                              background: "var(--color-primary-lighter)",
+                              color: "var(--color-primary)",
+                              fontSize: "11px",
+                              fontWeight: "500",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            {cap}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 6px 0" }}>-</p>
+                    )}
+                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: 0 }}>
+                      {t("settings.ai.agents.capabilitiesHint")}
+                    </p>
+                  </div>
                 ) : (
-                  // 编辑模式：显示多选框
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {availableTools.map((tool) => (
+                  // 编辑模式：显示领域标签多选框
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "220px", overflowY: "auto" }}>
+                    {Object.entries(capabilityTags).map(([key, desc]) => (
                       <label
-                        key={tool.name}
+                        key={key}
                         style={{
                           display: "flex",
                           alignItems: "flex-start",
@@ -241,24 +268,27 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
                       >
                         <input
                           type="checkbox"
-                          checked={editingCapabilities.includes(tool.name)}
+                          checked={editingCapabilities.includes(key)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setEditingCapabilities([...editingCapabilities, tool.name]);
+                              setEditingCapabilities([...editingCapabilities, key]);
                             } else {
-                              setEditingCapabilities(editingCapabilities.filter((n) => n !== tool.name));
+                              setEditingCapabilities(editingCapabilities.filter((n) => n !== key));
                             }
                           }}
                           style={{ marginTop: "2px" }}
                         />
                         <div>
-                          <div style={{ fontWeight: "500" }}>{tool.name}</div>
+                          <div style={{ fontWeight: "500" }}>{key}</div>
                           <div style={{ fontSize: "11px", color: "var(--text-level-4)", marginTop: "1px" }}>
-                            {tool.description}
+                            {desc}
                           </div>
                         </div>
                       </label>
                     ))}
+                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "2px 0 0 0" }}>
+                      {t("settings.ai.agents.capabilitiesHint")}
+                    </p>
                   </div>
                 )}
               </div>
@@ -267,7 +297,7 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {/* 研发核心三角置顶：代码审查 AI、前端 UI 设计 AI、后端 AI；旧预设 warm/rational 不展示 */}
+          {/* 研发核心三角置顶：代码审查 AI、前端 UI 设计 AI、后端 AI；仅展示 active Agent */}
           {visibleAgents.map((agent) => (
             <div
               key={agent.id}
@@ -299,7 +329,7 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
                 }}>{agent.description}</p>
               </div>
               <button
-                onClick={() => setActiveAgentId(agent.id)}
+                onClick={() => handleSelectAgent(agent.id)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -321,17 +351,5 @@ export function AgentListPanel({ isOpen, onClose }: AgentListPanelProps) {
         </div>
       )}
     </>
-  );
-
-  return (
-    <Panel
-      isOpen={isOpen}
-      onClose={onClose}
-      title={t("settings.ai.agents.title")}
-      width="460px"
-      variant="bottom-left"
-    >
-      {content}
-    </Panel>
   );
 }

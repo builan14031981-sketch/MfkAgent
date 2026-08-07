@@ -16,15 +16,13 @@ async def test_model(model_id: str) -> dict:
             return {"model": model_id, "status": "❌ 无 API Key"}
         
         # 简单测试：发送一个空消息
-        from app.services.model import Message
-        messages = [Message(role="user", content="hi")]
+        messages = [{"role": "user", "content": "hi"}]
         
-        # 尝试非流式调用
-        response = await model_service.chat(
+        # 尝试非流式调用（Phase E1：改用 call_once）
+        response = await model_service.call_once(
             model_id=model_id,
-            messages=messages,
+            messages=[{"role": "user", "content": "hi"}],
             max_tokens=10,
-            stream=False
         )
         
         return {"model": model_id, "status": "✅ 可用", "response": response.content[:50]}

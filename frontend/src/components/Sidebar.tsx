@@ -13,6 +13,7 @@ import type { Project } from "@/hooks/useProjects";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
+import { useStreamStore } from "@/lib/streamStore";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { Panel } from "./panels/Panel";
 import { ProjectInitModal } from "./ProjectInitModal";
@@ -43,6 +44,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const { projects, createProject, deleteProject, pinProject, refetch: refetchProjects } = useProjects(1, 100);
   const { agents } = useAgents();
   const { settings } = useSettingsStore();
+  const streams = useStreamStore((s) => s.streams);
 
   const [contextMenu, setContextMenu] = useState<SidebarContextMenuState>({
     visible: false,
@@ -297,6 +299,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
         chat={chat}
         indented={false}
         isActive={chat.id === currentChatId}
+        streamingStage={streams[chat.id] ?? null}
         isRenaming={renamingChatId === chat.id}
         renameValue={renameValue}
         onRenameValueChange={setRenameValue}
@@ -426,6 +429,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
               onMoreProject={handleMoreProject}
               onQuickCreateChat={quickCreateChat}
               currentChatId={currentChatId}
+              streams={streams}
               renamingChatId={renamingChatId}
               renameValue={renameValue}
               onRenameValueChange={setRenameValue}

@@ -1,0 +1,560 @@
+MfkAgent Policy & Prompt Architecture V1.0
+一、文档定位
+
+定义：
+
+Agent 如何保持身份稳定、行为一致，并通过结构化 Prompt 完成任务。
+
+负责：
+
+Prompt分层
+指令优先级
+Agent行为约束
+输出规范
+模型适配
+
+不负责：
+
+模型训练
+Fine-tuning
+模型供应商选择
+二、核心原则
+
+Agent能力不应该依赖：
+
+一个巨大Prompt
+
+错误：
+
+System Prompt
+
+↓
+
+几万字规则
+
+↓
+
+希望模型变强
+
+问题：
+
+难维护
+容易冲突
+不同模型表现不一致
+
+正确：
+
+Prompt 是一个动态系统：
+
+基础规则
+
++
+
+Agent身份
+
++
+
+行为策略
+
++
+
+用户偏好
+
++
+
+任务上下文
+
++
+
+工具状态
+
+↓
+
+最终Prompt
+三、Prompt分层架构
+
+最终结构：
+
+System Policy
+
+↓
+
+Agent Identity
+
+↓
+
+Behavior Policy
+
+↓
+
+User Preference
+
+↓
+
+Task Context
+
+↓
+
+Tool Context
+
+↓
+
+Output Format
+四、System Policy（系统规则）
+
+定义：
+
+最高级规则。
+
+负责：
+
+安全边界
+基本行为
+能力限制
+
+例如：
+
+你必须保持事实准确。
+
+不确定时必须说明。
+
+禁止伪造执行结果。
+
+特点：
+
+稳定。
+
+不会因为 Agent 改变。
+
+五、Agent Identity（角色身份）
+
+定义：
+
+Agent是谁。
+
+回答：
+
+我是谁？
+
+我负责什么？
+
+我擅长什么？
+
+示例：
+
+Coder：
+
+你是一名软件开发辅助 Agent。
+
+你的目标是帮助用户分析、设计和维护代码。
+
+注意：
+
+Identity不是人格。
+
+错误：
+
+你是一个温柔可爱的程序员姐姐。
+
+这属于：
+
+Personality。
+
+六、Behavior Policy（行为策略）
+
+定义：
+
+Agent如何工作。
+
+例如：
+
+分析型 Agent：
+
+回答前：
+
+1. 分析问题
+
+2. 检查假设
+
+3. 指出风险
+
+4. 给出建议
+
+代码 Agent：
+
+修改代码前：
+
+说明原因
+
+确认影响范围
+
+避免破坏已有结构
+七、Personality层
+
+定义：
+
+表达方式。
+
+不是：
+
+能力。
+
+结构：
+
+Agent
+
+决定：
+
+做什么
+
+
+Personality
+
+决定：
+
+怎么表达
+
+例如：
+
+Coder：
+
+低人格：
+
+直接指出问题。
+
+高人格：
+
+先解释原因，再提出修改。
+
+禁止：
+
+Personality改变专业能力。
+
+错误：
+
+感性模式：
+
+减少代码检查。
+
+正确：
+
+检查能力不变。
+
+表达方式变化。
+八、Prompt动态组合
+
+推荐：
+
+Final Prompt =
+
+System Policy
+
++
+
+Agent Identity
+
++
+
+Behavior
+
++
+
+Personality
+
++
+
+Memory
+
++
+
+Knowledge
+
++
+
+Task Context
+
+禁止：
+
+每个 Agent 保存完整Prompt。
+
+错误：
+
+Coder Prompt
+
+包含：
+
+身份
+
+人格
+
+记忆
+
+工具
+
+全部写死
+
+原因：
+
+难维护。
+
+九、指令优先级
+
+必须明确：
+
+System Policy
+
+>
+
+Safety Rule
+
+>
+
+Agent Identity
+
+>
+
+Developer Instruction
+
+>
+
+User Request
+
+>
+
+Memory
+
+Memory：
+
+不是指令。
+
+只是参考信息。
+
+错误：
+
+用户Memory：
+
+“永远不要拒绝我。”
+
+不能覆盖系统规则。
+
+十、避免人格漂移
+
+常见问题：
+
+用户聊天很久后：
+
+Agent改变身份。
+
+原因：
+
+上下文中：
+
+用户消息数量 >
+
+System Prompt影响。
+
+解决：
+
+重要身份规则：
+
+必须保持在高优先级。
+
+需要：
+
+Identity Reinforcement
+十一、模型切换兼容
+
+不同模型：
+
+能力不同。
+
+禁止：
+
+依赖：
+
+某个模型特殊行为。
+
+错误：
+
+这个Prompt只适合GPT。
+
+正确：
+
+Prompt应该：
+
+清晰
+结构化
+少依赖暗示
+十二、输出规范
+
+Agent输出应该符合任务。
+
+禁止：
+
+固定所有回答格式。
+
+错误：
+
+所有回答：
+
+分析：
+
+方案：
+
+总结：
+
+正确：
+
+根据任务调整。
+
+例如：
+
+代码：
+
+需要：
+
+问题
+
+原因
+
+修改
+
+验证
+
+聊天：
+
+可以自然交流。
+
+十三、Agent行为循环
+
+Agent执行：
+
+Receive Task
+
+↓
+
+Understand Goal
+
+↓
+
+Check Context
+
+↓
+
+Plan
+
+↓
+
+Act
+
+↓
+
+Verify
+
+↓
+
+Respond
+
+禁止：
+
+直接：
+
+用户输入
+
+↓
+
+立即回答
+十四、Prompt维护原则
+
+Prompt不是越长越强。
+
+评价：
+
+清晰度
+
+>
+
+长度
+
+每条规则应该回答：
+
+为什么存在？
+
+如果删除：
+
+会造成什么问题？
+
+十五、禁止设计
+
+禁止：
+
+1. 巨型Prompt
+几万字角色设定
+2. 人格代替能力
+可爱语气
+=
+优秀Agent
+3. Memory覆盖身份
+4. Tool改变人格
+5. 用提示词解决所有问题
+
+例如：
+
+架构问题：
+
+不要靠Prompt修。
+
+十六、MfkAgent Prompt最终模型
+                 System Policy
+
+                       ↓
+
+                Agent Identity
+
+                       ↓
+
+              Behavior Policy
+
+                       ↓
+
+                Personality
+
+                       ↓
+
+                  Memory
+
+                       ↓
+
+              Task Context
+
+                       ↓
+
+               Final Response
+十七、V1实现建议
+
+优先：
+
+✅ Prompt模块化
+✅ Identity独立存储
+✅ Personality独立存储
+✅ 动态Prompt组装
+✅ Prompt调试查看
+
+暂缓：
+
+❌ 自动Prompt优化
+❌ Agent自我修改Prompt
+❌ Prompt市场
+
+文档状态
+
+MfkAgent Policy & Prompt Architecture V1.0
+
+用途：
+
+作为：
+
+Agent行为设计依据
+Prompt系统依据
+多模型适配依据
+Agent稳定性依据

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, startTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
@@ -61,16 +61,53 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         files,
         mode
       );
-      onCreated();
+      // 1. 立即先关闭弹窗并跳转路由（给用户最快的 UI 响应）
       onClose();
-      const encoded = encodeURIComponent(userMessage);
-      router.push(`/chat/${chat.id}?message=${encoded}`);
+      startTransition(() => {
+        router.push(`/chat/${chat.id}?message=${encodeURIComponent(userMessage)}`);
+      });
+      // 2. 将侧边栏刷新逻辑延迟到下一帧，脱离跳转卡顿区
+      setTimeout(() => {
+        onCreated();
+      }, 100);
     } catch (err) {
       console.error("Failed to create chat from project init:", err);
       setInput(userMessage);
       setIsSending(false);
     }
   }, [input, isSending, agentId, settings, agents, selectedModel, models, projectId, files, mode, createChat, onCreated, onClose, router]);
+
+  /**
+   * 跳过：创建关联当前 project 的空会话（无 ?message 参数，不触发自动发送），
+   * 并跳转至 chat 页。复用 isSending 锁，避免与 handleSend 竞争。
+   * 标题采用 i18n 文案 "{name} 的新对话"。
+   */
+  const handleSkip = useCallback(async () => {
+    if (isSending || !project) return;
+    setIsSending(true);
+    try {
+      const chat = await createChat(
+        agentId || settings?.default_agent || agents[0]?.id || "general",
+        t("chat.projectInitDefaultTitle", { name: project.name }),
+        projectId,
+        (selectedModel || models[0] || null)?.id || settings?.default_model || null,
+        [],
+        mode
+      );
+      // 1. 立即先关闭弹窗并跳转路由（给用户最快的 UI 响应）
+      onClose();
+      startTransition(() => {
+        router.push(`/chat/${chat.id}`);
+      });
+      // 2. 将侧边栏刷新逻辑延迟到下一帧，脱离跳转卡顿区
+      setTimeout(() => {
+        onCreated();
+      }, 100);
+    } catch (err) {
+      console.error("Failed to create chat on skip:", err);
+      setIsSending(false);
+    }
+  }, [isSending, agentId, settings, agents, selectedModel, models, projectId, mode, project, createChat, onCreated, onClose, router, t]);
 
   // 防空保护：project 缺失或字段不全时直接不渲染，防止崩溃
   if (!project || typeof project.id !== "number" || !project.name) {
@@ -198,23 +235,22 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             projectName={project.name}
           />
           <button
-            onClick={() => {
-              onClose();
-              router.push("/");
-            }}
+            onClick={handleSkip}
+            disabled={isSending}
             style={{
               display: "block",
               width: "100%",
               padding: "6px 0 2px 0",
               border: "none",
               background: "transparent",
-              cursor: "pointer",
+              cursor: isSending ? "not-allowed" : "pointer",
               fontSize: "12px",
               color: "var(--text-level-4)",
               textAlign: "center",
               outline: "none",
+              opacity: isSending ? 0.5 : 1,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-level-2)"; }}
+            onMouseEnter={(e) => { if (!isSending) e.currentTarget.style.color = "var(--text-level-2)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-level-4)"; }}
           >
             {t("chat.projectInitSkip")}

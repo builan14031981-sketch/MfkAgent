@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, devtools
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, devtools, runs
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
@@ -60,6 +60,14 @@ def _ensure_schema():
         with engine.begin() as conn:
             if "tool_calls" not in cols:
                 conn.execute(sa.text("ALTER TABLE messages ADD COLUMN tool_calls JSON"))
+            if "timeline" not in cols:
+                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN timeline JSON"))
+
+    if "agents" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("agents")}
+        with engine.begin() as conn:
+            if "status" not in cols:
+                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN status VARCHAR(20) DEFAULT 'active'"))
 
     if "memory_items" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("memory_items")}
@@ -69,8 +77,34 @@ def _ensure_schema():
             if "project_id" not in cols:
                 conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN project_id INTEGER"))
 
+    if "agent_runs" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("agent_runs")}
+        with engine.begin() as conn:
+            if "state" not in cols:
+                conn.execute(sa.text("ALTER TABLE agent_runs ADD COLUMN state VARCHAR(50) DEFAULT 'pending'"))
+
 
 _ensure_schema()
+
+
+def _purge_mimo_key():
+    """幂等迁移：清除已废弃的 MiMo（token 套餐付费，已不再使用）API Key 残留。"""
+    from sqlalchemy import text as _text
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        deleted = db.execute(_text("DELETE FROM settings WHERE key='api_key_mimo'"))
+        if deleted.rowcount:
+            print(f"[migration] 已清除废弃的 api_key_mimo ({deleted.rowcount} 行)")
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        print(f"[migration] 清理 api_key_mimo 失败（忽略）: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+_purge_mimo_key()
 
 
 def _migrate_legacy_memory():
@@ -156,6 +190,7 @@ app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(trash.router, prefix="/api/trash", tags=["trash"])
 app.include_router(greetings.router, prefix="/api/system", tags=["system"])
 app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
+app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 
 @app.get("/")
 async def root():

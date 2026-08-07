@@ -4,11 +4,14 @@ import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Pin, MessageSquare, MoreHorizontal } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
+import type { OrbStage } from "@/lib/streamStore";
+import { ThinkingOrb } from "thinking-orbs";
 
 interface ChatRowProps {
   chat: Chat;
   indented: boolean;
   isActive: boolean;
+  streamingStage?: OrbStage | null;
   isRenaming: boolean;
   renameValue: string;
   onRenameValueChange: (value: string) => void;
@@ -23,6 +26,7 @@ export function ChatRow({
   chat,
   indented,
   isActive,
+  streamingStage,
   isRenaming,
   renameValue,
   onRenameValueChange,
@@ -87,7 +91,11 @@ export function ChatRow({
         {isPinned && (
           <Pin style={{ width: "11px", height: "11px", flexShrink: 0, color: "var(--color-primary)" }} />
         )}
-        <MessageSquare style={{ width: "13px", height: "13px", flexShrink: 0, color: isActive ? "var(--color-primary)" : "var(--text-level-3)" }} />
+        {streamingStage ? (
+          <ThinkingOrb state={streamingStage} size={20} theme="auto" />
+        ) : (
+          <MessageSquare style={{ width: "13px", height: "13px", flexShrink: 0, color: isActive ? "var(--color-primary)" : "var(--text-level-3)" }} />
+        )}
         {isRenaming ? (
           <input
             ref={renameInputRef}

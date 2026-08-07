@@ -1,0 +1,578 @@
+我重新审查了一遍这 8 个文档方案。整体方向是对的，但如果目标是**真的做出一个强 Agent，而不是写一套漂亮架构文档**，目前方案还有几个问题。
+
+结论先说：
+
+> 8 个文档数量合理，但顺序和边界需要调整。当前方案偏"架构设计"，缺少"工程落地"和"Agent质量控制"两个关键层。
+
+---
+
+# 一、总体评价
+
+当前：
+
+```
+1 Agent Concept
+2 Runtime Architecture
+3 Prompt Architecture
+4 Tool Architecture
+5 Memory Architecture
+6 Product Design
+7 Multi-Agent
+8 Evaluation
+```
+
+优点：
+
+✅ 从理念到实现逐步深入
+✅ 没有一开始陷入 Multi-Agent
+✅ 重视 Memory / Tool / Evaluation
+✅ 符合现代 Agent 系统方向
+
+但是问题：
+
+缺少三个关键东西：
+
+1. **Context Architecture（上下文架构）**
+2. **State Management（状态管理）**
+3. **Human-Agent Interaction（人机协作机制）**
+
+这三个实际上比 Multi-Agent 更重要。
+
+---
+
+# 二、逐个审查
+
+---
+
+# 文档1：Agent Concept & Architecture
+
+评价：
+
+✅ 必须保留。
+
+这是定义：
+
+> 什么叫 Agent。
+
+现在设计：
+
+```
+Identity
+Personality
+Behavior
+Capability
+Planning
+Execution
+Verification
+```
+
+方向正确。
+
+但是建议增加：
+
+## Goal
+
+因为 Agent 的核心不是能力，而是目标。
+
+修改：
+
+```
+Agent
+
+├ Identity
+├ Goal
+├ Behavior
+├ Personality
+├ Capability
+├ Planning
+├ Execution
+└ Verification
+```
+
+原因：
+
+没有 Goal：
+
+Agent 只是一个工具集合。
+
+---
+
+例如：
+
+Coder Agent：
+
+能力：
+
+写代码。
+
+但是目标：
+
+帮助用户可靠完成软件开发。
+
+这是不同的。
+
+---
+
+# 文档2：Agent Runtime Architecture
+
+评价：
+
+✅ 最核心。
+
+但是目前缺一个东西：
+
+## Context Assembly
+
+现在：
+
+```
+User
+
+↓
+
+Planner
+
+↓
+
+Executor
+```
+
+太简单。
+
+真实应该：
+
+```
+User Request
+
+↓
+
+Context Assembly
+
+↓
+
+Task Understanding
+
+↓
+
+Planning
+
+↓
+
+Execution
+
+↓
+
+Verification
+```
+
+为什么？
+
+因为 Agent 做决定依赖：
+
+* 当前聊天
+* 项目
+* 用户习惯
+* Memory
+* 文件
+* 工具状态
+
+所以 Runtime 第一阶段应该不是 Planning。
+
+应该是：
+
+"收集大脑输入"。
+
+---
+
+# 文档3：Prompt Architecture
+
+评价：
+
+✅ 必须。
+
+但是需要调整定位。
+
+现在容易变成：
+
+"怎么写 Prompt"。
+
+应该升级：
+
+> Agent Instruction Architecture
+
+因为未来不是只有 Prompt。
+
+还有：
+
+* System Rule
+* Policy
+* Tool Instruction
+* Memory Injection
+
+结构：
+
+```
+Core Policy
+
+↓
+
+Agent Identity
+
+↓
+
+Behavior
+
+↓
+
+Context
+
+↓
+
+Task Instruction
+
+↓
+
+Response Policy
+```
+
+---
+
+# 文档4：Tool & Capability Architecture
+
+评价：
+
+✅ 必须。
+
+但是现在太靠前。
+
+原因：
+
+很多 Agent 失败不是工具少。
+
+而是：
+
+不会判断什么时候用工具。
+
+所以应该和 Planner 强绑定：
+
+```
+Planner
+
+↓
+
+Capability Selection
+
+↓
+
+Tool Selection
+
+↓
+
+Execution
+```
+
+---
+
+# 文档5：Memory & Context Architecture
+
+这里有重大问题。
+
+标题应该拆。
+
+现在：
+
+```
+Memory & Context
+```
+
+实际上两个东西。
+
+建议：
+
+拆成：
+
+## 文档5：Context Architecture
+
+解决：
+
+> 当前任务需要什么信息？
+
+包括：
+
+* Chat Context
+* Project Context
+* File Context
+* Tool Context
+
+---
+
+## 文档6：Memory Architecture
+
+解决：
+
+> 什么值得长期保存？
+
+包括：
+
+* User Preference
+* Project Knowledge
+* Long-term Facts
+
+---
+
+原因：
+
+很多 Agent 项目失败，就是把 Context 和 Memory 混在一起。
+
+---
+
+# 文档6：Agent Product Design
+
+应该后移。
+
+现在：
+
+第6。
+
+建议：
+
+第8。
+
+原因：
+
+先把 Agent 做出来。
+
+再设计用户如何使用。
+
+---
+
+# 文档7：Multi-Agent Architecture
+
+评价：
+
+正确。
+
+但是应该最后。
+
+甚至 V3。
+
+不要进入第一阶段。
+
+---
+
+# 文档8：Evaluation System
+
+这个位置不对。
+
+评价：
+
+非常重要。
+
+应该提前。
+
+因为：
+
+没有评价标准，你不知道 Agent 有没有变强。
+
+建议：
+
+放到 Runtime 后面。
+
+---
+
+# 三、重新排序
+
+我建议改成：
+
+# MfkAgent Agent System Design V2
+
+## 1. Agent Core Architecture
+
+定义：
+
+Agent是什么。
+
+---
+
+## 2. Agent Runtime Architecture
+
+定义：
+
+Agent怎么运行。
+
+---
+
+## 3. Context Architecture
+
+定义：
+
+Agent运行时看到什么。
+
+---
+
+## 4. Planning & Reasoning Architecture
+
+定义：
+
+Agent如何拆解任务。
+
+---
+
+## 5. Tool & Capability Architecture
+
+定义：
+
+Agent如何行动。
+
+---
+
+## 6. Memory Architecture
+
+定义：
+
+Agent如何长期成长。
+
+---
+
+## 7. Prompt & Policy Architecture
+
+定义：
+
+Agent行为如何约束。
+
+---
+
+## 8. Evaluation Architecture
+
+定义：
+
+如何测试Agent。
+
+---
+
+## 9. Product Interaction Architecture（新增）
+
+定义：
+
+用户如何和Agent协作。
+
+（这个可以和产品设计合并）
+
+---
+
+## 10. Multi-Agent Architecture（未来）
+
+最后。
+
+---
+
+# 四、为什么增加这些？
+
+因为一个真实 Agent 的运行链：
+
+应该是：
+
+```
+用户目标
+
+↓
+
+Context
+
+↓
+
+Understand
+
+↓
+
+Plan
+
+↓
+
+Capability选择
+
+↓
+
+Tool执行
+
+↓
+
+Observe
+
+↓
+
+Verify
+
+↓
+
+Memory更新
+
+↓
+
+Response
+```
+
+而不是：
+
+```
+Prompt
+
+↓
+
+LLM
+
+↓
+
+Answer
+```
+
+---
+
+# 五、最终建议
+
+不要做 8 份。
+
+调整成：
+
+## 核心 8 份：
+
+1. Agent Core
+2. Runtime
+3. Context
+4. Planning
+5. Tool
+6. Memory
+7. Policy/Prompt
+8. Evaluation
+
+## 后续：
+
+9. Product Interaction
+
+10. Multi-Agent
+
+这样更接近真正 Agent Framework 的设计。
+
+---
+
+另外有一个重要判断：
+
+你现在 MfkAgent 原来的架构：
+
+```
+Agent
++
+Personality
++
+Memory
++
+Tools
+```
+
+其实已经完成了"聊天助手"的 60%。
+
+下一阶段真正跨越，是：
+
+**Runtime + Planning + Verification。**
+
+这三个决定它是不是 Agent。

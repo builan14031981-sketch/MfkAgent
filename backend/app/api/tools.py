@@ -1,20 +1,16 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Dict, Any, Optional
+"""工具目录只读接口（E7-1：移除直接执行旁路）。
+
+仅保留只读的工具列表 / 定义查询。任何工具执行都必须经过 AgentRuntime
+（Executor → Permission → Risk → Approval → Verification → Event）闭环，
+api 层禁止直接调用 tool_registry.execute。
+
+开发调试用的裸工具执行已移至 devtools router（/api/devtools/tools/call，
+仅 DEBUG 模式可用）。
+"""
+from fastapi import APIRouter
 from app.services.tools import tool_registry
 
 router = APIRouter()
-
-
-class ToolCallRequest(BaseModel):
-    tool_name: str
-    arguments: Dict[str, Any] = {}
-
-
-class ToolCallResponse(BaseModel):
-    success: bool
-    output: str
-    error: str
 
 
 @router.get("")
@@ -30,16 +26,6 @@ async def list_tools():
             for tool in tools
         ]
     }
-
-
-@router.post("/call", response_model=ToolCallResponse)
-async def call_tool(request: ToolCallRequest):
-    result = await tool_registry.execute(request.tool_name, **request.arguments)
-    return ToolCallResponse(
-        success=result.success,
-        output=result.output,
-        error=result.error,
-    )
 
 
 @router.get("/definitions")

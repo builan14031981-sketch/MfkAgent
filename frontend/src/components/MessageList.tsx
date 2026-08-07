@@ -5,23 +5,33 @@ import { ArrowDown, AlertTriangle, RotateCw } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ChatMessage, ThinkingPanel } from "@/components/ChatMessage";
 import { AgentIcon } from "@/components/AgentIcon";
+import { AgentOrb } from "@/components/AgentOrb";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { ToolCallCardList } from "@/components/ToolCallCard";
-import type { ToolCall } from "@/components/ToolCallCard";
+import { ToolCallCard } from "@/components/ToolCallCard";
+import { ApprovalCard } from "@/components/ApprovalCard";
+import { TaskProgressCard } from "@/components/TaskProgressCard";
+import type { RuntimeEvent, TaskNode } from "@/types/runtime";
+import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
 
 interface MessageListProps {
   messages: Message[];
-  streamingContent: string;
-  streamingThinking?: string;
-  streamingToolCalls?: ToolCall[];
+  /** 运行时事件时间线：按 SSE 真实到达顺序排列 thinking/tool/approval/text（及未来扩展类型） */
+  timeline: RuntimeEvent[];
+  /** 多 Agent 任务协同列表（task_started/completed/failed 累积，独立渲染为任务进度卡片） */
+  tasks?: TaskNode[];
   streamingError?: string | null;
   isStreaming: boolean;
+  /** 流式加载阶段：非空时在流式块头部显示 Orb 动画 */
+  streamingStage?: OrbStage | null;
   currentAgent?: { id: string; name: string } | null;
   onQuote: (content: string) => void;
   onRegenerate: (messageId: number) => void;
   onRetry?: () => void;
   onEdit: (message: Message) => void;
+  /** 审批卡片回调（timeline 中的 approval event 使用） */
+  onApproveApproval?: (approvalId: string) => void;
+  onDenyApproval?: (approvalId: string) => void;
   /** 当前视口对应的用户消息 id 变化时回调（供对话大纲定位/高亮） */
   onActiveUserMessageChange?: (messageId: number | null) => void;
   /** 滚动位置持久化 key（如 `mfk_chat_scroll_${chatId}`）：存当前活跃用户消息 id，进入会话时恢复 */
@@ -40,7 +50,7 @@ const BOTTOM_THRESHOLD = 120;
  * 若此处每帧重渲染会全量重跑 400 条消息的 Markdown 树导致卡顿，
  * memo 确保父级 re-render 时消息树跳过。
  */
-export const MessageList = memo(function MessageList({ messages, streamingContent, streamingThinking, streamingToolCalls, streamingError, isStreaming, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
+export const MessageList = memo(function MessageList({ messages, timeline, tasks, streamingError, isStreaming, streamingStage, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -49,7 +59,7 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
 
   // 空状态：渲染期派生，避免 effect 中 setState
-  const isEmptyState = messages.length === 0 && !streamingContent && !streamingThinking;
+  const isEmptyState = messages.length === 0 && timeline.length === 0;
 
   const userMessageIds = useMemo(
     () => messages.filter((m) => m.role === "user").map((m) => m.id),
@@ -204,7 +214,7 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
       scrollToBottom();
     });
     return () => cancelAnimationFrame(raf);
-  }, [messages, streamingContent, streamingThinking, streamingError, isEmptyState, updateNearBottom, scrollToBottom]);
+  }, [messages, timeline, tasks, streamingError, isEmptyState, updateNearBottom, scrollToBottom]);
 
   // 监听发送状态或流式开始（false -> true）：强制重置吸底锁并滚动到底部
   const isActive = isStreaming;
@@ -277,21 +287,89 @@ export const MessageList = memo(function MessageList({ messages, streamingConten
                 />
               </div>
             ))}
-            {(streamingThinking || (streamingToolCalls && streamingToolCalls.length > 0) || streamingContent) && (
+            {timeline.length > 0 && (
               <div style={{ marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                  {currentAgent && <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />}
+                  {streamingStage ? (
+                    <AgentOrb stage={streamingStage} size={20} />
+                  ) : currentAgent ? (
+                    <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
+                  ) : null}
                   <span style={{ fontSize: "13px", fontWeight: 500, lineHeight: 1.25, color: "var(--text-level-3)" }}>
                     {currentAgent?.name || "AI"}
                   </span>
                 </div>
-                {streamingThinking && <ThinkingPanel thinking={streamingThinking} />}
-                {streamingToolCalls && streamingToolCalls.length > 0 && (
-                  <ToolCallCardList toolCalls={streamingToolCalls} />
-                )}
-                {streamingContent && <MarkdownRenderer content={streamingContent} />}
+                {timeline.map((seg) => {
+                  switch (seg.type) {
+                    case "thinking":
+                      return <ThinkingPanel key={seg.id} thinking={seg.content} />;
+                    case "tool":
+                      return (
+                        <div key={seg.id} style={{ marginBottom: "8px" }}>
+                          <ToolCallCard toolCall={seg.toolCall} />
+                        </div>
+                      );
+                    case "approval":
+                      return (
+                        <div key={seg.id} style={{ marginTop: "8px" }}>
+                          <ApprovalCard
+                            approval={seg.approval}
+                            onApprove={(id) => onApproveApproval?.(id)}
+                            onDeny={(id) => onDenyApproval?.(id)}
+                          />
+                        </div>
+                      );
+                    case "text":
+                      return <MarkdownRenderer key={seg.id} content={seg.content} />;
+                    // task_* 事件不进入 timeline 渲染（由独立 tasks 状态 + TaskProgressCard 处理）
+                    case "task_started":
+                    case "task_completed":
+                    case "task_failed":
+                      return null;
+                    // 未来扩展事件（verification / sub_agent / vision / memory）：
+                    // 以通用占位块呈现，字段就绪后可替换为专用组件
+                    default:
+                      return (
+                        <div key={seg.id} style={{ marginBottom: "8px" }}>
+                          <div style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "6px 12px",
+                            borderRadius: "var(--radius-md)",
+                            background: "var(--bg-level-3)",
+                            border: "1px solid var(--border-primary)",
+                            fontSize: "12px",
+                            color: "var(--text-level-3)",
+                          }}>
+                            <span style={{
+                              flexShrink: 0,
+                              padding: "0 6px",
+                              borderRadius: "var(--radius-xs)",
+                              fontSize: "10px",
+                              fontWeight: 600,
+                              lineHeight: "16px",
+                              fontFamily: "var(--font-geist-mono), var(--font-family)",
+                              color: "var(--text-level-3)",
+                              background: "color-mix(in srgb, var(--bg-level-2) 60%, transparent)",
+                              border: "1px solid var(--border-primary)",
+                            }}>{seg.type}</span>
+                            <span style={{
+                              flex: 1,
+                              minWidth: 0,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}>{seg.title || seg.content || seg.type}</span>
+                          </div>
+                        </div>
+                      );
+                  }
+                })}
               </div>
             )}
+            {/* 多 Agent 任务进度卡片：tasks 为空时不渲染，保持聊天界面干净 */}
+            <TaskProgressCard tasks={tasks ?? []} />
             {streamingError && (
               <div style={{
                 marginBottom: "16px",

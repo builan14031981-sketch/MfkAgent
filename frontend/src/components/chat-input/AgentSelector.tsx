@@ -7,12 +7,15 @@ import { AgentIcon } from "@/components/AgentIcon";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
-  pillStyle,
+  ghostPillStyle,
   chevronStyle,
   portalDropdownStyle,
   itemHoverBackground,
   pillActiveBackground,
   pillActiveColor,
+  ghostPillHoverBackground,
+  ghostPillHoverColor,
+  ghostPillHoverShadow,
 } from "./styles";
 
 interface AgentSelectorProps {
@@ -65,21 +68,23 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose }:
           onToggle();
         }}
         style={{
-          ...pillStyle,
-          background: open ? pillActiveBackground : "var(--bg-level-3)",
-          color: open ? pillActiveColor : "var(--text-level-2)",
+          ...ghostPillStyle,
+          background: open ? pillActiveBackground : "transparent",
+          color: open ? pillActiveColor : "var(--text-level-4)",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = pillActiveBackground;
-          e.currentTarget.style.color = pillActiveColor;
+          e.currentTarget.style.background = ghostPillHoverBackground;
+          e.currentTarget.style.color = ghostPillHoverColor;
+          e.currentTarget.style.boxShadow = ghostPillHoverShadow;
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = open ? pillActiveBackground : "var(--bg-level-3)";
-          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-2)";
+          e.currentTarget.style.background = open ? pillActiveBackground : "transparent";
+          e.currentTarget.style.color = open ? pillActiveColor : "var(--text-level-4)";
+          e.currentTarget.style.boxShadow = "none";
         }}
       >
         <AgentIcon id={selectedId ?? undefined} size={14} style={{ flexShrink: 0 }} />
-        <span style={{ fontWeight: 500 }}>{currentAgentName || selectedId}</span>
+        <span style={{ fontWeight: 400 }}>{currentAgentName || selectedId}</span>
         <ChevronDown style={{
           ...chevronStyle,
           transform: open ? "rotate(180deg)" : "rotate(0deg)",
@@ -88,64 +93,66 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose }:
       </button>
       {open && createPortal(
         <div ref={popRef} id="agent-dropdown-portal" className="no-scrollbar" style={portalDropdownStyle({ ...dropdownPos, maxHeight: 220 })}>
-          {agents.map((agent) => {
-            const active = agent.id === selectedId;
-            return (
-              <button
-                key={agent.id}
-                onClick={() => {
-                  onSelect(agent.id);
-                  onClose();
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  width: "100%",
-                  padding: "6px 10px",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  background: active ? "var(--color-primary-lighter)" : "transparent",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  lineHeight: 1.25,
-                  outline: "none",
-                  transition: "background 0.1s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) e.currentTarget.style.background = itemHoverBackground;
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
+          {agents
+            .filter((agent) => agent.status === "active")
+            .map((agent) => {
+              const active = agent.id === selectedId;
+              return (
+                <button
+                  key={agent.id}
+                  onClick={() => {
+                    onSelect(agent.id);
+                    onClose();
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "6px 10px",
+                    border: "none",
+                    borderRadius: "var(--radius-sm)",
+                    background: active ? "var(--color-primary-lighter)" : "transparent",
+                    cursor: "pointer",
+                    textAlign: "left",
                     fontSize: "12px",
-                    fontWeight: "500",
+                    fontWeight: 500,
                     lineHeight: 1.25,
-                    color: active ? "var(--color-primary)" : "var(--text-level-1)",
-                  }}>{agent.name}</div>
-                  <div style={{
-                    fontSize: "10px",
-                    lineHeight: 1.25,
-                    color: "var(--text-level-4)",
-                  }}>{agent.description}</div>
-                </div>
-                {active && (
-                  <span style={{
-                    width: "6px", height: "6px",
-                    borderRadius: "50%",
-                    background: "var(--color-primary)",
-                    flexShrink: 0,
-                  }} />
-                )}
-              </button>
-            );
-          })}
+                    outline: "none",
+                    transition: "background 0.1s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.background = itemHoverBackground;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <AgentIcon id={agent.id} size={13} style={{ flexShrink: 0, color: "var(--text-level-3)" }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: "12px",
+                      fontWeight: "500",
+                      lineHeight: 1.25,
+                      color: active ? "var(--color-primary)" : "var(--text-level-1)",
+                    }}>{agent.name}</div>
+                    <div style={{
+                      fontSize: "10px",
+                      lineHeight: 1.25,
+                      color: "var(--text-level-4)",
+                    }}>{agent.description}</div>
+                  </div>
+                  {active && (
+                    <span style={{
+                      width: "6px", height: "6px",
+                      borderRadius: "50%",
+                      background: "var(--color-primary)",
+                      flexShrink: 0,
+                    }} />
+                  )}
+                </button>
+              );
+            })}
         </div>,
         document.body
       )}

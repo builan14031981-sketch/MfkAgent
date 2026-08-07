@@ -97,6 +97,8 @@ export const ChatInput = memo(function ChatInput({
 }: ChatInputProps) {
   // 互斥规则：同一时刻只允许一个下拉展开，展开新胶囊自动关闭旧胶囊
   const [activePop, setActivePop] = useState<string | null>(null);
+  // Ghost UI：底栏整组控件默认低存在感，鼠标移入底栏时平滑显现
+  const [toolbarHovered, setToolbarHovered] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -277,19 +279,25 @@ export const ChatInput = memo(function ChatInput({
         }}
       />
 
-      {/* 底部工具栏 */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "8px",
-        padding: "4px 8px 8px 8px",
-      }}>
+      {/* 底部工具栏 - Ghost：整组默认低调（opacity 0.55），移入底栏平滑提升到 1 */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "8px",
+          padding: "4px 8px 8px 8px",
+        }}
+        onMouseEnter={() => setToolbarHovered(true)}
+        onMouseLeave={() => setToolbarHovered(false)}
+      >
         <div style={{
           display: "flex",
           alignItems: "center",
           gap: "8px",
           minWidth: 0,
+          opacity: toolbarHovered || activePop !== null ? 1 : 0.55,
+          transition: "opacity 0.2s ease-in-out",
         }}>
           {/* + 极简菜单按钮（最左第一位）28x28 */}
           <UploadMenu

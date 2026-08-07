@@ -1,0 +1,632 @@
+MfkAgent Agent Runtime Implementation Blueprint V1.0
+一、文档定位
+
+定义：
+
+Agent系统从用户输入到最终输出的完整工程执行链路。
+
+负责：
+
+Runtime模块划分
+请求生命周期
+Agent执行流程
+状态管理
+模块通信
+
+不负责：
+
+前端UI
+具体模型API
+数据库选型
+二、Runtime核心定义
+
+Agent Runtime：
+
+不是：
+
+用户输入
+
+↓
+
+LLM
+
+↓
+
+回复
+
+而是：
+
+User Request
+
+↓
+
+Runtime
+
+↓
+
+理解任务
+
+↓
+
+加载上下文
+
+↓
+
+制定计划
+
+↓
+
+调用能力
+
+↓
+
+验证结果
+
+↓
+
+生成响应
+
+Runtime 是 Agent 的"大脑协调层"。
+
+三、整体架构
+
+推荐：
+
+                 User
+
+                  ↓
+
+            API Gateway
+
+                  ↓
+
+           Agent Runtime
+
+                  ↓
+
+ ┌──────────────┬──────────────┐
+ │              │              │
+Agent Core   Context      Planner
+ │              │              │
+ └──────────────┴──────────────┘
+
+                  ↓
+
+              Tool Layer
+
+                  ↓
+
+             Model Layer
+
+                  ↓
+
+             Response
+四、Runtime模块划分
+
+Runtime至少包含：
+
+Agent Runtime
+
+├── Request Manager
+├── Agent Loader
+├── Context Builder
+├── Planner
+├── Executor
+├── Tool Manager
+├── Memory Manager
+├── Model Adapter
+└── Response Manager
+五、Request Manager
+
+职责：
+
+接收用户请求。
+
+负责：
+
+用户身份
+会话ID
+项目ID
+当前任务
+
+输入：
+
+{
+"user":"",
+"chat_id":"",
+"message":""
+}
+
+禁止：
+
+Request Manager直接调用模型。
+
+错误：
+
+API
+
+↓
+
+LLM
+
+正确：
+
+API
+
+↓
+
+Runtime
+六、Agent Loader
+
+职责：
+
+加载当前 Agent。
+
+读取：
+
+Agent Identity
+
+Capability
+
+Default Model
+
+Policy
+
+流程：
+
+chat.agent_id
+
+↓
+
+Agent Registry
+
+↓
+
+Agent Definition
+
+禁止：
+
+每次请求重新创建 Agent。
+
+七、Context Builder
+
+职责：
+
+组装当前上下文。
+
+来源：
+
+Conversation
+
++
+
+Memory
+
++
+
+Project
+
++
+
+Knowledge
+
++
+
+Tool State
+
+输出：
+
+Current Context
+
+核心原则：
+
+不要把所有信息塞进去。
+
+错误：
+
+全部历史聊天
+
+全部文件
+
+全部Memory
+
+↓
+
+LLM
+
+正确：
+
+任务需要什么
+
+↓
+
+加载什么
+八、Planner
+
+职责：
+
+决定：
+
+下一步做什么。
+
+输入：
+
+Goal
+
++
+
+Context
+
++
+
+Capabilities
+
+输出：
+
+Task Plan。
+
+例如：
+
+用户：
+
+"优化这个项目性能"
+
+Planner：
+
+1. 分析代码结构
+
+2. 找性能瓶颈
+
+3. 提出方案
+
+4. 修改验证
+
+禁止：
+
+Planner直接执行工具。
+
+九、Executor
+
+职责：
+
+执行计划。
+
+流程：
+
+Plan Step
+
+↓
+
+Check Capability
+
+↓
+
+Choose Action
+
+↓
+
+Execute
+
+↓
+
+Observe Result
+
+Executor：
+
+连接：
+
+Planner
+
+和
+
+Tool。
+
+十、Tool Manager
+
+职责：
+
+管理工具调用。
+
+负责：
+
+工具发现
+参数验证
+权限检查
+执行结果
+
+流程：
+
+Executor
+
+↓
+
+Tool Manager
+
+↓
+
+Tool Registry
+
+↓
+
+Tool
+
+禁止：
+
+模型直接调用真实工具。
+
+十一、Model Adapter
+
+职责：
+
+屏蔽不同模型差异。
+
+例如：
+
+GPT
+
+Claude
+
+DeepSeek
+
+Qwen
+
+Gemini
+
+统一：
+
+generate()
+
+stream()
+
+function_call()
+
+禁止：
+
+业务代码绑定具体模型。
+
+错误：
+
+if model=="xxx":
+    do_xxx()
+十二、Agent执行循环
+
+标准：
+
+Receive Task
+
+↓
+
+Load Agent
+
+↓
+
+Build Context
+
+↓
+
+Think
+
+↓
+
+Plan
+
+↓
+
+Execute
+
+↓
+
+Observe
+
+↓
+
+Verify
+
+↓
+
+Respond
+
+必要时循环：
+
+Plan
+
+↓
+
+Action
+
+↓
+
+Observation
+
+↓
+
+Plan
+
+直到：
+
+任务完成。
+
+十三、状态管理
+
+Agent需要保存：
+
+Runtime State
+
+例如：
+
+当前任务
+
+执行步骤
+
+工具结果
+
+错误状态
+
+不要：
+
+全部依赖聊天记录。
+
+结构：
+
+{
+"goal":"",
+"steps":[],
+"current_step":"",
+"observations":[]
+}
+十四、错误处理
+
+每层必须可失败。
+
+例如：
+
+Model失败：
+
+Retry
+
+↓
+
+Fallback Model
+
+↓
+
+Report
+
+Tool失败：
+
+Analyze
+
+↓
+
+Retry
+
+↓
+
+Alternative
+
+Memory失败：
+
+Continue without Memory
+
+禁止：
+
+单点失败导致整个 Agent 崩溃。
+
+十五、Streaming设计
+
+用户体验：
+
+需要实时反馈。
+
+例如：
+
+正在分析...
+
+正在读取文件...
+
+正在执行...
+
+不要：
+
+等待全部完成后一次返回。
+
+但是：
+
+不要暴露内部细节。
+
+错误：
+
+Calling tool_023
+Executing function_x
+
+正确：
+
+正在分析项目结构
+十六、安全边界
+
+Runtime必须控制：
+
+User
+
+↓
+
+Agent
+
+↓
+
+Tool
+
+权限。
+
+禁止：
+
+模型直接：
+
+执行系统命令
+访问所有文件
+修改重要数据
+十七、V1工程实现建议
+
+优先：
+
+✅ Agent Registry
+✅ Prompt Builder
+✅ Context Builder
+✅ Tool Registry
+✅ Model Adapter
+✅ Task State
+✅ Streaming Response
+
+暂缓：
+
+❌ 自主Agent创建
+❌ 多Agent协作网络
+❌ Agent自动进化
+❌ 完全自治任务执行
+
+十八、最终Runtime模型
+              User
+
+               ↓
+
+        Request Manager
+
+               ↓
+
+          Agent Runtime
+
+               ↓
+
+ ┌─────────────┬─────────────┐
+ │             │             │
+Agent      Context       Planner
+ │             │             │
+ └─────────────┴─────────────┘
+
+               ↓
+
+            Executor
+
+               ↓
+
+          Tool Manager
+
+               ↓
+
+          Model Adapter
+
+               ↓
+
+            Response
+文档状态
+
+MfkAgent Agent Runtime Implementation Blueprint V1.0
+
+用途：
+
+作为：
+
+后端 Agent Runtime 开发依据
+模块拆分依据
+API设计依据
+工程实现依据

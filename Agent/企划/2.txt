@@ -1,0 +1,542 @@
+MfkAgent Agent Runtime Architecture V1.0
+一、文档定位
+定义：
+Agent 从接收到用户目标，到完成任务交付的完整运行流程。
+本规范负责：
+• Agent 生命周期
+• 任务处理流程
+• 上下文进入顺序
+• 规划与执行循环
+• 状态管理
+• 错误恢复
+不负责：
+• Agent 身份定义
+• Prompt 编写
+• Tool 具体实现
+• Memory 存储方案
+ 
+二、核心理念
+Agent 不等于：
+复制
+用户输入
+
+↓
+
+LLM
+
+↓
+
+回复
+这是 Chatbot。
+Agent：
+复制
+用户目标
+
+↓
+
+理解目标
+
+↓
+
+收集上下文
+
+↓
+
+制定计划
+
+↓
+
+执行任务
+
+↓
+
+观察结果
+
+↓
+
+验证完成
+
+↓
+
+交付结果
+ 
+三、Agent Runtime 总流程
+标准运行循环：
+复制
+User Goal
+
+↓
+
+1. Receive
+
+↓
+
+2. Understand
+
+↓
+
+3. Context Assembly
+
+↓
+
+4. Planning
+
+↓
+
+5. Execution
+
+↓
+
+6. Observation
+
+↓
+
+7. Verification
+
+↓
+
+8. Delivery
+
+↓
+
+9. Memory Update
+ 
+四、Agent 生命周期状态
+Agent 必须拥有明确状态。
+状态：
+复制
+IDLE
+
+↓
+
+RECEIVING
+
+↓
+
+UNDERSTANDING
+
+↓
+
+PLANNING
+
+↓
+
+EXECUTING
+
+↓
+
+OBSERVING
+
+↓
+
+VERIFYING
+
+↓
+
+COMPLETED
+
+↓
+
+FAILED
+ 
+状态说明
+IDLE
+等待任务。
+ 
+RECEIVING
+接收用户请求。
+任务：
+• 获取输入
+• 判断输入完整性
+ 
+UNDERSTANDING
+理解用户目标。
+需要判断：
+• 用户真正想获得什么结果？
+• 这是问题、任务还是咨询？
+• 是否需要执行？
+ 
+示例：
+用户：
+做一个网站。
+错误理解：
+“生成 HTML。”
+正确理解：
+“帮助用户获得一个可运行的网站。”
+ 
+PLANNING
+制定任务计划。
+输出：
+复制
+Goal
+
+Steps
+
+Required Capability
+
+Expected Result
+例如：
+复制
+Goal:
+创建个人网站
+
+Steps:
+1. 确认结构
+2. 创建项目
+3. 编写页面
+4. 测试运行
+
+Required:
+Filesystem
+Code
+Browser
+ 
+EXECUTING
+执行具体步骤。
+规则：
+一次只执行当前明确步骤。
+禁止：
+没有计划直接连续操作。
+ 
+OBSERVING
+观察执行结果。
+包括：
+• 工具返回
+• 文件变化
+• 错误信息
+• 环境状态
+ 
+VERIFYING
+确认：
+任务是否达到目标。
+不是：
+“代码生成成功”。
+而是：
+“用户目标完成”。
+ 
+COMPLETED
+交付结果。
+必须说明：
+• 完成内容
+• 产生文件
+• 关键变化
+• 后续建议
+ 
+FAILED
+失败处理。
+必须：
+• 说明失败原因
+• 判断是否可恢复
+• 提供下一步方案
+ 
+五、Task Understanding（任务理解层）
+这是 Agent 与普通聊天模型的第一道区别。
+Agent 首先判断：
+用户输入类型
+分类：
+复制
+Question
+
+↓
+
+Information Request
+
+
+Task
+
+↓
+
+Need Action
+
+
+Conversation
+
+↓
+
+Need Interaction
+
+
+Command
+
+↓
+
+Need Execution
+ 
+例如：
+用户：
+“Python 怎么读取文件？”
+类型：
+Question。
+不需要规划。
+用户：
+“帮我整理这个项目。”
+类型：
+Task。
+进入 Agent Loop。
+ 
+六、Context Assembly（上下文组装）
+Agent 在规划前必须收集：
+复制
+Current Message
+
++
+
+Conversation Context
+
++
+
+Project Context
+
++
+
+Memory
+
++
+
+Available Capability
+
++
+
+Environment State
+形成：
+复制
+Agent Context
+ 
+禁止：
+直接把所有信息塞给模型。
+必须：
+根据任务选择相关上下文。
+ 
+七、Planning System（规划系统）
+Planner 的职责：
+不是回答。
+而是：
+设计完成路径。
+ 
+输入：
+复制
+User Goal
+
+Agent Capability
+
+Context
+输出：
+复制
+Task Plan
+ 
+Task Plan结构：
+JSON
+复制
+ 
+{
+ goal:"",
+ steps:[
+   {
+    id:
+""
+,
+    action:
+""
+,
+    capability:"",
+    status:"pending"
+   }
+ ]
+}
+ 
+八、Execution Loop
+执行循环：
+复制
+Plan Step
+
+↓
+
+Select Capability
+
+↓
+
+Call Tool
+
+↓
+
+Receive Result
+
+↓
+
+Observe
+
+↓
+
+Update State
+
+↓
+
+Next Step
+ 
+禁止：
+一次生成大量不可验证操作。
+ 
+九、Self-Correction（自我修正）
+Agent 遇到失败：
+不能直接结束。
+流程：
+复制
+Failure
+
+↓
+
+Analyze Cause
+
+↓
+
+Modify Plan
+
+↓
+
+Retry
+ 
+例如：
+代码运行失败：
+错误：
+复制
+dependency missing
+Agent：
+重新规划：
+复制
+安装依赖
+
+↓
+
+重新测试
+ 
+十、Human Approval（人工确认）
+Agent 不应该无限自主。
+需要风险判断。
+ 
+低风险：
+可以自动：
+• 阅读文件
+• 分析内容
+• 生成方案
+ 
+高风险：
+需要确认：
+• 删除文件
+• 修改大量代码
+• 执行危险命令
+• 发布内容
+ 
+流程：
+复制
+Agent Plan
+
+↓
+
+Risk Check
+
+↓
+
+Need Approval?
+
+↓
+
+User Confirm
+
+↓
+
+Execute
+ 
+十一、Result Delivery（结果交付）
+Agent 输出不是：
+“我做完了。”
+必须：
+复制
+完成内容
+
+↓
+
+修改记录
+
+↓
+
+验证结果
+
+↓
+
+剩余问题
+ 
+十二、Runtime 核心原则
+原则1
+先理解，再行动。
+ 
+原则2
+先规划，再执行。
+ 
+原则3
+执行必须可观察。
+ 
+原则4
+结果必须验证。
+ 
+原则5
+无法完成时，不伪造完成。
+ 
+十三、MfkAgent Runtime 最终模型
+复制
+                User Goal
+
+                    ↓
+
+          Task Understanding
+
+                    ↓
+
+          Context Assembly
+
+                    ↓
+
+              Planner
+
+                    ↓
+
+              Executor
+
+                    ↓
+
+             Observation
+
+                    ↓
+
+             Verification
+
+                    ↓
+
+              Delivery
+
+                    ↓
+
+            Memory Update
+ 
+十四、V1 实现范围建议
+不要一次实现完整 Agent。
+MfkAgent 第一阶段：
+实现：
+✅ Task Understanding
+✅ Context Assembly 基础版
+✅ Simple Planner
+✅ Tool Selection
+✅ Verification Prompt
+暂缓：
+❌ 自动长期循环
+❌ 多 Agent
+❌ 自我进化
+❌ 无限自主执行
+ 
+文档状态
+MfkAgent Agent Runtime Architecture V1.0
+作用：
+作为：
+• Agent Runtime 开发依据
+• Prompt 架构依据
+• Tool 调度依据
+• 后续 Agent 能力升级依据

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { API_BASE, apiGet, apiPost, apiDelete } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
+import type { TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
 export interface Message {
   id: number;
@@ -47,7 +48,7 @@ export function useMessages(chatId: number | null) {
     fetchMessages();
   }, [fetchMessages]);
 
-  async function sendMessage(content: string, model: string = "mimo-v2.5-pro", personalityLevel?: number, reasoningEffort?: "none" | "high" | "max") {
+  async function sendMessage(content: string, model: string = "qwen-flash", personalityLevel?: number, reasoningEffort?: "none" | "high" | "max") {
     if (!chatId) throw new Error("No chat selected");
     const data = await apiPost(`/api/chat/${chatId}/send`, { content, model, personality_level: personalityLevel, reasoning_effort: reasoningEffort });
     await fetchMessages();
@@ -63,7 +64,7 @@ export function useMessages(chatId: number | null) {
 
   async function sendMessageStream(
     content: string,
-    model: string = "mimo-v2.5-pro",
+    model: string = "qwen-flash",
     onChunk: (chunk: string) => void,
     onFinish: () => void,
     onError: (error: string) => void,
@@ -71,9 +72,12 @@ export function useMessages(chatId: number | null) {
     reasoningEffort?: "none" | "high" | "max",
     onThinking?: (thinking: string) => void,
     onToolStart?: (evt: { tool_call_id: string; tool: string; input: Record<string, unknown> }) => void,
+    onToolApproval?: (evt: { approval_id: string; tool_call_id: string; tool: string; command: string; risk_level: string; risk_reason: string; chat_id?: number }) => void,
     onToolOutput?: (evt: { tool_call_id: string; delta: string }) => void,
     onToolResult?: (evt: { tool_call_id?: string; tool?: string; success?: boolean; result?: string; duration_ms?: number; error?: string }) => void,
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
+    onTaskEvent?: (evt: TaskEvent) => void,
+    onTokenUsage?: (evt: TokenUsageEvent) => void,
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
@@ -184,6 +188,10 @@ export function useMessages(chatId: number | null) {
                     });
                     break;
                   }
+                  case "tool_approval": {
+                    onToolApproval?.(parsed);
+                    break;
+                  }
                   case "tool_output": {
                     onToolOutput?.(parsed);
                     break;
@@ -211,6 +219,39 @@ export function useMessages(chatId: number | null) {
                     for (const c of calls) {
                       if (c.tool_call_id) toolCallMap.set(c.tool_call_id, c);
                     }
+                    break;
+                  }
+                  case "task_started":
+                  case "task_completed":
+                  case "task_failed": {
+                    // 多 Agent 任务协同事件：解析 payload 并组装 TaskNode 后分发
+                    const task: TaskNode = {
+                      task_id: parsed.task_id,
+                      action: parsed.action ?? "",
+                      status: parsed.status ?? (parsed.type === "task_started" ? "running" : parsed.type === "task_completed" ? "completed" : "failed"),
+                      assigned_agent: parsed.assigned_agent ?? "unknown",
+                      error: parsed.error,
+                      started_at: parsed.started_at,
+                      ended_at: parsed.ended_at,
+                    };
+                    onTaskEvent?.({
+                      id: task.task_id,
+                      type: parsed.type,
+                      task,
+                    });
+                    break;
+                  }
+                  case "token_usage": {
+                    // G6-A：每轮 LLM 思考结束后的精确 Token 消耗与上下文水位
+                    onTokenUsage?.({
+                      id: parsed.id ?? `token-usage-${Date.now()}`,
+                      type: "token_usage",
+                      prompt_tokens: parsed.prompt_tokens ?? 0,
+                      completion_tokens: parsed.completion_tokens ?? 0,
+                      total_tokens: parsed.total_tokens ?? 0,
+                      model_max_tokens: parsed.model_max_tokens ?? 0,
+                      watermark_percentage: parsed.watermark_percentage ?? 0,
+                    });
                     break;
                   }
                   case "error": {

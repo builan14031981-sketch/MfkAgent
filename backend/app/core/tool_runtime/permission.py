@@ -1,55 +1,62 @@
-"""权限控制 — 根据 chat mode 和 Agent capabilities 做最终过滤。"""
+"""权限控制 — 决定会话可见工具目录（Phase B-2）。
+
+原则：权限决定工具可见性，模型决定调用。
+- 第一阶段基础工具目录默认对所有 Agent 开放（不做意图相关的窄白名单）。
+- plan 模式：移除写入/有副作用工具（清单派生自 risk_engine.TOOL_RISK_POLICY，
+  与执行闸共用单一事实来源，避免两处清单漂移）。
+- 无项目绑定：移除项目专有工具。
+- capabilities 仅控制高级能力（第一阶段无高级工具，保留参数向前兼容，不缩减基础工具）。
+"""
 
 from typing import List, Optional
 
+from app.core.tool_runtime.risk_engine import PLAN_FORBIDDEN_TOOLS
+
 
 class PermissionFilter:
-    """权限过滤器"""
+    """权限过滤器 — resolve() 返回某会话可见的工具全集（与消息内容无关）"""
 
-    # 写入类工具（plan 模式禁止）
-    _write_tools = {
-        "write_file", "git_commit", "git_add",
-        "git_reset", "git_push", "git_pull",
+    # 第一阶段工具目录（基础工具，默认开放）
+    BASE_TOOLS = [
+        "run_command",
+        "read_file", "write_file", "list_files",
+        "git_status", "git_diff", "git_log", "git_commit", "git_restore",
+        "search_files",
+        "web_search", "fetch_url", "github_search",
+    ]
+
+    # 写入/有副作用工具（plan 模式移除；派生自 risk_engine，与执行闸保持同步）
+    _plan_write_tools = set(PLAN_FORBIDDEN_TOOLS)
+
+    # 项目专有工具（无 project_path 时移除）
+    _project_only_tools = {
+        "read_file", "write_file", "list_files", "search_files",
+        "git_status", "git_diff", "git_log", "git_commit", "git_restore",
     }
 
-    # 基础只读工具（所有 Agent 默认具备）
-    _default_tools = {
-        "run_command", "web_search", "fetch_url",
-        "add_memory", "get_datetime", "format_json",
-    }
-
-    def filter(
+    def resolve(
         self,
-        tool_names: List[str],
         chat,
         agent_capabilities: Optional[List[str]] = None,
     ) -> List[str]:
-        """根据权限过滤工具
+        """返回会话可见工具全集。
 
         Args:
-            tool_names: 待过滤的工具名称列表
-            chat: Chat ORM 对象
-            agent_capabilities: Agent 的 capabilities 白名单（可选，向后兼容）
+            chat: Chat ORM 对象（需含 mode / project_path）
+            agent_capabilities: Agent 的 capabilities（第一阶段仅控制高级能力，
+                不缩减基础工具；保留参数向前兼容）
 
         Returns:
-            过滤后的工具名称列表
+            工具名称列表
         """
-        if not tool_names:
-            return []
+        tools = set(self.BASE_TOOLS)
 
         chat_mode = getattr(chat, "mode", "build") or "build"
-
-        filtered = list(tool_names)
-
-        # Plan 模式：过滤写入类工具
         if chat_mode == "plan":
-            filtered = [t for t in filtered if t not in self._write_tools]
+            tools -= self._plan_write_tools
 
-        # Agent capabilities 白名单（向后兼容）
-        if agent_capabilities and len(agent_capabilities) > 0:
-            capability_set = set(agent_capabilities)
-            # 基础工具始终保留
-            allowed = capability_set.union(self._default_tools)
-            filtered = [t for t in filtered if t in allowed]
+        project_path = getattr(chat, "project_path", None)
+        if not project_path:
+            tools -= self._project_only_tools
 
-        return filtered
+        return sorted(tools)

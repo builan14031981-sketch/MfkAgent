@@ -1,10 +1,10 @@
-"""项目沙箱命令执行工具（只读）—— 供 LLM Function Calling 使用。
+"""项目沙箱命令执行工具 —— 供 LLM Function Calling 使用。
 
-设计约束（低风险优先）：
-- 只允许"查看类"命令：git 状态类、pytest --collect-only / 测试、lint 检查等。
-  禁止任何写入/网络/交互命令（rm / git push / pip install / python -i 等）。
+设计说明（Phase B-1）：
+- 命令是否可执行由 Command Risk Engine（risk_engine.py）在 executor 层判定，
+  本模块只负责"执行"：解析 argv → subprocess 运行 → 输出解码/截断。
+- 保留 shell 元字符防御（_FORBIDDEN_RE）作为纵深防御。
 - 始终在 project_path 下运行（cwd=项目根），绝对超时，输出截断，GBK 安全解码。
-- 与 FILE_TOOLS / GIT_TOOLS / SEARCH_TOOLS 同一模式：project_path + 文本结果。
 """
 import os
 import re
@@ -13,46 +13,34 @@ from typing import Dict, List
 
 from app.core.tools import ToolExecutionError
 
-# 允许执行的安全命令白名单（前缀匹配，每个子参数独立校验）
-# 形如: ("命令", [参数前缀...])，参数满足任一前缀即可；空列表 = 只允许裸命令
-_ALLOWED_COMMANDS: List[tuple] = [
-    # 测试/验证类
-    ("pytest", []),
-    ("python", ["-m", "pytest"]),
-    ("python", ["-m", "unittest"]),
-    ("python", ["-m", "py_compile"]),
-    ("python", ["-m", "mypy"]),
-    ("python", ["-m", "ruff"]),
-    ("python", ["-m", "flake8"]),
-    ("node", ["--version"]),
-    ("node", ["-e", "--check"]),
-    ("npm", ["run", "lint"]),
-    ("npm", ["run", "test"]),
-    ("npm", ["run", "build"]),
-    ("npm", ["run", "typecheck"]),
-    ("npm", ["test"]),
-    ("npm", ["run"]),
-    ("git", ["status"]),
-    ("git", ["diff"]),
-    ("git", ["log"]),
-    ("git", ["show"]),
-    ("git", ["branch"]),
-    # 网络诊断类（只读，用于检查网络状态）
-    ("ipconfig", []),
-    ("netstat", []),
-    ("ping", ["-n"]),  # -n 指定次数，防止无限 ping
-    ("nslookup", []),
-    ("tracert", []),
-    ("systeminfo", []),
-    ("hostname", []),
-    ("whoami", []),
-]
-
-# 危险的 shell 元字符/重定向，一律拒绝（防注入）
+# 危险的 shell 元字符/重定向，一律拒绝（防注入，纵深防御）
 _FORBIDDEN_RE = re.compile(r"[;&|`$<>]|\(|\)")
 
 TIMEOUT = 30
 MAX_OUTPUT_CHARS = 8000
+
+
+def _split_command(command: str) -> List[str]:
+    """按空白拆分命令，支持双引号包裹的含空格参数（保留反斜杠原样）。
+
+    修复：reg query "HKCU\\...\\Internet Settings" 这类路径含空格，
+    原 re.split(r"\\s+") 会把路径拆碎且残留引号，导致命令无效。
+    """
+    args = []
+    buf = []
+    in_quote = False
+    for ch in command:
+        if ch == '"':
+            in_quote = not in_quote
+        elif ch in (" ", "\t") and not in_quote:
+            if buf:
+                args.append("".join(buf))
+                buf = []
+        else:
+            buf.append(ch)
+    if buf:
+        args.append("".join(buf))
+    return args
 
 
 def _decode_bytes(b: bytes) -> str:
@@ -66,36 +54,18 @@ def _decode_bytes(b: bytes) -> str:
             return b.decode("utf-8", errors="replace")
 
 
-def _is_allowed(argv: List[str]) -> str:
-    """校验命令是否在白名单内。通过返回空串，否则返回拒绝原因。"""
-    if not argv:
-        return "错误: 命令不能为空"
-    cmd = argv[0]
-    for allowed_cmd, prefixes in _ALLOWED_COMMANDS:
-        if cmd != allowed_cmd:
-            continue
-        if not prefixes:
-            return ""
-        if len(argv) >= 2 and argv[1] in prefixes:
-            return ""
-    return f"错误: 命令 '{cmd}' 不在只读白名单内。只允许: " + ", ".join(sorted(set(c for c, _ in _ALLOWED_COMMANDS)))
-
-
 def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
-    """在项目内执行只读安全命令（白名单），返回 stdout+stderr 合并输出。
+    """执行命令并返回 stdout+stderr 合并输出（策略判定已在 executor 层完成）。
     如果没有 project_path，允许执行系统级命令（如 ipconfig、netstat 等）。
     """
     command = (command or "").strip()
     if not command:
         return "错误: command 不能为空"
     if _FORBIDDEN_RE.search(command):
-        return "错误: 命令包含不允许的字符（; & | ` $ < > 等），只读工具拒绝执行"
+        return "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行"
 
-    # 解析命令行（按空格拆分，保留引号包裹的参数 —— 仅白名单前缀校验场景够用）
-    argv = re.split(r"\s+", command.strip())
-    reason = _is_allowed(argv)
-    if reason:
-        return reason
+    # 解析命令行（支持双引号含空格参数）
+    argv = _split_command(command)
 
     # 确定工作目录：有 project_path 则用项目目录，否则用当前目录（允许系统级命令）
     if project_path:
@@ -142,18 +112,25 @@ COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
         "function": {
             "name": "run_command",
             "description": (
-                "执行只读安全命令。支持两类场景：\n"
+                "执行系统命令。支持两类场景：\n"
                 "1. 项目内验证代码：pytest / python -m py_compile / npm run lint|test|build / git status|diff|log\n"
-                "2. 系统级诊断命令：ipconfig / netstat / ping -n 3 8.8.8.8 / nslookup / tracert / systeminfo / hostname / whoami\n"
-                "所有命令必须在白名单内，禁止写入、网络请求或交互式命令。"
-                "当用户询问系统信息、网络状态、代理设置等时，应主动调用此工具执行相应命令获取真实数据。"
+                "2. 系统级诊断命令：ipconfig / netstat / ping -n 3 8.8.8.8 / nslookup / tracert / systeminfo / "
+                "netsh winhttp show proxy / reg query / tasklist / getmac / route print / arp -a / dir / ver 等\n"
+                "只读命令自动执行；危险或修改性操作（写文件、安装、删除等）会先请求用户确认，批准后才会执行。\n"
+                "当用户询问系统信息、网络状态、代理设置等时，应主动调用此工具获取真实数据。\n"
+                "### Windows 代理查询（重要）\n"
+                "Windows 存在两套独立代理配置：WinINET（系统/浏览器实际使用）与 WinHTTP（部分命令行程序使用）。\n"
+                "用户询问「系统代理 / 电脑代理 / 浏览器代理」时，优先使用 WinINET 注册表查询：\n"
+                "reg query \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\" /v ProxyEnable\n"
+                "reg query \"HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\" /v ProxyServer\n"
+                "注意：netsh winhttp show proxy 只能代表 WinHTTP 层，不代表用户系统代理状态，不得仅凭它判断用户代理配置。"
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "要执行的只读命令，如 'ipconfig'、'netstat -an'、'ping -n 3 8.8.8.8'、'python -m py_compile app.py'",
+                        "description": "要执行的命令，如 'ipconfig'、'netstat -an'、'ping -n 3 8.8.8.8'、'python -m py_compile app.py'",
                     },
                     "timeout": {
                         "type": "integer",

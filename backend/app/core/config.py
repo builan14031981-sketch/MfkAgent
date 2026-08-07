@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     FREELLMAPI_API_KEY: str = "freellmapi-928ea815aac47d9db52bbf3a9029541d13e2afa78ba5297a"
     FREELLMAPI_API_BASE: str = "http://127.0.0.1:31415/v1"
 
+    # 硅基流动配置
+    SILICONFLOW_API_KEY: str = ""
+
+    # G6-B 会话压缩：摘要模型 ID（留空则使用默认便宜模型）
+    COMPRESSION_MODEL: str = ""
+
     # Google Gemini 配置
     GOOGLE_API_KEY: str = ""
     

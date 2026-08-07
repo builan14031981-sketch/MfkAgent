@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
-/** 统一 Toolbar Pill 控件外观：28px 高、12px 字、medium、px-2.5、同背景同箭头 */
-export const pillStyle: CSSProperties = {
+/** 极简 Ghost Pill 控件外观（默认态）：无边框无阴影、透明背景、中低对比度浅灰文字，低调不抢眼 */
+export const ghostPillStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -9,22 +9,28 @@ export const pillStyle: CSSProperties = {
   height: "28px",
   padding: "0 10px",
   borderRadius: "var(--radius-full)",
-  border: "1px solid var(--border-primary)",
-  background: "var(--bg-level-3)",
+  border: "1px solid transparent",
+  background: "transparent",
   cursor: "pointer",
   fontSize: "12px",
-  fontWeight: 500,
-  color: "var(--text-level-2)",
+  fontWeight: 400,
+  color: "var(--text-level-4)",
   whiteSpace: "nowrap",
-  transition: "all var(--transition-fast)",
+  transition: "all 0.2s ease-in-out",
   flexShrink: 0,
   outline: "none",
 };
 
+/** Ghost Pill 悬停态：浅灰微背景 + 文字高亮 + 轻阴影 */
+export const ghostPillHoverBackground = "var(--bg-level-3)";
+export const ghostPillHoverColor = "var(--text-level-2)";
+export const ghostPillHoverShadow = "var(--shadow-sm)";
+
 export const chevronStyle: CSSProperties = {
   width: "12px",
   height: "12px",
-  color: "var(--text-level-4)",
+  color: "inherit",
+  opacity: 0.6,
   marginLeft: "4px",
   flexShrink: 0,
 };

@@ -10,7 +10,7 @@ export interface Agent {
   system_prompt: string;
   identity: string;
   capabilities: string[];
-  default_model: string;
+  status: string;
 }
 
 export function useAgents() {

@@ -9,12 +9,14 @@ Phase A 定位：
   tool_start   {"type","tool_call_id","tool","input","title?"}
   tool_output  {"type","tool_call_id","delta"}            （协议预留，Phase A 不发射）
   tool_result  {"type","tool_call_id","tool","success","result","duration_ms","error?"}
+  tool_approval {"type","approval_id","tool_call_id","tool","command","risk_level","risk_reason","chat_id","created_at"}（Phase B-1 新增，additive）
 
 事件字段约定（一经发布即稳定）：
   - 全部 snake_case
   - tool_call_id 在单次会话流内唯一，是前端去重键
   - 每个 tool_result 之前必有同 tool_call_id 的 tool_start
   - tool_start / tool_result 之间可穿插 text / thinking 事件
+  - tool_approval 必在 tool_start 之后、tool_result 之前，与二者同 tool_call_id
 """
 
 from typing import Callable, Dict, Optional
@@ -83,4 +85,31 @@ def make_tool_result(
     }
     if not success and result:
         event["error"] = result[:500]
+    return event
+
+
+def make_tool_approval(
+    approval_id: str,
+    tool_call_id: str,
+    tool: str,
+    command: str,
+    risk_level: str,
+    risk_reason: str,
+    chat_id: Optional[int] = None,
+) -> Dict:
+    """构造 tool_approval 事件（Phase B-1 新增，additive）。"""
+    from datetime import datetime, timezone
+
+    event: Dict = {
+        "type": "tool_approval",
+        "approval_id": approval_id,
+        "tool_call_id": tool_call_id,
+        "tool": tool,
+        "command": command,
+        "risk_level": risk_level,
+        "risk_reason": risk_reason,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if chat_id is not None:
+        event["chat_id"] = chat_id
     return event
