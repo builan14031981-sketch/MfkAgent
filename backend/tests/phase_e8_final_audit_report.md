@@ -1,7 +1,7 @@
 # MfkAgent Runtime Final Audit — Phase E8 闭环验证报告
 
-- 时间: 2026-08-07 17:18:55
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_auditE8_w_6supzk`
+- 时间: 2026-08-07 19:01:48
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_auditE8_qcirffws`
 
 ## 闭环结论
 
@@ -24,13 +24,13 @@ E6 判定的 P1 已由 E7 全部落地；E8 实测端到端闭环（真实 HTTP 
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | A. Context 闭环（7 支柱契约） | ✅ PASS | 80ms |
-| 2 | B. Runtime 闭环（build 流式端到端 + 回放） | ✅ PASS | 214ms |
-| 3 | C. Permission 闭环（plan write_file 拒绝） | ✅ PASS | 138ms |
+| 1 | A. Context 闭环（7 支柱契约） | ✅ PASS | 89ms |
+| 2 | B. Runtime 闭环（build 流式端到端 + 回放） | ✅ PASS | 243ms |
+| 3 | C. Permission 闭环（plan write_file 拒绝） | ✅ PASS | 157ms |
 | 4 | D. Permission 矩阵（只读放行/写入拒绝/fail-closed） | ✅ PASS | 0ms |
-| 5 | E. Event 闭环（注册表 + 回放 ASC） | ✅ PASS | 15ms |
+| 5 | E. Event 闭环（注册表 + 回放 ASC） | ✅ PASS | 16ms |
 | 6 | F. Verification 覆盖（策略路由） | ✅ PASS | 0ms |
-| 7 | G. Task Context 通道（Planner 预留） | ✅ PASS | 24ms |
+| 7 | G. Task Context 通道（Planner 预留） | ✅ PASS | 29ms |
 
 **通过率: 7/7**
 

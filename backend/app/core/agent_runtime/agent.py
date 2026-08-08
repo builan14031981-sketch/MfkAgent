@@ -23,6 +23,7 @@ from .recorder import runtime_event_recorder
 from .states import RuntimePhase
 from .task_graph_state import TaskGraphState
 from .personas import get_persona_prompt
+from app.core.task_graph.models import TaskNode
 from .model_context_config import get_model_max_tokens, compute_watermark
 from app.core.verification import verifier as default_verifier
 
@@ -156,14 +157,34 @@ class AgentRuntime:
             payload["error"] = str(error)[:200]
         return payload
 
-    def _handle_task_failure(self, run_id, current_task, error) -> None:
-        """单任务异常处理（run 非流式路径）：failed + 级联 skip 依赖 + 事件。
+    async def _handle_task_failure(self, run_id, current_task, error) -> bool:
+        """单任务异常处理（run 非流式路径）：先尝试反思自愈，失败则降级。
+
+        战略方向（Auto-Healing）：
+          1. 先尝试 _reflect_and_heal 反思并注入修复任务
+          2. 如果反思成功 → 不标记失败，继续执行循环（返回 True）
+          3. 如果反思失败 → 降级到原始失败路径（failed + 级联 skip）
 
         G4-C 状态一致性：当前节点 → failed，依赖链上 pending 节点 → skipped；
         AgentRun 本身仍正常收尾（completed），失败以 task_failed / task_skipped 事件记录。
+
+        Returns:
+            bool: True 表示反思成功应继续执行，False 表示已降级为失败
         """
         if self.task_graph_state is None:
-            return
+            return False
+
+        # 战略方向: 尝试反思自愈
+        healed = await self._reflect_and_heal(
+            current_task,
+            str(error),
+            run_id=run_id,
+        )
+        if healed:
+            # 反思成功：不标记失败，让外层循环继续取下一个就绪任务
+            return True
+
+        # 降级：原始失败路径
         skipped = self.task_graph_state.mark_failed(current_task.id, str(error)[:200])
         runtime_event_recorder.emit(
             run_id,
@@ -178,6 +199,7 @@ class AgentRuntime:
                     "task_skipped",
                     self._task_event_payload(skip_node, "skipped"),
                 )
+        return False
 
     def _skip_remaining_and_emit(self, run_id) -> None:
         """图中断兜底（run 非流式路径）：剩余 pending 节点全部 skipped + 事件。
@@ -200,6 +222,194 @@ class AgentRuntime:
         if self.task_graph_state is None:
             return None
         return self.task_graph_state.get_progress()
+
+    # ──── 战略4: Agent 状态可视化 ────
+
+    @staticmethod
+    def _build_agent_state_event(
+        agent_role: str,
+        status: str,
+        action_detail: str,
+        current_task_id: Optional[str] = None,
+        task_progress: str = "",
+    ) -> dict:
+        """构建 agent_state_update 事件 payload。
+
+        Args:
+            agent_role: 当前 Agent 角色名（如 "Coder Agent"）
+            status: 状态 — "working" | "waiting_for_tool" | "completed" | "error"
+            action_detail: 具体动作描述（如 "正在分析项目结构"）
+            current_task_id: 正在执行的 Task ID
+            task_progress: 进度描述（如 "任务 1/5"）
+        """
+        return {
+            "agent_role": agent_role,
+            "status": status,
+            "action_detail": action_detail,
+            "current_task_id": current_task_id,
+            "task_progress": task_progress,
+        }
+
+    def _build_task_progress(self, current_task_id: Optional[str] = None) -> str:
+        """构建任务进度字符串（如 "任务 1/5"）。"""
+        if self.task_graph_state is None:
+            return ""
+        total = self.task_graph_state.total_steps
+        if total <= 0:
+            return ""
+        if current_task_id:
+            idx = self.task_graph_state.get_step_index(current_task_id)
+            if idx >= 0:
+                return f"任务 {idx + 1}/{total}"
+        # 无 current_task_id 时，用已完成数推算
+        progress = self.task_graph_state.get_progress()
+        done = progress.get("completed", 0) + progress.get("failed", 0) + progress.get("skipped", 0)
+        return f"任务 {done}/{total}"
+
+    # ──── Agent 角色显示名映射 ────
+
+    AGENT_ROLE_DISPLAY_NAMES: dict[str, str] = {
+        "coding_agent": "Coder Agent",
+        "research_agent": "Research Agent",
+        "default_agent": "Default Agent",
+    }
+
+    @staticmethod
+    def _agent_role_display_name(assigned_agent: str) -> str:
+        """将内部 assigned_agent key 转为前端展示用的角色名。"""
+        return AgentRuntime.AGENT_ROLE_DISPLAY_NAMES.get(
+            assigned_agent, assigned_agent or "Default Agent"
+        )
+
+    # ──── 战略方向: TaskGraph 动态自愈与反思 (Auto-Healing & Reflection) ────
+
+    REFLECTION_MODEL = "qwen-flash"  # 反思用轻量模型，降低成本
+    REFLECTION_MAX_TOKENS = 512
+    REFLECTION_TEMPERATURE = 0.3
+
+    REFLECTION_PROMPT_TEMPLATE = (
+        "你是任务执行诊断专家。以下任务在执行过程中遭遇了失败，请分析原因并给出修复方案。\n\n"
+        "【失败任务】\n{task_action}\n\n"
+        "【错误信息】\n{error_message}\n\n"
+        "请以 JSON 格式输出修复方案（只输出 JSON，不要其他内容）：\n"
+        '{{"analysis": "根因分析（一句话）", "fix_action": "修复动作描述", "suggested_tools": ["工具名1", "工具名2"]}}\n\n'
+        "如果无法修复，请输出：\n"
+        '{{"analysis": "无法修复的原因", "fix_action": "", "suggested_tools": []}}'
+    )
+
+    async def _reflect_and_heal(
+        self,
+        current_task,
+        error: str,
+        *,
+        model_id: Optional[str] = None,
+        run_id: Optional[int] = None,
+    ) -> bool:
+        """任务失败后尝试 LLM 反思并动态注入修复任务。
+
+        流程：
+          1. 构造 Reflection Prompt，调用轻量模型分析错误
+          2. 解析 LLM 返回的 JSON 修复方案
+          3. 如果方案有效，通过 dynamic_append_task 注入新节点
+          4. 失败时优雅降级，不阻断原有错误处理流程
+
+        Args:
+            current_task: 失败的任务节点
+            error: 错误信息
+            model_id: 反思模型 ID（默认 REFLECTION_MODEL）
+            run_id: 运行记录 ID（用于事件广播）
+
+        Returns:
+            bool: True 表示成功注入修复任务，False 表示降级到原始失败
+        """
+        if self.task_graph_state is None:
+            return False
+
+        # 发送反思开始事件
+        if run_id:
+            runtime_event_recorder.emit(run_id, "agent_state_update",
+                self._build_agent_state_event(
+                    agent_role=self._agent_role_display_name(
+                        current_task.assigned_agent if current_task else "default_agent"
+                    ),
+                    status="working",
+                    action_detail="触发自我反思，分析错误原因...",
+                    current_task_id=current_task.id if current_task else None,
+                    task_progress=self._build_task_progress(current_task.id if current_task else None),
+                ))
+
+        # 构造反思 Prompt
+        prompt = self.REFLECTION_PROMPT_TEMPLATE.format(
+            task_action=getattr(current_task, "action", str(current_task)),
+            error_message=error[:1000],
+        )
+
+        try:
+            from app.services.model import model_service
+            result = await model_service.call_once(
+                model_id=model_id or self.REFLECTION_MODEL,
+                messages=[
+                    {"role": "system", "content": "你是一个 JSON 输出专家，只输出 JSON，不输出任何其他内容。"},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=self.REFLECTION_TEMPERATURE,
+                max_tokens=self.REFLECTION_MAX_TOKENS,
+                tools=None,
+            )
+            response_text = (result.content or "").strip()
+        except Exception:
+            # LLM 调用失败 → 降级
+            return False
+
+        if not response_text:
+            return False
+
+        # 解析 JSON 修复方案
+        import json as _json
+        try:
+            # 提取 JSON 块（兼容 markdown code block）
+            if "```" in response_text:
+                start = response_text.find("{")
+                end = response_text.rfind("}") + 1
+                if start >= 0 and end > start:
+                    response_text = response_text[start:end]
+            plan = _json.loads(response_text)
+        except Exception:
+            return False
+
+        fix_action = (plan.get("fix_action") or "").strip()
+        if not fix_action:
+            # LLM 判断无法修复 → 降级
+            return False
+
+        suggested_tools = plan.get("suggested_tools") or []
+
+        # 动态注入修复任务
+        new_task = self.task_graph_state.dynamic_append_task(
+            action=fix_action,
+            parent_task_id=current_task.id,
+            suggested_tools=suggested_tools,
+            assigned_agent=getattr(current_task, "assigned_agent", "default_agent"),
+            task_type=getattr(current_task, "task_type", "action"),
+        )
+
+        if new_task is None:
+            return False
+
+        # 发送修复注入事件
+        if run_id:
+            runtime_event_recorder.emit(run_id, "agent_state_update",
+                self._build_agent_state_event(
+                    agent_role=self._agent_role_display_name(
+                        current_task.assigned_agent if current_task else "default_agent"
+                    ),
+                    status="working",
+                    action_detail=f"动态生成修复计划，恢复执行: {fix_action[:80]}",
+                    current_task_id=new_task.id,
+                    task_progress=self._build_task_progress(new_task.id),
+                ))
+
+        return True
 
     # ──── G6-B: 智能会话压缩引擎 ────
 
@@ -571,6 +781,15 @@ class AgentRuntime:
                     self.update_task_status(current_task.id, "running")
                     runtime_event_recorder.emit(run_id, "task_started",
                         self._task_event_payload(current_task, "running"))
+                    # 战略4: Agent 状态可视化 — 任务启动
+                    runtime_event_recorder.emit(run_id, "agent_state_update",
+                        self._build_agent_state_event(
+                            agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                            status="working",
+                            action_detail=f"开始执行任务: {current_task.action}",
+                            current_task_id=current_task.id,
+                            task_progress=self._build_task_progress(current_task.id),
+                        ))
                     loop_messages.append({
                         "role": "user",
                         "content": f"【当前任务】{current_task.action}",
@@ -612,6 +831,18 @@ class AgentRuntime:
 
                         round_no += 1
 
+                        # 战略4: Agent 状态可视化 — 工具调用前
+                        tool_names = [tc.get("function", {}).get("name", "") for tc in result.tool_calls]
+                        agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
+                        runtime_event_recorder.emit(run_id, "agent_state_update",
+                            self._build_agent_state_event(
+                                agent_role=agent_role,
+                                status="waiting_for_tool",
+                                action_detail=f"准备调用工具: {', '.join(tool_names)}",
+                                current_task_id=current_task.id if current_task else None,
+                                task_progress=self._build_task_progress(current_task.id if current_task else None),
+                            ))
+
                         self._record_state(run_id, RuntimePhase.TOOL_EXECUTION, "tool execution")
                         async for event in self._exec_tool_calls_with_verification(
                             result.tool_calls,
@@ -630,6 +861,16 @@ class AgentRuntime:
 
                         self._record_state(run_id, RuntimePhase.VERIFYING, "verification")
                         self._record_state(run_id, RuntimePhase.LLM_CALL, "next round")
+                        # 战略4: Agent 状态可视化 — 工具执行完成
+                        agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
+                        runtime_event_recorder.emit(run_id, "agent_state_update",
+                            self._build_agent_state_event(
+                                agent_role=agent_role,
+                                status="working",
+                                action_detail="工具执行完成，继续分析",
+                                current_task_id=current_task.id if current_task else None,
+                                task_progress=self._build_task_progress(current_task.id if current_task else None),
+                            ))
 
                     # 轮次耗尽时无最终内容 → 补一次无工具调用获取总结
                     if not task_content:
@@ -651,6 +892,15 @@ class AgentRuntime:
                     # G4-B: 任务完成 → emit + 继续下一个
                     if has_task_graph and current_task:
                         self.update_task_status(current_task.id, "completed")
+                        # 战略4: Agent 状态可视化 — 任务完成
+                        runtime_event_recorder.emit(run_id, "agent_state_update",
+                            self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="completed",
+                                action_detail=f"任务完成: {current_task.action}",
+                                current_task_id=current_task.id,
+                                task_progress=self._build_task_progress(current_task.id),
+                            ))
                         runtime_event_recorder.emit(run_id, "task_completed",
                             self._task_event_payload(current_task, "completed"))
                         continue
@@ -659,7 +909,18 @@ class AgentRuntime:
                 except Exception as e:
                     # G4-C: 单任务异常 → failed + 级联 skip 依赖 + 事件；运行正常收尾
                     if has_task_graph and current_task:
-                        self._handle_task_failure(run_id, current_task, e)
+                        # 战略4: Agent 状态可视化 — 任务失败
+                        runtime_event_recorder.emit(run_id, "agent_state_update",
+                            self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="error",
+                                action_detail=f"任务失败: {current_task.action}",
+                                current_task_id=current_task.id,
+                                task_progress=self._build_task_progress(current_task.id),
+                            ))
+                        healed = await self._handle_task_failure(run_id, current_task, e)
+                        if healed:
+                            continue  # 反思成功，继续执行循环
                         break
                     raise
 
@@ -831,6 +1092,14 @@ class AgentRuntime:
                     "type": "task_started",
                     **self._task_event_payload(current_task, "running"),
                 }
+                # 战略4: Agent 状态可视化 — 任务启动
+                yield {"type": "agent_state_update", **self._build_agent_state_event(
+                    agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                    status="working",
+                    action_detail=f"开始执行任务: {current_task.action}",
+                    current_task_id=current_task.id,
+                    task_progress=self._build_task_progress(current_task.id),
+                )}
                 # 注入任务上下文，让 LLM 知道当前执行步骤
                 current_messages.append({
                     "role": "user",
@@ -876,12 +1145,31 @@ class AgentRuntime:
 
                     if final_finish == "tool_calls" and collected_tool_calls and round_tools:
                         ordered = [collected_tool_calls[i] for i in sorted(collected_tool_calls)]
+                        # 战略4: Agent 状态可视化 — 工具调用前
+                        tool_names = [tc.get("function", {}).get("name", "") for tc in ordered]
+                        agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=agent_role,
+                            status="waiting_for_tool",
+                            action_detail=f"准备调用工具: {', '.join(tool_names)}",
+                            current_task_id=current_task.id if current_task else None,
+                            task_progress=self._build_task_progress(current_task.id if current_task else None),
+                        )}
                         yield {"type": "state_change", "state": RuntimePhase.TOOL_EXECUTION.value, "reason": "tool execution"}
                         async for event in self._exec_tool_calls_with_verification(
                             ordered, ctx, context.project_path, read_only, current_messages, all_tool_calls,
                             support_approval=True,
                         ):
                             yield event
+                        # 战略4: Agent 状态可视化 — 工具执行完成
+                        agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=agent_role,
+                            status="working",
+                            action_detail="工具执行完成，继续分析",
+                            current_task_id=current_task.id if current_task else None,
+                            task_progress=self._build_task_progress(current_task.id if current_task else None),
+                        )}
                         yield {"type": "state_change", "state": RuntimePhase.VERIFYING.value, "reason": "verification"}
                         yield {"type": "state_change", "state": RuntimePhase.LLM_CALL.value, "reason": "next round"}
                         continue
@@ -889,12 +1177,30 @@ class AgentRuntime:
                     if round_tools and round_text and not collected_tool_calls:
                         norm = normalize_tool_call_text(round_text, available_names)
                         if norm["calls"] and not norm["issues"]:
+                            # 战略4: Agent 状态可视化 — 归一化工具调用前
+                            norm_tool_names = [tc.get("function", {}).get("name", "") for tc in norm["calls"]]
+                            agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=agent_role,
+                                status="waiting_for_tool",
+                                action_detail=f"准备调用工具: {', '.join(norm_tool_names)}",
+                                current_task_id=current_task.id if current_task else None,
+                                task_progress=self._build_task_progress(current_task.id if current_task else None),
+                            )}
                             yield {"type": "state_change", "state": RuntimePhase.TOOL_EXECUTION.value, "reason": "normalizer tool"}
                             async for event in self._exec_tool_calls_with_verification(
                                 norm["calls"], ctx, context.project_path, read_only, current_messages, all_tool_calls,
                                 support_approval=True,
                             ):
                                 yield event
+                            # 战略4: Agent 状态可视化 — 归一化工具执行完成
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=agent_role,
+                                status="working",
+                                action_detail="工具执行完成，继续分析",
+                                current_task_id=current_task.id if current_task else None,
+                                task_progress=self._build_task_progress(current_task.id if current_task else None),
+                            )}
                             yield {"type": "state_change", "state": RuntimePhase.VERIFYING.value, "reason": "verification"}
                             yield {"type": "state_change", "state": RuntimePhase.LLM_CALL.value, "reason": "next round"}
                             continue
@@ -907,6 +1213,14 @@ class AgentRuntime:
                     # 正常结束：任务完成或整体完成
                     if has_task_graph and current_task:
                         self.update_task_status(current_task.id, "completed")
+                        # 战略4: Agent 状态可视化 — 任务完成
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                            status="completed",
+                            action_detail=f"任务完成: {current_task.action}",
+                            current_task_id=current_task.id,
+                            task_progress=self._build_task_progress(current_task.id),
+                        )}
                         yield {
                             "type": "task_completed",
                             **self._task_event_payload(current_task, "completed"),
@@ -926,6 +1240,14 @@ class AgentRuntime:
                     if not task_done:
                         # 标记为 completed（尽力而为，LLM 已有输出）
                         self.update_task_status(current_task.id, "completed")
+                        # 战略4: Agent 状态可视化 — 任务完成（轮次耗尽）
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                            status="completed",
+                            action_detail=f"任务完成（轮次耗尽）: {current_task.action}",
+                            current_task_id=current_task.id,
+                            task_progress=self._build_task_progress(current_task.id),
+                        )}
                         yield {
                             "type": "task_completed",
                             **self._task_event_payload(current_task, "completed"),
@@ -953,8 +1275,43 @@ class AgentRuntime:
                 return
 
             except Exception as e:
-                # G4-C: 单任务异常 → failed + 级联 skip 依赖 + task_failed/task_skipped 事件
+                # 战略方向: 先尝试反思自愈，失败则降级
                 if has_task_graph and current_task:
+                    # 战略4: Agent 状态可视化 — 任务失败
+                    yield {"type": "agent_state_update", **self._build_agent_state_event(
+                        agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                        status="error",
+                        action_detail=f"任务失败: {current_task.action}",
+                        current_task_id=current_task.id,
+                        task_progress=self._build_task_progress(current_task.id),
+                    )}
+
+                    # 战略方向: 尝试反思自愈
+                    # 反思开始事件
+                    yield {"type": "agent_state_update", **self._build_agent_state_event(
+                        agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                        status="working",
+                        action_detail="触发自我反思，分析错误原因...",
+                        current_task_id=current_task.id,
+                        task_progress=self._build_task_progress(current_task.id),
+                    )}
+                    healed = await self._reflect_and_heal(
+                        current_task,
+                        str(e),
+                        run_id=None,  # 流式路径事件通过 yield 透出
+                    )
+                    if healed:
+                        # 反思成功事件
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                            status="working",
+                            action_detail="动态生成修复计划，恢复执行",
+                            current_task_id=current_task.id,
+                            task_progress=self._build_task_progress(current_task.id),
+                        )}
+                        continue  # 反思成功，回到外层循环取下一个任务
+
+                    # 降级：原始失败路径
                     skipped = self.task_graph_state.mark_failed(
                         current_task.id, str(e)[:200]
                     )

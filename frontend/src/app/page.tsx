@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
@@ -28,10 +28,12 @@ export default function Home() {
   const { models, loading: modelsLoading } = useModels();
   const { createChat } = useChat();
   const { createProject } = useProjects();
-  const { settings } = useSettingsStore();
+  const { settings, updateSetting } = useSettingsStore();
   const [welcome, setWelcome] = useState("");
   const [welcomeSubtext, setWelcomeSubtext] = useState("");
-  const [quoteCategories, setQuoteCategories] = useState<QuoteCategory[]>([]);
+  // 全部台词类目（原始数据，builtin 模式从后端拉取）
+  const [allQuoteCategories, setAllQuoteCategories] = useState<QuoteCategory[]>([]);
+  const [greetingFavorites, setGreetingFavorites] = useState<string[]>([]);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingFiles, setPendingFiles] = useState<string[]>([]);
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
@@ -39,13 +41,44 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    // 优先从后端欢迎语 API 获取全部分组文案，随机取一条做初始欢迎语
+    const mode = settings?.greeting_mode ?? "builtin";
+
+    // off 模式：不展示欢迎语，也不渲染台词小组件
+    if (mode === "off") {
+      setWelcome("");
+      setWelcomeSubtext("");
+      setAllQuoteCategories([]);
+      return () => { cancelled = true; };
+    }
+
+    // custom 模式：从用户自定义台词（≤5 条）中随机取一条，作为独立数据源
+    if (mode === "custom") {
+      try {
+        const parsed: unknown = JSON.parse(settings?.custom_greetings ?? "[]");
+        if (Array.isArray(parsed)) {
+          const list = parsed.filter((x): x is string => typeof x === "string" && x.trim() !== "");
+          if (list.length > 0) {
+            const pick = list[Math.floor(Math.random() * list.length)];
+            setWelcome(pick);
+            setWelcomeSubtext("");
+            return () => { cancelled = true; };
+          }
+        }
+      } catch {
+        /* ignore malformed */
+      }
+      setWelcome("");
+      setWelcomeSubtext("");
+      return () => { cancelled = true; };
+    }
+
+    // builtin 模式（默认）：优先从后端欢迎语 API 获取全部分组文案，随机取一条做初始欢迎语
     apiGet<{ categories?: QuoteCategory[] }>("/api/system/greetings")
       .then((data) => {
         if (cancelled) return;
         const categories = data?.categories ?? [];
         if (categories.length > 0) {
-          setQuoteCategories(categories);
+          setAllQuoteCategories(categories);
           const all = categories.flatMap((c) => c.items);
           const pick = all[Math.floor(Math.random() * all.length)];
           if (pick) {
@@ -64,13 +97,52 @@ export default function Home() {
         setWelcomeSubtext("");
       });
     return () => { cancelled = true; };
-  }, [tArray]);
+  }, [settings?.greeting_mode, settings?.custom_greetings, tArray]);
 
   // 台词菜单选中：切换首页欢迎语
   const handleSelectQuote = useCallback((item: QuoteItem) => {
     setWelcome(item.text);
     setWelcomeSubtext(item.subtext || "");
   }, []);
+
+  // 收藏 key：类目 id + 分隔符 + 文本（203 条已验证唯一）
+  const quoteFavKey = useCallback((catId: string, item: QuoteItem) => `${catId}\u0001${item.text}`, []);
+
+  // 欢迎语收藏：从后端 Settings 加载（localStorage 不参与，权威源在后端，便于将来删除未收藏项）
+  useEffect(() => {
+    const raw = settings?.greeting_favorites;
+    if (raw == null) return;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setGreetingFavorites(parsed.filter((x): x is string => typeof x === "string"));
+      }
+    } catch {
+      /* ignore malformed */
+    }
+  }, [settings?.greeting_favorites]);
+
+  // 切换单条欢迎语收藏：乐观更新本地 + 同步后端 Settings
+  const toggleQuoteFavorite = useCallback((catId: string, item: QuoteItem) => {
+    const key = quoteFavKey(catId, item);
+    setGreetingFavorites((prev) => {
+      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
+      updateSetting("greeting_favorites", JSON.stringify(next));
+      return next;
+    });
+  }, [quoteFavKey, updateSetting]);
+
+  // 派生台词类目：有收藏时仅保留已收藏台词（未收藏的隐藏到后台），无收藏时展示全部（避免空白）
+  const quoteCategories = useMemo(() => {
+    if (greetingFavorites.length === 0) return allQuoteCategories;
+    const favSet = new Set(greetingFavorites);
+    return allQuoteCategories
+      .map((c) => ({
+        ...c,
+        items: c.items.filter((item) => favSet.has(quoteFavKey(c.id, item))),
+      }))
+      .filter((c) => c.items.length > 0);
+  }, [allQuoteCategories, greetingFavorites, quoteFavKey]);
 
   // 根据 Settings 默认模型预选
   useEffect(() => {
@@ -95,7 +167,7 @@ export default function Home() {
 
   const activeAgents = agents.filter((a) => a.status === "active");
   const currentAgent = selectedAgent || (settings?.default_agent ? activeAgents.find(a => a.id === settings.default_agent) || null : null) || activeAgents[0] || null;
-  const currentModel = selectedModel || models[0] || null;
+  const currentModel = selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null;
 
   const handleAgentChange = useCallback((agentId: string) => {
     const agent = activeAgents.find((a) => a.id === agentId);
@@ -181,7 +253,10 @@ export default function Home() {
           welcome={welcome}
           subtext={welcomeSubtext}
           quoteCategories={quoteCategories}
+          quoteFavorites={greetingFavorites}
+          onToggleQuoteFavorite={toggleQuoteFavorite}
           onSelectQuote={handleSelectQuote}
+          showQuoteWidget={(settings?.greeting_mode ?? "builtin") === "builtin"}
           onQuickAction={(prompt) => setInput(prompt)}
           onThemeChange={setHeroThemeId}
         />

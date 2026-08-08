@@ -17,6 +17,8 @@ interface ChatHeaderProps {
   project: Project | null;
   streamingStage?: OrbStage | null;
   tokenUsage?: TokenUsageEvent | null;
+  onCompress?: () => void;
+  isCompressing?: boolean;
   isEditingTitle: boolean;
   editTitle: string;
   onEditTitleChange: (value: string) => void;
@@ -58,6 +60,8 @@ export const ChatHeader = memo(function ChatHeader({
   project,
   streamingStage,
   tokenUsage,
+  onCompress,
+  isCompressing,
   isEditingTitle,
   editTitle,
   onEditTitleChange,
@@ -129,7 +133,7 @@ export const ChatHeader = memo(function ChatHeader({
           gap: "8px",
         }}>
           {/* F-Context 上下文仪表盘：Token 消耗 + 水位预警（仅流式期间有数据时显示） */}
-          <ContextDashboard usage={tokenUsage ?? null} />
+          <ContextDashboard usage={tokenUsage ?? null} onCompress={onCompress} isCompressing={isCompressing} />
           {project && (
             <span
               onClick={onOpenProjectContext}

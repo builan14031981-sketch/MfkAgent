@@ -57,7 +57,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         agentId || settings?.default_agent || agents[0]?.id || "general",
         userMessage.slice(0, 50) || "New Chat",
         projectId,
-        (selectedModel || models[0] || null)?.id || settings?.default_model || null,
+        (selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null,
         files,
         mode
       );
@@ -90,7 +90,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         agentId || settings?.default_agent || agents[0]?.id || "general",
         t("chat.projectInitDefaultTitle", { name: project.name }),
         projectId,
-        (selectedModel || models[0] || null)?.id || settings?.default_model || null,
+        (selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null,
         [],
         mode
       );
@@ -214,7 +214,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             placeholder={t("chat.projectInitPlaceholder")}
             inputMinHeight={82}
             models={models}
-            modelId={(selectedModel || models[0] || null)?.id || null}
+            modelId={(selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null}
             onModelChange={(id) => {
               const model = models.find(m => m.id === id);
               if (model) setSelectedModel(model);

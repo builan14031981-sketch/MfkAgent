@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Quote, X, Check, ChevronDown, Shuffle } from "lucide-react";
+import { Quote, X, Check, ChevronDown, Shuffle, Star } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 
 export interface QuoteItem {
@@ -20,6 +20,8 @@ export interface QuoteCategory {
 interface QuoteMenuProps {
   categories: QuoteCategory[];
   current: QuoteItem | null;
+  favorites?: string[];
+  onToggleFavorite?: (catId: string, item: QuoteItem) => void;
   onSelect: (item: QuoteItem) => void;
 }
 
@@ -32,17 +34,24 @@ interface PanelPos {
 
 /**
  * 首页欢迎语台词菜单（对标 ThemeSwitcher 交互）：
- * - 6 个文案类目（数字生命 / 世界百大电影 / 江南 / 江南随笔 / 华语歌词 / 外语歌词）
+ * - 7 个文案类目（数字生命 / 世界百大电影 / 江南 / 江南随笔 / 华语歌词 / 外语歌词 / 互联网名梗）
  * - 类目可折叠，点击条目即切换首页欢迎语；随机按钮从全库抽取一句
+ * - 每条可打星收藏（仅标记，供后续筛选保留）；顶部显示收藏计数
  * - 定位：自适应上/下展开 + maxHeight 内部滚动 + Portal 挂 body，跟随滚动实时重锚
  */
-export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
+export function QuoteMenu({ categories, current, favorites = [], onToggleFavorite, onSelect }: QuoteMenuProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const scrollTopRef = useRef(0);
+  const initialCollapsedSet = useRef(false);
   const [pos, setPos] = useState<PanelPos | null>(null);
+
+  // 收藏 key 与调用方一致：类目 id + 分隔符 + 文本
+  const favKey = useCallback((catId: string, item: QuoteItem) => `${catId}\u0001${item.text}`, []);
+  const isFav = useCallback((catId: string, item: QuoteItem) => favorites.includes(favKey(catId, item)), [favorites, favKey]);
 
   // 默认展开当前欢迎语所在类目，其余折叠
   const initialCollapsed = useMemo(() => {
@@ -76,14 +85,35 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
 
   const openPanel = useCallback(() => {
     updatePos();
-    // 每次打开时按当前欢迎语重建折叠状态（默认展开其所在类目）
-    setCollapsed(initialCollapsed);
+    if (!initialCollapsedSet.current) {
+      setCollapsed(initialCollapsed);
+      initialCollapsedSet.current = true;
+    }
     setOpen(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (panelRef.current) {
+          panelRef.current.scrollTop = scrollTopRef.current;
+        }
+      });
+    });
   }, [updatePos, initialCollapsed]);
 
   const closePanel = useCallback(() => {
+    if (panelRef.current) {
+      scrollTopRef.current = panelRef.current.scrollTop;
+    }
     setOpen(false);
   }, []);
+
+  // 胶囊按钮可切换：面板打开时再次点击收起
+  const togglePanel = useCallback(() => {
+    if (open) {
+      closePanel();
+    } else {
+      openPanel();
+    }
+  }, [open, openPanel, closePanel]);
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +166,7 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
     <>
       <button
         ref={buttonRef}
-        onClick={openPanel}
+        onClick={togglePanel}
         title={t("home.hero.switchQuote")}
         style={{
           position: "absolute",
@@ -147,9 +177,9 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
           gap: 6,
           padding: "6px 10px",
           borderRadius: "var(--radius-full)",
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-level-2)",
-          color: "var(--text-level-3)",
+          border: `1px solid ${open ? "var(--color-primary)" : "var(--border-primary)"}`,
+          background: open ? "var(--color-primary-light)" : "var(--bg-level-2)",
+          color: open ? "var(--color-primary)" : "var(--text-level-3)",
           cursor: "pointer",
           fontSize: 12,
           opacity: buttonVisible ? 1 : 0,
@@ -163,6 +193,11 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
       {open && pos && typeof document !== "undefined" && createPortal(
         <div
           ref={panelRef}
+          onScroll={() => {
+            if (panelRef.current) {
+              scrollTopRef.current = panelRef.current.scrollTop;
+            }
+          }}
           style={{
             position: "fixed",
             right: pos.right,
@@ -181,10 +216,14 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
           }}
           className="no-scrollbar"
         >
-          {/* 头部：标题 / 随机 / 关闭 */}
+          {/* 头部：标题 / 收藏数 / 随机 / 关闭 */}
           <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "2px 2px 8px" }}>
             <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "var(--text-level-2)", paddingLeft: 4 }}>
               {t("home.hero.quoteMenu")}
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "var(--text-level-4)" }} title={t("home.hero.quoteFavCount", { count: String(favorites.length) })}>
+              <Star style={{ width: 11, height: 11, color: "var(--color-warning)", fill: "var(--color-warning)" }} />
+              {favorites.length}
             </span>
             <button
               onClick={handleShuffle}
@@ -235,6 +274,7 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
                     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                       {cat.items.map((item) => {
                         const active = activeFor(item);
+                        const fav = isFav(cat.id, item);
                         return (
                           <div
                             key={`${cat.id}:${item.text}`}
@@ -251,6 +291,24 @@ export function QuoteMenu({ categories, current, onSelect }: QuoteMenuProps) {
                             }}
                           >
                             <span style={{ flex: 1, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.text}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleFavorite?.(cat.id, item);
+                              }}
+                              title={fav ? t("home.hero.quoteUnfavorite") : t("home.hero.quoteFavorite")}
+                              style={{
+                                border: "none",
+                                background: "transparent",
+                                cursor: "pointer",
+                                padding: 2,
+                                display: "flex",
+                                color: fav ? "var(--color-warning)" : "var(--text-level-4)",
+                                opacity: fav ? 1 : 0.6,
+                              }}
+                            >
+                              <Star style={{ width: 13, height: 13, fill: fav ? "var(--color-warning)" : "none" }} />
+                            </button>
                             {active && <Check style={{ width: 13, height: 13, flexShrink: 0 }} />}
                           </div>
                         );

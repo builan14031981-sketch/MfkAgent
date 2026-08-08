@@ -20,7 +20,8 @@ export type RuntimeEventType =
   | "sub_agent"
   | "vision"
   | "memory"
-  | "token_usage";
+  | "token_usage"
+  | "agent_state_update";
 
 /** 待审批命令（tool_approval 事件载荷） */
 export interface ApprovalRequest {
@@ -46,6 +47,22 @@ export interface TokenUsageEvent extends RuntimeEventBase {
   model_max_tokens: number;
   /** 上下文水位百分比（0-100） */
   watermark_percentage: number;
+}
+
+/**
+ * Agent 状态流转事件（不进入 timeline 渲染，由独立 AgentStatusCard 消费）。
+ * 后端在 SSE 流中推送，用于替代单调的"正在输入..."指示器。
+ */
+export interface AgentStateUpdateEvent extends RuntimeEventBase {
+  type: "agent_state_update";
+  /** Agent 角色名（如 "Coder Agent"） */
+  agent_role: string;
+  /** 状态：working=执行中 / waiting_for_tool=等待工具 / completed=完成 / error=出错 */
+  status: "working" | "waiting_for_tool" | "completed" | "error";
+  /** 当前动作详情（如 "准备调用工具: list_files"） */
+  action_detail: string;
+  /** 任务进度（如 "任务 1/5"） */
+  task_progress: string;
 }
 
 /** RuntimeEvent 公共基础字段 */

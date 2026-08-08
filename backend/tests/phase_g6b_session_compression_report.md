@@ -1,6 +1,6 @@
 # MfkAgent 会话压缩引擎 测试报告（Phase G6-B）
 
-- 时间: 2026-08-07 17:18:52
+- 时间: 2026-08-07 19:01:45
 
 ## 结果总览
 
@@ -14,9 +14,9 @@
 | 6 | T6  ModelMessage 类型保持 | ✅ PASS | 1ms |
 | 7 | T7  keep_recent 覆盖全部 → 不压缩 | ✅ PASS | 1ms |
 | 8 | T8  摘要 Prompt 内容正确 | ✅ PASS | 1ms |
-| 9 | T9  模型解析优先级 | ✅ PASS | 1ms |
+| 9 | T9  模型解析优先级 | ✅ PASS | 2ms |
 | 10 | T10 自定义 keep_recent / min_middle | ✅ PASS | 1ms |
-| 11 | T11 独立接口不破坏 run/run_stream | ✅ PASS | 0ms |
+| 11 | T11 独立接口不破坏 run/run_stream | ✅ PASS | 1ms |
 
 **通过率: 11/11**
 

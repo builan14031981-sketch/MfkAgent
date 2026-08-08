@@ -7,7 +7,6 @@ import { ToolCallCardList } from "@/components/ToolCallCard";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useSettingsStore } from "@/lib/store";
 
 interface ChatMessageProps {
   message: Message;
@@ -26,11 +25,41 @@ function parseThinkBlock(content: string): { thinking: string | null; body: stri
   return { thinking: thinking || null, body };
 }
 
-/** 思考过程折叠面板：灰色背景、较小字号、左侧边框，默认展开 */
-export function ThinkingPanel({ thinking }: { thinking: string }) {
+/** 仅用于渲染展示的文本归一化：去首尾空白、\r\n → \n、连续空行压缩为单个 \n。不改动存储数据 */
+function normalizeThinking(text: string): string {
+  return text.trim().replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
+}
+
+/** 思考过程折叠面板：灰色背景、较小字号、左侧边框。默认收起，收起态 2 行截断预览。
+ * persistKey 提供时折叠状态写入 localStorage，重进会话保持一致。 */
+export function ThinkingPanel({ thinking, persistKey }: { thinking: string; persistKey?: string }) {
   const { t } = useTranslation();
-  const { settings } = useSettingsStore();
-  const [open, setOpen] = useState(() => settings?.show_reasoning_by_default !== "false");
+  const [open, setOpen] = useState(() => {
+    if (persistKey) {
+      try {
+        return window.localStorage.getItem(persistKey) === "1";
+      } catch {
+        /* localStorage 不可用则忽略 */
+      }
+    }
+    return false;
+  });
+
+  const handleToggle = useCallback(() => {
+    setOpen((v) => {
+      const next = !v;
+      if (persistKey) {
+        try {
+          window.localStorage.setItem(persistKey, next ? "1" : "0");
+        } catch {
+          /* localStorage 不可用则忽略 */
+        }
+      }
+      return next;
+    });
+  }, [persistKey]);
+
+  const normalized = useMemo(() => normalizeThinking(thinking), [thinking]);
 
   return (
     <div style={{
@@ -41,7 +70,7 @@ export function ThinkingPanel({ thinking }: { thinking: string }) {
       padding: "6px 10px",
     }}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleToggle}
         style={{
           display: "flex",
           alignItems: "center",
@@ -64,18 +93,26 @@ export function ThinkingPanel({ thinking }: { thinking: string }) {
           <ChevronDown style={{ width: "12px", height: "12px", color: "var(--text-level-4)" }} />
         )}
       </button>
-      {open && (
-        <div style={{
+      <div
+        style={{
           marginTop: "6px",
           fontSize: "12px",
           lineHeight: 1.6,
           color: "var(--text-level-3)",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
-        }}>
-          {thinking}
-        </div>
-      )}
+          ...(open
+            ? {}
+            : {
+                display: "-webkit-box" as React.CSSProperties["display"],
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical" as const,
+                overflow: "hidden",
+              }),
+        }}
+      >
+        {normalized}
+      </div>
     </div>
   );
 }
@@ -249,7 +286,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
         <ToolCallCardList toolCalls={message.tool_calls} />
       )}
       {/* 思考过程（<think> 标签内容）折叠面板 */}
-      {thinking && <ThinkingPanel thinking={thinking} />}
+      {thinking && <ThinkingPanel thinking={thinking} persistKey={"mfk_think_" + message.id} />}
       {/* 正文：Markdown 渲染（含代码块折叠） */}
       <MarkdownRenderer content={body} />
       {/* AI 消息悬浮操作栏：复制 / 引用 / 重生成 */}

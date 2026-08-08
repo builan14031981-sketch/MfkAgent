@@ -101,6 +101,8 @@ class RuntimeEventType(str, Enum):
     TASK_SKIPPED = "task_skipped"
     # G6-A: Token 水位监控
     TOKEN_USAGE = "token_usage"
+    # 战略4: Agent 状态可视化 — 细粒度 Agent 状态更新事件
+    AGENT_STATE_UPDATE = "agent_state_update"
     FINISH = "finish"
     ERROR = "error"
 

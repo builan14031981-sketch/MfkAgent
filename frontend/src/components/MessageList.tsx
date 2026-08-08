@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useMemo, memo } from "react";
-import { ArrowDown, AlertTriangle, RotateCw } from "lucide-react";
+import { useRef, useCallback, useEffect, useMemo, memo, useState } from "react";
+import { ArrowDown, AlertTriangle, RotateCw, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ChatMessage, ThinkingPanel } from "@/components/ChatMessage";
 import { AgentIcon } from "@/components/AgentIcon";
@@ -40,6 +40,83 @@ interface MessageListProps {
 
 /** 距离底部阈值：低于该值视为"用户停在底部"，自动吸底 */
 const BOTTOM_THRESHOLD = 120;
+
+/** 判断消息是否为压缩摘要节点 */
+function isCompressionNode(message: Message): boolean {
+  return message.role === "user" && message.content.startsWith("【历史记忆摘要】");
+}
+
+/**
+ * 压缩节点卡片：折叠展示历史记忆摘要。
+ * - 默认折叠，点击展开查看完整摘要
+ * - 图标 + 提示语："已压缩 XX 轮历史对话"
+ */
+function CompressionNodeCard({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const summary = content.replace("【历史记忆摘要】\n", "").trim();
+
+  // 估算压缩轮数：从摘要中提取信息
+  const roundCount = useMemo(() => {
+    const lines = summary.split("\n").filter(Boolean);
+    return lines.length;
+  }, [summary]);
+
+  return (
+    <div style={{
+      marginBottom: "20px",
+      display: "flex",
+      justifyContent: "center",
+    }}>
+      <div style={{
+        maxWidth: "600px",
+        width: "100%",
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--border-primary)",
+        background: "var(--bg-level-3)",
+        overflow: "hidden",
+      }}>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            width: "100%",
+            padding: "10px 14px",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            fontSize: "13px",
+            color: "var(--text-level-2)",
+            textAlign: "left",
+          }}
+        >
+          <Package style={{ width: "16px", height: "16px", color: "var(--color-primary)", flexShrink: 0 }} />
+          <span style={{ flex: 1, fontWeight: 500 }}>
+            已压缩 {roundCount} 轮历史对话
+          </span>
+          {expanded ? (
+            <ChevronDown style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+          ) : (
+            <ChevronRight style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+          )}
+        </button>
+        {expanded && (
+          <div style={{
+            padding: "0 14px 12px 38px",
+            fontSize: "12px",
+            lineHeight: "1.6",
+            color: "var(--text-level-3)",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}>
+            {summary}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * 消息列表 + 智能吸底滚动：
@@ -278,13 +355,17 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
           <div style={{ maxWidth: "800px", margin: "0 auto" }}>
             {messages.map((message) => (
               <div key={message.id} id={`msg-${message.id}`} style={{ marginBottom: "20px" }}>
-                <ChatMessage
-                  message={message}
-                  currentAgent={currentAgent}
-                  onQuote={onQuote}
-                  onRegenerate={onRegenerate}
-                  onEdit={onEdit}
-                />
+                {isCompressionNode(message) ? (
+                  <CompressionNodeCard content={message.content} />
+                ) : (
+                  <ChatMessage
+                    message={message}
+                    currentAgent={currentAgent}
+                    onQuote={onQuote}
+                    onRegenerate={onRegenerate}
+                    onEdit={onEdit}
+                  />
+                )}
               </div>
             ))}
             {timeline.length > 0 && (

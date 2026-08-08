@@ -1,18 +1,18 @@
 # MfkAgent Planner V1 Runtime 集成测试报告（Phase G1）
 
-- 时间: 2026-08-07 15:38:47
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_g1_planner_e5w5fz9q`
+- 时间: 2026-08-07 23:35:27
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_g1_planner_hu9nayvy`
 
 ## 结果总览
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | I1 任务型请求 → task_context + 计划段 | ✅ PASS | 211ms |
-| 2 | I2 非任务型请求 → task_context None（基线） | ✅ PASS | 128ms |
-| 3 | I3 plan 模式 → 只读约束 + read_only | ✅ PASS | 124ms |
-| 4 | I4 build 流式端到端（Runtime 闭环不受破坏） | ✅ PASS | 467ms |
-| 5 | I5 use_tools=False → task_context None | ✅ PASS | 52ms |
-| 6 | I6 prompt 双通道一致 + 计划段对应 | ✅ PASS | 44ms |
+| 1 | I1 任务型请求 → task_context + 计划段 | ✅ PASS | 62ms |
+| 2 | I2 非任务型请求 → task_context None（基线） | ✅ PASS | 63ms |
+| 3 | I3 plan 模式 → 只读约束 + read_only | ✅ PASS | 47ms |
+| 4 | I4 build 流式端到端（Runtime 闭环不受破坏） | ✅ PASS | 343ms |
+| 5 | I5 use_tools=False → task_context None | ✅ PASS | 32ms |
+| 6 | I6 prompt 双通道一致 + 计划段对应 | ✅ PASS | 31ms |
 
 **通过率: 6/6**
 
@@ -40,7 +40,7 @@
 - run_id: 1
 - state_path: ['building_context', 'llm_call', 'tool_execution', 'verifying', 'llm_call', 'completing']
 - verify: passed
-- event_count: 18
+- event_count: 26
 - replay_asc: True
 
 ### 5. I5 use_tools=False → task_context None

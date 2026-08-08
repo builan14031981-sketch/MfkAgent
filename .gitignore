@@ -37,6 +37,7 @@ Thumbs.db
 
 # Trash
 _trash/
+_backup/
 
 # Electron
 electron/node_modules/
@@ -46,4 +47,7 @@ opencode.json
 .trae/
 backend/seed_siliconflow_key.py
 backend/test_siliconflow_api.py
+
+# Scratch / tool self-test artifacts
+CE1/
 

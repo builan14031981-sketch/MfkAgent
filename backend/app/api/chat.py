@@ -732,6 +732,100 @@ async def send_message_stream(chat_id: int, request: SendRequest):
     )
 
 
+class CompressRequest(BaseModel):
+    keep_recent: int = 4
+
+
+class CompressResponse(BaseModel):
+    messages: List[MessageResponse]
+    compressed: bool
+    original_count: int
+    compressed_count: int
+
+
+@router.post("/{chat_id}/compress", response_model=CompressResponse)
+async def compress_chat(chat_id: int, request: CompressRequest = CompressRequest()):
+    """G6-B: 会话压缩 — 将冗长历史消息提炼为摘要，减少上下文占用。
+
+    流程：
+    1. 加载当前会话全部消息
+    2. 调用 AgentRuntime.compress_history 进行三段式压缩
+    3. 删除旧消息，写入压缩后的新消息列表
+    4. 返回压缩结果（含是否实际压缩、消息数变化）
+    """
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+        old_messages = (
+            db.query(Message)
+            .filter(Message.chat_id == chat_id)
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+
+        if not old_messages:
+            return CompressResponse(
+                messages=[],
+                compressed=False,
+                original_count=0,
+                compressed_count=0,
+            )
+
+        original_count = len(old_messages)
+
+        # 转换为 compress_history 所需格式
+        msg_dicts = [{"role": m.role, "content": m.content} for m in old_messages]
+
+        # 调用压缩引擎
+        agent_runtime = AgentRuntime()
+        compressed = await agent_runtime.compress_history(
+            msg_dicts,
+            keep_recent=request.keep_recent,
+        )
+
+        compressed_count = len(compressed)
+
+        # 未触发压缩（中间消息不足 min_middle）→ 原样返回
+        if compressed_count == original_count:
+            return CompressResponse(
+                messages=[MessageResponse.model_validate(m) for m in old_messages],
+                compressed=False,
+                original_count=original_count,
+                compressed_count=compressed_count,
+            )
+
+        # 压缩成功：删除旧消息，写入新消息
+        for m in old_messages:
+            db.delete(m)
+
+        new_messages = []
+        for msg_dict in compressed:
+            new_msg = Message(
+                chat_id=chat_id,
+                role=msg_dict.get("role", "user"),
+                content=msg_dict.get("content", ""),
+            )
+            db.add(new_msg)
+            db.flush()
+            new_messages.append(new_msg)
+
+        chat.updated_at = datetime.utcnow()
+        db.commit()
+
+        # refresh 后返回
+        return CompressResponse(
+            messages=[MessageResponse.model_validate(m) for m in new_messages],
+            compressed=True,
+            original_count=original_count,
+            compressed_count=compressed_count,
+        )
+    finally:
+        db.close()
+
+
 class ToolApprovalRequest(BaseModel):
     approval_id: str
     action: str  # "approve" | "deny"

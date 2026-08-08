@@ -127,3 +127,25 @@ export async function apiPut<T>(path: string, data: unknown): Promise<T> {
 export async function apiDelete(path: string): Promise<void> {
   await apiFetch(path, { method: "DELETE" });
 }
+
+// ──── G6-B 会话压缩 ────
+
+export interface CompressResponse {
+  messages: Array<{
+    id: number;
+    chat_id: number;
+    role: string;
+    content: string;
+    thinking?: string;
+    tool_calls?: Array<Record<string, unknown>>;
+    timeline?: Array<Record<string, unknown>>;
+    created_at: string;
+  }>;
+  compressed: boolean;
+  original_count: number;
+  compressed_count: number;
+}
+
+export async function compressMessages(chatId: number, keepRecent = 4): Promise<CompressResponse> {
+  return apiPost<CompressResponse>(`/api/chat/${chatId}/compress`, { keep_recent: keepRecent });
+}

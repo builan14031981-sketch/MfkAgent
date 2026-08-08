@@ -143,6 +143,36 @@ def main() -> int:
         if cid["id"] in grouped:
             ordered[cid["id"]] = grouped[cid["id"]]
 
+    # 合并已有 JSON：手写类目（如 meme）整体保留；被提取类目中，
+    # 人工补过的 subtext（出处）按 text 匹配保留，未被提取的新增条目也保留
+    if os.path.exists(OUTPUT_PATH):
+        try:
+            with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            for key, val in existing.items():
+                if not isinstance(val, list):
+                    continue
+                if key not in ordered:
+                    ordered[key] = val
+                    continue
+                cur = ordered[key]
+                merged: List[Dict[str, str]] = []
+                seen: set = set()
+                old_by_text = {it["text"]: it for it in val}
+                for it in cur:
+                    # 已存在的条目：人工 subtext（出处）优先于本次提取
+                    old = old_by_text.get(it["text"])
+                    if old and old.get("subtext"):
+                        it = {"text": it["text"], "subtext": old["subtext"]}
+                    merged.append(it)
+                    seen.add(it["text"])
+                for old in val:
+                    if old["text"] not in seen:
+                        merged.append({"text": old["text"], "subtext": old.get("subtext", "")})
+                ordered[key] = merged
+        except (OSError, ValueError):
+            pass
+
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(ordered, f, ensure_ascii=False, indent=2)

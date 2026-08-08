@@ -82,6 +82,15 @@ export function ThemeSwitcher({
     setFullView(false);
   }, []);
 
+  // 胶囊按钮可切换：面板打开时再次点击收起
+  const togglePanel = useCallback(() => {
+    if (open) {
+      closePanel();
+    } else {
+      openPanel();
+    }
+  }, [open, openPanel, closePanel]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -128,7 +137,7 @@ export function ThemeSwitcher({
     <>
       <button
         ref={buttonRef}
-        onClick={openPanel}
+        onClick={togglePanel}
         title={t("home.hero.switchTheme")}
         style={{
           position: "absolute",
@@ -139,9 +148,9 @@ export function ThemeSwitcher({
           gap: 6,
           padding: "6px 10px",
           borderRadius: "var(--radius-full)",
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-level-2)",
-          color: "var(--text-level-3)",
+          border: `1px solid ${open ? "var(--color-primary)" : "var(--border-primary)"}`,
+          background: open ? "var(--color-primary-light)" : "var(--bg-level-2)",
+          color: open ? "var(--color-primary)" : "var(--text-level-3)",
           cursor: "pointer",
           fontSize: 12,
           opacity: theme ? 1 : 0,

@@ -4,7 +4,7 @@ import type { ToolCall } from "@/components/ToolCallCard";
 import type { ReasoningEffort } from "@/components/ChatInput";
 import { apiPost } from "@/lib/api";
 import { useStreamStore, OrbStage } from "@/lib/streamStore";
-import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent } from "@/types/runtime";
+import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent } from "@/types/runtime";
 
 type SendMessageStream = ReturnType<typeof useMessages>["sendMessageStream"];
 type AppendMessage = ReturnType<typeof useMessages>["appendMessage"];
@@ -54,11 +54,15 @@ export function useChatStream({
   const [tasks, setTasks] = useState<TaskNode[]>([]);
   // G6-A：最新 token_usage 事件（上下文仪表盘数据源）；null 表示暂无数据
   const [tokenUsage, setTokenUsage] = useState<TokenUsageEvent | null>(null);
+  // Agent 状态流转事件：驱动动态状态名片（AgentStatusCard）；null 时名片隐藏
+  const [currentAgentState, setCurrentAgentState] = useState<AgentStateUpdateEvent | null>(null);
 
   // 辅助索引：tool_call_id → timeline 数组下标，用于 tool_result 原地更新
   const toolIndexRef = useRef<Map<string, number>>(new Map());
   // 辅助索引：task_id → tasks 数组下标，用于 task_completed/failed 原地更新
   const taskIndexRef = useRef<Map<string, number>>(new Map());
+  // completed/error 状态延迟清空定时器：让用户看到终态反馈后再隐藏名片
+  const agentStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /** 从 timeline 末位事件派生 Orb 阶段：thinking→solving、tool→searching、approval→listening、text→composing */
   const orbStage = useMemo<OrbStage | null>(() => {
@@ -93,8 +97,13 @@ export function useChatStream({
     setStreamingError(null);
     setTasks([]);
     setTokenUsage(null);
+    setCurrentAgentState(null);
     toolIndexRef.current.clear();
     taskIndexRef.current.clear();
+    if (agentStateTimerRef.current) {
+      clearTimeout(agentStateTimerRef.current);
+      agentStateTimerRef.current = null;
+    }
   }, []);
 
   /** 用户批准/拒绝待审批命令；成功即本地移除卡片（后端随后发射 tool_result 更新工具卡） */
@@ -141,6 +150,12 @@ export function useChatStream({
         toolIndexRef.current.clear();
         taskIndexRef.current.clear();
         setStreamingError(null);
+        // 流结束：立即隐藏 Agent 状态名片（AI 消息已落库，名片无需停留）
+        setCurrentAgentState(null);
+        if (agentStateTimerRef.current) {
+          clearTimeout(agentStateTimerRef.current);
+          agentStateTimerRef.current = null;
+        }
         const aiMsg: Message = {
           id: Date.now(),
           chat_id: chatId,
@@ -178,6 +193,12 @@ export function useChatStream({
             toolIndexRef.current.clear();
             taskIndexRef.current.clear();
             setIsSending(false);
+            // 流正常结束：隐藏 Agent 状态名片
+            setCurrentAgentState(null);
+            if (agentStateTimerRef.current) {
+              clearTimeout(agentStateTimerRef.current);
+              agentStateTimerRef.current = null;
+            }
           },
           // onError
           (error) => {
@@ -330,6 +351,22 @@ export function useChatStream({
           (usage: TokenUsageEvent) => {
             setTokenUsage(usage);
           },
+          // onAgentStateUpdate：Agent 状态流转事件，驱动动态状态名片
+          // - working/waiting_for_tool：直接覆盖 state，名片持续显示
+          // - completed/error：先覆盖 state（让用户看到终态反馈），1.5s 后自动清空隐藏
+          (evt: AgentStateUpdateEvent) => {
+            if (agentStateTimerRef.current) {
+              clearTimeout(agentStateTimerRef.current);
+              agentStateTimerRef.current = null;
+            }
+            setCurrentAgentState(evt);
+            if (evt.status === "completed" || evt.status === "error") {
+              agentStateTimerRef.current = setTimeout(() => {
+                agentStateTimerRef.current = null;
+                setCurrentAgentState(null);
+              }, 1500);
+            }
+          },
           // onComplete：流结束，降级持久化
           appendAssistant
         );
@@ -348,6 +385,8 @@ export function useChatStream({
     timeline,
     tasks,
     tokenUsage,
+    setTokenUsage,
+    currentAgentState,
     orbStage,
     streamingError,
     sendStream,

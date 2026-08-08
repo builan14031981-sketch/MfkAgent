@@ -115,12 +115,31 @@ export const ChatInput = memo(function ChatInput({
     setActivePop((prev) => (prev === key ? null : key));
   }, []);
 
-  // 自适应高度
+  // 自适应高度：挂载即测 + 首帧 rAF 重测 + 字体就绪重测 + resize 重测。
+  // 冷启动时首帧测量可能因布局/字体未稳定而偏大并写死内联高度，且首页 value 不变时
+  // 原逻辑永不重测（只能靠用户输入触发 value 变化才纠正）；这里在首帧/字体就绪后自动纠正。
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    let cancelled = false;
+    const resize = () => {
+      if (cancelled) return;
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+    };
+    resize();
+    const raf = requestAnimationFrame(resize);
+    const fontsReady =
+      typeof document !== "undefined" &&
+      typeof document.fonts !== "undefined" &&
+      document.fonts.ready;
+    if (fontsReady) fontsReady.then(resize).catch(() => {});
+    window.addEventListener("resize", resize);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
   }, [value, textareaRef]);
 
   // 草稿持久化：挂载时从 localStorage 恢复（仅当当前无内容时）

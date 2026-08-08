@@ -35,6 +35,8 @@ DEFAULT_SETTINGS = {
     "hero_random": "1",
     "hero_random_scope": "all",
     "hero_favorites": "[]",
+    "greeting_mode": "builtin",
+    "custom_greetings": "[]",
 }
 
 

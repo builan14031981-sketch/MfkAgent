@@ -1,6 +1,6 @@
 # MfkAgent Planner LLM 测试报告（Phase G2-B）
 
-- 时间: 2026-08-07 17:18:57
+- 时间: 2026-08-07 19:01:51
 
 ## 结果总览
 
@@ -14,7 +14,7 @@
 | 6 | T6  Level 0/1 → 仅 heuristic | ✅ PASS | 1ms |
 | 7 | T7  PlannerService LLM 成功路径 | ✅ PASS | 1ms |
 | 8 | T8  非任务型请求 → None | ✅ PASS | 1ms |
-| 9 | T9  AgentRuntime 执行链回归 | ✅ PASS | 14ms |
+| 9 | T9  AgentRuntime 执行链回归 | ✅ PASS | 17ms |
 | 10 | T10 ContextBuilder planning_level 传递 | ✅ PASS | 0ms |
 | 11 | T11 LLM ```json 包裹解析 | ✅ PASS | 0ms |
 | 12 | T12 LLM plan 模式只读约束 | ✅ PASS | 1ms |

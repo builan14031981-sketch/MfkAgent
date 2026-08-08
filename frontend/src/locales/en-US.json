@@ -72,7 +72,10 @@
    "quoteMenu": "Quote Menu",
    "switchQuote": "Switch greeting",
    "quoteShort": "Quotes",
-   "quoteRandom": "Random quote",
+    "quoteRandom": "Random quote",
+    "quoteFavorite": "Favorite this greeting (mark to keep)",
+    "quoteUnfavorite": "Unfavorite",
+    "quoteFavCount": "{count} favorited",
    "noFavorites": "No favorites yet. Tap ☆ to pin themes",
    "favorite": "Favorite",
    "unfavorite": "Unfavorite",
@@ -105,7 +108,8 @@
    "context": {
     "dashboard": "Context",
     "warning": "⚠️ Context at {pct}%, consider compressing the session",
-    "compress": "Compress"
+    "compress": "Compress",
+    "compressing": "Compressing..."
    },
   "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
   "noProjectHint": "No local project linked. File operations will be saved to the app data directory by default.",
@@ -223,6 +227,17 @@
     "scopeDesc": "Candidate themes for random picking",
     "scopeAll": "All themes",
     "scopeFavorites": "Favorites"
+   },
+   "greeting": {
+    "title": "Homepage Greetings",
+    "desc": "Control the homepage welcome message and the quote widget",
+    "builtin": "Built-in",
+    "custom": "My quotes",
+    "off": "Off",
+    "customEmpty": "No custom quotes yet, add one below",
+    "customPlaceholder": "Type a quote...",
+    "customAdd": "Add quote",
+    "customMaxHint": "Up to 5"
    }
   },
   "model": {

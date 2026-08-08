@@ -14,7 +14,11 @@ interface HeroStageProps {
   welcome: string;
   subtext: string;
   quoteCategories?: QuoteCategory[];
+  quoteFavorites?: string[];
+  onToggleQuoteFavorite?: (catId: string, item: QuoteItem) => void;
   onSelectQuote?: (item: QuoteItem) => void;
+  /** 是否渲染台词小组件（builtin 模式才显示；custom/off 隐藏） */
+  showQuoteWidget?: boolean;
   /** 主题内快捷指令点击回调（预填输入框等，由调用方注入） */
   onQuickAction?: (prompt: string) => void;
   /** 当前生效主题 id 变化时上报（供调用方判断是否可交互主题） */
@@ -28,7 +32,7 @@ interface HeroStageProps {
  * - enabled 为「动画开关」：关闭动画时主题仍以静态形式展示，可继续切换主题
  * - quickActions：由 home.quickStarts 生成，注入主题组件供可交互主题渲染
  */
-export function HeroStage({ title = "MfkAgent", welcome, subtext, quoteCategories, onSelectQuote, onQuickAction, onThemeChange }: HeroStageProps) {
+export function HeroStage({ title = "MfkAgent", welcome, subtext, quoteCategories, quoteFavorites, onToggleQuoteFavorite, onSelectQuote, showQuoteWidget = true, onQuickAction, onThemeChange }: HeroStageProps) {
   const { theme, enabled, entryEnabled, setEnabled, setTheme, shuffle, favorites, favoriteThemes, isFavorite, toggleFavorite, themes } = useHeroTheme();
   const { tArray } = useTranslation();
 
@@ -78,10 +82,12 @@ export function HeroStage({ title = "MfkAgent", welcome, subtext, quoteCategorie
         isFavorite={isFavorite}
         toggleFavorite={toggleFavorite}
       />
-      {quoteCategories && onSelectQuote && (
+      {quoteCategories && onSelectQuote && showQuoteWidget && (
         <QuoteMenu
           categories={quoteCategories}
           current={{ text: welcome, subtext }}
+          favorites={quoteFavorites}
+          onToggleFavorite={onToggleQuoteFavorite}
           onSelect={onSelectQuote}
         />
       )}

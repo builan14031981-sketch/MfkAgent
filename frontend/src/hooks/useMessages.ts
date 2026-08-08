@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { API_BASE, apiGet, apiPost, apiDelete } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
-import type { TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
+import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
 export interface Message {
   id: number;
@@ -78,6 +78,7 @@ export function useMessages(chatId: number | null) {
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
     onTaskEvent?: (evt: TaskEvent) => void,
     onTokenUsage?: (evt: TokenUsageEvent) => void,
+    onAgentStateUpdate?: (evt: AgentStateUpdateEvent) => void,
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
@@ -255,6 +256,18 @@ export function useMessages(chatId: number | null) {
                     });
                     break;
                   }
+                  case "agent_state_update": {
+                    // Agent 状态流转事件：驱动动态状态名片（AgentStatusCard）
+                    onAgentStateUpdate?.({
+                      id: parsed.id ?? `agent-state-${Date.now()}`,
+                      type: "agent_state_update",
+                      agent_role: parsed.agent_role ?? "",
+                      status: parsed.status ?? "working",
+                      action_detail: parsed.action_detail ?? "",
+                      task_progress: parsed.task_progress ?? "",
+                    });
+                    break;
+                  }
                   case "error": {
                     flushNowAndClear();
                     onError(parsed.message ?? "Unknown error");
@@ -322,5 +335,5 @@ export function useMessages(chatId: number | null) {
     setMessages((prev) => [...prev, message]);
   }, []);
 
-  return { messages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages, appendMessage };
+  return { messages, setMessages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages, appendMessage };
 }

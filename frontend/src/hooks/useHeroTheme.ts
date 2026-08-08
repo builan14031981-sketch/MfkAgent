@@ -78,7 +78,20 @@ export function useHeroTheme() {
   // 挂载时决策：等待设置就绪后按规则执行（随机范围 / 是否随机）；
   // 设置接口加载失败时 1.2s 兜底，按默认规则（随机全部）出主题
   useEffect(() => {
-    if (sessionDecided) return;
+    // 已决策过（客户端导航返回首页导致重挂载）：从 localStorage 恢复上次状态，
+    // 避免 theme=undefined 使主题按钮消失（台词按钮不受影响，因数据每次重新拉取）
+    if (sessionDecided) {
+      try {
+        const savedId = localStorage.getItem(STORAGE_THEME);
+        const saved = getHeroTheme(savedId);
+        if (saved) setThemeState(saved);
+        setEnabledState(localStorage.getItem(STORAGE_ENABLED) !== "0");
+        setFavoritesState(readLocalFavorites());
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
 
     const decide = (randomOn: boolean, scope: "all" | "favorites") => {
       let savedId: string | null = null;

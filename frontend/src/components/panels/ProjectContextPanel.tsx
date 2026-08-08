@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Folder, FileText, CheckSquare, FolderUp } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -36,6 +36,34 @@ export function ProjectContextPanel({
   const [loading, setLoading] = useState(false);
   const [subpath, setSubpath] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Esc 键关闭：与 Panel.tsx / QuoteMenu / ThemeSwitcher 行为对齐
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isOpen, onClose]);
+
+  // 点击外部关闭：延迟 100ms 注册，避免"打开当次 click 立即触发关闭"
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      const timer = setTimeout(() => document.addEventListener("mousedown", handleClickOutside), 100);
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isOpen, onClose]);
 
   async function fetchFiles(dir: string) {
     try {
@@ -75,6 +103,7 @@ export function ProjectContextPanel({
 
   return (
     <div
+      ref={panelRef}
       style={{
         position: "fixed",
         top: 0,

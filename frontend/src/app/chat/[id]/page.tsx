@@ -11,7 +11,7 @@ import type { Message } from "@/hooks/useMessages";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
-import { apiGet } from "@/lib/api";
+import { apiGet, compressMessages } from "@/lib/api";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile } from "@/components/FileDropZone";
@@ -20,6 +20,7 @@ import type { ChatMode } from "@/components/ChatInput";
 import { MessageList } from "@/components/MessageList";
 import { MessageOutline } from "@/components/MessageOutline";
 import { ChatHeader } from "@/components/ChatHeader";
+import { AgentStatusCard } from "@/components/AgentStatusCard";
 
 export default function ChatPage() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function ChatPage() {
   const { models } = useModels();
   const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
-  const { messages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
+  const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
   const { settings } = useSettingsStore();
 
   const {
@@ -45,10 +46,12 @@ export default function ChatPage() {
     timeline,
     tasks,
     tokenUsage,
+    setTokenUsage,
     orbStage,
     streamingError,
     sendStream,
     resolveApproval,
+    currentAgentState,
   } = useChatStream({ chatId, sendMessageStream, appendMessage, refetch });
 
   const currentChat = chats.find((c) => c.id === chatId);
@@ -59,7 +62,7 @@ export default function ChatPage() {
     [currentAgent]
   );
   const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
-  const currentModel = selectedModel || (currentChat?.model ? models.find(m => m.id === currentChat.model) || null : null) || models[0] || null;
+  const currentModel = selectedModel || (currentChat?.model ? models.find(m => m.id === currentChat.model) || null : null) || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null;
 
   // 人格初始值：优先读当前会话快照 currentChat.personality_level，仅当其缺失时回退全局默认/50。
   // 切换会话时（chatId 变化）重新初始化，确保老会话继承自己保存的理性度。
@@ -81,6 +84,7 @@ export default function ChatPage() {
   const [activeUserMessageId, setActiveUserMessageId] = useState<number | null>(null);
   const [contextFiles, setContextFiles] = useState<string[]>([]);
   const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // 思考程度初始值：优先读设置中的默认推理强度（default_reasoning_effort），
   // 会话切换时重置（settings 未就绪则暂不初始化，待其加载后重渲染时生效）。
@@ -229,6 +233,14 @@ export default function ChatPage() {
     await sendStream(userMsg.content, { modelId: currentModel?.id, personalityLevel, reasoningEffort, appendUserMessage: false });
   }, [isSending, messages, deleteMessagesFrom, sendStream, currentModel?.id, personalityLevel, reasoningEffort]);
 
+  // 切换会话时重置输入框：避免上一会话的多行内容（引用/编辑/草稿）残留导致 textarea 保持变高
+  // render 阶段调整 state（非 effect），符合 React 官方推荐模式
+  const prevChatIdRef = useRef<number | null>(null);
+  if (prevChatIdRef.current !== chatId) {
+    prevChatIdRef.current = chatId;
+    setInput("");
+  }
+
   // 从URL参数获取用户输入，自动发送消息
   useEffect(() => {
     const messageParam = searchParams.get("message");
@@ -321,6 +333,24 @@ export default function ChatPage() {
     }
   }, [chatId, updateChat]);
 
+  // 压缩会话：G6-B 压缩引擎 — 将冗长历史提炼为摘要
+  // 注意：useCallback 必须在 if(!chatId) early return 之前，否则违反 rules-of-hooks
+  const handleCompress = useCallback(async () => {
+    if (!chatId || isCompressing) return;
+    setIsCompressing(true);
+    try {
+      const result = await compressMessages(chatId, 4);
+      if (result.compressed) {
+        setMessages(result.messages as Message[]);
+        setTokenUsage(null);
+      }
+    } catch (err) {
+      console.error("Compression failed:", err);
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [chatId, isCompressing, setMessages, setTokenUsage]);
+
   if (!chatId) {
     return (
       <div style={{
@@ -374,13 +404,15 @@ export default function ChatPage() {
         project={currentProject}
         streamingStage={orbStage}
         tokenUsage={tokenUsage}
+        onCompress={handleCompress}
+        isCompressing={isCompressing}
         isEditingTitle={isEditingTitle}
         editTitle={editTitle}
         onEditTitleChange={setEditTitle}
         onStartEditTitle={handleStartEditTitle}
         onSaveTitle={handleSaveTitle}
         onCancelEditTitle={() => setIsEditingTitle(false)}
-        onOpenProjectContext={() => setProjectContextOpen(true)}
+        onOpenProjectContext={() => setProjectContextOpen((v) => !v)}
       />
 
       {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠）+ 对话大纲悬浮导航 */}
@@ -410,6 +442,9 @@ export default function ChatPage() {
         />
         <MessageOutline messages={messages} activeUserMessageId={activeUserMessageId} />
       </div>
+
+      {/* 动态 Agent 状态名片：仅 currentAgentState 非 null 时渲染（输入框上方专属区域） */}
+      <AgentStatusCard state={currentAgentState} />
 
       {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮） */}
       <div style={{

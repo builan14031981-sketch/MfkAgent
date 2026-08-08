@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { AlertTriangle, Minimize2 } from "lucide-react";
+import { AlertTriangle, Minimize2, Loader2 } from "lucide-react";
 import type { TokenUsageEvent } from "@/types/runtime";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -20,6 +20,10 @@ function formatTokens(n: number): string {
 interface ContextDashboardProps {
   /** G6-A 最新 token_usage 事件；null 时不渲染仪表盘 */
   usage: TokenUsageEvent | null;
+  /** 压缩回调：点击「压缩会话」按钮时触发 */
+  onCompress?: () => void;
+  /** 压缩是否进行中 */
+  isCompressing?: boolean;
 }
 
 /**
@@ -28,7 +32,7 @@ interface ContextDashboardProps {
  * - 颜色随水位变化：< 30% 绿色；30%-40% 橙色；> 40% 红色
  * - 水位 >= 40% 时显示「压缩会话」预警按钮（G6-B 阶段接入真实逻辑）
  */
-export const ContextDashboard = memo(function ContextDashboard({ usage }: ContextDashboardProps) {
+export const ContextDashboard = memo(function ContextDashboard({ usage, onCompress, isCompressing = false }: ContextDashboardProps) {
   const { t } = useTranslation();
 
   const ratio = useMemo(() => {
@@ -109,7 +113,8 @@ export const ContextDashboard = memo(function ContextDashboard({ usage }: Contex
             {t("chat.context.warning", { pct: String(ratio) })}
           </span>
           <button
-            onClick={() => console.log("Trigger Compression")}
+            onClick={onCompress}
+            disabled={isCompressing}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -117,20 +122,33 @@ export const ContextDashboard = memo(function ContextDashboard({ usage }: Contex
               padding: "3px 10px",
               borderRadius: "var(--radius-full)",
               border: "1px solid color-mix(in srgb, var(--color-error) 45%, transparent)",
-              background: "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))",
+              background: isCompressing
+                ? "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))"
+                : "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))",
               color: "var(--color-error)",
-              cursor: "pointer",
+              cursor: isCompressing ? "not-allowed" : "pointer",
               fontSize: "11px",
               fontWeight: 600,
               lineHeight: 1,
               whiteSpace: "nowrap",
               transition: "background 0.2s ease",
+              opacity: isCompressing ? 0.7 : 1,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))"; }}
+            onMouseEnter={(e) => {
+              if (isCompressing) return;
+              e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))";
+            }}
+            onMouseLeave={(e) => {
+              if (isCompressing) return;
+              e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))";
+            }}
           >
-            <Minimize2 style={{ width: "12px", height: "12px", flexShrink: 0 }} />
-            {t("chat.context.compress")}
+            {isCompressing ? (
+              <Loader2 style={{ width: "12px", height: "12px", flexShrink: 0, animation: "spin 1s linear infinite" }} />
+            ) : (
+              <Minimize2 style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+            )}
+            {isCompressing ? t("chat.context.compressing") : t("chat.context.compress")}
           </button>
         </>
       )}

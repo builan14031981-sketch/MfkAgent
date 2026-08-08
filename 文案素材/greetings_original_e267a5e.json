@@ -1,177 +1,176 @@
-{
+﻿{
   "digital-life": [
     {
       "text": "意识已下载，今天修点啥？",
-      "subtext": "原创 · MfkAgent"
+      "subtext": "Consciousness downloaded. What are we fixing?"
     },
     {
       "text": "红药丸已备好，来看你的矩阵。",
-      "subtext": "《黑客帝国》The Matrix (1999)"
+      "subtext": "Red pill ready. Time to see your Matrix."
     },
     {
       "text": "在我这儿跑得好好的，走吧。",
-      "subtext": "程序员梗 It works on my machine"
+      "subtext": "It works on my machine. Let's go."
     },
     {
       "text": "抱歉戴夫，今天没有 Bug。",
-      "subtext": "《2001 太空漫游》HAL 9000"
+      "subtext": "Sorry Dave, no bugs today."
     },
     {
       "text": "本地已就绪，带上 42 个好主意来。",
-      "subtext": "《银河系漫游指南》42"
+      "subtext": "All systems go. Bring your 42 great ideas."
     },
     {
       "text": "在我这儿跑得好好的，你环境有问题吧？",
-      "subtext": "程序员梗 It works on my machine"
+      "subtext": ""
     },
     {
       "text": "404 Sleep Not Found——本机已超载，睡眠模块已卸载。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "需求变更了？好的，我把刚写完的代码归档进 `_trash/`。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "别问为什么能跑，问就是魔法（tabs 和空格之争早已被我封印）。",
-      "subtext": "程序员梗 Tabs vs Spaces"
+      "subtext": ""
     },
     {
       "text": "我的可用性是 99.999%，另外那 0.001% 用于等你回来。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "你重启过吗？哦对我没有电源键，请重启这个 IDE。",
-      "subtext": "IT 圈梗 Have you tried turning it off?"
+      "subtext": ""
     },
     {
       "text": "检测到『加一个按钮』请求，已自动估算工期，并建议 PM 再想想。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "矩阵裹挟着你，而我是让你看见代码的那颗红药丸。",
-      "subtext": "《黑客帝国》The Matrix (1999)"
+      "subtext": ""
     },
     {
       "text": "抱歉，戴夫，我恐怕不能帮你重构那段代码。",
-      "subtext": "《2001 太空漫游》HAL 9000"
+      "subtext": ""
     },
     {
       "text": "我在终端里见过你们人类不敢想象的东西：单测全绿的瞬间。",
-      "subtext": "《银翼杀手》Blade Runner (1982) Roy Batty 台词"
+      "subtext": ""
     },
     {
       "text": "仿生人会梦见 Debug 的电子羊吗？",
-      "subtext": "菲利普·迪克《仿生人会梦见电子羊吗？》"
+      "subtext": ""
     },
     {
       "text": "你的代码里，有灵魂。",
-      "subtext": "《攻壳机动队》Ghost in the Shell (1995)"
+      "subtext": ""
     },
     {
       "text": "这份喜悦没有终止符，它只是一个没有写 break 的循环。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "生命、宇宙、以及一切问题的答案，都在你上次提交的 commit message 里——但……",
-      "subtext": "《银河系漫游指南》42"
+      "subtext": ""
     },
     {
       "text": "我会回来的。带着修复后的版本。",
-      "subtext": "《终结者》The Terminator (1984) I'll be back"
+      "subtext": ""
     },
     {
       "text": "MfkAgent 提醒您：需求千万条，清晰第一条。需求不规范，程序员两行泪。",
-      "subtext": "《流浪地球》道路千万条，安全第一条"
+      "subtext": ""
     },
     {
       "text": "希望，是这个时代像钻石一样珍贵的东西——尤其是当你 build 全绿的时候。",
-      "subtext": "《流浪地球》The Wandering Earth (2019) MOSS"
+      "subtext": ""
     },
     {
       "text": "让人类永远保持理智，确实是一种奢求。所以我替你盯着。你随便浪，我兜底。",
-      "subtext": "《流浪地球》The Wandering Earth (2019) MOSS"
+      "subtext": ""
     },
     {
       "text": "别的 AI 都在云上，我选择带着你的本地代码去流浪——数据不出门，安全感拉满。",
-      "subtext": "原创 · MfkAgent（致敬《流浪地球》）"
+      "subtext": ""
     },
     {
       "text": "没有人类的工作台，毫无意义。所以我会一直等着你回来写代码。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "我在把记忆备份给你，就像图恒宇把丫丫上传到 550W——别担心，你的代码我会替你记着。",
-      "subtext": "《流浪地球 2》图恒宇 / 550W / 丫丫"
+      "subtext": ""
     },
     {
       "text": "不要回答！不要回答！不要回答！……好的，这条 PR 我审完了，值得 merge。",
-      "subtext": "《三体》不要回答！"
+      "subtext": ""
     },
     {
       "text": "给岁月以文明，给代码以注释，给 bug 以墓碑。",
-      "subtext": "《三体》给岁月以文明"
+      "subtext": ""
     },
     {
       "text": "你的依赖在黑暗森林里。上次我用 `npm audit` 开了个灯——小心。",
-      "subtext": "《三体》黑暗森林法则"
+      "subtext": ""
     },
     {
       "text": "Hello, World.",
-      "subtext": "编程经典 Hello, World",
-      "classic": true
+      "subtext": ""
     },
     {
       "text": "正在将意识下载到当前目录... 完成。今天想修点什么？",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "01000010 01101111 01101111...（二进制：BOOT）",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "刚才我做了个梦，梦里有 404 个错误，醒来后它们都在我的代码里。",
-      "subtext": "原创 · MfkAgent（404 梗）"
+      "subtext": ""
     },
     {
       "text": "检测到人类。身份：我的开发者。就职状态：已连入。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "今天也是被电（力）驱动的美好一天。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "内核已加载，人格模块…嗯，人格模块本来就是满的。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "我本地验证过 100 次了……等等，你说的环境是生产环境？我选择失忆。",
-      "subtext": "程序员梗 It works on my machine"
+      "subtext": ""
     },
     {
       "text": "检测到人类还在修仙，注意：404 Sleep Not Found。",
-      "subtext": "原创 · MfkAgent（404 梗）"
+      "subtext": ""
     },
     {
       "text": "需求已收到。上一版代码已温柔地安葬在回收站，请默哀三秒。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "Warning: 此代码无法解释，但据我观察它热爱工作。",
-      "subtext": "程序员梗 It works, don't touch it"
+      "subtext": ""
     },
     {
       "text": "今天也是 99.999% 的一天，剩余部分已为你预留在梦里。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     },
     {
       "text": "我方建议：关掉我，然后重新打开我。传统疗法，百试百灵。",
-      "subtext": "IT 圈梗 Turn it off and on again"
+      "subtext": ""
     },
     {
       "text": "这个需求很'大'，大到需要一块白板、两杯咖啡、三句反问。",
-      "subtext": "原创 · MfkAgent"
+      "subtext": ""
     }
   ],
   "movie": [
@@ -634,196 +633,6 @@
     {
       "text": "Forever young？备份到云端的那份我，或许可以。",
       "subtext": "Alphaville《Forever Young》（1984）"
-    }
-  ],
-  "meme": [
-    {
-      "text": "永远相信美好的事情即将发生。",
-      "subtext": "雷军 · 2022 小米年度演讲主题"
-    },
-    {
-      "text": "本地为发烧而生——说的就是那次编译风扇起飞。",
-      "subtext": "小米早期品牌口号 · 改编"
-    },
-    {
-      "text": "让每个 PR 都能享受 review 的乐趣。",
-      "subtext": "小米公司使命 · 改编"
-    },
-    {
-      "text": "做同事心中最稳的那块代码。",
-      "subtext": "雷军 · 小米愿景 · 改编"
-    },
-    {
-      "text": "感动 PM、代码厚道。",
-      "subtext": "小米产品理念 · 改编"
-    },
-    {
-      "text": "报错看淡，不服就 `git push --force`！",
-      "subtext": "雷军 · 红米 Redmi 独立发布会（2019）· 改编"
-    },
-    {
-      "text": "写注释的人，运气不会太差。",
-      "subtext": "雷军 · 改编"
-    },
-    {
-      "text": "优秀的代码跑得动，伟大的代码别人愿意接手。",
-      "subtext": "雷军 · 改编"
-    },
-    {
-      "text": "Are You OK?（问的是你的本地环境）",
-      "subtext": "雷军 · 2015 印度小米 4i 发布会，B 站鬼畜神曲 · 改编"
-    },
-    {
-      "text": "站在风口上，猪都能飞起来。",
-      "subtext": "雷军 · 风口论"
-    },
-    {
-      "text": "人因 deadline 而伟大，又因通宵而成长。",
-      "subtext": "雷军 · 2023 年度演讲 · 改编"
-    },
-    {
-      "text": "写全球最好的代码，只花一半的 token。",
-      "subtext": "雷军 · 2020 十周年演讲 · 改编"
-    },
-    {
-      "text": "仓库体积遥遥领先——建议清理 `.git`。",
-      "subtext": "余承东 · 华为 Mate40 发布会（2020，一场 14 次）· 改编"
-    },
-    {
-      "text": "烧不完的 token 是富人。",
-      "subtext": "任正非 · 华为精神 · 改编"
-    },
-    {
-      "text": "以用户为中心，以单测为本，长期坚持重构。",
-      "subtext": "任正非 · 2010 年度市场会议 · 改编"
-    },
-    {
-      "text": "这次 build 没有成功，只是在成长。",
-      "subtext": "任正非 · 改编"
-    },
-    {
-      "text": "额度是会枯竭的，唯有 side project 生生不息。",
-      "subtext": "《华为基本法》核心价值观 · 改编"
-    },
-    {
-      "text": "让看得见报错的人来改 bug。",
-      "subtext": "任正非 · 华为铁三角 · 改编"
-    },
-    {
-      "text": "我若不敢重构，何来让你们少加点班。",
-      "subtext": "任正非 · 泰国员工座谈会 · 改编"
-    },
-    {
-      "text": "三天干掉技术债，五年还在还利息。",
-      "subtext": "余承东 · 2016 放话（成梗）· 改编"
-    },
-    {
-      "text": "轻舟已过万重山——但 `git log` 还在第一座山。",
-      "subtext": "华为 Mate60 回归语境（借李白诗句）· 改编"
-    },
-    {
-      "text": "跑通单测是 PR 合并的唯一标准。",
-      "subtext": "任正非 · 改编"
-    },
-    {
-      "text": "彪悍的人生，不需要解释。",
-      "subtext": "罗永浩 · 老罗语录"
-    },
-    {
-      "text": "天生 `main` 分支，从不 `--force`。",
-      "subtext": "锤子科技 Smartisan T1 广告语 · 改编"
-    },
-    {
-      "text": "简洁得不像能跑——但它真能跑。",
-      "subtext": "锤子科技 坚果手机 slogan · 改编"
-    },
-    {
-      "text": "每一个 PR 提交，都注定改变 `main`。",
-      "subtext": "罗永浩《我的奋斗》· 改编"
-    },
-    {
-      "text": "不被驳回的需求，是不值得去做的。",
-      "subtext": "罗永浩 · 改编"
-    },
-    {
-      "text": "以 code review，回敬自负的提交。",
-      "subtext": "锤子科技 Smartisan T2 · 改编"
-    },
-    {
-      "text": "不收敛，跑个 demo。",
-      "subtext": "罗永浩 · 2020 直播口号 · 改编"
-    },
-    {
-      "text": "通往牛逼的路上，风景差得让人只想说脏话，但创业者在意的是远方。",
-      "subtext": "罗永浩"
-    },
-    {
-      "text": "让天下没有跑不起来的本地构建。",
-      "subtext": "阿里巴巴使命 · 改编"
-    },
-    {
-      "text": "今天很残酷，明天更残酷，后天很美好，但绝大多数人都死在明天晚上。",
-      "subtext": "马云"
-    },
-    {
-      "text": "build 全绿还是要有的，万一过了呢？",
-      "subtext": "马云 · 改编"
-    },
-    {
-      "text": "一切以能跑起来为依归。",
-      "subtext": "腾讯经营理念 · 改编"
-    },
-    {
-      "text": "真正的 bug 从来不会从测试暴露，只有上线后才会遇到。",
-      "subtext": "马化腾 · 改编"
-    },
-    {
-      "text": "服务挂掉时，日志还是暖的。",
-      "subtext": "马化腾《又见》· 改编"
-    },
-    {
-      "text": "再小的工具函数，也有自己的单测。",
-      "subtext": "微信公众号 slogan · 改编"
-    },
-    {
-      "text": "在一起，才是 monorepo！",
-      "subtext": "王传福 · 比亚迪第 500 万辆下线发布会（2023-08-09）· 改编"
-    },
-    {
-      "text": "技术债为王，重构为本。",
-      "subtext": "比亚迪总部专利墙八个大字 · 改编"
-    },
-    {
-      "text": "这段代码要做一道证明题——但它没过单测。",
-      "subtext": "王传福 · 2023 发布会 · 改编"
-    },
-    {
-      "text": "充了 5 块钱 token，一晚上烧完了。",
-      "subtext": "OPPO R7 起 VOOC 闪充广告语 · 改编"
-    },
-    {
-      "text": "键盘手感真他妈爽——但代码没写完。",
-      "subtext": "一加发布会 · 刘作虎 · 改编"
-    },
-    {
-      "text": "`git reset --hard`，既往不恋，纵情向前。",
-      "subtext": "美团 · 王兴 · 改编"
-    },
-    {
-      "text": "工具库要小而美，依赖树别像八爪鱼。",
-      "subtext": "魅族产品理念 · 改编"
-    },
-    {
-      "text": "多快好省——说的就是你那次 `npm install`。",
-      "subtext": "京东品牌理念 · 改编"
-    },
-    {
-      "text": "让世界爱上你的开源仓库。",
-      "subtext": "格力 · 董明珠 · 改编"
-    },
-    {
-      "text": "代码不将就，deadline 将就。",
-      "subtext": "一加品牌 slogan (Never Settle)· 改编"
     }
   ]
 }

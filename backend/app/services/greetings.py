@@ -21,6 +21,7 @@ _CATEGORY_ORDER = [
     {"id": "suibi", "name": "江南随笔"},
     {"id": "lyric-cn", "name": "华语歌词"},
     {"id": "lyric-en", "name": "外语歌词"},
+    {"id": "meme", "name": "互联网名梗"},
 ]
 
 # 类目 id → 展示名
@@ -50,7 +51,8 @@ def _load_greetings() -> List[Dict[str, str]]:
                 continue
             greetings.append({
                 "text": text,
-                "subtext": str(item.get("subtext", "")).strip(),
+                "subtext": "" if item.get("classic", False) else str(item.get("subtext", "")).strip(),
+                "classic": bool(item.get("classic", False)),
                 "category": {"id": cid, "name": _CATEGORY_NAMES.get(cid, cid)},
             })
 

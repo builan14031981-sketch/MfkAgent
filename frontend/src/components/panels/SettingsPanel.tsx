@@ -11,6 +11,8 @@ import {
   Info,
   Bot,
   Puzzle,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -46,6 +48,141 @@ function getSortedActiveAgents(agents: { id: string; name: string; status: strin
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     })
     .filter((agent) => agent.status === "active");
+}
+
+/** 自定义台词编辑器：最多 5 条，逐条输入/删除，保存时以 JSON 数组写入设置 */
+function GreetingCustomEditor({
+  value,
+  saving,
+  onSave,
+}: {
+  value: string;
+  saving: boolean;
+  onSave: (key: string, value: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState<string[]>(() => {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
+    } catch {
+      /* ignore malformed */
+    }
+    return [];
+  });
+
+  const MAX_CHARS = 50;
+
+  const clean = draft.map((s) => s.trim()).filter(Boolean);
+
+  const handleChange = (index: number, text: string) => {
+    setDraft((prev) => prev.map((s, i) => (i === index ? text.slice(0, MAX_CHARS) : s)));
+  };
+
+  const handleAdd = () => {
+    if (clean.length >= 5) return;
+    setDraft((prev) => [...prev, ""]);
+  };
+
+  const handleRemove = (index: number) => {
+    setDraft((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
+    onSave("custom_greetings", JSON.stringify(clean.map((s) => s.slice(0, MAX_CHARS))));
+  };
+
+  return (
+    <div>
+      {draft.length === 0 && (
+        <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "0 0 8px 0" }}>
+          {t("settings.general.greeting.customEmpty")}
+        </p>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+        {draft.map((item, index) => (
+          <div key={index} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <input
+              value={item}
+              onChange={(e) => handleChange(index, e.target.value)}
+              maxLength={50}
+              placeholder={t("settings.general.greeting.customPlaceholder")}
+              style={{
+                flex: 1,
+                padding: "7px 10px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-2)",
+                fontSize: "13px",
+                color: "var(--text-level-2)",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={() => handleRemove(index)}
+              title={t("common.delete")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 28,
+                height: 28,
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--text-level-4)",
+              }}
+            >
+              <Trash2 style={{ width: 14, height: 14 }} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <button
+          onClick={handleAdd}
+          disabled={clean.length >= 5}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            padding: "6px 12px",
+            borderRadius: "var(--radius-sm)",
+            border: "1px dashed var(--border-primary)",
+            background: "transparent",
+            cursor: clean.length >= 5 ? "not-allowed" : "pointer",
+            fontSize: "12px",
+            color: "var(--text-level-3)",
+            opacity: clean.length >= 5 ? 0.5 : 1,
+          }}
+        >
+          <Plus style={{ width: 13, height: 13 }} />
+          {t("settings.general.greeting.customAdd")}
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving || JSON.stringify(clean) === value}
+          style={{
+            padding: "6px 16px",
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            background: "var(--color-primary)",
+            color: "#fff",
+            cursor: saving ? "not-allowed" : "pointer",
+            fontSize: "12px",
+            fontWeight: 500,
+            opacity: saving ? 0.7 : 1,
+          }}
+        >
+          {saving ? t("common.saving") : t("common.save")}
+        </button>
+        <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+          {clean.length}/5
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
@@ -207,7 +344,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "28px",
+                marginBottom: "18px",
               }}>
                 <div>
                   <h3 style={{
@@ -241,6 +378,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        flex: 1,
                         gap: "6px",
                         padding: "6px 14px",
                         borderRadius: "var(--radius-xs)",
@@ -248,6 +386,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         background: settings?.theme === theme.value ? "var(--bg-level-1)" : "transparent",
                         cursor: "pointer",
                         fontSize: "13px",
+                        whiteSpace: "nowrap",
                         color: settings?.theme === theme.value ? "var(--text-level-1)" : "var(--text-level-3)",
                         opacity: saving === "theme" ? 0.7 : 1,
                       }}
@@ -264,7 +403,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "28px",
+                marginBottom: "18px",
               }}>
                 <div>
                   <h3 style={{
@@ -294,12 +433,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       onClick={() => handleUpdate("language", lang.value)}
                       disabled={saving === "language"}
                       style={{
-                        padding: "6px 16px",
+                        flex: 1,
+                        padding: "6px 14px",
                         borderRadius: "var(--radius-xs)",
                         border: "none",
                         background: settings?.language === lang.value ? "var(--bg-level-1)" : "transparent",
                         cursor: "pointer",
                         fontSize: "13px",
+                        whiteSpace: "nowrap",
                         color: settings?.language === lang.value ? "var(--text-level-1)" : "var(--text-level-3)",
                         opacity: saving === "language" ? 0.7 : 1,
                       }}
@@ -315,7 +456,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "28px",
+                marginBottom: "18px",
               }}>
                 <h3 style={{
                   fontSize: "14px",
@@ -346,7 +487,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               {/* 首页启动主题（规则控制；主题管理/切换留在首页） */}
-              <div style={{ marginBottom: "28px" }}>
+              <div style={{ marginBottom: "18px" }}>
                 <h3 style={{
                   fontSize: "14px",
                   fontWeight: "500",
@@ -427,12 +568,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         onClick={() => handleUpdate("hero_random_scope", opt.value)}
                         disabled={saving === "hero_random_scope"}
                         style={{
+                          flex: 1,
                           padding: "6px 14px",
                           borderRadius: "var(--radius-xs)",
                           border: "none",
                           background: (settings?.hero_random_scope || "all") === opt.value ? "var(--bg-level-1)" : "transparent",
                           cursor: "pointer",
                           fontSize: "13px",
+                          whiteSpace: "nowrap",
                           color: (settings?.hero_random_scope || "all") === opt.value ? "var(--text-level-1)" : "var(--text-level-3)",
                           opacity: saving === "hero_random_scope" ? 0.7 : 1,
                         }}
@@ -443,6 +586,62 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   </div>
                 </div>
               </div>
+
+              {/* 首页台词（欢迎语）规则 */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "18px",
+              }}>
+                <h3 style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "var(--text-level-1)",
+                  margin: 0,
+                }}>{t("settings.general.greeting.title")}</h3>
+                <div style={{ display: "flex", padding: "3px", borderRadius: "var(--radius-sm)", background: "var(--bg-level-2)" }}>
+                  {([
+                    { value: "builtin", label: t("settings.general.greeting.builtin") },
+                    { value: "custom", label: t("settings.general.greeting.custom") },
+                    { value: "off", label: t("settings.general.greeting.off") },
+                  ] as const).map((opt) => {
+                    const active = (settings?.greeting_mode ?? "builtin") === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => handleUpdate("greeting_mode", opt.value)}
+                        disabled={saving === "greeting_mode"}
+                        style={{
+                        flex: 1,
+                        padding: "6px 14px",
+                        borderRadius: "var(--radius-xs)",
+                        border: "none",
+                        background: active ? "var(--bg-level-1)" : "transparent",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          whiteSpace: "nowrap",
+                          color: active ? "var(--text-level-1)" : "var(--text-level-3)",
+                          opacity: saving === "greeting_mode" ? 0.7 : 1,
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 自定义台词编辑（仅 custom 模式显示） */}
+              {(settings?.greeting_mode ?? "builtin") === "custom" && (
+                <div style={{ marginBottom: "18px" }}>
+                  <GreetingCustomEditor
+                    value={settings?.custom_greetings ?? "[]"}
+                    saving={saving === "custom_greetings"}
+                    onSave={handleUpdate}
+                  />
+                </div>
+              )}
             </>
           )}
 
@@ -450,7 +649,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           {activeSection === "model" && (
             <>
               {/* 默认模型 */}
-              <div style={{ marginBottom: "28px" }}>
+              <div style={{ marginBottom: "18px" }}>
                 <div style={{
                   display: "flex",
                   alignItems: "center",
@@ -497,7 +696,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               {/* 默认推理程度 */}
-              <div style={{ marginBottom: "28px" }}>
+              <div style={{ marginBottom: "18px" }}>
                 <div style={{
                   display: "flex",
                   alignItems: "center",
@@ -549,7 +748,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: "28px",
+                marginBottom: "18px",
               }}>
                 <div>
                   <h3 style={{
@@ -643,7 +842,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 alignItems: "flex-start",
                 justifyContent: "space-between",
                 gap: "12px",
-                marginTop: "32px",
+                marginTop: "24px",
               }}>
                 <div>
                   <h3 style={{
@@ -687,7 +886,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               </div>
 
               {/* AI 长期记忆（三作用域：全局 / Agent / 项目） */}
-              <div style={{ marginTop: "32px" }}>
+              <div style={{ marginTop: "24px" }}>
                 <MemoryPanel embedded isOpen onClose={() => {}} />
               </div>
             </div>

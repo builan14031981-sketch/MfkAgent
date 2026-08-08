@@ -21,13 +21,15 @@ class TaskGraphState:
       4. 查询辅助方法（is_all_done / has_failed 等）
     """
 
-    def __init__(self, graph: Optional[TaskGraph] = None):
+    def __init__(self, graph: Optional[TaskGraph] = None, *, max_heal_depth: int = 3):
         self._graph: TaskGraph = graph or TaskGraph()
         self._node_index: Dict[str, TaskNode] = {
             n.id: n for n in self._graph.nodes
         }
         # G4-C: 当前执行节点追踪（current_step 进度同步，不修改 Plan）
         self._current_task_id: Optional[str] = None
+        # 自愈深度上限：单个任务分支连续失败达到该次数后阻断反思，直接降级失败
+        self.max_heal_depth: int = max_heal_depth
 
     # ──── 状态初始化 ────
 
@@ -247,3 +249,97 @@ class TaskGraphState:
                 return False
 
         return True
+
+    # ──── 战略方向: TaskGraph 动态自愈 ────
+
+    # 自愈节点 ID 计数器
+    _heal_counter: int = 0
+
+    def get_heal_depth(self, task_id: str) -> int:
+        """返回 task_id 节点的自愈深度（连续 heal_N 祖先链长度）。
+
+        深度语义：原始任务节点深度为 0；每个注入的修复节点使链长 +1。
+        例如 task_0(0) → heal_1(1) → heal_2(2) → heal_3(3)。
+
+        Args:
+            task_id: 节点 ID
+
+        Returns:
+            int: 自愈深度（非 heal_ 节点恒为 0）
+        """
+        depth = 0
+        node = self._node_index.get(task_id)
+        visited: set = set()
+        while node is not None and node.id.startswith("heal_"):
+            if node.id in visited:
+                break
+            visited.add(node.id)
+            depth += 1
+            parent_id = node.depends_on[0] if node.depends_on else None
+            node = self._node_index.get(parent_id) if parent_id else None
+        return depth
+
+    def can_heal(self, task_id: str) -> bool:
+        """是否仍允许对 task_id 所在分支执行自愈（深度未达上限）。
+
+        用于阻断"无限自愈"：连续失败超过 max_heal_depth 后返回 False，
+        调用方应跳过反思，直接走失败 + 级联跳过的降级路径。
+        """
+        return self.get_heal_depth(task_id) < self.max_heal_depth
+
+    def dynamic_append_task(
+        self,
+        action: str,
+        parent_task_id: str,
+        *,
+        suggested_tools: Optional[list] = None,
+        assigned_agent: str = "default_agent",
+        task_type: str = "action",
+    ) -> Optional[TaskNode]:
+        """运行时动态向图中插入新节点（自愈/反思分支）。
+
+        新节点依赖 parent_task_id，且 parent_task_id 的状态会被重置为 PENDING
+        （如果之前是 FAILED），以便 LLM 重新执行修复后的任务。
+
+        Args:
+            action: 修复任务的动作描述
+            parent_task_id: 父节点 ID（新节点依赖此节点）
+            suggested_tools: 建议工具列表
+            assigned_agent: 分配的 Agent 角色
+            task_type: 任务类型
+
+        Returns:
+            新创建的 TaskNode，失败返回 None
+        """
+        parent_node = self._node_index.get(parent_task_id)
+        if parent_node is None:
+            return None
+
+        # 生成唯一 ID
+        self._heal_counter += 1
+        new_id = f"heal_{self._heal_counter}"
+
+        # 自愈策略：父节点标记为 COMPLETED，让修复节点成为其后继
+        # - FAILED（非流式已标记）→ COMPLETED：不再重试原任务，由修复节点接管
+        # - RUNNING（流式异常中断）→ COMPLETED：正常收尾，修复节点接管
+        if parent_node.status in (TaskNodeStatus.FAILED, TaskNodeStatus.RUNNING):
+            parent_node.status = TaskNodeStatus.COMPLETED
+
+        new_node = TaskNode(
+            id=new_id,
+            action=action,
+            suggested_tools=suggested_tools or [],
+            depends_on=[parent_task_id],
+            status=TaskNodeStatus.PENDING,
+            assigned_agent=assigned_agent,
+            task_type=task_type,
+        )
+
+        self._graph.nodes.append(new_node)
+        self._node_index[new_id] = new_node
+
+        # 添加边
+        from app.core.task_graph.models import TaskEdge
+        self._graph.edges.append(TaskEdge(from_id=parent_task_id, to_id=new_id))
+
+        return new_node

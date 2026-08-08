@@ -72,7 +72,10 @@
    "quoteMenu": "台词菜单",
    "switchQuote": "切换欢迎语",
    "quoteShort": "台词",
-   "quoteRandom": "随机一句",
+    "quoteRandom": "随机一句",
+    "quoteFavorite": "收藏这条欢迎语（标记保留）",
+    "quoteUnfavorite": "取消收藏",
+    "quoteFavCount": "已收藏 {count} 条",
    "noFavorites": "暂无收藏，点 ☆ 收藏常用主题",
    "favorite": "收藏",
    "unfavorite": "取消收藏",
@@ -105,7 +108,8 @@
    "context": {
     "dashboard": "上下文",
     "warning": "⚠️ 上下文已达 {pct}%，建议压缩会话",
-    "compress": "压缩"
+    "compress": "压缩",
+    "compressing": "压缩中..."
    },
   "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
   "noProjectHint": "当前未关联本地项目，文件操作将默认保存在软件数据目录",
@@ -223,6 +227,17 @@
     "scopeDesc": "随机时的候选主题范围",
     "scopeAll": "全部主题",
     "scopeFavorites": "收藏主题"
+   },
+   "greeting": {
+    "title": "首页台词",
+    "desc": "控制首页欢迎语与台词小组件",
+    "builtin": "内置台词",
+    "custom": "我的台词",
+    "off": "关闭",
+    "customEmpty": "还没有自定义台词，点击下方添加",
+    "customPlaceholder": "输入一句台词...",
+    "customAdd": "添加台词",
+    "customMaxHint": "最多 5 条"
    }
   },
   "model": {
