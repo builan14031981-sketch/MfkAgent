@@ -98,6 +98,10 @@
   "startConversationDesc": "Type a message to start talking with {name}",
   "inputPlaceholder": "Type a message...",
    "sending": "Sending...",
+   "stop": "Stop generating",
+   "voiceStart": "Click to start voice input",
+   "voiceStop": "Click to stop and transcribe",
+   "voiceTranscribing": "Transcribing…",
    "orb": {
     "working": "Waiting for response",
     "solving": "Thinking",
@@ -113,6 +117,7 @@
    },
   "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
   "noProjectHint": "No local project linked. File operations will be saved to the app data directory by default.",
+  "logTruncated": "… Log truncated ({count} chars, showing head & tail) …",
   "invalidId": "Invalid chat ID",
   "backToHome": "Back to Home",
   "projectContext": "Project Context",
@@ -123,6 +128,12 @@
    "off": "Off",
    "fast": "high",
    "deep": "max"
+  },
+  "permission": {
+   "strict": "Strict",
+   "strictDesc": "Sensitive actions require confirmation",
+   "autoApprove": "Auto-Approve",
+   "autoApproveDesc": "All actions are automatically approved"
   },
   "mode": {
    "build": "Build",
@@ -183,8 +194,11 @@
   "projectLinked": "Project linked",
   "projectLinkFailed": "Failed to link project",
   "approvalTitle": "Awaiting your confirmation",
+  "approvalDestructiveTitle": "Security Confirmation — Destructive Operation",
   "approvalApprove": "Approve",
   "approvalDeny": "Deny",
+  "approvalApproved": "Approved",
+  "approvalRejected": "Rejected",
   "riskLevel": {
    "read_only": "Read-only",
    "write": "Write",
@@ -193,6 +207,10 @@
  },
  "settings": {
   "title": "Settings",
+  "advanced": {
+   "show": "⚙️ Show Advanced",
+   "hide": "Hide Advanced"
+  },
   "general": {
    "title": "General",
    "theme": {
@@ -215,6 +233,16 @@
     "source-han-sans": "Source Han Sans",
     "lxgw-wenkai": "LXGW WenKai",
     "ibm-plex-sans": "IBM Plex Sans"
+   },
+   "accentTheme": {
+    "title": "Theme",
+    "desc": "Choose the interface accent color",
+    "default": "Apple Blue (Default)",
+    "teal": "Teal",
+    "amber": "Amber",
+    "violet": "Violet",
+    "rose": "Rose",
+    "graphite": "Graphite"
    },
    "heroTheme": {
     "title": "Homepage Hero Theme",
@@ -250,6 +278,17 @@
     "title": "Default Reasoning",
     "desc": "Reasoning level used when not explicitly set"
    },
+   "vision": {
+    "title": "Vision Fallback",
+    "desc": "BYOK vision channel for image recognition when primary model lacks vision. Key stored locally only.",
+    "provider": "Provider",
+    "selectProvider": "Select provider",
+    "apiKey": "API Key",
+    "model": "Model",
+    "baseUrl": "Base URL",
+    "configured": "Configured",
+    "notConfigured": "Not configured"
+   },
    "apiConfig": {
     "title": "API Configuration",
     "desc": "Configure API keys for each provider. Applied after saving."
@@ -258,12 +297,39 @@
     "title": "Model Providers",
     "desc": "Configure API keys and endpoints. Keys are stored locally only.",
     "free": "Free",
+    "website": "Website",
     "configured": "Configured",
     "notConfigured": "Not configured",
     "configure": "Configure",
     "clearKey": "Clear Key",
     "keyLabel": "API Key",
-    "baseLabel": "API Base (empty resets to default)"
+    "baseLabel": "API Base (empty resets to default)",
+    "enabledModels": "Enabled Models",
+    "noEnabled": "No models enabled yet, add from below",
+    "quickAdd": "Recommended Models (click to add)",
+    "customAdd": "Add Model ID Manually",
+    "customPlaceholder": "Enter model ID (e.g. Qwen2.5-72B)",
+    "addBtn": "Add",
+    "removeModel": "Remove",
+    "fetchRemote": "Fetch Official Models",
+    "fetchRemoteHint": "Configure API Key first",
+    "testConnection": "Test Connection",
+    "testConnectionTesting": "Testing...",
+    "testConnectionOk": "Connected ({latency}ms)",
+    "testConnectionFail": "Failed: {detail}",
+    "testConnectionHint": "Verify connectivity with current draft values instantly, no save required",
+    "baseUrlInAdvanced": "Base URL is configured in Advanced Settings. Expand to modify.",
+    "baseUrlOverrideTitle": "API Base URL Override",
+    "baseUrlOverrideDesc": "Override default endpoints per provider. Leave empty to restore default. (Advanced)",
+    "overrideActive": "Overridden",
+    "defaultEndpoint": "Default endpoint",
+    "resetBase": "Reset",
+    "collapseModels": "Collapse",
+    "expandModels": "Expand",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
    },
    "custom": {
     "title": "Custom Models",
@@ -314,7 +380,14 @@
   },
   "memory": {
    "title": "Long-term Memory",
-   "desc": "AI will remember your preferences and important information"
+   "desc": "AI will remember your preferences and important information",
+   "types": {
+    "all": "All",
+    "preference": "Preference",
+    "fact": "Fact",
+    "workflow": "Workflow",
+    "project": "Project Rule"
+   }
   },
   "plugins": {
    "title": "Plugins",
@@ -387,5 +460,15 @@
   "execute": "Execute",
   "executing": "Executing...",
   "result": "Result"
- }
+ },
+  "todo": {
+   "title": "Todos",
+   "empty": "No todos yet",
+   "placeholder": "Add a todo...",
+   "complete": "Mark complete",
+   "add": "Add todo",
+   "viewCompleted": "View completed",
+   "hideCompleted": "Hide completed",
+   "noCompleted": "No completed todos"
+  }
 }

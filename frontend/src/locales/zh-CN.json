@@ -98,6 +98,10 @@
   "startConversationDesc": "输入消息开始与 {name} 交流",
   "inputPlaceholder": "输入消息...",
    "sending": "发送中...",
+   "stop": "停止生成",
+   "voiceStart": "点击开始语音输入",
+   "voiceStop": "点击停止录音并转写",
+   "voiceTranscribing": "正在转写…",
    "orb": {
     "working": "正在等待响应",
     "solving": "正在思考",
@@ -113,6 +117,7 @@
    },
   "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
   "noProjectHint": "当前未关联本地项目，文件操作将默认保存在软件数据目录",
+  "logTruncated": "… 日志已截断（共 {count} 字符，仅显示首尾）…",
   "invalidId": "无效的聊天 ID",
   "backToHome": "返回首页",
   "projectContext": "项目上下文",
@@ -123,6 +128,12 @@
    "off": "关闭",
    "fast": "high",
    "deep": "max"
+  },
+  "permission": {
+   "strict": "严格模式",
+   "strictDesc": "敏感操作需手动确认",
+   "autoApprove": "最高权限",
+   "autoApproveDesc": "所有操作自动批准执行"
   },
   "mode": {
    "build": "构建",
@@ -183,8 +194,11 @@
   "projectLinked": "已关联项目",
   "projectLinkFailed": "关联项目失败",
   "approvalTitle": "等待你的确认",
+  "approvalDestructiveTitle": "安全二次确认 — 高危操作",
   "approvalApprove": "批准执行",
   "approvalDeny": "拒绝",
+  "approvalApproved": "已批准",
+  "approvalRejected": "已拒绝",
   "riskLevel": {
    "read_only": "只读",
    "write": "写入",
@@ -193,6 +207,10 @@
  },
  "settings": {
   "title": "设置",
+  "advanced": {
+   "show": "⚙️ 显示高级设置",
+   "hide": "收起高级设置"
+  },
   "general": {
    "title": "通用",
    "theme": {
@@ -215,6 +233,16 @@
     "source-han-sans": "思源黑体",
     "lxgw-wenkai": "霞鹜文楷",
     "ibm-plex-sans": "IBM Plex Sans"
+   },
+   "accentTheme": {
+    "title": "主题",
+    "desc": "选择界面强调色",
+    "default": "Apple 蓝（默认）",
+    "teal": "翡翠青",
+    "amber": "琥珀橙",
+    "violet": "星空紫",
+    "rose": "玫红",
+    "graphite": "石墨中性"
    },
    "heroTheme": {
     "title": "首页启动主题",
@@ -250,6 +278,17 @@
     "title": "默认推理程度",
     "desc": "未显式指定时，消息使用的推理档位"
    },
+   "vision": {
+    "title": "备用识图模型 (Vision Fallback)",
+    "desc": "主模型不支持图片时，自动回退到此 BYOK 通道识图。Key 仅存储在本机",
+    "provider": "服务商",
+    "selectProvider": "选择服务商",
+    "apiKey": "API Key",
+    "model": "模型名",
+    "baseUrl": "Base URL",
+    "configured": "已配置",
+    "notConfigured": "未配置"
+   },
    "apiConfig": {
     "title": "API 配置",
     "desc": "配置各提供商的 API Key，保存后生效"
@@ -258,12 +297,39 @@
     "title": "模型提供商",
     "desc": "配置各提供商的 API Key 与端点，Key 仅存储在本机",
     "free": "免费",
+    "website": "官网",
     "configured": "已配置",
     "notConfigured": "未配置",
     "configure": "配置",
     "clearKey": "清除 Key",
     "keyLabel": "API Key",
-    "baseLabel": "API Base（留空恢复默认）"
+    "baseLabel": "API Base（留空恢复默认）",
+    "enabledModels": "已启用模型",
+    "noEnabled": "尚未启用任何模型，从下方添加",
+    "quickAdd": "推荐模型（点击添加）",
+    "customAdd": "手动添加模型 ID",
+    "customPlaceholder": "手动输入模型 ID (如 Qwen2.5-72B)",
+    "addBtn": "添加",
+    "removeModel": "移除",
+    "fetchRemote": "一键拉取官方最新模型",
+    "fetchRemoteHint": "需先配置 API Key",
+    "testConnection": "测试连接",
+    "testConnectionTesting": "测试中...",
+    "testConnectionOk": "连接成功（{latency}ms）",
+    "testConnectionFail": "连接失败：{detail}",
+    "testConnectionHint": "使用输入框中的草稿值即时验证连通性，无需保存",
+    "baseUrlInAdvanced": "Base URL 已在高级设置中配置，请展开高级设置修改",
+    "baseUrlOverrideTitle": "API Base URL 覆盖",
+    "baseUrlOverrideDesc": "覆盖各提供商的默认端点地址，留空恢复默认（深水区参数）",
+    "overrideActive": "已覆盖",
+    "defaultEndpoint": "默认端点",
+    "resetBase": "恢复默认",
+    "collapseModels": "收起模型",
+    "expandModels": "展开模型",
+    "enable": "启用",
+    "disable": "关闭",
+    "enabled": "已启用",
+    "disabled": "已关闭"
    },
    "custom": {
     "title": "自定义模型",
@@ -314,7 +380,14 @@
   },
   "memory": {
    "title": "长期记忆",
-   "desc": "AI 会记住你的偏好和重要信息"
+   "desc": "AI 会记住你的偏好和重要信息",
+   "types": {
+    "all": "全部",
+    "preference": "偏好",
+    "fact": "事实",
+    "workflow": "工作流",
+    "project": "项目规则"
+   }
   },
   "plugins": {
    "title": "插件",
@@ -387,5 +460,15 @@
   "execute": "执行",
   "executing": "执行中...",
   "result": "结果"
- }
+ },
+  "todo": {
+   "title": "待办",
+   "empty": "暂无待办事项",
+   "placeholder": "添加待办事项...",
+   "complete": "标记完成",
+   "add": "新建待办事项",
+   "viewCompleted": "查看更多已完成",
+   "hideCompleted": "收起已完成",
+   "noCompleted": "暂无已完成的待办"
+  }
 }

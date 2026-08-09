@@ -1,29 +1,25 @@
 "use client";
 
+/**
+ * SettingsPanel —— 设置面板薄壳（字段级边界重构后）
+ *
+ * 设计说明：
+ * - 5 个导航 Tab 完整展示，严禁隐藏 ai/plugins 顶级入口。
+ * - 每个 section 渲染 BasicSettingsView（基础选项）；
+ *   model/ai 额外直接渲染 AdvancedSettingsView（深水区参数），无折叠交互，全量展示。
+ * - 统管 props 和单向数据流不变，子组件通过 props 消费。
+ */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  Moon,
-  Sun,
-  Monitor,
-  Cpu,
-  Brain,
-  Info,
-  Bot,
-  Puzzle,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Puzzle } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
 import { useAgents } from "@/hooks/useAgents";
 import { Panel } from "./Panel";
-import { MemoryPanel } from "./MemoryPanel";
 import { AgentListPanel } from "./AgentListPanel";
-import { PluginPanel } from "./PluginPanel";
-import { ModelConfigSection } from "./ModelConfigSection";
-import { SwitchButton } from "@/components/SwitchButton";
+import { BasicSettingsView, type SettingSectionId } from "./BasicSettingsView";
+import { AdvancedSettingsView } from "./AdvancedSettingsView";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -33,176 +29,26 @@ interface SettingsPanelProps {
 /** 设置面板内部视图状态机：主设置 / Agent 列表 / Agent 编辑 */
 type ViewState = "main_settings" | "agent_list" | "agent_edit";
 
-/** 设置导航项 id：字面量联合，保证 activeSection 状态类型安全 */
-type SettingSectionId = "general" | "model" | "ai" | "plugins" | "about";
-
-/** 预设 Agent 排序优先级（未列出的 agent 排到最后） */
-const AGENT_ORDER = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
-
-/** 按 AGENT_ORDER 优先级排序 + 仅保留 active 状态的 agent */
-function getSortedActiveAgents(agents: { id: string; name: string; status: string }[]) {
-  return [...agents]
-    .sort((a, b) => {
-      const ai = AGENT_ORDER.indexOf(a.id);
-      const bi = AGENT_ORDER.indexOf(b.id);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    })
-    .filter((agent) => agent.status === "active");
-}
-
-/** 自定义台词编辑器：最多 5 条，逐条输入/删除，保存时以 JSON 数组写入设置 */
-function GreetingCustomEditor({
-  value,
-  saving,
-  onSave,
-}: {
-  value: string;
-  saving: boolean;
-  onSave: (key: string, value: string) => void;
-}) {
-  const { t } = useTranslation();
-  const [draft, setDraft] = useState<string[]>(() => {
-    try {
-      const parsed: unknown = JSON.parse(value);
-      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
-    } catch {
-      /* ignore malformed */
-    }
-    return [];
-  });
-
-  const MAX_CHARS = 50;
-
-  const clean = draft.map((s) => s.trim()).filter(Boolean);
-
-  const handleChange = (index: number, text: string) => {
-    setDraft((prev) => prev.map((s, i) => (i === index ? text.slice(0, MAX_CHARS) : s)));
-  };
-
-  const handleAdd = () => {
-    if (clean.length >= 5) return;
-    setDraft((prev) => [...prev, ""]);
-  };
-
-  const handleRemove = (index: number) => {
-    setDraft((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSave = () => {
-    onSave("custom_greetings", JSON.stringify(clean.map((s) => s.slice(0, MAX_CHARS))));
-  };
-
-  return (
-    <div>
-      {draft.length === 0 && (
-        <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "0 0 8px 0" }}>
-          {t("settings.general.greeting.customEmpty")}
-        </p>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
-        {draft.map((item, index) => (
-          <div key={index} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <input
-              value={item}
-              onChange={(e) => handleChange(index, e.target.value)}
-              maxLength={50}
-              placeholder={t("settings.general.greeting.customPlaceholder")}
-              style={{
-                flex: 1,
-                padding: "7px 10px",
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--border-primary)",
-                background: "var(--bg-level-2)",
-                fontSize: "13px",
-                color: "var(--text-level-2)",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={() => handleRemove(index)}
-              title={t("common.delete")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 28,
-                height: 28,
-                borderRadius: "var(--radius-sm)",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: "var(--text-level-4)",
-              }}
-            >
-              <Trash2 style={{ width: 14, height: 14 }} />
-            </button>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <button
-          onClick={handleAdd}
-          disabled={clean.length >= 5}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            padding: "6px 12px",
-            borderRadius: "var(--radius-sm)",
-            border: "1px dashed var(--border-primary)",
-            background: "transparent",
-            cursor: clean.length >= 5 ? "not-allowed" : "pointer",
-            fontSize: "12px",
-            color: "var(--text-level-3)",
-            opacity: clean.length >= 5 ? 0.5 : 1,
-          }}
-        >
-          <Plus style={{ width: 13, height: 13 }} />
-          {t("settings.general.greeting.customAdd")}
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving || JSON.stringify(clean) === value}
-          style={{
-            padding: "6px 16px",
-            borderRadius: "var(--radius-sm)",
-            border: "none",
-            background: "var(--color-primary)",
-            color: "#fff",
-            cursor: saving ? "not-allowed" : "pointer",
-            fontSize: "12px",
-            fontWeight: 500,
-            opacity: saving ? 0.7 : 1,
-          }}
-        >
-          {saving ? t("common.saving") : t("common.save")}
-        </button>
-        <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
-          {clean.length}/5
-        </span>
-      </div>
-    </div>
-  );
-}
+/** 含深水区参数的 section（model/ai）：基础区下方直接追加高级区，无折叠 */
+const SECTIONS_WITH_ADVANCED: SettingSectionId[] = ["model", "ai"];
 
 export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { settings, loading, fetchSettings, updateSetting } = useSettingsStore();
   const { t } = useTranslation();
   const { models, loading: modelsLoading } = useModels();
   const { agents } = useAgents();
+
+  // ── 统管状态 ──
   const [saving, setSaving] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SettingSectionId>("general");
   const [currentView, setCurrentView] = useState<ViewState>("main_settings");
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
-  // 横向滑动方向：前进（进入二级/三级）= +1，返回 = -1
   const [direction, setDirection] = useState<1 | -1>(1);
 
   useEffect(() => {
-    // 仅首次未加载时拉取，避免每次打开面板重复全量 GET + loading 翻转
     if (!settings) fetchSettings();
   }, [settings, fetchSettings]);
 
-  // 面板关闭时复位视图状态，下次打开从一级设置开始
   const handleClose = () => {
     setCurrentView("main_settings");
     setEditingAgentId(null);
@@ -236,7 +82,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
-  // 单容器视图状态机：面板标题随视图联动
   const viewTitle =
     currentView === "main_settings"
       ? t("settings.title")
@@ -255,7 +100,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCurrentView("agent_list");
   };
 
-  // 视图切换动画：微弱横向滑动 + 透明度渐变
   const viewVariants = {
     enter: (dir: number) => ({ opacity: 0, x: dir * 24 }),
     center: { opacity: 1, x: 0 },
@@ -263,13 +107,21 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   };
   const viewTransition = { duration: 0.2, ease: "easeInOut" as const };
 
+  // 子组件共享 props（统管状态下发）
+  const viewProps = {
+    settings,
+    saving,
+    onUpdate: handleUpdate,
+    models,
+    modelsLoading,
+    t,
+  };
+
+  const hasAdvanced = SECTIONS_WITH_ADVANCED.includes(activeSection);
+
   return (
     <Panel isOpen={isOpen} onClose={handleClose} title={viewTitle} width="700px" height="min(680px, 82vh)" variant="center">
-      <div style={{
-        position: "relative",
-        height: "100%",
-        overflow: "hidden",
-      }}>
+      <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
         <AnimatePresence mode="popLayout" initial={false} custom={direction}>
           {currentView === "main_settings" ? (
             <motion.div
@@ -282,657 +134,68 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               transition={viewTransition}
               style={{ height: "100%" }}
             >
-            <div style={{
-              display: "flex",
-              gap: "24px",
-              minHeight: "400px",
-              height: "100%",
-              overflow: "hidden",
-            }}>
-        {/* 左侧导航 - 固定不滚动 */}
-        <nav style={{
-          width: "140px",
-          flexShrink: 0,
-          borderRight: "1px solid rgba(0, 0, 0, 0.06)",
-          paddingRight: "16px",
-          marginRight: "16px",
-          height: "100%",
-          overflow: "hidden",
-        }}>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: "var(--radius-md)",
-                border: "none",
-                background: activeSection === item.id ? "var(--bg-level-2)" : "transparent",
-                cursor: "pointer",
-                fontSize: "14px",
-                color: activeSection === item.id ? "var(--text-level-1)" : "var(--text-level-3)",
-                textAlign: "left",
-                marginBottom: "4px",
-              }}
-            >
-              <item.icon style={{ width: "16px", height: "16px" }} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        {/* 右侧内容 - 独立滚动 */}
-        <div style={{
-          flex: 1,
-          minWidth: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-          height: "100%",
-          paddingRight: "4px",
-          // 预留滚动条槽位，避免切换内容时滚动条出现/消失导致宽度跳动
-          scrollbarGutter: "stable",
-        }}>
-          {/* 通用设置 */}
-          {activeSection === "general" && (
-            <>
-              {/* 主题 */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "18px",
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                  }}>{t("settings.general.theme.title")}</h3>
-                  <p style={{
-                    fontSize: "12px",
-                    color: "var(--text-level-3)",
-                    margin: "2px 0 0 0",
-                  }}>{t("settings.general.theme.desc")}</p>
-                </div>
-                <div style={{
-                  display: "flex",
-                  padding: "3px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-level-2)",
+              <div style={{ display: "flex", gap: "24px", minHeight: "400px", height: "100%", overflow: "hidden" }}>
+                {/* 左侧导航 - 固定不滚动 */}
+                <nav style={{
+                  width: "140px", flexShrink: 0,
+                  borderRight: "1px solid rgba(0, 0, 0, 0.06)",
+                  paddingRight: "16px", marginRight: "16px",
+                  height: "100%", overflow: "hidden",
                 }}>
-                  {[
-                    { value: "light", label: t("settings.general.theme.light"), icon: Sun },
-                    { value: "dark", label: t("settings.general.theme.dark"), icon: Moon },
-                    { value: "system", label: t("settings.general.theme.system"), icon: Monitor },
-                  ].map((theme) => (
+                  {navItems.map((item) => (
                     <button
-                      key={theme.value}
-                      onClick={() => handleUpdate("theme", theme.value)}
-                      disabled={saving === "theme"}
+                      key={item.id}
+                      onClick={() => setActiveSection(item.id)}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flex: 1,
-                        gap: "6px",
-                        padding: "6px 14px",
-                        borderRadius: "var(--radius-xs)",
-                        border: "none",
-                        background: settings?.theme === theme.value ? "var(--bg-level-1)" : "transparent",
-                        cursor: "pointer",
-                        fontSize: "13px",
-                        whiteSpace: "nowrap",
-                        color: settings?.theme === theme.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                        opacity: saving === "theme" ? 0.7 : 1,
+                        display: "flex", alignItems: "center", gap: "8px",
+                        width: "100%", padding: "10px 12px",
+                        borderRadius: "var(--radius-md)", border: "none",
+                        background: activeSection === item.id ? "var(--bg-level-2)" : "transparent",
+                        cursor: "pointer", fontSize: "14px",
+                        color: activeSection === item.id ? "var(--text-level-1)" : "var(--text-level-3)",
+                        textAlign: "left", marginBottom: "4px",
                       }}
                     >
-                      <theme.icon style={{ width: "14px", height: "14px" }} />
-                      <span>{theme.label}</span>
+                      <item.icon style={{ width: "16px", height: "16px" }} />
+                      <span>{item.label}</span>
                     </button>
                   ))}
-                </div>
-              </div>
+                </nav>
 
-              {/* 语言 */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "18px",
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                  }}>{t("settings.general.language.title")}</h3>
-                  <p style={{
-                    fontSize: "12px",
-                    color: "var(--text-level-3)",
-                    margin: "2px 0 0 0",
-                  }}>{t("settings.general.language.desc")}</p>
-                </div>
+                {/* 右侧内容 - 独立滚动 */}
                 <div style={{
-                  display: "flex",
-                  padding: "3px",
-                  borderRadius: "var(--radius-sm)",
-                  background: "var(--bg-level-2)",
+                  flex: 1, minWidth: 0,
+                  overflowY: "auto", overflowX: "hidden",
+                  height: "100%", paddingRight: "4px",
+                  scrollbarGutter: "stable",
                 }}>
-                  {[
-                    { value: "zh-CN", label: t("settings.general.language.zh-CN") },
-                    { value: "en-US", label: t("settings.general.language.en-US") },
-                  ].map((lang) => (
-                    <button
-                      key={lang.value}
-                      onClick={() => handleUpdate("language", lang.value)}
-                      disabled={saving === "language"}
-                      style={{
-                        flex: 1,
-                        padding: "6px 14px",
-                        borderRadius: "var(--radius-xs)",
-                        border: "none",
-                        background: settings?.language === lang.value ? "var(--bg-level-1)" : "transparent",
-                        cursor: "pointer",
-                        fontSize: "13px",
-                        whiteSpace: "nowrap",
-                        color: settings?.language === lang.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                        opacity: saving === "language" ? 0.7 : 1,
-                      }}
-                    >
-                      {lang.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 字体风格 */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "18px",
-              }}>
-                <h3 style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "var(--text-level-1)",
-                  margin: 0,
-                }}>{t("settings.general.font.title")}</h3>
-                <select
-                  value={settings?.font_family || "system"}
-                  onChange={(e) => handleUpdate("font_family", e.target.value)}
-                  disabled={saving === "font_family"}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--border-primary)",
-                    background: "var(--bg-level-2)",
-                    fontSize: "13px",
-                    color: "var(--text-level-2)",
-                    opacity: saving === "font_family" ? 0.7 : 1,
-                    minWidth: "140px",
-                  }}
-                >
-                  <option value="system">{t("settings.general.font.system")}</option>
-                  <option value="source-han-sans">{t("settings.general.font.source-han-sans")}</option>
-                  <option value="lxgw-wenkai">{t("settings.general.font.lxgw-wenkai")}</option>
-                  <option value="ibm-plex-sans">{t("settings.general.font.ibm-plex-sans")}</option>
-                </select>
-              </div>
-
-              {/* 首页启动主题（规则控制；主题管理/切换留在首页） */}
-              <div style={{ marginBottom: "18px" }}>
-                <h3 style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "var(--text-level-1)",
-                  margin: 0,
-                }}>{t("settings.general.heroTheme.title")}</h3>
-                <p style={{
-                  fontSize: "12px",
-                  color: "var(--text-level-3)",
-                  margin: "2px 0 12px 0",
-                }}>{t("settings.general.heroTheme.desc")}</p>
-
-                {/* 启用首页主题入口 */}
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "12px",
-                }}>
-                  <div>
-                    <h4 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-                      {t("settings.general.heroTheme.entry")}
-                    </h4>
-                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
-                      {t("settings.general.heroTheme.entryDesc")}
-                    </p>
-                  </div>
-                  <SwitchButton
-                    checked={settings?.hero_entry !== "0"}
-                    disabled={saving === "hero_entry"}
-                    onChange={(v) => handleUpdate("hero_entry", v ? "1" : "0")}
-                  />
-                </div>
-
-                {/* 启动时随机主题 */}
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "12px",
-                }}>
-                  <div>
-                    <h4 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-                      {t("settings.general.heroTheme.random")}
-                    </h4>
-                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
-                      {t("settings.general.heroTheme.randomDesc")}
-                    </p>
-                  </div>
-                  <SwitchButton
-                    checked={settings?.hero_random !== "0"}
-                    disabled={saving === "hero_random"}
-                    onChange={(v) => handleUpdate("hero_random", v ? "1" : "0")}
-                  />
-                </div>
-
-                {/* 随机范围 */}
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}>
-                  <div>
-                    <h4 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-                      {t("settings.general.heroTheme.scope")}
-                    </h4>
-                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
-                      {t("settings.general.heroTheme.scopeDesc")}
-                    </p>
-                  </div>
-                  <div style={{ display: "flex", padding: "3px", borderRadius: "var(--radius-sm)", background: "var(--bg-level-2)" }}>
-                    {[
-                      { value: "all", label: t("settings.general.heroTheme.scopeAll") },
-                      { value: "favorites", label: t("settings.general.heroTheme.scopeFavorites") },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => handleUpdate("hero_random_scope", opt.value)}
-                        disabled={saving === "hero_random_scope"}
-                        style={{
-                          flex: 1,
-                          padding: "6px 14px",
-                          borderRadius: "var(--radius-xs)",
-                          border: "none",
-                          background: (settings?.hero_random_scope || "all") === opt.value ? "var(--bg-level-1)" : "transparent",
-                          cursor: "pointer",
-                          fontSize: "13px",
-                          whiteSpace: "nowrap",
-                          color: (settings?.hero_random_scope || "all") === opt.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                          opacity: saving === "hero_random_scope" ? 0.7 : 1,
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* 首页台词（欢迎语）规则 */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "18px",
-              }}>
-                <h3 style={{
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "var(--text-level-1)",
-                  margin: 0,
-                }}>{t("settings.general.greeting.title")}</h3>
-                <div style={{ display: "flex", padding: "3px", borderRadius: "var(--radius-sm)", background: "var(--bg-level-2)" }}>
-                  {([
-                    { value: "builtin", label: t("settings.general.greeting.builtin") },
-                    { value: "custom", label: t("settings.general.greeting.custom") },
-                    { value: "off", label: t("settings.general.greeting.off") },
-                  ] as const).map((opt) => {
-                    const active = (settings?.greeting_mode ?? "builtin") === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => handleUpdate("greeting_mode", opt.value)}
-                        disabled={saving === "greeting_mode"}
-                        style={{
-                        flex: 1,
-                        padding: "6px 14px",
-                        borderRadius: "var(--radius-xs)",
-                        border: "none",
-                        background: active ? "var(--bg-level-1)" : "transparent",
-                          cursor: "pointer",
-                          fontSize: "13px",
-                          whiteSpace: "nowrap",
-                          color: active ? "var(--text-level-1)" : "var(--text-level-3)",
-                          opacity: saving === "greeting_mode" ? 0.7 : 1,
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 自定义台词编辑（仅 custom 模式显示） */}
-              {(settings?.greeting_mode ?? "builtin") === "custom" && (
-                <div style={{ marginBottom: "18px" }}>
-                  <GreetingCustomEditor
-                    value={settings?.custom_greetings ?? "[]"}
-                    saving={saving === "custom_greetings"}
-                    onSave={handleUpdate}
-                  />
-                </div>
-              )}
-            </>
-          )}
-
-          {/* 模型设置 */}
-          {activeSection === "model" && (
-            <>
-              {/* 默认模型 */}
-              <div style={{ marginBottom: "18px" }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "var(--text-level-1)",
-                      margin: 0,
-                    }}>{t("settings.model.defaultModel.title")}</h3>
-                    <p style={{
-                      fontSize: "12px",
-                      color: "var(--text-level-3)",
-                      margin: "2px 0 0 0",
-                    }}>{t("settings.model.defaultModel.desc")}</p>
-                  </div>
-                  <select
-                    value={settings?.default_model || "qwen-flash"}
-                    onChange={(e) => handleUpdate("default_model", e.target.value)}
-                    disabled={saving === "default_model" || modelsLoading}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "var(--radius-sm)",
-                      border: "1px solid var(--border-primary)",
-                      background: "var(--bg-level-2)",
-                      fontSize: "13px",
-                      color: "var(--text-level-2)",
-                      opacity: saving === "default_model" ? 0.7 : 1,
+                  {/* 基础区块（默认展示） */}
+                  <BasicSettingsView
+                    {...viewProps}
+                    activeSection={activeSection}
+                    agents={agents}
+                    onManageAgents={() => {
+                      setDirection(1);
+                      setCurrentView("agent_list");
                     }}
-                  >
-                    {modelsLoading ? (
-                      <option value="qwen-flash">Loading...</option>
-                    ) : (
-                      models.map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  />
+
+                  {/* 高级区块（model/ai 深水区参数，全量直接展示，无折叠） */}
+                  {hasAdvanced && (
+                    <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid var(--border-primary)" }}>
+                      <AdvancedSettingsView
+                        {...viewProps}
+                        activeSection={activeSection}
+                        agents={agents}
+                        onManageAgents={() => {
+                          setDirection(1);
+                          setCurrentView("agent_list");
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* 默认推理程度 */}
-              <div style={{ marginBottom: "18px" }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}>
-                  <div>
-                    <h3 style={{
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      color: "var(--text-level-1)",
-                      margin: 0,
-                    }}>{t("settings.model.reasoningEffort.title")}</h3>
-                    <p style={{
-                      fontSize: "12px",
-                      color: "var(--text-level-3)",
-                      margin: "2px 0 0 0",
-                    }}>{t("settings.model.reasoningEffort.desc")}</p>
-                  </div>
-                  <select
-                    value={settings?.default_reasoning_effort || "none"}
-                    onChange={(e) => handleUpdate("default_reasoning_effort", e.target.value)}
-                    disabled={saving === "default_reasoning_effort"}
-                    style={{
-                      padding: "8px 12px",
-                      borderRadius: "var(--radius-sm)",
-                      border: "1px solid var(--border-primary)",
-                      background: "var(--bg-level-2)",
-                      fontSize: "13px",
-                      color: "var(--text-level-2)",
-                      opacity: saving === "default_reasoning_effort" ? 0.7 : 1,
-                    }}
-                  >
-                    <option value="none">{t("chat.reasoning.off")}</option>
-                    <option value="high">{t("chat.reasoning.fast")}</option>
-                    <option value="max">{t("chat.reasoning.deep")}</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* 模型提供商 + 自定义模型 */}
-              <ModelConfigSection />
-            </>
-          )}
-
-          {/* AI 行为 */}
-          {activeSection === "ai" && (
-            <div>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "18px",
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                  }}>{t("settings.ai.defaultAgent.title")}</h3>
-                  <p style={{
-                    fontSize: "12px",
-                    color: "var(--text-level-3)",
-                    margin: "2px 0 0 0",
-                  }}>{t("settings.ai.defaultAgent.desc")}</p>
-                </div>
-                <select
-                  value={settings?.default_agent || "general"}
-                  onChange={(e) => handleUpdate("default_agent", e.target.value)}
-                  disabled={saving === "default_agent"}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--border-primary)",
-                    background: "var(--bg-level-2)",
-                    fontSize: "13px",
-                    color: "var(--text-level-2)",
-                    opacity: saving === "default_agent" ? 0.7 : 1,
-                    minWidth: "140px",
-                  }}
-                >
-                  {getSortedActiveAgents(agents).map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                  }}>{t("settings.ai.defaultPersonality.title")}</h3>
-                  <p style={{
-                    fontSize: "12px",
-                    color: "var(--text-level-3)",
-                    margin: "2px 0 0 0",
-                  }}>{t("settings.ai.defaultPersonality.desc")}</p>
-                </div>
-                <span style={{
-                  fontSize: "13px",
-                  color: "var(--text-level-2)",
-                }}>{settings?.default_personality || "50"}</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                step="25"
-                value={settings?.default_personality || "50"}
-                onChange={(e) => {
-                  // 拖动中乐观本地更新 + 后台保存，不 setSaving/disabled，避免中断拖动
-                  updateSetting("default_personality", e.target.value);
-                }}
-                style={{
-                  width: "100%",
-                }}
-              />
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: "11px",
-                color: "var(--text-level-4)",
-                marginTop: "4px",
-              }}>
-                <span>{t("settings.ai.defaultPersonality.veryEmotional")}</span>
-                <span>{t("settings.ai.defaultPersonality.balanced")}</span>
-                <span>{t("settings.ai.defaultPersonality.veryRational")}</span>
-              </div>
-
-              {/* 预设 Agent：统一入口（列表在独立二级面板） */}
-              <div style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                gap: "12px",
-                marginTop: "24px",
-              }}>
-                <div>
-                  <h3 style={{
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    color: "var(--text-level-1)",
-                    margin: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}>
-                    <Bot style={{ width: "16px", height: "16px" }} />
-                    {t("settings.ai.agents.title")}
-                  </h3>
-                  <p style={{
-                    fontSize: "12px",
-                    color: "var(--text-level-3)",
-                    margin: "4px 0 0 0",
-                  }}>{t("settings.ai.agents.desc")}</p>
-                </div>
-                <button
-                  onClick={() => setCurrentView("agent_list")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "8px 14px",
-                    borderRadius: "var(--radius-md)",
-                    border: "1px solid var(--color-primary)",
-                    background: "var(--color-primary-lighter)",
-                    cursor: "pointer",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                    color: "var(--color-primary)",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                  }}
-                >
-                  {t("settings.ai.agents.manage")} ›
-                </button>
-              </div>
-
-              {/* AI 长期记忆（三作用域：全局 / Agent / 项目） */}
-              <div style={{ marginTop: "24px" }}>
-                <MemoryPanel embedded isOpen onClose={() => {}} />
-              </div>
-            </div>
-          )}
-
-          {/* 插件 */}
-          {activeSection === "plugins" && (
-            <div>
-              <PluginPanel />
-            </div>
-          )}
-
-          {/* 关于 */}
-          {activeSection === "about" && (
-            <div>
-              <div style={{
-                padding: "16px",
-                borderRadius: "var(--radius-md)",
-                background: "var(--bg-level-2)",
-              }}>
-                <p style={{
-                  fontSize: "15px",
-                  fontWeight: "600",
-                  color: "var(--text-level-1)",
-                  margin: "0 0 8px 0",
-                }}>MfkAgent</p>
-                <p style={{
-                  fontSize: "13px",
-                  color: "var(--text-level-3)",
-                  margin: "0 0 4px 0",
-                }}>{t("settings.about.version")}</p>
-                <p style={{
-                  fontSize: "13px",
-                  color: "var(--text-level-3)",
-                  margin: "0 0 12px 0",
-                }}>{t("settings.about.description")}</p>
-                <p style={{
-                  fontSize: "12px",
-                  color: "var(--text-level-4)",
-                  margin: 0,
-                }}>{t("settings.about.aiMayError")}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
             </motion.div>
           ) : (
             <motion.div
@@ -959,6 +222,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
           )}
         </AnimatePresence>
       </div>
-      </Panel>
+    </Panel>
   );
 }
