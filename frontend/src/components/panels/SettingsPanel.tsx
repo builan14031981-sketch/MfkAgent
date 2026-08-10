@@ -40,7 +40,14 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
 
   // ── 统管状态 ──
   const [saving, setSaving] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingSectionId>("general");
+  const [activeSection, setActiveSection] = useState<SettingSectionId>(() => {
+    try {
+      const saved = localStorage.getItem("mfk_settings_active_section");
+      return (saved as SettingSectionId) || "general";
+    } catch {
+      return "general";
+    }
+  });
   const [currentView, setCurrentView] = useState<ViewState>("main_settings");
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   const [direction, setDirection] = useState<1 | -1>(1);
@@ -145,7 +152,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   {navItems.map((item) => (
                     <button
                       key={item.id}
-                      onClick={() => setActiveSection(item.id)}
+                      onClick={() => {
+                        setActiveSection(item.id);
+                        try { localStorage.setItem("mfk_settings_active_section", item.id); } catch { /* noop */ }
+                      }}
                       style={{
                         display: "flex", alignItems: "center", gap: "8px",
                         width: "100%", padding: "10px 12px",

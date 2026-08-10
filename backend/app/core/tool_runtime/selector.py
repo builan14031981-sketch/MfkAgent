@@ -42,7 +42,8 @@ class ToolSelector:
         # 需要项目路径的工具
         self._project_only_tools = {
             "read_file", "write_file", "list_files",
-            "git_status", "git_diff", "git_log", "git_commit",
+            "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
+            "git_commit",
             "git_add", "git_reset", "git_push", "git_pull",
             "search_files",
         }

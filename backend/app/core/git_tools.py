@@ -141,6 +141,27 @@ def git_revert(project_path: str, commit_hash: str) -> str:
     return f"已回滚提交 {h}（生成反向提交，历史保留）"
 
 
+def git_branch_list(project_path: str, show_remote: bool = False) -> str:
+    """查看分支列表（只读）。默认显示本地分支，可选显示远程分支。"""
+    if not _is_repo(project_path):
+        return "该项目尚未初始化 Git 仓库（无 .git 目录）"
+    args = ["branch", "-a"] if show_remote else ["branch"]
+    out = _git(project_path, args)
+    if not out:
+        return "（无分支）"
+    return out
+
+
+def git_remote(project_path: str) -> str:
+    """查看远程仓库信息（名称 + URL，只读）。"""
+    if not _is_repo(project_path):
+        return "该项目尚未初始化 Git 仓库（无 .git 目录）"
+    out = _git(project_path, ["remote", "-v"])
+    if not out:
+        return "未配置远程仓库（无 remote）。"
+    return out
+
+
 # ============ OpenAI Function Calling Schema ============
 
 GIT_TOOLS_DEFINITIONS: List[Dict] = [
@@ -254,6 +275,39 @@ GIT_TOOLS_DEFINITIONS: List[Dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_branch_list",
+            "description": (
+                "查看当前项目的 Git 分支列表（只读）。"
+                "当用户问「有哪些分支」「当前在哪个分支」「分支列表」时调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "show_remote": {
+                        "type": "boolean",
+                        "description": "是否同时显示远程分支（默认 false，仅本地分支）",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_remote",
+            "description": (
+                "查看当前项目的远程仓库信息（名称 + URL，只读）。"
+                "当用户问「远程仓库是什么」「GitHub 地址」「remote 信息」时调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
 ]
 
 GIT_TOOLS = {
@@ -263,6 +317,8 @@ GIT_TOOLS = {
     "git_commit": git_commit,
     "git_restore": git_restore,
     "git_revert": git_revert,
+    "git_branch_list": git_branch_list,
+    "git_remote": git_remote,
 }
 
 

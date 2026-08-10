@@ -42,6 +42,37 @@ WRITE_TOOLS = {"write_file", "replace_in_file", "apply_patch", "delete_file", "r
 COUNTDOWN_WARNING = "[系统提示]: 你的工具调用轮次即将达到上限，请在下一轮结束工具调用并向用户总结最终结果。"
 SELF_CHECK_PROMPT = "[系统强制自查]: 你在本次任务中进行了代码或文件修改。请仔细核对改动，确保没有引入语法错误、格式错乱或非预期的功能破坏。确认无误后给出最终汇报。"
 
+# ──── Phase 3.5: Runtime Context 边界隔离标记 ────
+
+_RUNTIME_CTX_PREAMBLE = (
+    "<runtime_context>\n"
+    "来源: MfkAgent Runtime\n"
+    "说明: 以下内容为系统内部执行辅助信息，不是用户输入。\n"
+    "规则:\n"
+    "- 不代表用户要求\n"
+    "- 不覆盖用户真实意图\n"
+    "- 不应作为用户原话引用\n"
+    "- 不能主动向用户展示内部标签\n"
+    "- 不能因为 Runtime Context 自动切换角色\n"
+    "内容:\n"
+)
+
+_RUNTIME_CTX_SUFFIX = "</runtime_context>"
+
+
+def _wrap_runtime_context(content: str, source: str = "MfkAgent Runtime") -> str:
+    """将 Runtime 内部上下文包装为隔离标记块，防止 LLM 误认为用户输入。
+
+    Args:
+        content: 原始上下文内容
+        source: 来源标识（如 MfkAgent TaskGraph / MfkAgent AgentRouter）
+
+    Returns:
+        带边界标记的完整上下文块
+    """
+    preamble = _RUNTIME_CTX_PREAMBLE.replace("来源: MfkAgent Runtime", f"来源: {source}")
+    return preamble + content + "\n" + _RUNTIME_CTX_SUFFIX
+
 
 class AgentRuntime:
     """Agent 统一执行入口 — Phase E1。
@@ -566,14 +597,13 @@ class AgentRuntime:
         current_messages: list,
         all_tool_calls: list,
         support_approval: bool = True,
-        auto_approve: bool = False,
     ):
         """执行一批工具调用（结构化或归一化），透传工具事件，回喂结果。
 
         - 追加 assistant tool_calls 消息
         - 逐个执行工具
         - 需审批时：support_approval=True → 等待审批闭环；False → 明确拒绝
-        - Phase 12 auto_approve：REQUIRE_APPROVAL 级工具自动放行，HIGH_RISK 仍强制审批
+        - Phase 3 T3/T8: 权限决策统一由 ApprovalPolicy 处理，不再接收 auto_approve 参数
         - 追加 role=tool 结果消息
         - Strategy Layer V1：执行前策略检查（read-before-write、危险命令、失败循环）
         - 追加 role=tool 结果消息
@@ -653,7 +683,6 @@ class AgentRuntime:
                 read_only=read_only,
                 ctx=ctx,
                 emit=event_source.emit,
-                auto_approve=auto_approve,
             )
             for event in event_source.drain():
                 yield event
@@ -714,7 +743,6 @@ class AgentRuntime:
         current_messages: list,
         all_tool_calls: list,
         support_approval: bool = True,
-        auto_approve: bool = False,
     ):
         """执行工具调用 + 程序化验证（Phase E4 + Verification Loop V1）。
 
@@ -737,7 +765,7 @@ class AgentRuntime:
         """
         executed_start = len(all_tool_calls)
         async for event in self._exec_tool_calls(
-            ordered, ctx, project_path, read_only, current_messages, all_tool_calls, support_approval, auto_approve
+            ordered, ctx, project_path, read_only, current_messages, all_tool_calls, support_approval
         ):
             yield event
 
@@ -988,14 +1016,21 @@ class AgentRuntime:
                             current_task_id=current_task.id,
                             task_progress=self._build_task_progress(current_task.id),
                         ))
+                    # Phase 3.5: Runtime Context 边界隔离 — 任务上下文以 system 角色注入
                     loop_messages.append({
-                        "role": "user",
-                        "content": f"【当前任务】{current_task.action}",
+                        "role": "system",
+                        "content": _wrap_runtime_context(
+                            f"【当前任务】{current_task.action}",
+                            source="MfkAgent TaskGraph",
+                        ),
                     })
-                    # G5-B: 注入 persona prompt
+                    # G5-B: 注入 persona prompt（Phase 3.5: 包装为 Runtime Context）
                     persona_prompt = get_persona_prompt(current_task.assigned_agent)
                     if persona_prompt:
-                        loop_messages.append({"role": "system", "content": persona_prompt})
+                        loop_messages.append({
+                            "role": "system",
+                            "content": _wrap_runtime_context(persona_prompt, source="MfkAgent AgentRouter"),
+                        })
 
                 round_no = 0
                 task_content = ""
@@ -1066,7 +1101,6 @@ class AgentRuntime:
                             loop_messages,
                             all_tool_calls,
                             support_approval=False,
-                            auto_approve=context.auto_approve,
                         ):
                             runtime_event_recorder.emit(
                                 run_id,
@@ -1357,15 +1391,21 @@ class AgentRuntime:
                     current_task_id=current_task.id,
                     task_progress=self._build_task_progress(current_task.id),
                 )}
-                # 注入任务上下文，让 LLM 知道当前执行步骤
+                # Phase 3.5: Runtime Context 边界隔离 — 任务上下文以 system 角色注入
                 current_messages.append({
-                    "role": "user",
-                    "content": f"【当前任务】{current_task.action}",
+                    "role": "system",
+                    "content": _wrap_runtime_context(
+                        f"【当前任务】{current_task.action}",
+                        source="MfkAgent TaskGraph",
+                    ),
                 })
-                # G5-B: 注入 persona prompt
+                # G5-B: 注入 persona prompt（Phase 3.5: 包装为 Runtime Context）
                 persona_prompt = get_persona_prompt(current_task.assigned_agent)
                 if persona_prompt:
-                    current_messages.append({"role": "system", "content": persona_prompt})
+                    current_messages.append({
+                        "role": "system",
+                        "content": _wrap_runtime_context(persona_prompt, source="MfkAgent AgentRouter"),
+                    })
 
             task_done = False
             try:
@@ -1423,7 +1463,7 @@ class AgentRuntime:
                         yield {"type": "state_change", "state": RuntimePhase.TOOL_EXECUTION.value, "reason": "tool execution"}
                         async for event in self._exec_tool_calls_with_verification(
                             ordered, ctx, context.project_path, read_only, current_messages, all_tool_calls,
-                            support_approval=True, auto_approve=context.auto_approve,
+                            support_approval=True,
                         ):
                             yield event
                         # ──── Phase 11: 写操作检测 ────
@@ -1462,7 +1502,7 @@ class AgentRuntime:
                             yield {"type": "state_change", "state": RuntimePhase.TOOL_EXECUTION.value, "reason": "normalizer tool"}
                             async for event in self._exec_tool_calls_with_verification(
                                 norm["calls"], ctx, context.project_path, read_only, current_messages, all_tool_calls,
-                                support_approval=True, auto_approve=context.auto_approve,
+                                support_approval=True,
                             ):
                                 yield event
                             # ──── Phase 11: 写操作检测（归一化路径）────

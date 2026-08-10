@@ -64,8 +64,10 @@ def _resolve_guidance_type(
     if guidance_type:
         return guidance_type
 
-    # 2. 已绑定项目 → 默认 coding 指导
-    if project_bound:
+    # 2. 已绑定项目 + 无明确意图 → 不强制注入 coding 指导
+    #    Phase 3.5: 已绑定项目不代表用户需要 coding 帮助，
+    #    避免 guidance 干扰 casual chat 的场景。
+    if project_bound and intent != "general_chat":
         return "coding"
 
     # 3. 消息关键词兜底
@@ -95,20 +97,54 @@ GUIDANCE_TEMPLATES: dict[str, dict] = {
         "tool_flow": [
             "1. 探索阶段：先用 list_files 了解项目结构，再用 read_file 阅读相关代码",
             "2. 修改阶段：用 write_file 写入修改后的代码，每次只改动必要的部分",
-            "3. 验证阶段：修改后立即用 run_command 编译/运行验证，确保无语法错误",
-            "4. 总结阶段：用 git diff 或 git status 向用户总结改动内容",
+            "3. 验证阶段：修改后立即用 execute_command 编译/运行验证，确保无语法错误",
+            "4. 版本管理阶段（推荐）：用 git_status 查看改动 → git_diff 查看差异 → git_commit 提交",
+            "5. 同步阶段（可选）：用 git_push 推送提交到远程（需审批）",
         ],
         "suggestions": [
             "修改代码前必须先用 read_file 读取目标文件的最新内容",
-            "每次 write_file 后立即用 run_command 验证（如 python -m py_compile 或 npm run build）",
+            "每次 write_file 后立即用 execute_command 验证（如 pytest 或 npm test 或 npm run build）",
             "优先使用项目已有的工具和依赖，不引入冗余第三方库",
             "如果验证失败，根据报错信息修正后重新验证，直到通过",
+            "修改完成后，用 git_status 总结改动，询问用户是否需要提交",
         ],
         "warnings": [
             "禁止在未读取文件的情况下直接修改代码",
             "禁止一次修改多个不相关的文件，应逐个修改并验证",
             "禁止忽略验证失败的结果，必须先修复再继续",
             "禁止猜测文件路径，先用 list_files 确认",
+        ],
+        "execute_workflow": [
+            "## 项目命令执行（execute_command）",
+            "使用 execute_command 执行项目命令，自动放行的安全命令：",
+            "- pytest / python -m pytest — 运行 Python 测试",
+            "- npm test / npm run build / npm run lint — Node.js 项目命令",
+            "- cargo test / cargo build — Rust 项目命令",
+            "- go test / go build — Go 项目命令",
+            "",
+            "启动/运行项目时：",
+            "1. 先检查项目类型（package.json / Cargo.toml / go.mod 等）",
+            "2. 再执行对应命令：npm run dev / python app.py / cargo run",
+            "3. 未知命令会触发审批，请先向用户说明",
+        ],
+        "git_workflow": [
+            "## Git 工作流推荐",
+            "代码修改任务的标准 Git 流程：",
+            "1. git_status — 查看当前工作区状态",
+            "2. git_branch_list — 确认当前分支",
+            "3. git_log — 查看最近的提交历史，了解上下文",
+            "4. read_file — 阅读目标文件",
+            "5. 修改代码（write_file）",
+            "6. git_diff — 查看改动内容，确认无误",
+            "7. git_commit — 提交改动",
+            "8. git_push — 推送到远程（需审批，询问用户是否执行）",
+            "",
+            "远程同步相关：",
+            "- git_fetch — 获取远程更新（只读，无需审批）",
+            "- git_pull — 拉取并合并远程更新（需审批）",
+            "- git_remote — 查看远程仓库信息",
+            "- git_clone — 克隆新仓库（需审批）",
+            "- github_create_pr — 创建 Pull Request（需审批 + GitHub Token）",
         ],
     },
     "research": {
@@ -211,6 +247,18 @@ def get_tool_guidance(
     if suggestions:
         sections.append("\n### 工具使用建议")
         sections.extend(f"- {s}" for s in suggestions)
+
+    # Git 工作流推荐（coding 类型专属）
+    git_workflow = template.get("git_workflow", [])
+    if git_workflow:
+        sections.append("")
+        sections.extend(git_workflow)
+
+    # 项目命令执行指导（coding 类型专属）
+    execute_workflow = template.get("execute_workflow", [])
+    if execute_workflow:
+        sections.append("")
+        sections.extend(execute_workflow)
 
     # 常见错误提醒
     warnings = template.get("warnings", [])

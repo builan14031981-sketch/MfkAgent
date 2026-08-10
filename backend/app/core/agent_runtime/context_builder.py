@@ -30,6 +30,7 @@ from app.services.model import Message as ModelMessage
 from app.services.personality import get_personality_prompt
 from app.core.capability_profiles import get_capability_prompt
 from app.core.identity_principle import get_identity_principle
+from app.core.agent_base_instruction import get_agent_base_instruction
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
 from app.core.tool_runtime.policy import (
@@ -49,6 +50,67 @@ from .context import AgentContext
 from .pruning import prune_thought_history
 
 DEFAULT_IDENTITY = "你是一个有帮助的AI助手。"
+
+# ──── Task 3: 普通聊天检测（轻量关键词匹配，避免为闲聊加载工具）────
+
+_CHAT_GREETINGS = {
+    "你好", "嗨", "hi", "hello", "hey", "早上好", "下午好", "晚上好", "晚安",
+    "再见", "拜拜", "bye", "谢谢", "thanks", "thank", "不客气",
+}
+
+_CHAT_SMALL_TALK = {
+    "今天怎么样", "今天如何", "今天好吗", "最近怎么样", "最近如何",
+    "你怎么样", "你还好吗", "你是什么", "你是谁", "你能做什么",
+    "介绍一下自己", "自我介绍",
+}
+
+_CHAT_KNOWLEDGE_PREFIXES = {
+    "什么是", "解释", "介绍一下", "说说", "讲讲", "为什么", "怎么理解",
+    "能否解释", "能不能解释", "请解释",
+}
+
+# 任务执行关键词 —— 如果命中，说明用户明确要求执行操作，不走聊天短路
+_ACTION_TRIGGERS = {
+    "帮我", "请帮我", "能不能帮我", "可以帮我", "你给我",
+    "执行", "运行", "创建", "修改", "删除", "添加", "生成",
+    "检查", "查看", "分析一下", "查一下", "搜索", "查找",
+    "读取", "git", "编译", "构建", "测试", "调试", "部署",
+    "修复", "改一下", "改下", "写一个", "写个", "新建",
+}
+
+
+def _is_casual_chat(message: str) -> bool:
+    """轻量判断用户消息是否为纯聊天（不触发工具加载）。
+
+    规则：
+      1. 纯问候/告别 → True
+      2. 闲聊 → True
+      3. 知识性问题（什么是/解释/为什么）且无动作触发词 → True
+      4. 包含动作触发词 → False
+      5. 默认 → False（保守：不确定时走工具加载路径）
+    """
+    msg = message.strip()
+    msg_lower = msg.lower()
+
+    # 规则 1: 纯问候
+    if msg_lower in _CHAT_GREETINGS:
+        return True
+
+    # 规则 2: 闲聊
+    if msg_lower in _CHAT_SMALL_TALK:
+        return True
+
+    # 规则 4: 动作触发词（优先级最高 —— 只要包含动作词就不走聊天短路）
+    for trigger in _ACTION_TRIGGERS:
+        if trigger in msg_lower:
+            return False
+
+    # 规则 3: 知识性问题（以"什么是/解释/为什么"开头且不包含动作触发词）
+    for prefix in _CHAT_KNOWLEDGE_PREFIXES:
+        if msg_lower.startswith(prefix):
+            return True
+
+    return False
 
 
 def _msg_role_content(m):
@@ -105,7 +167,6 @@ class ContextBuildInput:
     reasoning_effort: Optional[str] = None
     planning_level: Optional[int] = None  # G2-B: Planner 层级控制
     attachments: list = field(default_factory=list)  # Phase 2: AttachmentItem 列表
-    auto_approve: bool = False  # Phase 12: 自治模式，自动审批 REQUIRE_APPROVAL 级工具
 
 
 @dataclass
@@ -444,6 +505,9 @@ class ChatContextBuilder:
         # ⓪ 最高身份准则（强制置顶，锁定桌面端 Agent 身份认知）
         full_prompt = get_identity_principle()
 
+        # ⓪b Agent Base Instruction（所有 Agent 共享的基础行为规则）
+        full_prompt += get_agent_base_instruction()
+
         # ① identity（纯角色，零行为指令）
         full_prompt += system_prompt
 
@@ -536,7 +600,9 @@ class ChatContextBuilder:
             tool_context = None
             decision = None
             tools_arg = None
-            if input.use_tools:
+            # Task 3: 普通聊天检测 —— 闲聊消息跳过工具加载，避免误触发工具调用
+            is_chat = _is_casual_chat(input.content)
+            if input.use_tools and not is_chat:
                 tool_context = tool_runtime.process(
                     message=input.content,
                     chat=effective_chat,
@@ -650,7 +716,6 @@ class ChatContextBuilder:
                     "intent": (decision or {}).get("intent"),
                     **planner_meta,  # G2-C: Planner 可观测性
                 },
-                auto_approve=input.auto_approve,  # Phase 12: 自治模式
             )
 
             # ──── messages：system + pruned history（G6-B Phase 2 已裁剪思考段）────

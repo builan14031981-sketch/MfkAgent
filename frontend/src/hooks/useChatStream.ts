@@ -210,7 +210,7 @@ export function useChatStream({
           chat_id: targetChatId,
           role: "user",
           content,
-          attachments: attachments?.map((a) => ({ name: a.name, path: a.path, mime: a.mime, kind: a.kind, size: a.size })),
+          attachments: attachments?.map((a) => ({ name: a.name, path: a.path ?? undefined, mime: a.mime, kind: a.kind, size: a.size })),
           created_at: new Date().toISOString(),
         };
         console.log("[sendStream] tempUserMsg.attachments:", tempUserMsg.attachments);

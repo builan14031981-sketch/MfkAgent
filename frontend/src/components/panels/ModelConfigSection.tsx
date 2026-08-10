@@ -642,8 +642,21 @@ function ProviderCard({
   const [testLoading, setTestLoading] = useState(false);
   const [testResult, setTestResult] = useState<TestConnectionResponse | null>(null);
 
-  // 模型区域收起/展开（默认展开）
-  const [modelsExpanded, setModelsExpanded] = useState(true);
+  // 模型区域收起/展开（持久化到 localStorage，记忆用户偏好）
+  const [modelsExpanded, setModelsExpanded] = useState(() => {
+    try {
+      return localStorage.getItem(`mfk_provider_expanded_${p.id}`) !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const toggleModelsExpanded = () => {
+    setModelsExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(`mfk_provider_expanded_${p.id}`, String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
 
   // 综合配置状态：has_key（已配置 Key）或 api_base_override（已配置 Base URL 覆盖）
   // 用于控制"清除"按钮显隐：仅配置 Base URL 不填 Key 的本地模型也能正常清除
@@ -709,7 +722,7 @@ function ProviderCard({
         {/* 收起/展开箭头 */}
         <button
           type="button"
-          onClick={() => setModelsExpanded(!modelsExpanded)}
+          onClick={toggleModelsExpanded}
           title={modelsExpanded ? t("settings.model.providers.collapseModels") : t("settings.model.providers.expandModels")}
           style={{
             display: "inline-flex",

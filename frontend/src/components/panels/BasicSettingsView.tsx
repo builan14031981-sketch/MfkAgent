@@ -441,7 +441,14 @@ function GroupedModelDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("mfk_model_dropdown_collapsed");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
@@ -536,6 +543,7 @@ function GroupedModelDropdown({
                       const next = new Set(prev);
                       if (next.has(group.providerId)) next.delete(group.providerId);
                       else next.add(group.providerId);
+                      try { localStorage.setItem("mfk_model_dropdown_collapsed", JSON.stringify([...next])); } catch { /* noop */ }
                       return next;
                     });
                   }}

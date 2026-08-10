@@ -240,7 +240,7 @@ TOOL_RISK_POLICY: Dict[str, Tuple[Verdict, RiskLevel, str]] = {
 # 文件/结构/搜索只读 + git 只读 + 网络只读 + 通用只读。run_command 由命令引擎单独判定。
 READ_ONLY_TOOLS = frozenset({
     "read_file", "list_files", "search_files",
-    "git_status", "git_diff", "git_log",
+    "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
     "web_search", "fetch_url", "github_search",
     "date_time", "json_format",
 })
