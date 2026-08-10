@@ -264,6 +264,27 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
     closeContextMenu();
   };
 
+  // 在系统文件管理器中打开项目目录（仅 Electron 环境可用）
+  const handleOpenProjectFolder = useCallback(async (projectId: number) => {
+    const project = projects.find((p) => p.id === projectId);
+    const targetPath = project?.path;
+    // 边界：项目不存在 / 路径为空 / 非 Electron 环境 → 静默退出（不打断菜单）
+    if (!targetPath) {
+      closeContextMenu();
+      return;
+    }
+    if (typeof window === "undefined" || !window.electronAPI?.openPath) {
+      closeContextMenu();
+      return;
+    }
+    try {
+      await window.electronAPI.openPath(targetPath);
+    } catch (err) {
+      console.error("Failed to open project folder:", err);
+    }
+    closeContextMenu();
+  }, [projects, closeContextMenu]);
+
   const handleRenameCommit = async () => {
     if (!renamingChatId || !renameValue.trim()) {
       setRenamingChatId(null);
@@ -671,6 +692,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         onDeleteChat={handleDeleteChat}
         onPinProject={(id) => handlePinProject(id, !projects.find((p) => p.id === id)?.is_pinned)}
         onDeleteProject={handleDeleteProject}
+        onOpenProjectFolder={handleOpenProjectFolder}
         onClose={closeContextMenu}
       />
 
