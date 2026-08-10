@@ -2,8 +2,9 @@
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain, Loader2, Image } from "lucide-react";
-import type { Message } from "@/hooks/useMessages";
-import { ToolCallCardList } from "@/components/ToolCallCard";
+import type { Message, TimelineEvent } from "@/hooks/useMessages";
+import { ToolCallCard, ToolCallCardList } from "@/components/ToolCallCard";
+import type { ToolCall } from "@/components/ToolCallCard";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -26,9 +27,100 @@ function parseThinkBlock(content: string): { thinking: string | null; body: stri
   return { thinking: thinking || null, body };
 }
 
-/** 仅用于渲染展示的文本归一化：去首尾空白、\r\n → \n、连续空行压缩为单个 \n。不改动存储数据 */
+/** 仅用于渲染展示的文本归一化：去首尾空白、CRLF → LF、连续空行压缩为单个 LF。不改动存储数据 */
 function normalizeThinking(text: string): string {
-  return text.trim().replace(/\r\n/g, "\n").replace(/\n{2,}/g, "\n");
+  const LF = String.fromCharCode(10);
+  const CR = String.fromCharCode(13);
+  return text.trim().split(CR + LF).join(LF).replace(new RegExp(LF + "{2,}", "g"), LF);
+}
+
+/** 按 message.timeline 时序重建的可渲染片段 */
+type TimelineSegment =
+  | { kind: "thinking"; content: string }
+  | { kind: "tool"; toolCall: ToolCall }
+  | { kind: "text"; content: string };
+
+/**
+ * 将后端持久化的 timeline 事件流转换为渲染片段（保留真实时序）：
+ * - 连续 thinking 事件合并为一个折叠面板（多轮思考被非 thinking 事件隔开则分段）
+ * - tool_start/tool_result 按 tool_call_id 配对为单张卡片；完整态优先取 message.tool_calls
+ * - text 事件直接渲染 Markdown；tool_approval 为已解决的审批请求，历史态不渲染
+ */
+function buildTimelineSegments(timeline: TimelineEvent[], toolCalls?: ToolCall[]): TimelineSegment[] {
+  const toolCallById = new Map<string, ToolCall>();
+  for (const tc of toolCalls ?? []) {
+    if (tc.tool_call_id) toolCallById.set(tc.tool_call_id, tc);
+  }
+
+  const segments: TimelineSegment[] = [];
+  const renderedToolIds = new Set<string>();
+  let thinkingBuffer = "";
+
+  const flushThinking = () => {
+    if (!thinkingBuffer) return;
+    segments.push({ kind: "thinking", content: thinkingBuffer });
+    thinkingBuffer = "";
+  };
+
+  const pushTool = (toolCallId: string | undefined, fallback: ToolCall) => {
+    if (toolCallId && renderedToolIds.has(toolCallId)) return;
+    if (toolCallId) renderedToolIds.add(toolCallId);
+    segments.push({ kind: "tool", toolCall: (toolCallId && toolCallById.get(toolCallId)) || fallback });
+  };
+
+  for (const evt of timeline) {
+    switch (evt.type) {
+      case "thinking": {
+        if (evt.content) thinkingBuffer += evt.content;
+        break;
+      }
+      case "tool_start": {
+        flushThinking();
+        pushTool(evt.tool_call_id, {
+          tool: evt.tool ?? "tool",
+          name: evt.tool ?? "tool",
+          input: evt.input ?? {},
+          arguments: evt.input ?? {},
+          status: "running",
+          tool_call_id: evt.tool_call_id,
+        });
+        break;
+      }
+      case "tool_result": {
+        flushThinking();
+        pushTool(evt.tool_call_id, {
+          tool: evt.tool ?? "tool",
+          name: evt.tool ?? "tool",
+          input: {},
+          arguments: {},
+          success: evt.success,
+          status: evt.success ? "success" : "failed",
+          result: evt.result,
+          duration_ms: evt.duration_ms,
+          error: evt.error,
+          tool_call_id: evt.tool_call_id,
+          file_path: evt.file_path,
+        });
+        break;
+      }
+      case "text": {
+        flushThinking();
+        if (evt.content) segments.push({ kind: "text", content: evt.content });
+        break;
+      }
+      // tool_approval / 未知事件：历史态不渲染
+      default:
+        break;
+    }
+  }
+  flushThinking();
+
+  // 防御：timeline 中未出现的 tool_calls 追加在末尾，避免工具卡片丢失
+  for (const tc of toolCalls ?? []) {
+    if (tc.tool_call_id && renderedToolIds.has(tc.tool_call_id)) continue;
+    segments.push({ kind: "tool", toolCall: tc });
+  }
+  return segments;
 }
 
 /** 思考过程折叠面板：灰色背景、较小字号、左侧边框。默认收起，收起态 2 行截断预览。
@@ -373,6 +465,16 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
     [message.content, message.thinking]
   );
 
+  // 时序渲染：后端持久化的 timeline 存在时按真实顺序重建片段（thinking/tool/text 交错），
+  // 避免流结束后工具卡片统一上浮到正文之前；旧消息无 timeline 则回退固定顺序。
+  const timelineSegments = useMemo(
+    () =>
+      message.timeline && message.timeline.length > 0
+        ? buildTimelineSegments(message.timeline, message.tool_calls)
+        : null,
+    [message.timeline, message.tool_calls]
+  );
+
   // 静态操作栏布局（Zero CLS）：固定 marginTop、无 maxHeight/overflow/高度动画。
   // 低调常驻：默认低对比度由按钮自身 opacity:0.4 承担，hover 按钮恢复 1，容器始终可见。
   const actionBarStyle = (alignEnd: boolean): React.CSSProperties => ({
@@ -470,14 +572,38 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
           {currentAgent?.name || "AI"}
         </span>
       </div>
-      {/* 文件操作事件卡片 */}
-      {message.tool_calls && message.tool_calls.length > 0 && (
-        <ToolCallCardList toolCalls={message.tool_calls} />
+      {/* 时序渲染：thinking/tool/text 按 SSE 真实到达顺序交错展示 */}
+      {timelineSegments ? (
+        timelineSegments.map((seg, i) => {
+          switch (seg.kind) {
+            case "thinking":
+              return <ThinkingPanel key={`think-${i}`} thinking={seg.content} persistKey={`mfk_think_${message.id}_${i}`} />;
+            case "tool":
+              return (
+                <div key={`tool-${seg.toolCall.tool_call_id ?? i}`} style={{ marginBottom: "8px" }}>
+                  <ToolCallCard toolCall={seg.toolCall} />
+                </div>
+              );
+            case "text":
+              return <MarkdownRenderer key={`text-${i}`} content={seg.content} />;
+          }
+        })
+      ) : (
+        <>
+          {/* 回退：无 timeline 的旧消息保持固定顺序（tool_calls → thinking → 正文） */}
+          {message.tool_calls && message.tool_calls.length > 0 && (
+            <ToolCallCardList toolCalls={message.tool_calls} />
+          )}
+          {/* 思考过程（<think> 标签内容）折叠面板 */}
+          {thinking && <ThinkingPanel thinking={thinking} persistKey={"mfk_think_" + message.id} />}
+          {/* 正文：Markdown 渲染（含代码块折叠） */}
+          <MarkdownRenderer content={body} />
+        </>
       )}
-      {/* 思考过程（<think> 标签内容）折叠面板 */}
-      {thinking && <ThinkingPanel thinking={thinking} persistKey={"mfk_think_" + message.id} />}
-      {/* 正文：Markdown 渲染（含代码块折叠） */}
-      <MarkdownRenderer content={body} />
+      {/* 防御：timeline 中无 text 事件但正文存在（如录制不全）→ 补渲染正文，避免内容丢失 */}
+      {timelineSegments && !timelineSegments.some((s) => s.kind === "text") && body && (
+        <MarkdownRenderer content={body} />
+      )}
       {/* AI 消息悬浮操作栏：复制 / 引用 / 重生成 */}
       <div style={actionBarStyle(false)}>
         <CopyButton text={message.content} />

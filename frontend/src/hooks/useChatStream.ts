@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from "react";
-import type { Message, useMessages } from "@/hooks/useMessages";
+import type { Message, useMessages, TimelineEvent } from "@/hooks/useMessages";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { ReasoningEffort } from "@/components/ChatInput";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
@@ -259,6 +259,42 @@ export function useChatStream({
 
       // 流结束：持久化 AI 消息（仅当目标会话是当前活跃会话时追加到本地列表）
       const appendAssistant = (final: string, toolCalls: ToolCall[], finalThinking: string) => {
+        // 在清空 timeline 前快照：转换为与后端 Message.timeline 一致的事件格式，
+        // 随乐观消息写入，使流结束瞬间即按时序渲染（工具卡片不上浮），refetch 落地后无缝衔接
+        const prevTimeline = store.getSession(targetChatId)?.timeline ?? [];
+        const timelineEvents = prevTimeline.flatMap((seg) => {
+          switch (seg.type) {
+            case "thinking":
+            case "thinking_indicator":
+              return seg.content ? [{ type: "thinking", content: seg.content }] : [];
+            case "tool": {
+              const tc = seg.toolCall;
+              const evts: TimelineEvent[] = [{
+                type: "tool_start",
+                tool_call_id: tc.tool_call_id,
+                tool: tc.tool,
+                input: tc.input ?? tc.arguments ?? {},
+              }];
+              if (tc.status === "success" || tc.status === "failed") {
+                evts.push({
+                  type: "tool_result",
+                  tool_call_id: tc.tool_call_id,
+                  tool: tc.tool,
+                  success: tc.success,
+                  result: tc.result,
+                  duration_ms: tc.duration_ms,
+                  error: tc.error,
+                });
+              }
+              return evts;
+            }
+            case "text":
+              return [{ type: "text", content: seg.content }];
+            default:
+              return [];
+          }
+        });
+
         store.updateSession(targetChatId, () => ({
           timeline: [],
           streamingError: null,
@@ -288,6 +324,7 @@ export function useChatStream({
             content: final,
             thinking: finalThinking || undefined,
             tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+            timeline: timelineEvents.length > 0 ? timelineEvents : undefined,
             created_at: new Date().toISOString(),
           };
           appendMessage(aiMsg);

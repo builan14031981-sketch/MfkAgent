@@ -7,6 +7,24 @@ import { getFileExt } from "@/components/FileDropZone";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
+/**
+ * 后端 Message.timeline 持久化的时序事件（GET /messages 随消息下发）。
+ * 由后端 SSE 录制：thinking/tool_start/tool_result 按真实到达顺序记录，
+ * text 目前由后端合并为单个事件追加在末尾（见 backend/app/api/chat.py）。
+ */
+export interface TimelineEvent {
+  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | string;
+  content?: string;
+  tool_call_id?: string;
+  tool?: string;
+  input?: Record<string, unknown>;
+  success?: boolean;
+  result?: string;
+  duration_ms?: number;
+  error?: string;
+  file_path?: string;
+}
+
 export interface Message {
   id: number;
   chat_id: number;
@@ -14,6 +32,8 @@ export interface Message {
   content: string;
   thinking?: string;
   tool_calls?: ToolCall[];
+  /** 时序事件列表：存在时按真实顺序渲染（thinking/tool/text 交错），否则回退三字段固定顺序 */
+  timeline?: TimelineEvent[];
   attachments?: Array<{ name: string; path?: string; mime?: string; kind?: string; size?: number }>;
   created_at: string;
 }
@@ -78,7 +98,7 @@ export function useMessages(chatId: number | null) {
     onToolStart?: (evt: { tool_call_id: string; tool: string; input: Record<string, unknown> }) => void,
     onToolApproval?: (evt: { approval_id: string; tool_call_id: string; tool: string; command: string; risk_level: string; risk_reason: string; chat_id?: number }) => void,
     onToolOutput?: (evt: { tool_call_id: string; delta: string }) => void,
-    onToolResult?: (evt: { tool_call_id?: string; tool?: string; success?: boolean; result?: string; duration_ms?: number; error?: string }) => void,
+    onToolResult?: (evt: { tool_call_id?: string; tool?: string; success?: boolean; result?: string; duration_ms?: number; error?: string; file_path?: string }) => void,
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
     onTaskEvent?: (evt: TaskEvent) => void,
     onTokenUsage?: (evt: TokenUsageEvent) => void,
@@ -244,6 +264,7 @@ export function useMessages(chatId: number | null) {
                       duration_ms: parsed.duration_ms,
                       error: parsed.error,
                       tool_call_id: parsed.tool_call_id,
+                      file_path: parsed.file_path,
                     });
                     break;
                   }
