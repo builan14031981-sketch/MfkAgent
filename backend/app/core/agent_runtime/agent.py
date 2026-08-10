@@ -28,6 +28,7 @@ from app.core.task_graph.models import TaskNode
 from .model_context_config import get_model_max_tokens, compute_watermark
 from app.core.verification import verifier as default_verifier
 from app.services.model import ModelNotFoundError, ModelConfigError
+from app.core.tool_runtime.strategy import get_strategy_engine, StrategyStatus
 
 # ──── 执行循环最大轮次 ────
 MAX_ROUNDS = 10
@@ -574,17 +575,78 @@ class AgentRuntime:
         - 需审批时：support_approval=True → 等待审批闭环；False → 明确拒绝
         - Phase 12 auto_approve：REQUIRE_APPROVAL 级工具自动放行，HIGH_RISK 仍强制审批
         - 追加 role=tool 结果消息
+        - Strategy Layer V1：执行前策略检查（read-before-write、危险命令、失败循环）
+        - 追加 role=tool 结果消息
         yield 工具事件（tool_start/tool_approval/tool_result）供上层透传 SSE。
         """
         from app.core.tool_runtime.executor import execute_tool, complete_approval
         from app.core.tool_runtime.events import ToolEventSource
         from app.core.tool_runtime.approval import approval_registry
+        import json
 
         assistant_msg = {"role": "assistant", "content": None, "tool_calls": ordered}
         current_messages.append(assistant_msg)
 
+        # 获取策略引擎实例（基于 chat_id）
+        chat_id = ctx.get("chat_id")
+        strategy_engine = get_strategy_engine(str(chat_id)) if chat_id else None
+
         for tc in ordered:
             event_source = ToolEventSource()
+            
+            # 解析工具调用参数
+            tool_name = tc.get("function", {}).get("name", "")
+            try:
+                tool_args = json.loads(tc.get("function", {}).get("arguments", "{}") or "{}")
+            except Exception:
+                tool_args = {}
+            
+            # Strategy Layer V1: 执行前策略检查
+            if strategy_engine:
+                strategy_result = strategy_engine.check_before_execution(tool_name, tool_args)
+                
+                if strategy_result.status == StrategyStatus.BLOCK:
+                    # 策略阻止执行，直接返回错误信息
+                    record = {
+                        "name": tool_name,
+                        "tool": tool_name,
+                        "path": tool_args.get("path", ""),
+                        "success": False,
+                        "status": "blocked",
+                        "arguments": tool_args,
+                        "result": f"策略阻止: {strategy_result.reason}",
+                        "duration_ms": 0,
+                        "tool_call_id": tc.get("id", ""),
+                    }
+                    event_source.emit({
+                        "type": "tool_start",
+                        "tool_call_id": tc.get("id", ""),
+                        "tool": tool_name,
+                        "input": tool_args,
+                    })
+                    event_source.emit({
+                        "type": "tool_result",
+                        "tool_call_id": tc.get("id", ""),
+                        "tool": tool_name,
+                        "success": False,
+                        "result": record["result"],
+                        "duration_ms": 0,
+                    })
+                    for event in event_source.drain():
+                        yield event
+                    all_tool_calls.append(record)
+                    current_messages.append({
+                        "tool_call_id": tc.get("id", ""),
+                        "role": "tool",
+                        "content": record["result"],
+                    })
+                    continue
+                
+                elif strategy_result.status == StrategyStatus.REQUIRE_CONFIRM:
+                    # 需要用户确认（当前实现：记录警告但继续执行）
+                    # TODO: 未来可以集成用户确认流程
+                    pass
+            
             record = await execute_tool(
                 tool_call=tc,
                 project_path=project_path,
@@ -619,6 +681,23 @@ class AgentRuntime:
                         "result": "错误: 该操作需要用户审批，但非流式接口不支持审批，已拒绝执行。请改用流式接口重试。",
                     })
 
+            # Strategy Layer V1: 执行后策略检查
+            if strategy_engine:
+                post_result = strategy_engine.check_after_execution(
+                    tool_name,
+                    tool_args,
+                    record.get("success", False),
+                    record.get("result", ""),
+                )
+                if post_result and post_result.status == StrategyStatus.NEED_FEEDBACK:
+                    # 注入反馈信息到工具结果中
+                    original_result = record.get("result", "")
+                    feedback_msg = f"\n\n[策略提示] {post_result.reason}\n建议: {post_result.suggestion}"
+                    record["result"] = original_result + feedback_msg
+                    # 更新 current_messages 中的内容
+                    if current_messages and current_messages[-1].get("tool_call_id") == tc.get("id"):
+                        current_messages[-1]["content"] = record["result"]
+
             all_tool_calls.append(record)
             current_messages.append({
                 "tool_call_id": tc.get("id", ""),
@@ -637,18 +716,24 @@ class AgentRuntime:
         support_approval: bool = True,
         auto_approve: bool = False,
     ):
-        """执行工具调用 + 程序化验证（Phase E4）。
+        """执行工具调用 + 程序化验证（Phase E4 + Verification Loop V1）。
 
         yield 协议：
           - 透传 _exec_tool_calls 的工具事件（tool_start / tool_approval / tool_result）
           - 追加 verify_result 事件（每个成功动作一条，含 status/evidence）
           - 追加 verification_failed 事件（存在未通过验证时，含注入的反馈文本）
+          - 追加 verification_loop_exhausted 事件（验证重试次数耗尽时）
 
         验证语义：
           - 本轮 status == "success" 的动作 → verifier.verify_all 程序校验
           - 存在 passed 之外的结果 → 向 current_messages 注入【验证反馈】消息，
             驱动 LLM 在下一轮重新执行（Action → Verify → Retry）
           - 全部通过 → 不注入，流程正常继续
+        
+        Verification Loop V1:
+          - 验证失败时，通过 Strategy Engine 跟踪重试次数
+          - 达到 MAX_VERIFICATION_RETRIES 后停止重试，注入停止提示
+          - 验证成功时重置重试计数
         """
         executed_start = len(all_tool_calls)
         async for event in self._exec_tool_calls(
@@ -658,13 +743,42 @@ class AgentRuntime:
 
         # 仅验证本轮真实发生的动作（status == success）
         round_records = all_tool_calls[executed_start:]
-        results = self.verifier.verify_all(round_records, project_path)
+        
+        # Verification Loop V1: 传入 chat_id 以启用循环跟踪
+        chat_id = ctx.get("chat_id")
+        results = self.verifier.verify_all(round_records, project_path, chat_id=str(chat_id) if chat_id else None)
 
         failed = [r for r in results if not r.passed]
         for r in results:
             yield {"type": "verify_result", **r.to_dict()}
 
+        # 获取策略引擎（用于验证循环跟踪）
+        strategy_engine = get_strategy_engine(str(chat_id)) if chat_id else None
+
         if failed:
+            # 记录验证失败
+            if strategy_engine:
+                strategy_engine.record_verification_failure()
+                
+                # 检查是否达到重试上限
+                if strategy_engine.should_stop_verification_retry():
+                    # 达到上限，注入停止提示
+                    feedback = self._build_verification_loop_exhausted_feedback(
+                        failed, 
+                        strategy_engine.get_verification_retry_count()
+                    )
+                    current_messages.append({"role": "user", "content": feedback})
+                    yield {
+                        "type": "verification_loop_exhausted",
+                        "message": feedback,
+                        "retry_count": strategy_engine.get_verification_retry_count(),
+                        "results": [r.to_dict() for r in failed],
+                    }
+                    # 重置计数器，避免后续任务继续受限
+                    strategy_engine.record_verification_success()
+                    return
+            
+            # 未达上限，正常注入验证反馈
             feedback = self._build_verification_feedback(failed)
             current_messages.append({"role": "user", "content": feedback})
             yield {
@@ -672,6 +786,10 @@ class AgentRuntime:
                 "message": feedback,
                 "results": [r.to_dict() for r in failed],
             }
+        else:
+            # 验证成功，重置重试计数
+            if strategy_engine:
+                strategy_engine.record_verification_success()
 
     @staticmethod
     def _build_verification_feedback(failed: list) -> str:
@@ -684,6 +802,23 @@ class AgentRuntime:
             tool = r.tool or ""
             tc_id = f"（tool_call: {r.tool_call_id}）" if r.tool_call_id else ""
             lines.append(f"- {tool}{tc_id}: {r.message}")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_verification_loop_exhausted_feedback(failed: list, retry_count: int) -> str:
+        """构造验证循环耗尽反馈文本（达到重试上限时注入）。"""
+        lines = [
+            f"【验证循环停止】工具动作已连续 {retry_count} 次未通过验证，停止自动重试。",
+            "请检查以下问题并手动修正：",
+        ]
+        for r in failed:
+            tool = r.tool or ""
+            tc_id = f"（tool_call: {r.tool_call_id}）" if r.tool_call_id else ""
+            lines.append(f"- {tool}{tc_id}: {r.message}")
+        lines.append("\n建议：")
+        lines.append("1. 检查文件路径和权限是否正确")
+        lines.append("2. 检查命令语法和参数是否正确")
+        lines.append("3. 如果问题无法解决，请向用户说明情况")
         return "\n".join(lines)
 
     @staticmethod

@@ -133,6 +133,156 @@ def verify_run_command(record: dict, project_path: Optional[str]) -> Verificatio
     )
 
 
+def verify_replace_in_file(record: dict, project_path: Optional[str]) -> VerificationResult:
+    """replace_in_file 验证：检查替换是否成功。
+
+    - 文件不存在          → failed
+    - 替换内容未找到       → need_retry（可能是路径或内容不匹配）
+    - 替换成功            → passed
+    """
+    args = record.get("arguments") or {}
+    rel = args.get("relative_path")
+    old_str = args.get("old_str")
+    new_str = args.get("new_str")
+
+    if not rel:
+        return VerificationResult(
+            FAILED, "验证失败: replace_in_file 参数缺少 relative_path",
+            strategy="replace_in_file",
+        )
+
+    abs_path = _resolve_path(project_path, rel)
+    if abs_path is None:
+        return VerificationResult(
+            NEED_RETRY, f"验证失败: 缺少有效项目路径，无法校验 {rel}",
+            evidence={"relative_path": rel},
+            strategy="replace_in_file",
+        )
+
+    if not os.path.isfile(abs_path):
+        return VerificationResult(
+            FAILED,
+            f"验证失败: 文件不存在 {rel}",
+            evidence={"path": abs_path},
+            strategy="replace_in_file",
+        )
+
+    with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+
+    # 检查 old_str 是否还在文件中（如果还在说明替换失败）
+    if old_str and old_str in content:
+        return VerificationResult(
+            NEED_RETRY,
+            f"验证失败: 替换内容未生效 {rel}",
+            evidence={"path": abs_path, "old_str_found": True},
+            strategy="replace_in_file",
+        )
+
+    # 检查 new_str 是否在文件中（如果不在说明替换失败）
+    if new_str and new_str not in content:
+        return VerificationResult(
+            NEED_RETRY,
+            f"验证失败: 新内容未写入 {rel}",
+            evidence={"path": abs_path, "new_str_found": False},
+            strategy="replace_in_file",
+        )
+
+    return VerificationResult(
+        PASSED,
+        f"验证通过: 文件替换成功 {rel}",
+        evidence={"path": abs_path, "size": os.path.getsize(abs_path)},
+        strategy="replace_in_file",
+    )
+
+
+def verify_apply_patch(record: dict, project_path: Optional[str]) -> VerificationResult:
+    """apply_patch 验证：检查 patch 是否应用成功。
+
+    - 文件不存在          → failed
+    - patch 应用失败       → need_retry
+    - patch 应用成功       → passed
+    """
+    args = record.get("arguments") or {}
+    rel = args.get("relative_path")
+    patch_content = args.get("patch")
+
+    if not rel:
+        return VerificationResult(
+            FAILED, "验证失败: apply_patch 参数缺少 relative_path",
+            strategy="apply_patch",
+        )
+
+    abs_path = _resolve_path(project_path, rel)
+    if abs_path is None:
+        return VerificationResult(
+            NEED_RETRY, f"验证失败: 缺少有效项目路径，无法校验 {rel}",
+            evidence={"relative_path": rel},
+            strategy="apply_patch",
+        )
+
+    if not os.path.isfile(abs_path):
+        return VerificationResult(
+            FAILED,
+            f"验证失败: 文件不存在 {rel}",
+            evidence={"path": abs_path},
+            strategy="apply_patch",
+        )
+
+    # 检查工具执行结果中是否有错误标记
+    result_text = record.get("result", "") or ""
+    if "error" in result_text.lower() or "failed" in result_text.lower():
+        return VerificationResult(
+            NEED_RETRY,
+            f"验证失败: patch 应用可能失败 {rel}",
+            evidence={"path": abs_path, "result": result_text[:500]},
+            strategy="apply_patch",
+        )
+
+    return VerificationResult(
+        PASSED,
+        f"验证通过: patch 应用成功 {rel}",
+        evidence={"path": abs_path, "size": os.path.getsize(abs_path)},
+        strategy="apply_patch",
+    )
+
+
+def verify_git_commit(record: dict, project_path: Optional[str]) -> VerificationResult:
+    """git_commit 验证：检查提交是否成功。
+
+    - 提交成功（包含 commit hash）→ passed
+    - 提交失败（无 hash 或有错误）→ need_retry
+    """
+    result_text = record.get("result", "") or ""
+
+    # 检查是否包含 commit hash（通常是 7-40 位十六进制）
+    commit_hash_pattern = r"\b[a-f0-9]{7,40}\b"
+    if re.search(commit_hash_pattern, result_text, re.IGNORECASE):
+        return VerificationResult(
+            PASSED,
+            "验证通过: git commit 成功",
+            evidence={"result": result_text[:500]},
+            strategy="git_commit",
+        )
+
+    # 检查是否有错误标记
+    if "error" in result_text.lower() or "failed" in result_text.lower():
+        return VerificationResult(
+            NEED_RETRY,
+            "验证失败: git commit 失败",
+            evidence={"result": result_text[:500]},
+            strategy="git_commit",
+        )
+
+    # 无法确定结果
+    return VerificationResult(
+        NEED_RETRY,
+        "验证失败: 无法确认 git commit 是否成功",
+        evidence={"result": result_text[:500]},
+        strategy="git_commit",
+    )
+
+
 def default_verify(record: dict, project_path: Optional[str]) -> VerificationResult:
     """默认策略：无验证需求，直接通过（skip/pass）。"""
     return VerificationResult(PASSED, "无验证策略，默认通过", strategy="default")
@@ -142,4 +292,7 @@ def default_verify(record: dict, project_path: Optional[str]) -> VerificationRes
 VERIFIERS = {
     "write_file": verify_write_file,
     "run_command": verify_run_command,
+    "replace_in_file": verify_replace_in_file,
+    "apply_patch": verify_apply_patch,
+    "git_commit": verify_git_commit,
 }
