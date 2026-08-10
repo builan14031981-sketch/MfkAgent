@@ -486,7 +486,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                         borderRadius: "var(--radius-md)",
                         border: "none",
                         background: "var(--color-primary)",
-                        color: "white",
+                        color: "var(--text-on-primary)",
                         cursor: "pointer",
                         fontSize: "13px",
                         fontWeight: 500,

@@ -135,7 +135,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         alignItems: "center",
         justifyContent: "center",
         padding: "16px",
-        background: "rgba(0, 0, 0, 0.3)",
+        background: "var(--overlay-modal)",
         backdropFilter: "blur(2px)",
         WebkitBackdropFilter: "blur(2px)",
         animation: "fadeIn 0.2s ease",

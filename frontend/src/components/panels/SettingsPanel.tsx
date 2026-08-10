@@ -146,7 +146,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 {/* 左侧导航 - 固定不滚动 */}
                 <nav style={{
                   width: "140px", flexShrink: 0,
-                  borderRight: "1px solid rgba(0, 0, 0, 0.06)",
+                  borderRight: "1px solid var(--border-primary)",
                   paddingRight: "16px", marginRight: "16px",
                   height: "100%", overflow: "hidden",
                 }}>

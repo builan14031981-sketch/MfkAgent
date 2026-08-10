@@ -524,7 +524,7 @@ function ChatPageInner() {
               borderRadius: "var(--radius-md)",
               border: "none",
               background: "var(--color-primary)",
-              color: "white",
+              color: "var(--text-on-primary)",
               cursor: "pointer",
               fontSize: "14px",
             }}

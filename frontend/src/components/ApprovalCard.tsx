@@ -132,7 +132,7 @@ export function ApprovalCard({ approval, onApprove, onDeny }: ApprovalCardProps)
             borderRadius: "var(--radius-md)",
             border: "none",
             background: isDestructive ? "var(--color-error)" : "var(--color-primary)",
-            color: "white",
+            color: "var(--text-on-primary)",
             cursor: "pointer",
             fontSize: "12px",
             fontWeight: 600,

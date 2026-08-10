@@ -396,7 +396,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
             maxWidth: "70%",
             borderRadius: "var(--radius-md)",
             background: "var(--color-primary)",
-            color: "white",
+            color: "var(--text-on-primary)",
             fontSize: "14px",
             lineHeight: 1.5,
             overflow: "hidden",

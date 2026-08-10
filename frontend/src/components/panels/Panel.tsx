@@ -51,7 +51,7 @@ export function Panel({ isOpen, onClose, title, children, width = "700px", heigh
           left: 0,
           right: 0,
           bottom: 0,
-          background: "rgba(0, 0, 0, 0.3)",
+          background: "var(--overlay-modal)",
           zIndex: 99,
           animation: "fadeIn 0.15s ease",
         }}

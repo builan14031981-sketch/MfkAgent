@@ -284,7 +284,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
               border: "none",
               background: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "var(--color-primary)" : "var(--bg-level-3)",
               cursor: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "pointer" : "not-allowed",
-              color: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "white" : "var(--text-level-3)",
+              color: newValue.trim() && !isCreating && agentScopeReady && projectScopeReady ? "var(--text-on-primary)" : "var(--text-level-3)",
               fontSize: "12px",
               fontWeight: "500",
             }}

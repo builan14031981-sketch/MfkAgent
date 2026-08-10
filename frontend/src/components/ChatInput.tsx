@@ -477,7 +477,7 @@ export const ChatInput = memo(function ChatInput({
             outline: "none",
             resize: "none",
             fontSize: "14px",
-            lineHeight: "1.5rem",
+            lineHeight: "var(--line-height-normal)",
             color: "var(--text-level-2)",
             minHeight: `${inputMinHeight ?? 87}px`,
             maxHeight: "135px",

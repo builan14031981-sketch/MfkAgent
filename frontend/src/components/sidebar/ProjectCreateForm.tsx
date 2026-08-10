@@ -175,7 +175,7 @@ export function ProjectCreateForm({
             cursor: newProjectName.trim() && newProjectPath.trim() && !isCreatingProject ? "pointer" : "not-allowed",
             fontSize: "13px",
             fontWeight: "500",
-            color: newProjectName.trim() && newProjectPath.trim() && !isCreatingProject ? "white" : "var(--text-level-3)",
+            color: newProjectName.trim() && newProjectPath.trim() && !isCreatingProject ? "var(--text-on-primary)" : "var(--text-level-3)",
           }}
         >
           {t("sidebar.createProject")}
