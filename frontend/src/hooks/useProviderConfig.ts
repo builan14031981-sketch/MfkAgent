@@ -312,10 +312,14 @@ export function useProviderConfig(): UseProviderConfigResult {
   );
 
   // ── 自定义模型 CRUD ──
+  // 每次变更后都触发全局模型列表刷新（create/update/delete 会改后端 models 表，
+  // 进而影响 /api/models/models 的返回；其他模块如 ProjectInitModal 的 useModels
+  // 订阅 triggerModelsRefresh 后会自动 re-fetch，保证数据同步）。
   const createCustomModel = useCallback(
     async (data: CustomModelPayload) => {
       await apiPost("/api/models/custom", data);
       await refresh();
+      triggerModelsRefresh();
     },
     [refresh]
   );
@@ -324,6 +328,7 @@ export function useProviderConfig(): UseProviderConfigResult {
     async (id: number, data: Partial<CustomModelPayload>) => {
       await apiPut(`/api/models/custom/${id}`, data);
       await refresh();
+      triggerModelsRefresh();
     },
     [refresh]
   );
@@ -332,6 +337,7 @@ export function useProviderConfig(): UseProviderConfigResult {
     async (id: number) => {
       await apiDelete(`/api/models/custom/${id}`);
       await refresh();
+      triggerModelsRefresh();
     },
     [refresh]
   );
