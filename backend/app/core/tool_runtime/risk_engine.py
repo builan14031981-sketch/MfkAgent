@@ -34,8 +34,9 @@ class RiskLevel(str, Enum):
 
 class Verdict(str, Enum):
     ALLOW = "allow"
-    ASK = "ask"
-    DENY = "deny"
+    REQUIRE_APPROVAL = "require_approval"  # Phase 12: 可被 auto_approve 自动放行
+    HIGH_RISK = "high_risk"                # Phase 12: 高危操作，无视 auto_approve，强制人工审批
+    DENY = "deny"                          # 始终阻断（shell 元字符等）
 
 
 class RiskDecision:
@@ -165,20 +166,23 @@ class CommandRiskEngine:
         if self._is_allowlisted(argv):
             return RiskDecision(Verdict.ALLOW, RiskLevel.READ_ONLY, "只读白名单命令，自动放行", command)
 
-        # 未在白名单内 → 按风险分类，plan 模式一律拒绝，build 模式一律 ask
+        # 未在白名单内 → 按风险分类，plan 模式一律拒绝，build 模式按风险等级分流
         if self._is_destructive(command):
             risk = RiskLevel.DESTRUCTIVE
+            verdict = Verdict.HIGH_RISK  # Phase 12: 高危命令，强制人工审批
         elif self._is_write(command):
             risk = RiskLevel.WRITE
+            verdict = Verdict.REQUIRE_APPROVAL  # Phase 12: 常规写操作，可被 auto_approve 放行
         else:
-            risk = RiskLevel.DESTRUCTIVE  # 未知命令 → 保守默认
+            risk = RiskLevel.DESTRUCTIVE
+            verdict = Verdict.HIGH_RISK  # Phase 12: 未知命令 → 保守默认 HIGH_RISK
 
         if mode == "plan":
             return RiskDecision(
                 Verdict.DENY, risk,
                 f"错误: plan 只读模式拒绝执行（仅允许只读命令）: {APPROVAL_REASON}", command,
             )
-        return RiskDecision(Verdict.ASK, risk, APPROVAL_REASON, command)
+        return RiskDecision(verdict, risk, APPROVAL_REASON, command)
 
     def _is_allowlisted(self, argv: List[str]) -> bool:
         cmd = argv[0]
@@ -214,20 +218,22 @@ command_risk_engine = CommandRiskEngine()
 #   - READ_ONLY_TOOLS = 只读工具（两模式均 allow）
 #   - 两处之外的未知工具：Plan fail-closed deny，Build 放行
 TOOL_RISK_POLICY: Dict[str, Tuple[Verdict, RiskLevel, str]] = {
-    "write_file": (Verdict.ASK, RiskLevel.WRITE, "写文件操作会修改项目文件，需你确认后执行"),
-    "git_commit": (Verdict.ASK, RiskLevel.WRITE, "Git 提交会写入提交历史，需你确认后执行"),
-    "git_add": (Verdict.ASK, RiskLevel.WRITE, "Git 暂存会变更索引，需你确认后执行"),
-    "git_push": (Verdict.ASK, RiskLevel.WRITE, "Git 推送会上传提交到远端，需你确认后执行"),
-    "git_pull": (Verdict.ASK, RiskLevel.WRITE, "Git 拉取会变更本地分支，需你确认后执行"),
-    "git_restore": (Verdict.ASK, RiskLevel.DESTRUCTIVE, "Git 恢复会覆盖/丢弃本地改动，需你确认后执行"),
-    "git_reset": (Verdict.ASK, RiskLevel.DESTRUCTIVE, "Git 回退会重写历史/丢弃改动，需你确认后执行"),
-    "git_clean": (Verdict.ASK, RiskLevel.DESTRUCTIVE, "Git 清理会删除未跟踪文件，需你确认后执行"),
-    "git_revert": (Verdict.ASK, RiskLevel.DESTRUCTIVE, "Git 回滚会生成反向提交，需你确认后执行"),
+    "write_file": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "写文件操作会修改项目文件，需你确认后执行"),
+    "git_commit": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 提交会写入提交历史，需你确认后执行"),
+    "git_add": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 暂存会变更索引，需你确认后执行"),
+    "git_push": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 推送会上传提交到远端，需你确认后执行"),
+    "git_pull": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 拉取会变更本地分支，需你确认后执行"),
+    "git_restore": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 恢复会覆盖/丢弃本地改动，需你确认后执行"),
+    "git_reset": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 回退会重写历史/丢弃改动，需你确认后执行"),
+    "git_clean": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 清理会删除未跟踪文件，需你确认后执行"),
+    "git_revert": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 回滚会生成反向提交，需你确认后执行"),
     # 数据库写入（plan 禁止修改数据库）：Build 放行（后台记忆），Plan deny
     "add_memory": (Verdict.ALLOW, RiskLevel.WRITE, "保存记忆会写入数据库，Plan 模式禁止修改数据库"),
+    # 待办事项管理（Build 放行，Plan deny — 与 add_memory 同策略）
+    "manage_todos": (Verdict.ALLOW, RiskLevel.WRITE, "管理待办会写入数据库，Plan 模式禁止修改数据库"),
     # 预留：当前无对应实现，注册后自动被 Plan 拒绝（fail-closed）
-    "delete_file": (Verdict.ASK, RiskLevel.DESTRUCTIVE, "删除文件操作不可恢复，需你确认后执行"),
-    "rename_file": (Verdict.ASK, RiskLevel.WRITE, "重命名文件会变更项目结构，需你确认后执行"),
+    "delete_file": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "删除文件操作不可恢复，需你确认后执行"),
+    "rename_file": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "重命名文件会变更项目结构，需你确认后执行"),
 }
 
 # 只读工具白名单（Plan / Build 均自动放行）：

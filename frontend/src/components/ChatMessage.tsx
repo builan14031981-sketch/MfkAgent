@@ -1,12 +1,13 @@
 "use client";
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain } from "lucide-react";
+import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain, Loader2, Image } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ToolCallCardList } from "@/components/ToolCallCard";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useTranslation } from "@/hooks/useTranslation";
+import { API_BASE } from "@/lib/api";
 
 interface ChatMessageProps {
   message: Message;
@@ -117,6 +118,135 @@ export function ThinkingPanel({ thinking, persistKey }: { thinking: string; pers
   );
 }
 
+/**
+ * Phase 12：流式思考面板 — 高性能实时渲染思考过程。
+ * - 使用 useRef + requestAnimationFrame 直接操作 DOM，避免每次 SSE chunk 触发 React 全量重渲染
+ * - 默认折叠（仅显示 "正在思考..." 标题行），用户可展开查看详细思考过程
+ * - 当 content 为空时显示闪烁动画；有内容时显示实时累积文本
+ * - 思考结束（isActive 变为 false）后自动折叠
+ */
+export function StreamingThinkingPanel({ content, isActive }: { content: string; isActive: boolean }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const prevLengthRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
+  // 直接 DOM 写入，绕过 React 渲染管线（高频 SSE 下性能关键）
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    // 仅在内容增长时更新 DOM（避免无意义写入）
+    if (content.length <= prevLengthRef.current) return;
+    prevLengthRef.current = content.length;
+
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (contentRef.current) {
+        contentRef.current.textContent = content;
+        // 自动滚动到底部
+        contentRef.current.scrollTop = contentRef.current.scrollHeight;
+      }
+    });
+    return () => {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [content]);
+
+  // 思考结束时自动折叠（rAF 异步触发，避免在 effect 内同步 setState）
+  useEffect(() => {
+    if (!isActive && content) {
+      const raf = requestAnimationFrame(() => setOpen(false));
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [isActive, content]);
+
+  const hasContent = content.length > 0;
+
+  return (
+    <div style={{
+      margin: "0 0 8px 0",
+      borderRadius: "var(--radius-sm)",
+      background: "var(--bg-level-3)",
+      borderLeft: "2px solid var(--text-level-4)",
+      padding: "6px 10px",
+      transition: "border-color 0.3s ease",
+    }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: "12px",
+          fontWeight: 500,
+          color: "var(--text-level-3)",
+          outline: "none",
+          width: "100%",
+        }}
+      >
+        {isActive && !hasContent ? (
+          <Loader2 style={{
+            width: "13px",
+            height: "13px",
+            color: "var(--color-primary)",
+            animation: "spin 1s linear infinite",
+          }} />
+        ) : (
+          <Brain style={{ width: "13px", height: "13px", color: "var(--text-level-4)" }} />
+        )}
+        <span style={{ flex: 1, textAlign: "left" }}>
+          {isActive && !hasContent ? t("chat.thinking") : hasContent ? t("chat.thinking") : t("chat.thinking")}
+        </span>
+        {open ? (
+          <ChevronUp style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
+        ) : (
+          <ChevronDown style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
+        )}
+      </button>
+      <div
+        ref={contentRef}
+        style={{
+          marginTop: open ? "6px" : "0",
+          fontSize: "12px",
+          lineHeight: 1.6,
+          color: "var(--text-level-3)",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          fontStyle: "italic",
+          maxHeight: open ? "300px" : "0",
+          overflow: open ? "auto" : "hidden",
+          opacity: open ? 1 : 0,
+          transition: "max-height 0.2s ease, opacity 0.2s ease, margin-top 0.2s ease",
+        }}
+      />
+      {/* 折叠时显示首行预览 */}
+      {!open && hasContent && (
+        <div style={{
+          fontSize: "12px",
+          lineHeight: 1.5,
+          color: "var(--text-level-4)",
+          fontStyle: "italic",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          marginTop: "2px",
+        }}>
+          {content.slice(0, 80)}{content.length > 80 ? "..." : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** 复制按钮：真实 clipboard + 勾选反馈。
  * hover 常驻：鼠标在按钮上就一直显示勾；移开才启动 1.2s 复位计时，
  * 短暂移回则取消计时继续显示勾，避免"去粘贴/读内容再回来已复位"的丢失感。 */
@@ -154,8 +284,14 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      onMouseEnter={cancelReset}
-      onMouseLeave={resetSoon}
+      onMouseEnter={(e) => {
+        cancelReset();
+        e.currentTarget.style.opacity = "1";
+      }}
+      onMouseLeave={(e) => {
+        resetSoon();
+        e.currentTarget.style.opacity = copied ? "1" : "0.4";
+      }}
       title={copied ? t("common.copied") : t("common.copy")}
       style={{
         display: "flex",
@@ -169,6 +305,8 @@ function CopyButton({ text }: { text: string }) {
         cursor: "pointer",
         color: copied ? "var(--color-copied-text)" : "var(--text-level-4)",
         outline: "none",
+        opacity: copied ? 1 : 0.4,
+        transition: "opacity 0.2s ease",
       }}
     >
       {copied ? (
@@ -194,6 +332,8 @@ function ActionButton({
     <button
       onClick={onClick}
       title={title}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; }}
       style={{
         display: "flex",
         alignItems: "center",
@@ -206,6 +346,8 @@ function ActionButton({
         cursor: "pointer",
         color: "var(--text-level-4)",
         outline: "none",
+        opacity: 0.4,
+        transition: "opacity 0.2s ease",
       }}
     >
       {children}
@@ -231,38 +373,85 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
     [message.content, message.thinking]
   );
 
+  // 静态操作栏布局（Zero CLS）：固定 marginTop、无 maxHeight/overflow/高度动画。
+  // 低调常驻：默认低对比度由按钮自身 opacity:0.4 承担，hover 按钮恢复 1，容器始终可见。
+  const actionBarStyle = (alignEnd: boolean): React.CSSProperties => ({
+    display: "flex",
+    gap: "4px",
+    justifyContent: alignEnd ? "flex-end" : "flex-start",
+    marginTop: "4px",
+  });
+
   if (message.role === "user") {
+    const imageAtts = message.attachments?.filter((a) => a.kind === "image") ?? [];
+    if (message.attachments?.length) {
+      console.log("[ChatMessage] 渲染用户消息 attachments:", message.id, message.attachments);
+    }
     return (
       <div>
         {/* 用户消息：轻量气泡 + 悬浮操作栏（复制 + 编辑） */}
-        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "4px" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: "4px" }}>
           <div style={{
             position: "relative",
             maxWidth: "70%",
-            padding: "10px 14px",
             borderRadius: "var(--radius-md)",
             background: "var(--color-primary)",
             color: "white",
             fontSize: "14px",
-            lineHeight: 1.6,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
+            lineHeight: 1.5,
+            overflow: "hidden",
           }}>
-            {message.content}
+            {/* 图片附件 */}
+            {imageAtts.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px" }}>
+                {imageAtts.map((att, i) => (
+                  <div key={i} style={{
+                    position: "relative",
+                    width: "120px",
+                    height: "120px",
+                    borderRadius: "6px",
+                    overflow: "hidden",
+                    background: "rgba(255,255,255,0.1)",
+                  }}>
+                    {att.path ? (
+                      <img
+                        src={`${API_BASE}/api/chat/${message.chat_id}/file?path=${encodeURIComponent(att.path)}`}
+                        alt={att.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          (e.target as HTMLImageElement).nextElementSibling?.setAttribute("style", "display:flex");
+                        }}
+                      />
+                    ) : null}
+                    <div style={{
+                      display: att.path ? "none" : "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "100%",
+                      height: "100%",
+                      color: "rgba(255,255,255,0.5)",
+                    }}>
+                      <Image style={{ width: "24px", height: "24px" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* 文字内容 */}
+            {message.content && (
+              <div style={{ padding: "8px 14px", paddingTop: imageAtts.length > 0 ? "4px" : "8px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                {message.content}
+              </div>
+            )}
           </div>
         </div>
         {/* 用户消息悬浮操作栏 */}
-        <div style={{
-          display: "flex",
-          gap: "4px",
-          justifyContent: "flex-end",
-          marginTop: "4px",
-          opacity: 0,
-          transition: "opacity 0.2s",
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-        >
+        <div style={actionBarStyle(true)}>
           <CopyButton text={message.content} />
           <ActionButton onClick={() => onEdit(message)} title={t("chat.edit")}>
             <Edit2 style={{ width: "13px", height: "13px" }} />
@@ -290,16 +479,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
       {/* 正文：Markdown 渲染（含代码块折叠） */}
       <MarkdownRenderer content={body} />
       {/* AI 消息悬浮操作栏：复制 / 引用 / 重生成 */}
-      <div style={{
-        display: "flex",
-        gap: "4px",
-        marginTop: "4px",
-        opacity: 0,
-        transition: "opacity 0.2s",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-      onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-      >
+      <div style={actionBarStyle(false)}>
         <CopyButton text={message.content} />
         <ActionButton onClick={() => onQuote(message.content)} title={t("chat.quote")}>
           <Quote style={{ width: "13px", height: "13px" }} />

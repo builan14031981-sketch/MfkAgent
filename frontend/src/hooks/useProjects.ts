@@ -19,6 +19,9 @@ export interface PaginatedResponse<T> {
   pages: number;
 }
 
+// 跨实例同步事件：任一实例变更 projects 后广播，所有实例立即重新拉取
+export const PROJECTS_CHANGED_EVENT = "mfk-projects-changed";
+
 export function useProjects(page: number = 1, limit: number = 50) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
@@ -44,20 +47,35 @@ export function useProjects(page: number = 1, limit: number = 50) {
     fetchProjects();
   }, [fetchProjects]);
 
+  // 监听其他实例的变更事件，实时同步（新建 / 删除 / 置顶等）
+  useEffect(() => {
+    const handler = () => {
+      fetchProjects();
+    };
+    window.addEventListener(PROJECTS_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(PROJECTS_CHANGED_EVENT, handler);
+  }, [fetchProjects]);
+
+  // 变更成功后刷新本实例并向所有实例广播
+  const refreshAndBroadcast = useCallback(async () => {
+    await fetchProjects();
+    window.dispatchEvent(new Event(PROJECTS_CHANGED_EVENT));
+  }, [fetchProjects]);
+
   async function createProject(name: string, path: string) {
     const data = await apiPost<Project>("/api/projects", { name, path });
-    await fetchProjects();
+    await refreshAndBroadcast();
     return data;
   }
 
   async function deleteProject(id: number) {
     await apiDelete(`/api/projects/${id}`);
-    await fetchProjects();
+    await refreshAndBroadcast();
   }
 
   async function pinProject(id: number, pinned: boolean) {
     await apiPatch(`/api/projects/${id}`, { is_pinned: pinned });
-    await fetchProjects();
+    await refreshAndBroadcast();
   }
 
   return { projects, total, loading, error, createProject, deleteProject, pinProject, refetch: fetchProjects };

@@ -1,11 +1,18 @@
 """本地项目 Git 工具集 —— 供 LLM Function Calling 使用。
 
 全部通过 subprocess 调用系统 git（参数用 list 数组，不拼接 shell 字符串，
-杜绝注入）；工作目录限定在 project_path 内。无需下载任何额外文件。
+杜绝注入）；工作目录限定在 project_path 内（统一沙箱锚定）。无需下载任何额外文件。
 """
 from typing import Dict, List, Optional
 import os
 import subprocess
+
+from app.core.sandbox import (
+    SandboxViolation,
+    decode_subprocess_output,
+    resolve_sandbox_path,
+    run_subprocess,
+)
 
 
 class GitToolError(Exception):
@@ -16,27 +23,22 @@ def _git(project_path: str, args: List[str], timeout: int = 60) -> str:
     """执行 git 命令，返回 stdout（stderr 合并）。"""
     if not project_path:
         raise GitToolError("project_path 不能为空")
-    proj_real = os.path.realpath(project_path)
+    try:
+        proj_real = str(resolve_sandbox_path(".", project_path))
+    except SandboxViolation as e:
+        raise GitToolError(f"{e}")
     if not os.path.isdir(proj_real):
         raise GitToolError(f"项目目录不存在: {project_path}")
     try:
-        proc = subprocess.run(
-            ["git"] + args,
-            cwd=proj_real,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-        )
+        proc = run_subprocess(["git"] + args, cwd=proj_real, timeout=timeout)
     except FileNotFoundError:
         raise GitToolError("未检测到 git 命令，请先安装 Git")
     except subprocess.TimeoutExpired:
         raise GitToolError(f"git 命令执行超时（>{timeout}s）")
     if proc.returncode != 0:
-        msg = (proc.stderr or proc.stdout or "").strip()
+        msg = (decode_subprocess_output(proc.stderr) or decode_subprocess_output(proc.stdout) or "").strip()
         raise GitToolError(msg or f"git 命令失败（exit {proc.returncode}）")
-    return (proc.stdout or "").strip()
+    return (decode_subprocess_output(proc.stdout) or "").strip()
 
 
 def _is_repo(project_path: str) -> bool:
@@ -48,13 +50,16 @@ def _is_repo(project_path: str) -> bool:
 
 
 def _resolve_rel(project_path: str, relative_path: str = "") -> str:
-    """限定相对路径必须在项目工作区内（防 ../ 逃逸）。"""
+    """限定相对路径必须在项目工作区内（统一沙箱校验，防 ../ 与符号链接逃逸）。
+
+    仅做校验，返回原始相对路径（git 需相对 cwd 的路径参数）。
+    """
     if not relative_path:
         return "."
-    proj_real = os.path.realpath(project_path)
-    target = os.path.realpath(os.path.join(proj_real, relative_path))
-    if target != proj_real and not target.startswith(proj_real + os.sep):
-        raise GitToolError(f"路径越权，禁止访问项目目录之外: {relative_path}")
+    try:
+        resolve_sandbox_path(relative_path, project_path)  # 校验越权即抛
+    except SandboxViolation as e:
+        raise GitToolError(f"{e}")
     return relative_path
 
 

@@ -8,4 +8,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     electron: process.versions.electron,
   },
   selectDirectory: () => ipcRenderer.invoke("select-directory"),
+  showNotification: (opts) => ipcRenderer.invoke("show-notification", opts),
 });

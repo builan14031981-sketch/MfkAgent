@@ -380,8 +380,14 @@ class TestG4CRunStream(unittest.TestCase):
             # task_1 抛异常
             raise RuntimeError("stream 中断")
 
+        async def boom_reflection(*args, **kwargs):
+            # 反思 LLM 失败 → 自愈降级，走原始 failed + 级联 skip 路径
+            raise RuntimeError("反思调用失败")
+            yield  # noqa: unreachable
+
         events = []
         with patch("app.services.model.model_service.stream_once", fake_stream), \
+             patch("app.services.model.model_service.call_once", boom_reflection), \
              patch("app.core.agent_runtime.agent.runtime_event_recorder", _RecordingRecorder()):
             async def collect():
                 async for event in self.runtime.run_stream(context, messages):

@@ -10,6 +10,7 @@ import { useModels, Model } from "@/hooks/useModels";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChatInput } from "@/components/ChatInput";
+import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import type { Project } from "@/hooks/useProjects";
 
 interface ProjectInitModalProps {
@@ -36,6 +37,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
   const [agentId, setAgentId] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("strict");
   const [mode, setMode] = useState<"build" | "plan">("build");
   const [files, setFiles] = useState<string[]>([]);
 
@@ -212,7 +214,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             onSend={handleSend}
             isSending={isSending}
             placeholder={t("chat.projectInitPlaceholder")}
-            inputMinHeight={82}
+            inputMinHeight={97}
             models={models}
             modelId={(selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null}
             onModelChange={(id) => {
@@ -221,6 +223,8 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             }}
             reasoningEffort={reasoningEffort}
             onReasoningChange={setReasoningEffort}
+            permissionMode={permissionMode}
+            onPermissionChange={setPermissionMode}
             mode={mode}
             onModeChange={setMode}
             allowAgentChange

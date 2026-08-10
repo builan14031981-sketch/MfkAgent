@@ -22,17 +22,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatInputProps) {
       padding: "8px 16px",
     }}>
       <ChatInput {...props} />
-      {!props.projectName && (
-        <p style={{
-          textAlign: "center",
-          fontSize: "11px",
-          lineHeight: 1.4,
-          color: "var(--text-level-4)",
-          margin: 0,
-          paddingTop: "4px",
-          pointerEvents: "none",
-        }}>{t("chat.noProjectHint")}</p>
-      )}
       <p style={{
         textAlign: "center",
         fontSize: "11px",

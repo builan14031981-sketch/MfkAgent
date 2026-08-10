@@ -2,10 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, mcp, workflows, autotasks, plugins, trash, greetings, devtools, runs
+import logging
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
+
+logger = logging.getLogger(__name__)
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -62,6 +65,8 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE messages ADD COLUMN tool_calls JSON"))
             if "timeline" not in cols:
                 conn.execute(sa.text("ALTER TABLE messages ADD COLUMN timeline JSON"))
+            if "task_graph" not in cols:
+                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN task_graph JSON"))
 
     if "agents" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("agents")}
@@ -76,6 +81,12 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN agent_id VARCHAR(100)"))
             if "project_id" not in cols:
                 conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN project_id INTEGER"))
+            if "memory_type" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN memory_type VARCHAR(50) DEFAULT 'preference'"))
+            if "confidence" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN confidence FLOAT DEFAULT 0.8"))
+            if "source_chat_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN source_chat_id INTEGER"))
 
     if "agent_runs" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("agent_runs")}
@@ -83,28 +94,28 @@ def _ensure_schema():
             if "state" not in cols:
                 conn.execute(sa.text("ALTER TABLE agent_runs ADD COLUMN state VARCHAR(50) DEFAULT 'pending'"))
 
+    if "models" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("models")}
+        with engine.begin() as conn:
+            if "supports_vision" not in cols:
+                conn.execute(sa.text("ALTER TABLE models ADD COLUMN supports_vision BOOLEAN DEFAULT 0"))
+
+    if "messages" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("messages")}
+        with engine.begin() as conn:
+            if "attachments" not in cols:
+                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN attachments JSON"))
+
 
 _ensure_schema()
 
 
 def _purge_mimo_key():
-    """幂等迁移：清除已废弃的 MiMo（token 套餐付费，已不再使用）API Key 残留。"""
-    from sqlalchemy import text as _text
-    from app.core.database import SessionLocal
-    db = SessionLocal()
-    try:
-        deleted = db.execute(_text("DELETE FROM settings WHERE key='api_key_mimo'"))
-        if deleted.rowcount:
-            print(f"[migration] 已清除废弃的 api_key_mimo ({deleted.rowcount} 行)")
-        db.commit()
-    except Exception as e:  # noqa: BLE001
-        print(f"[migration] 清理 api_key_mimo 失败（忽略）: {e}")
-        db.rollback()
-    finally:
-        db.close()
+    """已禁用：MiMo 已重新启用，不再清除 api_key_mimo。"""
+    pass
 
 
-_purge_mimo_key()
+# _purge_mimo_key()  # 已禁用：MiMo 已重新启用
 
 
 def _migrate_legacy_memory():
@@ -151,6 +162,18 @@ def _migrate_legacy_memory():
 
 _migrate_legacy_memory()
 
+
+def _migrate_legacy_todos():
+    """一次性迁移：旧 SQLite todos 表 → 本地 JSON 文件（幂等，见 todo_store）。"""
+    from app.core import todo_store
+
+    migrated = todo_store.migrate_from_db_once()
+    if migrated:
+        print("[migration] 待办已从 SQLite todos 表迁移到 data/todos.json")
+
+
+_migrate_legacy_todos()
+
 app = FastAPI(
     title="MfkAgent API",
     description="MfkAgent - AI工作助手后端API",
@@ -183,14 +206,13 @@ app.include_router(backup.router, prefix="/api/backup", tags=["backup"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["knowledge"])
 app.include_router(fonts.router, prefix="/api/fonts", tags=["fonts"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
-app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
-app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
-app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"])
 app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(trash.router, prefix="/api/trash", tags=["trash"])
 app.include_router(greetings.router, prefix="/api/system", tags=["system"])
 app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
+app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
+app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
 
 @app.get("/")
 async def root():
@@ -199,3 +221,24 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+# ── Phase 9 P1: 端口自动检测与避让 ──
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    from app.core.port_manager import find_available_port, write_port_file, clear_port_file
+
+    # Phase 8: 优先使用 Electron 主进程传入的端口（MFK_PORT），否则自动探测
+    mfk_port = os.environ.get("MFK_PORT")
+    if mfk_port:
+        port = int(mfk_port)
+        logger.info("Phase8 port: 使用 Electron 传入端口 MFK_PORT=%d", port)
+    else:
+        port = find_available_port(start_port=8001)
+    write_port_file(port)
+
+    try:
+        uvicorn.run("main:app", host="127.0.0.1", port=port, reload=False)
+    finally:
+        clear_port_file()

@@ -7,6 +7,11 @@ export interface ProviderModelConfig {
   name: string;
 }
 
+export interface RemoteModelInfo {
+  id: string;
+  context_window: number | null;
+}
+
 export interface ProviderConfig {
   id: string;
   name: string;
@@ -108,6 +113,17 @@ export function useModelConfig() {
     [refresh]
   );
 
+  /** 拉取上游官方模型列表（一键拉取）。返回模型元数据数组。 */
+  const fetchRemoteModels = useCallback(
+    async (providerId: string): Promise<RemoteModelInfo[]> => {
+      const data = await apiPost<{ models: RemoteModelInfo[] }>("/api/models/fetch_remote", {
+        provider_id: providerId,
+      });
+      return data.models || [];
+    },
+    []
+  );
+
   return {
     configs,
     customModels,
@@ -118,5 +134,6 @@ export function useModelConfig() {
     createCustomModel,
     updateCustomModel,
     deleteCustomModel,
+    fetchRemoteModels,
   };
 }

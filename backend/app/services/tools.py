@@ -462,6 +462,115 @@ class ToolRegistry:
         return await tool.execute(**kwargs)
 
 
+class ManageTodosTool(Tool):
+    """待办事项管理工具 — 供 LLM 通过 Tool Calling 管理用户待办。
+
+    支持 action: list / create / update / delete。
+    【严禁规则】list 默认仅返回 status='pending'，除非 include_completed=true。
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="manage_todos",
+            description=(
+                "管理用户的待办事项（笔记本/待办清单）。"
+                "action=list：读取待办列表（默认仅返回未完成项）；"
+                "action=add：新增待办（需提供 title）；"
+                "action=complete：完成待办（需提供 todo_id）；"
+                "action=create：新增待办（add 的别名，需提供 title）；"
+                "action=update：更新待办状态或标题（需提供 todo_id）；"
+                "action=delete：删除待办（需提供 todo_id）。"
+                "当用户说「查看待办」「记到笔记本」「添加待办」「完成待办」等意图时调用本工具。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["list", "add", "complete", "create", "update", "delete"],
+                        "description": "操作类型：list=读取列表, add/create=新增, complete=标记完成, update=更新, delete=删除",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "待办标题（add/create 时必填，update 时可选）",
+                    },
+                    "todo_id": {
+                        "type": "string",
+                        "description": "待办 ID（complete/update/delete 时必填）",
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["pending", "completed"],
+                        "description": "目标状态（update 时可选）",
+                    },
+                    "include_completed": {
+                        "type": "boolean",
+                        "description": "list 时是否包含已完成的待办（默认 false，仅返回未完成）",
+                    },
+                },
+                "required": ["action"],
+            },
+        )
+
+    async def execute(self, action: str = "list", title: str = "", todo_id: str = "",
+                      status: str = "", include_completed: bool = False,
+                      project_id: int = None, **kwargs) -> ToolResult:
+        import json as _json
+        from app.core import todo_store
+
+        try:
+            if action == "list":
+                # 【严禁规则】默认仅返回 pending，除非用户明确要求查看已完成
+                status_filter = "all" if include_completed else "pending"
+                todos = todo_store.list_todos(status=status_filter, project_id=project_id)
+                result = [
+                    {"id": t["id"], "title": t["title"], "status": t["status"],
+                     "project_id": t.get("project_id"),
+                     "created_at": t.get("created_at", "")}
+                    for t in todos
+                ]
+                if not result:
+                    return ToolResult(success=True, output="当前没有未完成的待办事项。")
+                return ToolResult(success=True, output=_json.dumps(result, ensure_ascii=False))
+
+            elif action in ("add", "create"):
+                if not title or not title.strip():
+                    return ToolResult(success=False, output="", error="title 不能为空")
+                new_todo = todo_store.create_todo(title=title, project_id=project_id, status="pending")
+                return ToolResult(success=True, output=f"已创建待办: {new_todo['title']} (id: {new_todo['id']})")
+
+            elif action == "complete":
+                if not todo_id:
+                    return ToolResult(success=False, output="", error="todo_id 不能为空")
+                todo = todo_store.update_todo(todo_id=todo_id, status="completed")
+                if todo is None:
+                    return ToolResult(success=False, output="", error=f"待办 {todo_id} 不存在")
+                return ToolResult(success=True, output=f"已完成待办: {todo['title']}")
+
+            elif action == "update":
+                if not todo_id:
+                    return ToolResult(success=False, output="", error="todo_id 不能为空")
+                todo = todo_store.update_todo(todo_id=todo_id, title=title or None,
+                                              status=status if status in ("pending", "completed") else None)
+                if todo is None:
+                    return ToolResult(success=False, output="", error=f"待办 {todo_id} 不存在")
+                return ToolResult(success=True, output=f"已更新待办: {todo['title']} → 状态: {todo['status']}")
+
+            elif action == "delete":
+                if not todo_id:
+                    return ToolResult(success=False, output="", error="todo_id 不能为空")
+                todo = todo_store.get_todo(todo_id)
+                if todo is None:
+                    return ToolResult(success=False, output="", error=f"待办 {todo_id} 不存在")
+                todo_store.delete_todo(todo_id)
+                return ToolResult(success=True, output=f"已删除待办: {todo['title']}")
+
+            else:
+                return ToolResult(success=False, output="", error=f"未知 action: {action}")
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+
 tool_registry = ToolRegistry()
 
 # 注册安全工具（所有工具都有明确的用途和限制）
@@ -471,6 +580,7 @@ tool_registry.register(FetchUrlTool())           # 获取网页内容（有超�
 tool_registry.register(DateTimeTool())           # 获取当前时间
 tool_registry.register(JsonFormatTool())         # 格式化 JSON
 tool_registry.register(AddMemoryTool())          # 保存记忆
+tool_registry.register(ManageTodosTool())        # 待办事项管理
 
 # 注意：文件操作工具（read_file/write_file/list_files）已在 core/tools.py 中实现
 # 带有沙箱保护，只在有 project_path 时通过 FILE_TOOLS_DEFINITIONS 提供

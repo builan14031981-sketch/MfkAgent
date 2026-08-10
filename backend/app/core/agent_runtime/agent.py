@@ -15,6 +15,7 @@ Phase E4 新增：
 
 from typing import Optional, List
 import asyncio
+import os
 
 from .router import TaskRouter
 from .context import AgentContext, AgentResult
@@ -26,10 +27,19 @@ from .personas import get_persona_prompt
 from app.core.task_graph.models import TaskNode
 from .model_context_config import get_model_max_tokens, compute_watermark
 from app.core.verification import verifier as default_verifier
+from app.services.model import ModelNotFoundError, ModelConfigError
 
 # ──── 执行循环最大轮次 ────
-MAX_ROUNDS = 3
-MAX_STREAM_ROUNDS = 8
+MAX_ROUNDS = 10
+MAX_STREAM_ROUNDS = 10
+DEFAULT_MAX_TOOL_ROUNDS = 10
+
+# ──── Phase 11: 写操作工具集合（用于强制自查判定）────
+WRITE_TOOLS = {"write_file", "replace_in_file", "apply_patch", "delete_file", "run_command"}
+
+# ──── Phase 11: 倒数预警与自查提示文本 ────
+COUNTDOWN_WARNING = "[系统提示]: 你的工具调用轮次即将达到上限，请在下一轮结束工具调用并向用户总结最终结果。"
+SELF_CHECK_PROMPT = "[系统强制自查]: 你在本次任务中进行了代码或文件修改。请仔细核对改动，确保没有引入语法错误、格式错乱或非预期的功能破坏。确认无误后给出最终汇报。"
 
 
 class AgentRuntime:
@@ -304,14 +314,15 @@ class AgentRuntime:
         *,
         model_id: Optional[str] = None,
         run_id: Optional[int] = None,
-    ) -> bool:
+    ) -> Optional[TaskNode]:
         """任务失败后尝试 LLM 反思并动态注入修复任务。
 
         流程：
-          1. 构造 Reflection Prompt，调用轻量模型分析错误
-          2. 解析 LLM 返回的 JSON 修复方案
-          3. 如果方案有效，通过 dynamic_append_task 注入新节点
-          4. 失败时优雅降级，不阻断原有错误处理流程
+          1. 自愈深度上限校验（连续失败达 max_heal_depth 直接阻断，走降级）
+          2. 构造 Reflection Prompt，调用轻量模型分析错误
+          3. 解析 LLM 返回的 JSON 修复方案
+          4. 如果方案有效，通过 dynamic_append_task 注入新节点
+          5. 失败时优雅降级，不阻断原有错误处理流程
 
         Args:
             current_task: 失败的任务节点
@@ -320,10 +331,26 @@ class AgentRuntime:
             run_id: 运行记录 ID（用于事件广播）
 
         Returns:
-            bool: True 表示成功注入修复任务，False 表示降级到原始失败
+            Optional[TaskNode]: 成功时返回注入的修复节点（heal_N），
+                失败或触达自愈上限时返回 None（调用方据此降级到原始失败）
         """
-        if self.task_graph_state is None:
-            return False
+        if self.task_graph_state is None or current_task is None:
+            return None
+
+        # 自愈深度上限：连续失败达到 max_heal_depth 后阻断反思，直接降级
+        if not self.task_graph_state.can_heal(current_task.id):
+            if run_id:
+                runtime_event_recorder.emit(run_id, "agent_state_update",
+                    self._build_agent_state_event(
+                        agent_role=self._agent_role_display_name(
+                            current_task.assigned_agent if current_task else "default_agent"
+                        ),
+                        status="error",
+                        action_detail="已到达自愈上限，停止修复尝试，任务判定失败",
+                        current_task_id=current_task.id if current_task else None,
+                        task_progress=self._build_task_progress(current_task.id if current_task else None),
+                    ))
+            return None
 
         # 发送反思开始事件
         if run_id:
@@ -359,10 +386,10 @@ class AgentRuntime:
             response_text = (result.content or "").strip()
         except Exception:
             # LLM 调用失败 → 降级
-            return False
+            return None
 
         if not response_text:
-            return False
+            return None
 
         # 解析 JSON 修复方案
         import json as _json
@@ -375,12 +402,12 @@ class AgentRuntime:
                     response_text = response_text[start:end]
             plan = _json.loads(response_text)
         except Exception:
-            return False
+            return None
 
         fix_action = (plan.get("fix_action") or "").strip()
         if not fix_action:
             # LLM 判断无法修复 → 降级
-            return False
+            return None
 
         suggested_tools = plan.get("suggested_tools") or []
 
@@ -394,7 +421,7 @@ class AgentRuntime:
         )
 
         if new_task is None:
-            return False
+            return None
 
         # 发送修复注入事件
         if run_id:
@@ -409,7 +436,7 @@ class AgentRuntime:
                     task_progress=self._build_task_progress(new_task.id),
                 ))
 
-        return True
+        return new_task
 
     # ──── G6-B: 智能会话压缩引擎 ────
 
@@ -538,12 +565,14 @@ class AgentRuntime:
         current_messages: list,
         all_tool_calls: list,
         support_approval: bool = True,
+        auto_approve: bool = False,
     ):
         """执行一批工具调用（结构化或归一化），透传工具事件，回喂结果。
 
         - 追加 assistant tool_calls 消息
         - 逐个执行工具
         - 需审批时：support_approval=True → 等待审批闭环；False → 明确拒绝
+        - Phase 12 auto_approve：REQUIRE_APPROVAL 级工具自动放行，HIGH_RISK 仍强制审批
         - 追加 role=tool 结果消息
         yield 工具事件（tool_start/tool_approval/tool_result）供上层透传 SSE。
         """
@@ -562,6 +591,7 @@ class AgentRuntime:
                 read_only=read_only,
                 ctx=ctx,
                 emit=event_source.emit,
+                auto_approve=auto_approve,
             )
             for event in event_source.drain():
                 yield event
@@ -605,6 +635,7 @@ class AgentRuntime:
         current_messages: list,
         all_tool_calls: list,
         support_approval: bool = True,
+        auto_approve: bool = False,
     ):
         """执行工具调用 + 程序化验证（Phase E4）。
 
@@ -621,7 +652,7 @@ class AgentRuntime:
         """
         executed_start = len(all_tool_calls)
         async for event in self._exec_tool_calls(
-            ordered, ctx, project_path, read_only, current_messages, all_tool_calls, support_approval
+            ordered, ctx, project_path, read_only, current_messages, all_tool_calls, support_approval, auto_approve
         ):
             yield event
 
@@ -684,6 +715,32 @@ class AgentRuntime:
         """归一化阶段为字符串（支持 RuntimePhase 枚举 / 字符串）。"""
         return phase.value if isinstance(phase, RuntimePhase) else str(phase)
 
+    # ──── Phase 11: 工具轮次解析 ────
+
+    @staticmethod
+    def _resolve_max_tool_rounds(context: AgentContext, max_tool_rounds: Optional[int] = None) -> int:
+        """解析 max_tool_rounds 优先级：显式参数 > AgentContext > 环境变量 > 默认值。
+
+        Args:
+            context: Agent 执行上下文
+            max_tool_rounds: 显式传入的轮次上限
+
+        Returns:
+            int: 解析后的工具轮次上限
+        """
+        if max_tool_rounds is not None:
+            return max_tool_rounds
+        ctx_val = getattr(context, "max_tool_rounds", None)
+        if ctx_val is not None:
+            return ctx_val
+        env_val = os.environ.get("MAX_TOOL_ROUNDS")
+        if env_val is not None:
+            try:
+                return int(env_val)
+            except ValueError:
+                pass
+        return DEFAULT_MAX_TOOL_ROUNDS
+
     def _record_state(self, run_id: Optional[int], phase, reason: Optional[str] = None) -> None:
         """非流式路径：更新 AgentRun.state（含审计）并持久化 state_change 事件。
 
@@ -709,6 +766,7 @@ class AgentRuntime:
         max_tokens: int = 4096,
         reasoning_effort: Optional[str] = None,
         read_only: bool = False,
+        max_tool_rounds: Optional[int] = None,
     ) -> AgentResult:
         """执行 Agent 调用（非流式，含 Execution Loop）。
 
@@ -763,6 +821,11 @@ class AgentRuntime:
             loop_messages = self._to_dict_messages(messages)
             ctx = {k: v for k, v in (context.memory_context or {}).items() if v is not None}
 
+            # ──── Phase 11: 解析 max_tool_rounds & 初始化自查状态 ────
+            resolved_max_rounds = self._resolve_max_tool_rounds(context, max_tool_rounds)
+            has_modified_code = False
+            self_check_done = False
+
             all_tool_calls = []
             final_content = ""
             final_usage = None
@@ -805,8 +868,15 @@ class AgentRuntime:
                 # G4-C: 单任务异常边界 — 任务失败不使整个 AgentRun failed，
                 # 而是 failed + 级联 skip 依赖 + task_failed/task_skipped 事件后收尾
                 try:
-                    while round_no < MAX_ROUNDS:
-                        round_tools = context.tools if round_no < MAX_ROUNDS - 1 else None
+                    while round_no < resolved_max_rounds:
+                        round_tools = context.tools if round_no < resolved_max_rounds - 1 else None
+
+                        # ──── Phase 11: 倒数预警（第 max_tool_rounds - 1 轮，即最后一轮有工具时）────
+                        if round_no == resolved_max_rounds - 2:
+                            loop_messages.append({
+                                "role": "system",
+                                "content": COUNTDOWN_WARNING,
+                            })
 
                         result = await model_service.call_once(
                             model_id=context.model_id,
@@ -816,6 +886,7 @@ class AgentRuntime:
                             tools=round_tools,
                             reasoning_effort=reasoning_effort,
                             memory_text=context.memory_text if round_no == 0 and not has_task_graph else None,
+                            vision_context=context.vision_context if round_no == 0 else None,
                         )
 
                         final_usage = result.usage
@@ -826,6 +897,14 @@ class AgentRuntime:
                                 self._build_token_usage_event(final_usage, context.model_id))
 
                         if not result.tool_calls or not round_tools:
+                            # ──── Phase 11: 强制自查插队拦截 ────
+                            if has_modified_code and not self_check_done and round_no < resolved_max_rounds:
+                                loop_messages.append({
+                                    "role": "system",
+                                    "content": SELF_CHECK_PROMPT,
+                                })
+                                self_check_done = True
+                                continue
                             task_content = result.content
                             break
 
@@ -852,12 +931,21 @@ class AgentRuntime:
                             loop_messages,
                             all_tool_calls,
                             support_approval=False,
+                            auto_approve=context.auto_approve,
                         ):
                             runtime_event_recorder.emit(
                                 run_id,
                                 event.get("type", "event"),
                                 {k: v for k, v in event.items() if k != "type"},
                             )
+
+                        # ──── Phase 11: 写操作检测 ────
+                        if not has_modified_code:
+                            for tc in result.tool_calls:
+                                tool_name = tc.get("function", {}).get("name", "")
+                                if tool_name in WRITE_TOOLS:
+                                    has_modified_code = True
+                                    break
 
                         self._record_state(run_id, RuntimePhase.VERIFYING, "verification")
                         self._record_state(run_id, RuntimePhase.LLM_CALL, "next round")
@@ -906,6 +994,33 @@ class AgentRuntime:
                         continue
 
                     break  # 无 Plan → 结束
+                except ModelNotFoundError as e:
+                    # 模型不存在 → 直接熔断，不尝试反思（反思用同一模型也会失败）
+                    if has_task_graph and current_task:
+                        runtime_event_recorder.emit(run_id, "agent_state_update",
+                            self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="error",
+                                action_detail=f"模型不可用: {e}",
+                                current_task_id=current_task.id,
+                                task_progress=self._build_task_progress(current_task.id),
+                            ))
+                        self.task_graph_state.mark_failed(current_task.id, str(e)[:200])
+                    raise
+                except ModelConfigError as e:
+                    # 模型配置错误（无 Key / 未注册）→ 直接熔断，不尝试反思
+                    # 反思用同一无 Key 模型也会失败，无意义
+                    if has_task_graph and current_task:
+                        runtime_event_recorder.emit(run_id, "agent_state_update",
+                            self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="error",
+                                action_detail=f"模型配置错误: {e}",
+                                current_task_id=current_task.id,
+                                task_progress=self._build_task_progress(current_task.id),
+                            ))
+                        self.task_graph_state.mark_failed(current_task.id, str(e)[:200])
+                    raise
                 except Exception as e:
                     # G4-C: 单任务异常 → failed + 级联 skip 依赖 + 事件；运行正常收尾
                     if has_task_graph and current_task:
@@ -1027,9 +1142,12 @@ class AgentRuntime:
             runtime_event_recorder.finish_run(run_id, "cancelled")
             raise
         except Exception as e:
-            runtime_event_recorder.transition(run_id, RuntimePhase.FAILED.value, str(e)[:200])
-            runtime_event_recorder.emit(run_id, "error", {"message": str(e)})
+            error_msg = str(e)
+            runtime_event_recorder.transition(run_id, RuntimePhase.FAILED.value, error_msg[:200])
+            runtime_event_recorder.emit(run_id, "error", {"message": error_msg})
             runtime_event_recorder.finish_run(run_id, "failed")
+            # 向 SSE 流 yield error 事件，确保前端收到友好提示再断流
+            yield {"type": "error", "message": error_msg}
             raise
 
     async def _run_stream_events(
@@ -1069,6 +1187,10 @@ class AgentRuntime:
         current_messages = self._to_dict_messages(messages)
         all_tool_calls = []
         available_names = {t["function"]["name"] for t in (context.tools or [])} if context.tools else set()
+
+        # ──── Phase 11: 初始化自查状态 ────
+        has_modified_code = False
+        self_check_done = False
 
         # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
         while True:
@@ -1115,6 +1237,13 @@ class AgentRuntime:
                 for round_no in range(max_tool_rounds + 1):
                     round_tools = context.tools if round_no < max_tool_rounds else None
 
+                    # ──── Phase 11: 倒数预警（第 max_tool_rounds - 1 轮，即最后一轮有工具时）────
+                    if round_no == max_tool_rounds - 2:
+                        current_messages.append({
+                            "role": "system",
+                            "content": COUNTDOWN_WARNING,
+                        })
+
                     collected_tool_calls: dict = {}
                     final_finish = "stop"
                     round_text = ""
@@ -1127,6 +1256,7 @@ class AgentRuntime:
                         tools=round_tools,
                         reasoning_effort=reasoning_effort,
                         memory_text=context.memory_text if round_no == 0 and not has_task_graph else None,
+                        vision_context=context.vision_context if round_no == 0 else None,
                     ):
                         etype = event.get("type")
                         if etype == "text":
@@ -1158,9 +1288,16 @@ class AgentRuntime:
                         yield {"type": "state_change", "state": RuntimePhase.TOOL_EXECUTION.value, "reason": "tool execution"}
                         async for event in self._exec_tool_calls_with_verification(
                             ordered, ctx, context.project_path, read_only, current_messages, all_tool_calls,
-                            support_approval=True,
+                            support_approval=True, auto_approve=context.auto_approve,
                         ):
                             yield event
+                        # ──── Phase 11: 写操作检测 ────
+                        if not has_modified_code:
+                            for tc in ordered:
+                                tool_name = tc.get("function", {}).get("name", "")
+                                if tool_name in WRITE_TOOLS:
+                                    has_modified_code = True
+                                    break
                         # 战略4: Agent 状态可视化 — 工具执行完成
                         agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
                         yield {"type": "agent_state_update", **self._build_agent_state_event(
@@ -1190,9 +1327,16 @@ class AgentRuntime:
                             yield {"type": "state_change", "state": RuntimePhase.TOOL_EXECUTION.value, "reason": "normalizer tool"}
                             async for event in self._exec_tool_calls_with_verification(
                                 norm["calls"], ctx, context.project_path, read_only, current_messages, all_tool_calls,
-                                support_approval=True,
+                                support_approval=True, auto_approve=context.auto_approve,
                             ):
                                 yield event
+                            # ──── Phase 11: 写操作检测（归一化路径）────
+                            if not has_modified_code:
+                                for tc in norm["calls"]:
+                                    tool_name = tc.get("function", {}).get("name", "")
+                                    if tool_name in WRITE_TOOLS:
+                                        has_modified_code = True
+                                        break
                             # 战略4: Agent 状态可视化 — 归一化工具执行完成
                             yield {"type": "agent_state_update", **self._build_agent_state_event(
                                 agent_role=agent_role,
@@ -1228,11 +1372,22 @@ class AgentRuntime:
                         task_done = True
                         break  # 跳出内层 for，回到外层 while 取下一个任务
                     else:
+                        # ──── Phase 11: 强制自查插队拦截（流式非 TaskGraph 路径）────
+                        if has_modified_code and not self_check_done and round_no < max_tool_rounds:
+                            current_messages.append({
+                                "role": "system",
+                                "content": SELF_CHECK_PROMPT,
+                            })
+                            self_check_done = True
+                            continue
+
                         # 原始路径（无 Plan）：透传 finish + 工具调用汇总
                         yield {"type": "state_change", "state": RuntimePhase.COMPLETING.value, "reason": "finishing"}
                         yield {"type": "finish", "finish_reason": final_finish}
                         if all_tool_calls:
                             yield {"type": "tool_calls", "calls": all_tool_calls}
+                        # Phase 1.6: 结束事件附带 TaskGraph 汇总（供消费端落库/切页重放）
+                        yield {"type": "task_graph", "task_graph": self._task_graph_summary()}
                         return
 
                 # 内层 for 耗尽（rounds exhausted）
@@ -1274,6 +1429,58 @@ class AgentRuntime:
                         yield {"type": "error", "message": f"工具执行完成，但最终总结生成失败: {e}"}
                 return
 
+            except ModelNotFoundError as e:
+                # 模型不存在 → 直接熔断，不尝试反思（反思用同一模型也会失败）
+                if has_task_graph and current_task:
+                    yield {"type": "agent_state_update", **self._build_agent_state_event(
+                        agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                        status="error",
+                        action_detail=f"模型不可用: {e}",
+                        current_task_id=current_task.id,
+                        task_progress=self._build_task_progress(current_task.id),
+                    )}
+                    skipped = self.task_graph_state.mark_failed(current_task.id, str(e)[:200])
+                    yield {
+                        "type": "task_failed",
+                        **self._task_event_payload(current_task, "failed", error=str(e)),
+                    }
+                    for skip_id in skipped:
+                        skip_node = self.task_graph_state.get_task(skip_id)
+                        if skip_node is not None:
+                            yield {
+                                "type": "task_skipped",
+                                **self._task_event_payload(skip_node, "skipped"),
+                            }
+                    break
+                raise
+
+            except ModelConfigError as e:
+                # 模型配置错误（无 Key / 未注册）→ 直接熔断，不尝试反思
+                # 反思用同一无 Key 模型也会失败，无意义
+                if has_task_graph and current_task:
+                    yield {"type": "agent_state_update", **self._build_agent_state_event(
+                        agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                        status="error",
+                        action_detail=f"模型配置错误: {e}",
+                        current_task_id=current_task.id,
+                        task_progress=self._build_task_progress(current_task.id),
+                    )}
+                    skipped = self.task_graph_state.mark_failed(current_task.id, str(e)[:200])
+                    yield {
+                        "type": "task_failed",
+                        **self._task_event_payload(current_task, "failed", error=str(e)),
+                    }
+                    for skip_id in skipped:
+                        skip_node = self.task_graph_state.get_task(skip_id)
+                        if skip_node is not None:
+                            yield {
+                                "type": "task_skipped",
+                                **self._task_event_payload(skip_node, "skipped"),
+                            }
+                    break
+                yield {"type": "error", "message": f"模型配置错误: {e}"}
+                return
+
             except Exception as e:
                 # 战略方向: 先尝试反思自愈，失败则降级
                 if has_task_graph and current_task:
@@ -1286,35 +1493,47 @@ class AgentRuntime:
                         task_progress=self._build_task_progress(current_task.id),
                     )}
 
-                    # 战略方向: 尝试反思自愈
-                    # 反思开始事件
-                    yield {"type": "agent_state_update", **self._build_agent_state_event(
-                        agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                        status="working",
-                        action_detail="触发自我反思，分析错误原因...",
-                        current_task_id=current_task.id,
-                        task_progress=self._build_task_progress(current_task.id),
-                    )}
-                    healed = await self._reflect_and_heal(
-                        current_task,
-                        str(e),
-                        run_id=None,  # 流式路径事件通过 yield 透出
-                    )
-                    if healed:
-                        # 反思成功事件
+                    if self.task_graph_state is not None and not self.task_graph_state.can_heal(current_task.id):
+                        # 自愈深度上限：跳过反思，直接降级失败 + 级联跳过
                         yield {"type": "agent_state_update", **self._build_agent_state_event(
                             agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                            status="working",
-                            action_detail="动态生成修复计划，恢复执行",
+                            status="error",
+                            action_detail="已到达自愈上限，停止修复尝试，任务判定失败",
                             current_task_id=current_task.id,
                             task_progress=self._build_task_progress(current_task.id),
                         )}
-                        continue  # 反思成功，回到外层循环取下一个任务
+                        skipped = self.task_graph_state.mark_failed(
+                            current_task.id, str(e)[:200]
+                        )
+                    else:
+                        # 反思开始事件
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                            status="working",
+                            action_detail="触发自我反思，分析错误原因...",
+                            current_task_id=current_task.id,
+                            task_progress=self._build_task_progress(current_task.id),
+                        )}
+                        healed = await self._reflect_and_heal(
+                            current_task,
+                            str(e),
+                            run_id=None,  # 流式路径事件通过 yield 透出
+                        )
+                        if healed:
+                            # 反思成功事件（使用新注入的 heal_N 节点 id，与非流式对齐）
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="working",
+                                action_detail=f"动态生成修复计划，恢复执行: {healed.action[:80]}",
+                                current_task_id=healed.id,
+                                task_progress=self._build_task_progress(healed.id),
+                            )}
+                            continue  # 反思成功，回到外层循环取下一个任务
+                        skipped = self.task_graph_state.mark_failed(
+                            current_task.id, str(e)[:200]
+                        )
 
                     # 降级：原始失败路径
-                    skipped = self.task_graph_state.mark_failed(
-                        current_task.id, str(e)[:200]
-                    )
                     yield {
                         "type": "task_failed",
                         **self._task_event_payload(current_task, "failed", error=str(e)),
@@ -1334,3 +1553,5 @@ class AgentRuntime:
         yield {"type": "finish", "finish_reason": "stop"}
         if all_tool_calls:
             yield {"type": "tool_calls", "calls": all_tool_calls}
+        # Phase 1.6: 结束事件附带 TaskGraph 汇总（供消费端落库/切页重放）
+        yield {"type": "task_graph", "task_graph": self._task_graph_summary()}

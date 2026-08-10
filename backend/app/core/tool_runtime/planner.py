@@ -19,6 +19,7 @@ class ToolPlanner:
             "git_operation": ["git_status", "git_diff", "git_log", "git_commit", "git_restore"],
             "web_search": ["web_search", "fetch_url"],
             "memory_operation": ["add_memory"],
+            "todo_operation": ["manage_todos"],
         }
 
     def soft_hint(self, intent_result: Dict, available_tools: List[str]) -> str:

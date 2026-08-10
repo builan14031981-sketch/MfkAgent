@@ -234,7 +234,8 @@ def test_evaluate_tool_matrix() -> dict:
     for tool in ["write_file", "git_commit", "git_restore", "git_revert", "delete_file", "rename_file"]:
         d_build = evaluate_tool(tool, "build")
         d_plan = evaluate_tool(tool, "plan")
-        ok = d_build.verdict == Verdict.ASK and d_plan.verdict == Verdict.DENY
+        # Phase 12: build 模式写入工具 → REQUIRE_APPROVAL 或 HIGH_RISK，plan 一律 DENY
+        ok = d_build.verdict in (Verdict.REQUIRE_APPROVAL, Verdict.HIGH_RISK) and d_plan.verdict == Verdict.DENY
         cases.append({"case": f"写入 {tool}", "ok": ok, "build": d_build.verdict.value, "plan": d_plan.verdict.value})
 
     # add_memory（写数据库）：build 放行 / plan 拒绝
@@ -268,7 +269,8 @@ def test_command_engine() -> dict:
     for cmd in ["git reset --hard HEAD", "pip install requests", "rm -rf .", "npm install lodash", "taskkill /f /im test.exe"]:
         d_plan = command_risk_engine.evaluate(cmd, "plan")
         d_build = command_risk_engine.evaluate(cmd, "build")
-        ok = d_plan.verdict == Verdict.DENY and d_build.verdict == Verdict.ASK
+        # Phase 12: build 模式写入命令 → REQUIRE_APPROVAL 或 HIGH_RISK，plan 一律 DENY
+        ok = d_plan.verdict == Verdict.DENY and d_build.verdict in (Verdict.REQUIRE_APPROVAL, Verdict.HIGH_RISK)
         cases.append({"case": f"写入命令 {cmd!r}", "ok": ok, "plan": d_plan.verdict.value, "build": d_build.verdict.value})
 
     all_ok = all(c["ok"] for c in cases)

@@ -3,8 +3,13 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { resolveToolMeta } from "@/lib/toolMeta";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export type ToolStatus = "pending" | "running" | "success" | "failed" | "cancelled";
+
+/** 大日志保护：超过 50KB 时仅渲染前/后段，防止一次性挂载巨量文本卡死 DOM */
+const MAX_LOG_CHARS = 51200; // 50KB（字符计）
+const MAX_LOG_PREVIEW_CHARS = 400; // 前/后各保留字符数
 
 /**
  * ToolCall 数据（兼容 v2 事件流 + 旧持久化记录）：
@@ -49,6 +54,7 @@ export function normalizeToolCall(tc: ToolCall): ToolCall {
  */
 export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
   const normalized = useMemo(() => normalizeToolCall(toolCall), [toolCall]);
+  const { t } = useTranslation();
   const { tool, input, status, result, duration_ms } = normalized;
   const [expanded, setExpanded] = useState(false);
 
@@ -92,6 +98,19 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
   // 结果详情：失败时优先展示 error，否则展示完整 result（F-2 可展开）
   const detail = failed && normalized.error ? normalized.error : result;
   const hasDetail = typeof detail === "string" && detail.trim() !== "";
+
+  // 大日志截断：超过 50KB 只保留前/后段，中间以提示条衔接
+  const { logHead, logTail, logTruncated, logTotal } = useMemo(() => {
+    if (typeof detail !== "string" || detail.length <= MAX_LOG_CHARS) {
+      return { logHead: detail, logTail: null, logTruncated: false, logTotal: typeof detail === "string" ? detail.length : 0 };
+    }
+    return {
+      logHead: detail.slice(0, MAX_LOG_PREVIEW_CHARS),
+      logTail: detail.slice(detail.length - MAX_LOG_PREVIEW_CHARS),
+      logTruncated: true,
+      logTotal: detail.length,
+    };
+  }, [detail]);
 
   const toggleExpand = () => {
     if (hasDetail) setExpanded((v) => !v);
@@ -202,7 +221,7 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
         }}>
           <pre style={{
             margin: 0,
-            maxHeight: "320px",
+            maxHeight: "240px",
             overflow: "auto",
             fontSize: "12px",
             lineHeight: "1.6",
@@ -210,7 +229,23 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
             color: failed ? "var(--color-error)" : "var(--text-level-2)",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
-          }}>{detail}</pre>
+          }}>
+            {logTruncated && logHead != null ? (
+              <>
+                {logHead}
+                <span style={{
+                  display: "block",
+                  padding: "4px 0",
+                  fontSize: "11px",
+                  color: "var(--text-level-4)",
+                  fontStyle: "italic",
+                }}>{t("chat.logTruncated", { count: String(logTotal) })}</span>
+                {logTail}
+              </>
+            ) : (
+              detail
+            )}
+          </pre>
         </div>
       )}
     </div>

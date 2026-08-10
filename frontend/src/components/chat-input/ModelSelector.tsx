@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import type { Model } from "@/hooks/useModels";
 import {
   ghostPillStyle,
@@ -16,6 +16,30 @@ import {
   ghostPillHoverColor,
   ghostPillHoverShadow,
 } from "./styles";
+
+/** Provider ID → 中文展示名映射（与后端 model_providers.py 保持同步） */
+const PROVIDER_NAMES: Record<string, string> = {
+  deepseek: "DeepSeek",
+  qwen: "通义千问",
+  google: "Google Gemini",
+  glm: "智谱 AI",
+  moonshot: "Moonshot",
+  freellmapi: "FreeLLMAPI",
+  mimo: "小米 MiMo",
+  wenxin: "百度文心",
+  spark: "讯飞星火",
+  minimax: "MiniMax",
+  baichuan: "百川智能",
+  siliconflow: "硅基流动",
+  openai: "OpenAI",
+};
+
+/** 按 provider 分组后的结构 */
+interface ProviderGroup {
+  providerId: string;
+  providerName: string;
+  models: Model[];
+}
 
 interface ModelSelectorProps {
   models: Model[];
@@ -31,8 +55,29 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
   const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0, width: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+  // Provider 分组折叠状态：默认全部展开
+  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(new Set());
 
   const currentModelName = models.find((m) => m.id === selectedId)?.name ?? selectedId ?? "";
+
+  // 按 provider 分组，保持 provider 原始顺序（首次出现顺序）
+  const providerGroups = useMemo<ProviderGroup[]>(() => {
+    const seen = new Set<string>();
+    const groups: ProviderGroup[] = [];
+    for (const m of models) {
+      if (!seen.has(m.provider)) {
+        seen.add(m.provider);
+        groups.push({
+          providerId: m.provider,
+          providerName: PROVIDER_NAMES[m.provider] || m.provider,
+          models: [],
+        });
+      }
+      const group = groups.find((g) => g.providerId === m.provider);
+      if (group) group.models.push(m);
+    }
+    return groups;
+  }, [models]);
 
   // 点击外部关闭
   useEffect(() => {
@@ -96,33 +141,87 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
       </button>
 
       {open && createPortal(
-        <div ref={popRef} id="model-dropdown-portal" className="no-scrollbar" style={portalDropdownStyle({ ...dropdownPos, width: dropdownPos.width, maxHeight: 260 })}>
-          {models.map((model) => {
-            const active = model.id === selectedId;
-            return (
-              <button
-                key={model.id}
+        <div ref={popRef} id="model-dropdown-portal" className="no-scrollbar" style={portalDropdownStyle({ ...dropdownPos, width: dropdownPos.width, maxHeight: 320 })}>
+          {providerGroups.map((group, gi) => {
+            const isCollapsed = collapsedProviders.has(group.providerId);
+            return <div key={group.providerId}>
+              {/* 分隔线（第一个 group 前不显示） */}
+              {gi > 0 && (
+                <div style={{
+                  height: "1px",
+                  margin: "4px 8px",
+                  background: "var(--border-primary)",
+                  opacity: 0.5,
+                }} />
+              )}
+
+              {/* Provider 分组标题（可点击折叠/展开） */}
+              <div
                 onClick={() => {
-                  onSelect(model.id);
-                  onClose();
+                  setCollapsedProviders((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(group.providerId)) {
+                      next.delete(group.providerId);
+                    } else {
+                      next.add(group.providerId);
+                    }
+                    return next;
+                  });
                 }}
                 style={{
-                  ...popoverItemStyle,
-                  color: active ? "var(--color-primary)" : "var(--text-level-2)",
-                  fontWeight: active ? 600 : 500,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "5px 10px 3px",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "var(--text-level-4)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                  cursor: "pointer",
+                  userSelect: "none",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
+                {isCollapsed ? (
+                  <ChevronRight style={{ width: "10px", height: "10px", opacity: 0.5, flexShrink: 0 }} />
+                ) : (
+                  <ChevronDown style={{ width: "10px", height: "10px", opacity: 0.5, flexShrink: 0 }} />
+                )}
                 <span style={{
-                  flex: 1,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
-                }}>{model.name}</span>
-                {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
-              </button>
-            );
+                }}>{group.providerName}</span>
+              </div>
+
+              {/* 该 Provider 下的模型列表（折叠时隐藏） */}
+              {!isCollapsed && group.models.map((model) => {
+                const active = model.id === selectedId;
+                return <button
+                    key={model.id}
+                    onClick={() => {
+                      onSelect(model.id);
+                      onClose();
+                    }}
+                    style={{
+                      ...popoverItemStyle,
+                      paddingLeft: "24px",
+                      color: active ? "var(--color-primary)" : "var(--text-level-2)",
+                      fontWeight: active ? 600 : 400,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <span style={{
+                      flex: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}>{model.name}</span>
+                    {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
+                  </button>;
+              })}
+            </div>;
           })}
         </div>,
         document.body

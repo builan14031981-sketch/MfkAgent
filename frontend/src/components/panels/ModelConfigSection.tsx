@@ -46,6 +46,7 @@ interface FormState {
   api_key: string;
   max_tokens: string;
   temperature: string;
+  supports_vision: boolean;
 }
 
 const emptyForm: FormState = {
@@ -57,6 +58,7 @@ const emptyForm: FormState = {
   api_key: "",
   max_tokens: "4096",
   temperature: "0.7",
+  supports_vision: false,
 };
 
 /**
@@ -205,7 +207,6 @@ export function ModelConfigSection() {
 
   const openEditForm = (cm: CustomModel) => {
     setEditingCustom(cm);
-    // 后端明文下发：回填真实 Key，激活小眼睛查看功能
     const plainKey = cm.api_key_masked || "";
     setInitialApiKey(plainKey);
     setForm({
@@ -217,6 +218,7 @@ export function ModelConfigSection() {
       api_key: plainKey,
       max_tokens: String(cm.max_tokens),
       temperature: String(cm.temperature),
+      supports_vision: cm.supports_vision || false,
     });
     setFormOpen(true);
   };
@@ -234,6 +236,7 @@ export function ModelConfigSection() {
         max_tokens: Number(form.max_tokens) || 4096,
         temperature: Number(form.temperature) || 0.7,
         enabled: true,
+        supports_vision: form.supports_vision,
       };
       if (editingCustom) {
         const patch: Partial<CustomModelPayload> = { ...payload } as Partial<CustomModelPayload>;
@@ -446,6 +449,15 @@ export function ModelConfigSection() {
                 />
               </div>
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <SwitchButton
+                checked={form.supports_vision}
+                onChange={() => setForm({ ...form, supports_vision: !form.supports_vision })}
+              />
+              <span style={{ fontSize: "12px", color: "var(--text-level-2)" }}>
+                {t("settings.model.custom.supportsVision")}
+              </span>
+            </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button
                 onClick={() => setFormOpen(false)}
@@ -495,6 +507,18 @@ export function ModelConfigSection() {
                     <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text-level-4)" }}>
                       {cm.model_id}
                     </span>
+                    {cm.supports_vision && (
+                      <span style={{
+                        fontSize: "10px",
+                        padding: "1px 6px",
+                        borderRadius: "999px",
+                        background: "rgba(139,92,246,0.12)",
+                        color: "var(--color-primary, #8b5cf6)",
+                        lineHeight: 1.4,
+                      }}>
+                        Vision
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginTop: "2px" }}>
                     {cm.provider} · {cm.model_name} · {cm.api_base}
@@ -1625,7 +1649,6 @@ export function ModelAdvancedFields() {
 
   const openEditForm = (cm: CustomModel) => {
     setEditingCustom(cm);
-    // 后端明文下发：回填真实 Key，激活小眼睛查看功能
     const plainKey = cm.api_key_masked || "";
     setInitialApiKey(plainKey);
     setForm({
@@ -1637,6 +1660,7 @@ export function ModelAdvancedFields() {
       api_key: plainKey,
       max_tokens: String(cm.max_tokens),
       temperature: String(cm.temperature),
+      supports_vision: cm.supports_vision || false,
     });
     setFormOpen(true);
   };
@@ -1654,6 +1678,7 @@ export function ModelAdvancedFields() {
         max_tokens: Number(form.max_tokens) || 4096,
         temperature: Number(form.temperature) || 0.7,
         enabled: true,
+        supports_vision: form.supports_vision,
       };
       if (editingCustom) {
         const patch: Partial<CustomModelPayload> = { ...payload } as Partial<CustomModelPayload>;
@@ -1828,6 +1853,15 @@ export function ModelAdvancedFields() {
                 />
               </div>
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <SwitchButton
+                checked={form.supports_vision}
+                onChange={() => setForm({ ...form, supports_vision: !form.supports_vision })}
+              />
+              <span style={{ fontSize: "12px", color: "var(--text-level-2)" }}>
+                {t("settings.model.custom.supportsVision")}
+              </span>
+            </div>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
               <button
                 onClick={() => setFormOpen(false)}
@@ -1877,6 +1911,18 @@ export function ModelAdvancedFields() {
                     <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text-level-4)" }}>
                       {cm.model_id}
                     </span>
+                    {cm.supports_vision && (
+                      <span style={{
+                        fontSize: "10px",
+                        padding: "1px 6px",
+                        borderRadius: "999px",
+                        background: "rgba(139,92,246,0.12)",
+                        color: "var(--color-primary, #8b5cf6)",
+                        lineHeight: 1.4,
+                      }}>
+                        Vision
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginTop: "2px" }}>
                     {cm.provider} · {cm.model_name} · {cm.api_base}

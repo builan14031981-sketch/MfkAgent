@@ -1,7 +1,7 @@
 # MfkAgent Tool Runtime Phase B-2 测试报告
 
-- 时间: 2026-08-07 14:09:56
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseB2_im66l6n5`
+- 时间: 2026-08-09 23:40:36
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseB2_we20ewp2`
 - 测试模式: 单元级 (permission/runtime) + FastAPI TestClient + 脚本化 LLM
 
 ## 结果总览
@@ -9,10 +9,10 @@
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
 | 1 | 权限目录组合 (permission.resolve) | ✅ PASS | 0ms |
-| 2 | 目录与消息无关 (意图软提示) | ✅ PASS | 8ms |
-| 3 | git_status 只读自动执行 | ✅ PASS | 1650ms |
-| 4 | git_commit 触发审批并提交 | ✅ PASS | 2255ms |
-| 5 | write_file plan 直接拒绝 | ✅ PASS | 253ms |
+| 2 | 目录与消息无关 (意图软提示) | ✅ PASS | 16ms |
+| 3 | git_status 只读自动执行 | ✅ PASS | 1468ms |
+| 4 | git_commit 触发审批并提交 | ✅ PASS | 1891ms |
+| 5 | write_file plan 直接拒绝 | ✅ PASS | 156ms |
 | 6 | 审批注册表无残留 | ✅ PASS | 0ms |
 
 **通过率: 6/6**

@@ -7,12 +7,21 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { useFileContent } from "@/hooks/useFileContent";
 import { useTranslation } from "@/hooks/useTranslation";
 
+// 静态导出：动态路由需在 [id]/layout.tsx 提供 generateStaticParams（占位参数）。
 export default function FileContentPage() {
+  return (
+    <Suspense fallback={null}>
+      <FileContentPageInner />
+    </Suspense>
+  );
+}
+
+function FileContentPageInner() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();

@@ -3,9 +3,11 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 import os
+import base64
 from app.core.database import SessionLocal
 from app.models.agent import Project, Chat
 from app.core.pagination import paginate
+from app.core.sandbox import SandboxViolation, resolve_sandbox_path
 
 router = APIRouter()
 
@@ -140,21 +142,15 @@ async def delete_project(project_id: int):
 
 
 def _resolve_safe_path(base_path: str, relative_path: str) -> str:
-    """安全解析项目内路径：拒绝绝对路径与 .. 穿越，确保结果位于 base_path 内"""
-    if not relative_path:
-        return base_path
+    """安全解析项目内路径（统一沙箱校验，防绝对路径与 .. 穿越）。
 
-    normalized = relative_path.replace("\\", "/")
-    if normalized.startswith("/") or os.path.isabs(relative_path):
-        raise HTTPException(status_code=400, detail="Absolute path not allowed")
-
-    base_real = os.path.realpath(base_path)
-    target = os.path.realpath(os.path.join(base_path, relative_path))
-
-    if target != base_real and not target.startswith(base_real + os.sep):
-        raise HTTPException(status_code=400, detail="Path traversal detected")
-
-    return target
+    委托 app.core.sandbox.resolve_sandbox_path，越权抛 SandboxViolation，
+    在此转换为 HTTP 400 响应。
+    """
+    try:
+        return str(resolve_sandbox_path(relative_path, base_path))
+    except SandboxViolation as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 class FileInfo(BaseModel):
@@ -263,6 +259,93 @@ async def read_file(project_id: int, path: str):
         content=content,
         size=file_size,
         encoding=encoding,
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 2: 附件读取端点（返回 base64，供图片多模态使用）
+# ──────────────────────────────────────────────────────────────────────────
+
+# 附件端点允许的文件类型白名单扩展名（含图片与文档）
+_ATTACHMENT_ALLOWED_EXTS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico",
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+}
+# 附件端点最大文件大小（10MB，base64 编码后约 13MB）
+MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
+
+# MIME 类型推断（常用图片）
+_EXT_MIME_MAP = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".bmp": "image/bmp", ".webp": "image/webp",
+    ".svg": "image/svg+xml", ".ico": "image/x-icon",
+    ".pdf": "application/pdf",
+    ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".ppt": "application/vnd.ms-powerpoint", ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+}
+
+
+class AttachmentContent(BaseModel):
+    """附件读取响应：base64 编码内容 + 元数据。"""
+    path: str
+    content_base64: str
+    mime: str
+    size: int
+    encoding: str = "base64"
+
+
+@router.get("/{project_id}/attachment", response_model=AttachmentContent)
+async def read_attachment(project_id: int, path: str):
+    """读取项目内附件文件，返回 base64 编码内容（供前端图片多模态预览使用）。
+
+    - 复用 _resolve_safe_path 沙箱校验（防路径穿越）
+    - 仅允许 _ATTACHMENT_ALLOWED_EXTS 白名单扩展名
+    - 文件大小上限 10MB
+    - 返回 base64 编码，前端可直接用于 data URI 或解码展示
+    """
+    db = SessionLocal()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+    finally:
+        db.close()
+
+    base_path = project.path
+    file_path = _resolve_safe_path(base_path, path)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail="Not a file")
+
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext not in _ATTACHMENT_ALLOWED_EXTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支持的附件类型: {ext}（允许: 图片/PDF/Office 文档）",
+        )
+
+    file_size = os.path.getsize(file_path)
+    if file_size > MAX_ATTACHMENT_SIZE:
+        raise HTTPException(status_code=400, detail="附件过大（最大 10MB）")
+
+    try:
+        with open(file_path, "rb") as f:
+            raw = f.read()
+    except OSError:
+        raise HTTPException(status_code=500, detail="读取文件失败")
+
+    b64 = base64.b64encode(raw).decode("ascii")
+    mime = _EXT_MIME_MAP.get(ext, "application/octet-stream")
+
+    return AttachmentContent(
+        path=path,
+        content_base64=b64,
+        mime=mime,
+        size=file_size,
+        encoding="base64",
     )
 
 

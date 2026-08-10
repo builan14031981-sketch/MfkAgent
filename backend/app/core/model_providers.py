@@ -10,6 +10,7 @@
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,8 @@ class ProviderModel:
     id: str          # 内部模型 ID（模型选择器 / ModelService.models 的 key）
     upstream: str    # 上游 API 模型名（透传给官方接口）
     display_name: str = ""  # 前端展示名，为空时用 id
+    supports_vision: Optional[bool] = None  # 模型级视觉能力：None=未指定（走命名推测+Provider回退），True/False=显式覆盖
+    context_window: int = 256000  # 模型最大上下文窗口（token 数），默认 256K；未知模型保持默认
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,7 @@ class ProviderDef:
     env_key: str            # settings 中环境变量属性名（如 FREELLMAPI_API_KEY）
     description: str = ""
     website: str = ""       # 官网链接（免费模型展示快捷入口）
+    supports_vision: bool = False  # Phase 2: 是否支持多模态图片（OpenAI 兼容 image_url + base64 data URI）
 
 
 PROVIDERS: list[ProviderDef] = [
@@ -40,8 +44,8 @@ PROVIDERS: list[ProviderDef] = [
         env_key="DEEPSEEK_API_KEY",
         description="专注代码与对话的高性能模型",
         models=(
-            ProviderModel("deepseek-v4-flash", "deepseek-v4-flash"),
-            ProviderModel("deepseek-v4-pro", "deepseek-v4-pro"),
+            ProviderModel("deepseek-v4-flash", "deepseek-v4-flash", context_window=1_048_576),
+            ProviderModel("deepseek-v4-pro", "deepseek-v4-pro", context_window=1_048_576),
         ),
     ),
     ProviderDef(
@@ -52,9 +56,21 @@ PROVIDERS: list[ProviderDef] = [
         env_key="QWEN_API_KEY",
         description="阿里云大模型，支持多种场景",
         website="https://dashscope.aliyun.com",
+        supports_vision=False,  # Provider 级默认不支持视觉；VL 模型由模型级显式覆盖
         models=(
-            ProviderModel("qwen-flash", "qwen-flash"),
-            ProviderModel("qwen-plus", "qwen-plus"),
+            ProviderModel("qwen-flash", "qwen-flash", context_window=131_072),
+            ProviderModel("qwen-plus", "qwen-plus", context_window=131_072),
+            ProviderModel("qwen-max", "qwen-max", "通义千问 Max", context_window=32_768),
+            ProviderModel("qwen-plus-2025-07-28", "qwen-plus-2025-07-28", "Qwen Plus 2025-07-28", context_window=131_072),
+            ProviderModel("qwen3.7-plus", "qwen3.7-plus", "Qwen3.7 Plus", context_window=131_072),
+            ProviderModel("qwen-math-turbo", "qwen-math-turbo", "Qwen Math Turbo", context_window=131_072),
+            ProviderModel("qwen-mt-flash", "qwen-mt-flash", "Qwen MT Flash", context_window=131_072),
+            ProviderModel("deepseek-r1-distill-qwen-7b", "deepseek-r1-distill-qwen-7b", "DeepSeek R1 蒸馏 7B", context_window=131_072),
+            ProviderModel("glm-5", "glm-5", "GLM-5", context_window=128_000),
+            # VL 视觉模型（显式标记 supports_vision=True）
+            ProviderModel("qwen3-vl-235b-a22b-thinking", "qwen3-vl-235b-a22b-thinking", "Qwen3 VL 235B Thinking", supports_vision=True, context_window=131_072),
+            ProviderModel("qwen3-vl-32b-thinking", "qwen3-vl-32b-thinking", "Qwen3 VL 32B Thinking", supports_vision=True, context_window=131_072),
+            ProviderModel("qwen3-vl-30b-a3b-thinking", "qwen3-vl-30b-a3b-thinking", "Qwen3 VL 30B A3B Thinking", supports_vision=True, context_window=131_072),
         ),
     ),
     ProviderDef(
@@ -65,10 +81,11 @@ PROVIDERS: list[ProviderDef] = [
         env_key="GOOGLE_API_KEY",
         description="免费额度，所有模型均支持函数调用",
         website="https://aistudio.google.com",
+        supports_vision=True,  # Gemini OpenAI 兼容端点原生支持 image_url
         models=(
-            ProviderModel("gemini-3.5-flash", "gemini-3.5-flash"),
-            ProviderModel("gemini-3-flash", "gemini-3-flash-preview"),
-            ProviderModel("gemini-3.1-flash-lite", "gemini-3.1-flash-lite"),
+            ProviderModel("gemini-3.5-flash", "gemini-3.5-flash", context_window=1_048_576),
+            ProviderModel("gemini-3-flash", "gemini-3-flash-preview", context_window=1_048_576),
+            ProviderModel("gemini-3.1-flash-lite", "gemini-3.1-flash-lite", context_window=1_048_576),
         ),
     ),
     ProviderDef(
@@ -79,8 +96,9 @@ PROVIDERS: list[ProviderDef] = [
         env_key="GLM_API_KEY",
         description="清华系大模型，性能优异",
         website="https://open.bigmodel.cn",
+        supports_vision=False,  # GLM-4 纯文本模型不支持视觉；无 VL 子模型注册
         models=(
-            ProviderModel("glm-4", "glm-4"),
+            ProviderModel("glm-4", "glm-4", context_window=128_000),
         ),
     ),
     ProviderDef(
@@ -92,7 +110,7 @@ PROVIDERS: list[ProviderDef] = [
         description="支持超长上下文的模型",
         website="https://www.moonshot.cn",
         models=(
-            ProviderModel("moonshot-v1-8k", "moonshot-v1-8k"),
+            ProviderModel("moonshot-v1-8k", "moonshot-v1-8k", context_window=8_192),
         ),
     ),
     ProviderDef(
@@ -133,7 +151,7 @@ PROVIDERS: list[ProviderDef] = [
         description="百度千帆大模型（默认值可覆盖）",
         website="https://qianfan.cloud.baidu.com",
         models=(
-            ProviderModel("wenxin-ernie-4-turbo", "ernie-4.0-turbo-8k"),
+            ProviderModel("wenxin-ernie-4-turbo", "ernie-4.0-turbo-8k", context_window=8_192),
         ),
     ),
     ProviderDef(
@@ -181,8 +199,8 @@ PROVIDERS: list[ProviderDef] = [
         description="聚合 DeepSeek/Qwen/GLM 等主流模型，一个 Key 通吃",
         website="https://siliconflow.cn",
         models=(
-            ProviderModel("siliconflow-deepseek-v4-pro", "deepseek-ai/DeepSeek-V4-Pro", "硅基 DeepSeek-V4-Pro"),
-            ProviderModel("siliconflow-deepseek-v4-flash", "deepseek-ai/DeepSeek-V4-Flash", "硅基 DeepSeek-V4-Flash"),
+            ProviderModel("siliconflow-deepseek-v4-pro", "deepseek-ai/DeepSeek-V4-Pro", "硅基 DeepSeek-V4-Pro", context_window=1_048_576),
+            ProviderModel("siliconflow-deepseek-v4-flash", "deepseek-ai/DeepSeek-V4-Flash", "硅基 DeepSeek-V4-Flash", context_window=1_048_576),
             ProviderModel("siliconflow-glm-z1-9b", "THUDM/GLM-Z1-9B-0414", "硅基 GLM-Z1-9B (免费)"),
         ),
     ),

@@ -9,9 +9,14 @@ import { useChat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
+import { usePreferences } from "@/hooks/usePreferences";
 import { apiGet } from "@/lib/api";
 import { ChatComposer } from "@/components/ChatComposer";
 import type { ChatMode } from "@/components/ChatInput";
+import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
+import { FileDropZone } from "@/components/FileDropZone";
+import type { DroppedFile, Attachment } from "@/components/FileDropZone";
+import { fileToAttachment, droppedFileToAttachment, mergeAttachments } from "@/components/FileDropZone";
 import { HeroStage } from "@/components/hero/HeroStage";
 import type { QuoteCategory, QuoteItem } from "@/components/hero/QuoteMenu";
 import type { Project } from "@/hooks/useProjects";
@@ -25,21 +30,27 @@ export default function Home() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const { agents } = useAgents();
-  const { models, loading: modelsLoading } = useModels();
+  const { models } = useModels();
   const { createChat } = useChat();
   const { createProject } = useProjects();
   const { settings, updateSetting } = useSettingsStore();
+  // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
+  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
   const [welcome, setWelcome] = useState("");
   const [welcomeSubtext, setWelcomeSubtext] = useState("");
   // 全部台词类目（原始数据，builtin 模式从后端拉取）
   const [allQuoteCategories, setAllQuoteCategories] = useState<QuoteCategory[]>([]);
   const [greetingFavorites, setGreetingFavorites] = useState<string[]>([]);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
-  const [pendingFiles, setPendingFiles] = useState<string[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("strict");
   const [mode, setMode] = useState<ChatMode>("build");
+  // 初始随机抽取标记：防止收藏变化触发重新抽取（避免主页台词频繁跳变）
+  const initialQuotePickedRef = useRef(false);
 
   useEffect(() => {
+    initialQuotePickedRef.current = false; // 模式切换时重置，允许重新抽取
     let cancelled = false;
     const mode = settings?.greeting_mode ?? "builtin";
 
@@ -72,20 +83,15 @@ export default function Home() {
       return () => { cancelled = true; };
     }
 
-    // builtin 模式（默认）：优先从后端欢迎语 API 获取全部分组文案，随机取一条做初始欢迎语
+    // builtin 模式（默认）：从后端拉取全量分组文案
+    // 初始随机抽取延后到 quoteCategories（派生后的收藏列表）就绪后执行，确保抽到的台词在菜单可见
     apiGet<{ categories?: QuoteCategory[] }>("/api/system/greetings")
       .then((data) => {
         if (cancelled) return;
         const categories = data?.categories ?? [];
         if (categories.length > 0) {
           setAllQuoteCategories(categories);
-          const all = categories.flatMap((c) => c.items);
-          const pick = all[Math.floor(Math.random() * all.length)];
-          if (pick) {
-            setWelcome(pick.text);
-            setWelcomeSubtext(pick.subtext || "");
-            return;
-          }
+          return;
         }
         throw new Error("empty greeting");
       })
@@ -144,30 +150,35 @@ export default function Home() {
       .filter((c) => c.items.length > 0);
   }, [allQuoteCategories, greetingFavorites, quoteFavKey]);
 
-  // 根据 Settings 默认模型预选
+  // 初始随机抽取（builtin 模式）：从派生后的 quoteCategories（有收藏时仅收藏列表）中抽取
+  // 确保：1) 不展示已隐藏（未收藏）的台词；2) 抽到的台词在 QuoteMenu 可见，高亮可生效
+  // 仅首次数据就绪时执行一次，收藏变化不触发重新抽取（避免主页台词频繁跳变）
   useEffect(() => {
-    if (!modelsLoading && models.length > 0 && !selectedModel) {
-      const defaultModelId = settings?.default_model;
-      if (defaultModelId) {
-        const found = models.find((m) => m.id === defaultModelId);
-        if (found) setSelectedModel(found);
-      }
-    }
-  }, [modelsLoading, models, settings?.default_model, selectedModel]);
+    const mode = settings?.greeting_mode ?? "builtin";
+    if (mode !== "builtin") return;
+    if (initialQuotePickedRef.current) return;
+    if (!settings) return; // 等 settings 加载完（确保 greetingFavorites 已就绪）
+    if (quoteCategories.length === 0) return;
+    const all = quoteCategories.flatMap((c) => c.items);
+    if (all.length === 0) return;
+    const pick = all[Math.floor(Math.random() * all.length)];
+    setWelcome(pick.text);
+    setWelcomeSubtext(pick.subtext || "");
+    initialQuotePickedRef.current = true;
+  }, [settings, settings?.greeting_mode, quoteCategories]);
 
-  // 根据 Settings 默认推理强度预选（仅首次设置，避免覆盖用户手动切换）
-  const defaultReasoningAppliedRef = useRef(false);
-  useEffect(() => {
-    if (defaultReasoningAppliedRef.current) return;
-    const def = settings?.default_reasoning_effort;
-    if (!def) return; // settings 未加载，等下一次变更
-    defaultReasoningAppliedRef.current = true;
-    if (def === "high" || def === "max") setReasoningEffort(def);
-  }, [settings?.default_reasoning_effort]);
+  // 推理强度初始值：三级回落（localStorage → settings → none），仅首次就绪时应用一次，
+  // 避免 settings 异步加载或用户手动切换后重复覆盖。
+  // 采用 render 阶段"调整 state"模式（与 chat 页 reasoningInitForChatId 一致），规避 ref 读取告警。
+  const [reasoningInitApplied, setReasoningInitApplied] = useState(false);
+  if (!reasoningInitApplied && (hasLocalReasoning || settings)) {
+    setReasoningInitApplied(true);
+    setReasoningEffort(prefReasoningEffort);
+  }
 
   const activeAgents = agents.filter((a) => a.status === "active");
   const currentAgent = selectedAgent || (settings?.default_agent ? activeAgents.find(a => a.id === settings.default_agent) || null : null) || activeAgents[0] || null;
-  const currentModel = selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null;
+  const currentModel = selectedModel || models.find((m) => m.id === prefModelId) || models[0] || null;
 
   const handleAgentChange = useCallback((agentId: string) => {
     const agent = activeAgents.find((a) => a.id === agentId);
@@ -187,7 +198,7 @@ export default function Home() {
         userMessage.slice(0, 50) || "New Chat",
         pendingProject?.id ?? null,
         currentModel?.id || settings?.default_model || null,
-        pendingFiles,
+        pendingAttachments.map((a) => a.path || a.name),
         mode
       );
 
@@ -202,10 +213,15 @@ export default function Home() {
 
   // 草稿预挂载：首页无 Chat 状态下附加文件 / 关联项目，创建会话时一并提交
   const handleAttachFile = useCallback((file: File) => {
-    const fileWithPath = file as File & { path?: string };
-    const path = fileWithPath.path || file.name;
-    setPendingFiles((prev) => (prev.includes(path) ? prev : [...prev, path]));
-  }, []);
+    const att = fileToAttachment(file, pendingProject?.path);
+    setPendingAttachments((prev) => mergeAttachments(prev, [att]));
+  }, [pendingProject?.path]);
+
+  // 全局拖拽：将拖入文件映射为附件并入草稿（首页无 Chat 状态，先挂 pending，创建会话时一并提交）
+  const handleFilesDrop = useCallback((files: DroppedFile[]) => {
+    const newAtts = files.map((f) => droppedFileToAttachment(f, pendingProject?.path));
+    setPendingAttachments((prev) => mergeAttachments(prev, newAtts));
+  }, [pendingProject?.path]);
 
   const handleLinkProject = useCallback(async (dirPath: string) => {
     const name = dirPath.split(/[\\/]/).filter(Boolean).pop() || dirPath;
@@ -215,12 +231,12 @@ export default function Home() {
   }, [createProject]);
 
   const handleClearDraft = useCallback(() => {
-    setPendingFiles([]);
+    setPendingAttachments([]);
     setPendingProject(null);
   }, []);
 
-  const removePendingFile = useCallback((path: string) => {
-    setPendingFiles((prev) => prev.filter((p) => p !== path));
+  const removePendingAttachment = useCallback((id: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
   const quickStarts = tArray("home.quickStarts");
@@ -314,10 +330,18 @@ export default function Home() {
         modelId={currentModel?.id || null}
         onModelChange={(id) => {
           const model = models.find(m => m.id === id);
-          if (model) setSelectedModel(model);
+          if (model) {
+            setSelectedModel(model);
+            setPrefModel(id);
+          }
         }}
         reasoningEffort={reasoningEffort}
-        onReasoningChange={setReasoningEffort}
+        onReasoningChange={(e) => {
+          setReasoningEffort(e);
+          setPrefReasoning(e);
+        }}
+        permissionMode={permissionMode}
+        onPermissionChange={setPermissionMode}
         mode={mode}
         onModeChange={setMode}
         allowAgentChange
@@ -326,12 +350,15 @@ export default function Home() {
         onUploadFile={handleAttachFile}
         onSelectDirectory={handleLinkProject}
         onClearContext={handleClearDraft}
-        hasContext={pendingFiles.length > 0 || !!pendingProject}
-        files={pendingFiles}
-        onRemoveFile={removePendingFile}
+        hasContext={pendingAttachments.length > 0 || !!pendingProject}
+        files={[]}
+        onRemoveFile={() => {}}
         projectName={pendingProject?.name || null}
         onRemoveProject={() => setPendingProject(null)}
+        attachments={pendingAttachments}
+        onRemoveAttachment={removePendingAttachment}
       />
+      <FileDropZone onFilesDrop={handleFilesDrop} />
     </div>
   );
 }

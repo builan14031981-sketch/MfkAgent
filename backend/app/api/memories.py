@@ -15,12 +15,29 @@ class MemoryItemCreate(BaseModel):
     content: str
     agent_id: Optional[str] = None
     project_id: Optional[int] = None
+    memory_type: str = "preference"
+    confidence: float = 0.8
+    source_chat_id: Optional[int] = None
 
     @field_validator("scope")
     @classmethod
     def check_scope(cls, v):
         if v not in SCOPES:
             raise ValueError("scope must be one of global/agent/project")
+        return v
+
+    @field_validator("memory_type")
+    @classmethod
+    def check_memory_type(cls, v):
+        if v not in ("preference", "fact", "workflow", "project"):
+            raise ValueError("memory_type must be one of preference/fact/workflow/project")
+        return v
+
+    @field_validator("confidence")
+    @classmethod
+    def check_confidence(cls, v):
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("confidence must be in [0.0, 1.0]")
         return v
 
     @model_validator(mode="after")
@@ -41,6 +58,9 @@ class MemoryItemResponse(BaseModel):
     agent_id: Optional[str]
     project_id: Optional[int]
     content: str
+    memory_type: str = "preference"
+    confidence: float = 0.8
+    source_chat_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -59,6 +79,9 @@ async def create_memory_item(memory: MemoryItemCreate):
             agent_id=memory.agent_id,
             project_id=memory.project_id,
             content=content,
+            memory_type=memory.memory_type,
+            confidence=memory.confidence,
+            source_chat_id=memory.source_chat_id,
         )
         db.add(item)
         db.commit()

@@ -1,0 +1,84 @@
+# ── MfkAgent Electron Builder 配置（Phase 8）──
+appId: com.mfkagent.app
+productName: MfkAgent
+copyright: "Copyright © 2026 MfkAgent Team"
+
+# ── 目录结构 ──
+directories:
+  output: release
+  buildResources: public
+
+# ── 打包文件（仅包含运行必需的文件，杜绝源码泄露）──
+files:
+  - out/**/*
+  - electron/**/*
+  - package.json
+
+# ── 额外资源（后端 Python 目录，打包到 resources/backend）──
+extraResources:
+  - from: "../backend"
+    to: "backend"
+    filter:
+      - "**/*"
+      - "!**/__pycache__/**"
+      - "!**/.pytest_cache/**"
+      - "!**/tests/**"
+      - "!**/*.db"
+      - "!**/*.log"
+      - "!**/build/**"
+      - "!**/dist/**"
+      - "!**/.env"
+      - "!**/.gitignore"
+      - "!**/*.spec"
+
+# ── Windows 目标 ──
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: public/icon.svg
+
+# ── NSIS 安装程序 ──
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MfkAgent
+  uninstallDisplayName: MfkAgent
+  installerIcon: public/icon.svg
+  uninstallerIcon: public/icon.svg
+
+# ── 绿色免安装版 ──
+portable:
+  artifactName: MfkAgent-Portable-${version}.${ext}
+
+# ── macOS 目标 ──
+mac:
+  target:
+    - dmg
+  icon: public/icon.svg
+  category: public.app-category.developer-tools
+
+# ── Linux 目标 ──
+linux:
+  target:
+    - AppImage
+  icon: public/icon.svg
+  category: Development
+
+# ── 发布产物命名 ──
+artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
+
+# ── 打包前清理（确保无旧产物残留）──
+beforePack: "node scripts/clean-build.js"
+
+# ── ASAR 压缩（前端资源打包）──
+asar: true
+asarUnpack:
+  - "**/*.node"

@@ -91,6 +91,16 @@ class ApprovalRegistry:
     def get(self, approval_id: str) -> Optional[dict]:
         return self._entries.get(approval_id)
 
+    def find_by_tool_call_id(self, tool_call_id: str) -> Optional[dict]:
+        """按 tool_call_id 反查 pending 审批（Phase 1.5：/approve 新契约用）。
+
+        tool_call_id 在单 chat 内唯一，遍历线性查找（pending 数量极小，可接受）。
+        """
+        for info in self._entries.values():
+            if info.get("tool_call_id") == tool_call_id:
+                return info
+        return None
+
     def pending(self) -> List[str]:
         """当前所有 pending 的 approval_id（测试/观测用）。"""
         return list(self._entries.keys())

@@ -168,6 +168,15 @@ def _sync_custom_model_api_keys(db, provider_id: str) -> None:
         )
 
 
+def _mask_key(key: str) -> str:
+    """API Key 脱敏：短 Key 全掩码，长 Key 保留首3+尾4。"""
+    if not key:
+        return ""
+    if len(key) <= 8:
+        return "****"
+    return key[:3] + "****" + key[-4:]
+
+
 @router.get("", response_model=Dict[str, str])
 async def get_all_settings():
     """返回全部设置（本地化工具，明文下发，知情权归用户）"""

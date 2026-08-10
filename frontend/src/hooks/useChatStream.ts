@@ -1,10 +1,13 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useCallback, useRef, useEffect, useMemo } from "react";
 import type { Message, useMessages } from "@/hooks/useMessages";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { ReasoningEffort } from "@/components/ChatInput";
+import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
+import type { Attachment } from "@/components/FileDropZone";
 import { apiPost } from "@/lib/api";
+import { showDesktopNotification } from "@/lib/notify";
 import { useStreamStore, OrbStage } from "@/lib/streamStore";
-import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent } from "@/types/runtime";
+import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ThinkingIndicatorEvent } from "@/types/runtime";
 
 type SendMessageStream = ReturnType<typeof useMessages>["sendMessageStream"];
 type AppendMessage = ReturnType<typeof useMessages>["appendMessage"];
@@ -26,20 +29,25 @@ export interface SendStreamOptions {
   modelId?: string | null;
   personalityLevel?: number;
   reasoningEffort?: ReasoningEffort;
+  /** 权限/执行模式：strict（每次询问）/ auto_approve（自动放行） */
+  permissionMode?: PermissionMode;
   /** 是否乐观追加用户消息到本地列表（重试/重新生成时已有消息，置 false） */
   appendUserMessage?: boolean;
   /** 发送前对消息做变换（如拼接项目文件上下文）；返回原始值则不拼 */
   buildContent?: (content: string) => Promise<string> | string;
+  /** 本条消息关联的附件元数据（传递给后端，后端实现前由 buildContent 兜底） */
+  attachments?: Attachment[];
 }
 
 /**
- * 聊天流式发送统一管线：
- * 收敛 chat 页 handleSend / autoSend / runSendForUser 三份重复的
- * isSending + streaming 状态机 + 乐观消息 + 错误/完成处理的逻辑。
+ * 聊天流式发送统一管线（Phase 2 多会话并发架构）：
  *
- * Runtime Event 模型：以单一 RuntimeEvent[] 替代原来的四个独立状态桶
- * （streamingContent / streamingThinking / toolCallsMap / pendingApprovals），
- * 使 SSE 到达顺序在写入时即保留，渲染时按真实顺序展示。
+ * 核心变更：
+ * - 所有流状态（timeline / isSending / tasks 等）存储在全局 useStreamStore 中，按 chatId 索引
+ * - 废弃"切换 chatId 时 abort 旧 SSE"的错误逻辑 —— 切换会话仅切换 UI 订阅的 chatId
+ * - 每个 chatId 维护独立的 AbortController，仅在用户手动点击"停止生成"时 abort
+ * - 后台 SSE 连接持续运行，切回会话时 UI 自动恢复最新 timeline
+ * - appendMessage / refetch 使用 activeChatIdRef 守卫：仅当目标 chatId 是当前活跃会话时才操作本地消息列表
  */
 export function useChatStream({
   chatId,
@@ -47,30 +55,31 @@ export function useChatStream({
   appendMessage,
   refetch,
 }: UseChatStreamParams) {
-  const [isSending, setIsSending] = useState(false);
-  const [timeline, setTimeline] = useState<RuntimeEvent[]>([]);
-  const [streamingError, setStreamingError] = useState<string | null>(null);
-  // 多 Agent 任务协同状态：按 task_started 到达顺序累积，completed/failed 原地更新
-  const [tasks, setTasks] = useState<TaskNode[]>([]);
-  // G6-A：最新 token_usage 事件（上下文仪表盘数据源）；null 表示暂无数据
-  const [tokenUsage, setTokenUsage] = useState<TokenUsageEvent | null>(null);
-  // Agent 状态流转事件：驱动动态状态名片（AgentStatusCard）；null 时名片隐藏
-  const [currentAgentState, setCurrentAgentState] = useState<AgentStateUpdateEvent | null>(null);
+  // 从全局 store 读取当前 chatId 的会话状态
+  const session = useStreamStore((s) => (chatId != null ? s.sessions[chatId] : undefined));
+  const store = useStreamStore();
 
-  // 辅助索引：tool_call_id → timeline 数组下标，用于 tool_result 原地更新
-  const toolIndexRef = useRef<Map<string, number>>(new Map());
-  // 辅助索引：task_id → tasks 数组下标，用于 task_completed/failed 原地更新
-  const taskIndexRef = useRef<Map<string, number>>(new Map());
-  // completed/error 状态延迟清空定时器：让用户看到终态反馈后再隐藏名片
-  const agentStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 派生响应式状态（session 不存在时使用默认值）
+  const isSending = session?.isSending ?? false;
+  const timeline = session?.timeline ?? [];
+  const tasks = session?.tasks ?? [];
+  const tokenUsage = session?.tokenUsage ?? null;
+  const streamingError = session?.streamingError ?? null;
+  const reasoningActive = session?.reasoningActive ?? false;
+  const currentAgentState = session?.currentAgentState ?? null;
 
-  /** 从 timeline 末位事件派生 Orb 阶段：thinking→solving、tool→searching、approval→listening、text→composing */
+  /** activeChatIdRef：始终跟踪当前 UI 活跃的 chatId（用于 appendMessage/refetch 守卫） */
+  const activeChatIdRef = useRef<number | null>(chatId);
+  activeChatIdRef.current = chatId;
+
+  /** 从 timeline 末位事件派生 Orb 阶段 */
   const orbStage = useMemo<OrbStage | null>(() => {
     if (!isSending) return null;
     if (timeline.length === 0) return "working";
     const last = timeline[timeline.length - 1];
     switch (last.type) {
       case "thinking":
+      case "thinking_indicator":
         return "solving";
       case "tool":
         return "searching";
@@ -88,145 +97,289 @@ export function useChatStream({
     if (chatId == null) return;
     useStreamStore.getState().setStream(chatId, orbStage);
     return () => {
-      useStreamStore.getState().setStream(chatId, null);
+      // 仅当该 chatId 不在发送中时清除指示器（后台流仍在运行时保持）
+      const s = useStreamStore.getState().getSession(chatId);
+      if (!s.isSending) {
+        useStreamStore.getState().setStream(chatId, null);
+      }
     };
   }, [chatId, orbStage]);
 
-  const resetStreaming = useCallback(() => {
-    setTimeline([]);
-    setStreamingError(null);
-    setTasks([]);
-    setTokenUsage(null);
-    setCurrentAgentState(null);
-    toolIndexRef.current.clear();
-    taskIndexRef.current.clear();
-    if (agentStateTimerRef.current) {
-      clearTimeout(agentStateTimerRef.current);
-      agentStateTimerRef.current = null;
+  /** 重置指定 chatId 的流状态（操作全局 store + 清理 refs） */
+  const resetStreaming = useCallback((targetChatId: number) => {
+    const refs = store.getRefs(targetChatId);
+    refs.toolIndex.clear();
+    refs.taskIndex.clear();
+    refs.thinkingBuffer = "";
+    if (refs.thinkingRaf != null) {
+      cancelAnimationFrame(refs.thinkingRaf);
+      refs.thinkingRaf = null;
     }
-  }, []);
+    refs.firstText = true;
+    if (refs.agentStateTimer) {
+      clearTimeout(refs.agentStateTimer);
+      refs.agentStateTimer = null;
+    }
+    store.resetSession(targetChatId);
+  }, [store]);
 
-  /** 用户批准/拒绝待审批命令；成功即本地移除卡片（后端随后发射 tool_result 更新工具卡） */
+  /** 用户手动停止生成：abort 当前 chatId 的 SSE 连接 */
+  const stop = useCallback(() => {
+    if (chatId == null) return;
+    const refs = store.getRefs(chatId);
+    refs.abortController?.abort();
+    refs.abortController = null;
+    store.updateSession(chatId, () => ({ isSending: false }));
+  }, [chatId, store]);
+
+  /** 用户批准/拒绝待审批命令 */
   const resolveApproval = useCallback(
-    async (approvalId: string, action: "approve" | "deny") => {
+    async (approvalId: string, action: "approve" | "deny", toolCallId?: string) => {
       if (!chatId) return;
+      const resolvedAction = action === "approve" ? "approved" : "rejected";
+      // 乐观 UI：立即将卡片置为只读状态
+      store.updateSession(chatId, (prev) => ({
+        timeline: prev.timeline.map((s) => {
+          if (s.type === "approval" && s.approval.approval_id === approvalId) {
+            return { ...s, approval: { ...s.approval, resolvedAction } };
+          }
+          return s;
+        }),
+      }));
       try {
-        await apiPost(`/api/chat/${chatId}/tool-approval`, { approval_id: approvalId, action });
+        const body = toolCallId
+          ? { tool_call_id: toolCallId, decision: resolvedAction }
+          : { approval_id: approvalId, action };
+        await apiPost(`/api/chat/${chatId}/approve`, body);
       } catch (err) {
         console.error("Failed to resolve approval:", err);
-        return;
+        // 失败回退
+        store.updateSession(chatId, (prev) => ({
+          timeline: prev.timeline.map((s) => {
+            if (s.type === "approval" && s.approval.approval_id === approvalId) {
+              return { ...s, approval: { ...s.approval, resolvedAction: undefined } };
+            }
+            return s;
+          }),
+        }));
       }
-      setTimeline((prev) => prev.filter((s) => !(s.type === "approval" && s.approval.approval_id === approvalId)));
     },
-    [chatId]
+    [chatId, store]
   );
 
   const sendStream = useCallback(
     async (content: string, options: SendStreamOptions = {}) => {
       if (!chatId) throw new Error("No chat selected");
-      const { modelId, personalityLevel, reasoningEffort, appendUserMessage = true, buildContent } = options;
+      const targetChatId = chatId; // 捕获发送时的 chatId，后续所有操作都使用此值
+      const { modelId, personalityLevel, reasoningEffort, permissionMode, appendUserMessage = true, buildContent, attachments } = options;
 
-      setIsSending(true);
-      resetStreaming();
+      const refs = store.getRefs(targetChatId);
 
-      // 乐观更新：先追加用户消息到本地列表（无需等待服务端）
-      if (appendUserMessage) {
+      // 如果该会话已有进行中的流，先中断（同会话重复发送防御，非跨会话）
+      refs.abortController?.abort();
+      refs.abortController = null;
+
+      // 设置发送状态 + 重置流状态
+      store.updateSession(targetChatId, () => ({
+        isSending: true,
+        timeline: [],
+        tasks: [],
+        tokenUsage: null,
+        streamingError: null,
+        currentAgentState: null,
+        reasoningActive: false,
+      }));
+      refs.toolIndex.clear();
+      refs.taskIndex.clear();
+      refs.thinkingBuffer = "";
+      refs.firstText = true;
+      if (refs.thinkingRaf != null) {
+        cancelAnimationFrame(refs.thinkingRaf);
+        refs.thinkingRaf = null;
+      }
+      if (refs.agentStateTimer) {
+        clearTimeout(refs.agentStateTimer);
+        refs.agentStateTimer = null;
+      }
+
+      // 乐观更新：先追加用户消息到本地列表（仅当目标会话是当前活跃会话时）
+      if (appendUserMessage && activeChatIdRef.current === targetChatId) {
+        console.log("[sendStream] 乐观更新 attachments:", attachments?.length, attachments?.map(a => ({ name: a.name, path: a.path, kind: a.kind })));
         const tempUserMsg: Message = {
           id: Date.now(),
-          chat_id: chatId,
+          chat_id: targetChatId,
           role: "user",
           content,
+          attachments: attachments?.map((a) => ({ name: a.name, path: a.path, mime: a.mime, kind: a.kind, size: a.size })),
           created_at: new Date().toISOString(),
         };
+        console.log("[sendStream] tempUserMsg.attachments:", tempUserMsg.attachments);
         appendMessage(tempUserMsg);
       }
 
       const finalContent = buildContent ? await buildContent(content) : content;
 
-      // 流结束：onComplete 回调已提供累积的 final/toolCalls/finalThinking，直接持久化
+      // 立即注入"正在思考..."占位符
+      store.updateSession(targetChatId, () => ({ reasoningActive: true }));
+      refs.firstText = true;
+      const indicatorId = `think-indicator-${Date.now()}`;
+      store.updateSession(targetChatId, () => ({
+        timeline: [{ id: indicatorId, type: "thinking_indicator" as const, content: "" }],
+      }));
+
+      // rAF 批处理 — 思考文本增量写入 buffer，由 rAF 统一 flush 到 timeline
+      const flushThinkingBuffer = () => {
+        refs.thinkingRaf = null;
+        const delta = refs.thinkingBuffer;
+        if (delta === "") return;
+        refs.thinkingBuffer = "";
+        store.updateSession(targetChatId, (prev) => {
+          const next = prev.timeline.slice();
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].type === "thinking_indicator") {
+              const seg = next[i] as ThinkingIndicatorEvent;
+              next[i] = { ...seg, content: seg.content + delta };
+              return { timeline: next };
+            }
+          }
+          return { timeline: [...next, { id: `think-${Date.now()}`, type: "thinking_indicator" as const, content: delta }] };
+        });
+      };
+
+      const scheduleThinkingFlush = () => {
+        if (refs.thinkingRaf != null) return;
+        refs.thinkingRaf = requestAnimationFrame(flushThinkingBuffer);
+      };
+
+      // 流结束：持久化 AI 消息（仅当目标会话是当前活跃会话时追加到本地列表）
       const appendAssistant = (final: string, toolCalls: ToolCall[], finalThinking: string) => {
-        setTimeline([]);
-        setTasks([]);
-        toolIndexRef.current.clear();
-        taskIndexRef.current.clear();
-        setStreamingError(null);
-        // 流结束：立即隐藏 Agent 状态名片（AI 消息已落库，名片无需停留）
-        setCurrentAgentState(null);
-        if (agentStateTimerRef.current) {
-          clearTimeout(agentStateTimerRef.current);
-          agentStateTimerRef.current = null;
+        store.updateSession(targetChatId, () => ({
+          timeline: [],
+          tasks: [],
+          streamingError: null,
+          reasoningActive: false,
+          currentAgentState: null,
+          isSending: false,
+        }));
+        refs.toolIndex.clear();
+        refs.taskIndex.clear();
+        refs.thinkingBuffer = "";
+        if (refs.thinkingRaf != null) {
+          cancelAnimationFrame(refs.thinkingRaf);
+          refs.thinkingRaf = null;
         }
-        const aiMsg: Message = {
-          id: Date.now(),
-          chat_id: chatId,
-          role: "assistant",
-          content: final,
-          thinking: finalThinking || undefined,
-          tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
-          created_at: new Date().toISOString(),
-        };
-        appendMessage(aiMsg);
-        // 后台静默同步真实 ID（不触发 loading，不驱动滚动）
-        refetch().catch(() => { /* 静默失败 */ });
+        refs.firstText = true;
+        if (refs.agentStateTimer) {
+          clearTimeout(refs.agentStateTimer);
+          refs.agentStateTimer = null;
+        }
+
+        // 仅当目标会话是当前活跃会话时追加 AI 消息到本地列表
+        if (activeChatIdRef.current === targetChatId) {
+          const aiMsg: Message = {
+            id: Date.now(),
+            chat_id: targetChatId,
+            role: "assistant",
+            content: final,
+            thinking: finalThinking || undefined,
+            tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+            created_at: new Date().toISOString(),
+          };
+          appendMessage(aiMsg);
+          // 后台静默同步真实 ID
+          refetch().catch(() => { /* 静默失败 */ });
+        }
+        // 如果目标会话不是当前活跃会话，AI 消息已由后端持久化，
+        // 用户切回该会话时 useMessages 会自动 fetchMessages 获取最新消息
+
+        // 长任务完成通知：目标会话非当前活跃会话时弹通知（用户可能在看其他会话或最小化窗口）
+        if (activeChatIdRef.current !== targetChatId) {
+          const preview = final.slice(0, 80) + (final.length > 80 ? "..." : "");
+          showDesktopNotification("任务完成", preview || "AI 回复已完成");
+        }
       };
 
       try {
+        const controller = new AbortController();
+        refs.abortController = controller;
         await sendMessageStream(
           finalContent,
           modelId || "qwen-flash",
-          // onChunk（text）：追加到最后一个 text segment，否则新建
+          // onChunk（text）
           (chunk) => {
-            setTimeline((prev) => {
-              const last = prev[prev.length - 1];
-              if (last && last.type === "text") {
-                const next = prev.slice();
-                next[next.length - 1] = { ...last, content: last.content + chunk };
-                return next;
+            if (refs.firstText) {
+              refs.firstText = false;
+              store.updateSession(targetChatId, () => ({ reasoningActive: false }));
+              if (refs.thinkingRaf != null) {
+                cancelAnimationFrame(refs.thinkingRaf);
+                refs.thinkingRaf = null;
               }
-              return [...prev, { id: `text-${Date.now()}-${Math.random()}`, type: "text" as const, content: chunk }];
+              const remaining = refs.thinkingBuffer;
+              refs.thinkingBuffer = "";
+              store.updateSession(targetChatId, (prev) => {
+                const filtered = prev.timeline.filter((s) => s.type !== "thinking_indicator");
+                if (remaining) {
+                  return { timeline: [...filtered, { id: `thinking-${Date.now()}`, type: "thinking" as const, content: remaining }] };
+                }
+                return { timeline: filtered };
+              });
+            }
+            store.updateSession(targetChatId, (prev) => {
+              const last = prev.timeline[prev.timeline.length - 1];
+              if (last && last.type === "text") {
+                const next = prev.timeline.slice();
+                next[next.length - 1] = { ...last, content: last.content + chunk };
+                return { timeline: next };
+              }
+              return { timeline: [...prev.timeline, { id: `text-${Date.now()}-${Math.random()}`, type: "text" as const, content: chunk }] };
             });
           },
           // onFinish
           () => {
-            setTimeline([]);
-            setTasks([]);
-            toolIndexRef.current.clear();
-            taskIndexRef.current.clear();
-            setIsSending(false);
-            // 流正常结束：隐藏 Agent 状态名片
-            setCurrentAgentState(null);
-            if (agentStateTimerRef.current) {
-              clearTimeout(agentStateTimerRef.current);
-              agentStateTimerRef.current = null;
+            store.updateSession(targetChatId, () => ({
+              timeline: [],
+              tasks: [],
+              isSending: false,
+              reasoningActive: false,
+              currentAgentState: null,
+            }));
+            refs.toolIndex.clear();
+            refs.taskIndex.clear();
+            refs.thinkingBuffer = "";
+            if (refs.thinkingRaf != null) {
+              cancelAnimationFrame(refs.thinkingRaf);
+              refs.thinkingRaf = null;
+            }
+            refs.firstText = true;
+            if (refs.agentStateTimer) {
+              clearTimeout(refs.agentStateTimer);
+              refs.agentStateTimer = null;
             }
           },
           // onError
           (error) => {
-            resetStreaming();
-            setIsSending(false);
-            setStreamingError(error);
+            resetStreaming(targetChatId);
+            store.updateSession(targetChatId, () => ({
+              isSending: false,
+              streamingError: error,
+            }));
           },
           personalityLevel,
           reasoningEffort,
-          // onThinking：追加到最后一个 thinking segment，否则新建
+          // onThinking
           (thinking) => {
-            setTimeline((prev) => {
-              const last = prev[prev.length - 1];
-              if (last && last.type === "thinking") {
-                const next = prev.slice();
-                next[next.length - 1] = { ...last, content: last.content + thinking };
-                return next;
-              }
-              return [...prev, { id: `thinking-${Date.now()}-${Math.random()}`, type: "thinking" as const, content: thinking }];
-            });
+            refs.thinkingBuffer += thinking;
+            scheduleThinkingFlush();
           },
-          // onToolStart：新建 tool segment（running），记录索引
+          // onToolStart
           (toolStart) => {
-            setTimeline((prev) => {
+            store.updateSession(targetChatId, (prev) => {
+              const name = toolStart.tool || "tool";
+              const key = toolStart.tool_call_id || `${name}_${prev.timeline.length}`;
               const segment: RuntimeEvent = {
-                id: toolStart.tool_call_id,
+                id: key,
                 type: "tool",
-                toolCallId: toolStart.tool_call_id,
+                toolCallId: key,
                 toolCall: {
                   tool: toolStart.tool,
                   name: toolStart.tool,
@@ -236,31 +389,44 @@ export function useChatStream({
                   tool_call_id: toolStart.tool_call_id,
                 },
               };
-              toolIndexRef.current.set(toolStart.tool_call_id, prev.length);
-              return [...prev, segment];
+              refs.toolIndex.set(key, prev.timeline.length);
+              return { timeline: [...prev.timeline, segment] };
             });
           },
-          // onToolApproval：新建 approval segment
+          // onToolApproval
           (approval) => {
-            setTimeline((prev) => {
-              if (prev.some((s) => s.type === "approval" && s.approval.approval_id === approval.approval_id)) {
-                return prev;
+            store.updateSession(targetChatId, (prev) => {
+              if (prev.timeline.some((s) => s.type === "approval" && s.approval.approval_id === approval.approval_id)) {
+                return {};
               }
-              return [...prev, { id: `approval-${approval.approval_id}`, type: "approval" as const, approval }];
+              return { timeline: [...prev.timeline, { id: `approval-${approval.approval_id}`, type: "approval" as const, approval }] };
             });
+            // 审批请求通知（仅新审批时触发，去重逻辑已在上方保证）
+            showDesktopNotification("需要审批", `工具 ${approval.tool || "未知工具"} 请求执行，请确认`);
           },
-          // onToolOutput：Phase A 后端不发射，占位（长命令流式输出时启用）
+          // onToolOutput
           () => {},
-          // onToolResult：按 tool_call_id 原地更新 tool segment 终态，移除对应 approval
+          // onToolResult
           (toolResult) => {
             const id = toolResult.tool_call_id;
-            if (!id) return;
-            setTimeline((prev) => {
-              const idx = toolIndexRef.current.get(id);
-              if (idx == null || idx >= prev.length) return prev;
-              const seg = prev[idx];
-              if (seg.type !== "tool") return prev;
-              const next = prev.slice();
+            store.updateSession(targetChatId, (prev) => {
+              let idx: number | undefined;
+              if (id) {
+                idx = refs.toolIndex.get(id);
+              } else {
+                for (let i = prev.timeline.length - 1; i >= 0; i--) {
+                  const s = prev.timeline[i];
+                  if (s.type === "tool" && (s.toolCall.status === "running" || s.toolCall.status === "pending")) {
+                    idx = i;
+                    break;
+                  }
+                }
+              }
+              if (idx == null || idx >= prev.timeline.length) return {};
+              const seg = prev.timeline[idx];
+              if (seg.type !== "tool") return {};
+              const next = prev.timeline.slice();
+              const origId = seg.toolCall.tool_call_id;
               next[idx] = {
                 ...seg,
                 toolCall: {
@@ -272,112 +438,120 @@ export function useChatStream({
                   result: toolResult.result,
                   duration_ms: toolResult.duration_ms,
                   error: toolResult.error,
-                  tool_call_id: id,
+                  tool_call_id: id ?? origId,
                 },
               };
-              // 移除该 tool 对应的 approval segment
-              return next.filter((s) => !(s.type === "approval" && s.approval.tool_call_id === id));
+              const matchApproval = id ?? origId;
+              return { timeline: next.filter((s) => !(s.type === "approval" && matchApproval && s.approval.tool_call_id === matchApproval)) };
             });
           },
-          // onToolCallsBatch：汇总数据合并补齐（含 result），原地更新对应 tool segment
+          // onToolCallsBatch
           (batch) => {
-            setTimeline((prev) => {
-              let next = prev;
+            store.updateSession(targetChatId, (prev) => {
+              let next = prev.timeline;
               for (const c of batch) {
                 if (!c.tool_call_id) continue;
-                const idx = toolIndexRef.current.get(c.tool_call_id);
+                const idx = refs.toolIndex.get(c.tool_call_id);
                 if (idx == null || idx >= next.length) continue;
                 const seg = next[idx];
                 if (seg.type !== "tool") continue;
-                if (next === prev) next = prev.slice();
+                if (next === prev.timeline) next = prev.timeline.slice();
                 next[idx] = { ...seg, toolCall: { ...seg.toolCall, ...c } };
               }
-              // 移除已完成的 approval
               const resolvedIds = new Set(batch.filter((c) => c.tool_call_id).map((c) => c.tool_call_id));
               if (resolvedIds.size > 0) {
                 next = next.filter((s) => !(s.type === "approval" && resolvedIds.has(s.approval.tool_call_id)));
               }
-              return next;
+              return { timeline: next };
             });
           },
-          // onTaskEvent：多 Agent 任务协同事件
-          // - task_started：新增 running 任务，记录索引
-          // - task_skipped：新增/原地更新为 skipped（任务未执行，可能无前置 started）
-          // - task_completed/failed：按 task_id 原地更新状态（不移动位置）
+          // onTaskEvent
           (evt: TaskEvent) => {
             const node = evt.task;
             if (evt.type === "task_started" || evt.type === "task_skipped") {
               const status = evt.type === "task_started" ? "running" : "skipped";
-              setTasks((prev) => {
-                // 防重：已存在同 task_id 则更新（后端可能重发 / skipped 无前置 started）
-                const existingIdx = taskIndexRef.current.get(node.task_id);
-                if (existingIdx != null && existingIdx < prev.length && prev[existingIdx].task_id === node.task_id) {
-                  const next = prev.slice();
-                  next[existingIdx] = { ...prev[existingIdx], ...node, status };
-                  return next;
+              store.updateSession(targetChatId, (prev) => {
+                const existingIdx = refs.taskIndex.get(node.task_id);
+                if (existingIdx != null && existingIdx < prev.tasks.length && prev.tasks[existingIdx].task_id === node.task_id) {
+                  const next = prev.tasks.slice();
+                  next[existingIdx] = { ...prev.tasks[existingIdx], ...node, status };
+                  return { tasks: next };
                 }
-                taskIndexRef.current.set(node.task_id, prev.length);
-                return [...prev, { ...node, status }];
+                refs.taskIndex.set(node.task_id, prev.tasks.length);
+                return { tasks: [...prev.tasks, { ...node, status }] };
               });
             } else {
-              // task_completed / task_failed
-              setTasks((prev) => {
-                const idx = taskIndexRef.current.get(node.task_id);
-                if (idx == null || idx >= prev.length || prev[idx].task_id !== node.task_id) {
-                  // 索引丢失（如流恢复后）：兜底查找
-                  const fallback = prev.findIndex((t) => t.task_id === node.task_id);
-                  if (fallback < 0) return prev;
-                  const next = prev.slice();
+              store.updateSession(targetChatId, (prev) => {
+                const idx = refs.taskIndex.get(node.task_id);
+                if (idx == null || idx >= prev.tasks.length || prev.tasks[idx].task_id !== node.task_id) {
+                  const fallback = prev.tasks.findIndex((t) => t.task_id === node.task_id);
+                  if (fallback < 0) return {};
+                  const next = prev.tasks.slice();
                   next[fallback] = {
-                    ...prev[fallback],
+                    ...prev.tasks[fallback],
                     ...node,
                     status: evt.type === "task_completed" ? "completed" : "failed",
                     error: evt.type === "task_failed" ? node.error : undefined,
                   };
-                  return next;
+                  return { tasks: next };
                 }
-                const next = prev.slice();
+                const next = prev.tasks.slice();
                 next[idx] = {
-                  ...prev[idx],
+                  ...prev.tasks[idx],
                   ...node,
                   status: evt.type === "task_completed" ? "completed" : "failed",
                   error: evt.type === "task_failed" ? node.error : undefined,
                 };
-                return next;
+                return { tasks: next };
               });
             }
           },
-          // onTokenUsage：G6-A 精确 Token 消耗事件，直接覆盖最新水位（仪表盘读数）
+          // onTokenUsage
           (usage: TokenUsageEvent) => {
-            setTokenUsage(usage);
+            store.updateSession(targetChatId, () => ({ tokenUsage: usage }));
           },
-          // onAgentStateUpdate：Agent 状态流转事件，驱动动态状态名片
-          // - working/waiting_for_tool：直接覆盖 state，名片持续显示
-          // - completed/error：先覆盖 state（让用户看到终态反馈），1.5s 后自动清空隐藏
+          // onAgentStateUpdate
           (evt: AgentStateUpdateEvent) => {
-            if (agentStateTimerRef.current) {
-              clearTimeout(agentStateTimerRef.current);
-              agentStateTimerRef.current = null;
+            if (refs.agentStateTimer) {
+              clearTimeout(refs.agentStateTimer);
+              refs.agentStateTimer = null;
             }
-            setCurrentAgentState(evt);
+            store.updateSession(targetChatId, () => ({ currentAgentState: evt }));
             if (evt.status === "completed" || evt.status === "error") {
-              agentStateTimerRef.current = setTimeout(() => {
-                agentStateTimerRef.current = null;
-                setCurrentAgentState(null);
+              refs.agentStateTimer = setTimeout(() => {
+                refs.agentStateTimer = null;
+                store.updateSession(targetChatId, () => ({ currentAgentState: null }));
               }, 1500);
             }
           },
-          // onComplete：流结束，降级持久化
-          appendAssistant
+          // onComplete
+          appendAssistant,
+          // 附件
+          attachments,
+          // 权限模式
+          permissionMode,
+          // 中断信号
+          controller.signal
         );
       } catch (err) {
+        // 主动中断（用户点击停止）不算错误：静默清理
+        if (refs.abortController && err instanceof DOMException && err.name === "AbortError") {
+          refs.abortController = null;
+          resetStreaming(targetChatId);
+          store.updateSession(targetChatId, () => ({ isSending: false }));
+          return;
+        }
         const msg = err instanceof Error ? err.message : String(err);
-        resetStreaming();
-        setIsSending(false);
-        setStreamingError(msg);
+        resetStreaming(targetChatId);
+        store.updateSession(targetChatId, () => ({
+          isSending: false,
+          streamingError: msg,
+        }));
+        // 流式错误通知
+        showDesktopNotification("任务出错", msg.slice(0, 100));
       }
     },
-    [chatId, sendMessageStream, appendMessage, refetch, resetStreaming]
+    [chatId, sendMessageStream, appendMessage, refetch, resetStreaming, store]
   );
 
   return {
@@ -385,11 +559,15 @@ export function useChatStream({
     timeline,
     tasks,
     tokenUsage,
-    setTokenUsage,
+    setTokenUsage: (usage: TokenUsageEvent | null) => {
+      if (chatId != null) store.updateSession(chatId, () => ({ tokenUsage: usage }));
+    },
     currentAgentState,
+    reasoningActive,
     orbStage,
     streamingError,
     sendStream,
     resolveApproval,
+    stop,
   };
 }

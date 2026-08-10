@@ -17,6 +17,59 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
+/** 环形进度圈 SVG 参数 */
+const RING_RADIUS = 16;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS; // ≈ 100.5
+const RING_SIZE = 40; // SVG viewBox 尺寸
+const RING_STROKE_WIDTH = 3.5;
+
+interface RingProgressProps {
+  ratio: number; // 0-100
+  color: string;
+  label: string;
+}
+
+/** SVG 环形进度圈 */
+const RingProgress = memo(function RingProgress({ ratio, color, label }: RingProgressProps) {
+  const offset = RING_CIRCUMFERENCE * (1 - ratio / 100);
+  const cx = RING_SIZE / 2;
+  const cy = RING_SIZE / 2;
+
+  return (
+    <div title={label} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+      <svg
+        width={RING_SIZE}
+        height={RING_SIZE}
+        viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+        style={{ transform: "rotate(-90deg)" }}
+      >
+        {/* 背景轨道 */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={RING_RADIUS}
+          fill="none"
+          stroke="var(--bg-level-2)"
+          strokeWidth={RING_STROKE_WIDTH}
+        />
+        {/* 进度弧 */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={RING_RADIUS}
+          fill="none"
+          stroke={color}
+          strokeWidth={RING_STROKE_WIDTH}
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.4s ease, stroke 0.3s ease" }}
+        />
+      </svg>
+    </div>
+  );
+});
+
 interface ContextDashboardProps {
   /** G6-A 最新 token_usage 事件；null 时不渲染仪表盘 */
   usage: TokenUsageEvent | null;
@@ -28,7 +81,7 @@ interface ContextDashboardProps {
 
 /**
  * F-Context 上下文仪表盘：展示当前会话 Token 消耗与上下文水位。
- * - 迷你进度条 + 「上下文: 35k / 128k (27%)」文案
+ * - SVG 环形进度圈 + 中心百分比数字
  * - 颜色随水位变化：< 30% 绿色；30%-40% 橙色；> 40% 红色
  * - 水位 >= 40% 时显示「压缩会话」预警按钮（G6-B 阶段接入真实逻辑）
  */
@@ -65,28 +118,9 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
       borderRadius: "var(--radius-full)",
       background: "var(--bg-level-3)",
     }}>
-      {/* 迷你进度条 + 水位文案 */}
-      <div
-        title={label}
-        style={{ display: "flex", alignItems: "center", gap: "6px" }}
-      >
-        <span style={{
-          width: "64px",
-          height: "6px",
-          borderRadius: "var(--radius-full)",
-          background: "color-mix(in srgb, var(--bg-level-2) 70%, transparent)",
-          overflow: "hidden",
-          flexShrink: 0,
-        }}>
-          <span style={{
-            display: "block",
-            width: `${ratio}%`,
-            height: "100%",
-            borderRadius: "var(--radius-full)",
-            background: color,
-            transition: "width 0.3s ease, background 0.3s ease",
-          }} />
-        </span>
+      {/* 环形进度圈 + 文案 */}
+      <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
+        <RingProgress ratio={ratio} color={color} label={label} />
         <span style={{
           fontSize: "11px",
           lineHeight: 1,

@@ -1,19 +1,26 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
-import { Send, Folder, X } from "lucide-react";
+import { Send, Folder, X, FileUp, Square } from "lucide-react";
 import { selectDirectory } from "@/lib/selectDirectory";
-import { FilePill } from "@/components/FileDropZone";
+import { FilePill, AttachmentChipList } from "@/components/FileDropZone";
+import type { Attachment } from "@/components/FileDropZone";
 import { AgentSelector } from "@/components/chat-input/AgentSelector";
 import { ModelSelector } from "@/components/chat-input/ModelSelector";
 import { ModeSelector } from "@/components/chat-input/ModeSelector";
 import { ReasoningSelector } from "@/components/chat-input/ReasoningSelector";
+import { PermissionSelector } from "@/components/chat-input/PermissionSelector";
+import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import { UploadMenu } from "@/components/chat-input/UploadMenu";
 import type { Model } from "@/hooks/useModels";
+import { useTranslation } from "@/hooks/useTranslation";
+import { VoiceOrb2D } from "@/components/VoiceOrb2D";
+import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 
 export type ReasoningEffort = "none" | "high" | "max";
 /** 会话工作模式：build（可写）/ plan（只读） */
 export type ChatMode = "build" | "plan";
+export type { PermissionMode };
 
 export interface ChatInputProps {
   value: string;
@@ -22,6 +29,8 @@ export interface ChatInputProps {
   isSending: boolean;
   placeholder: string;
   disabled?: boolean;
+  /** 用户手动停止生成（abort SSE） */
+  onStop?: () => void;
 
   /** 输入区最小高度（px），引导弹窗等场景可调大；默认 72 */
   inputMinHeight?: number;
@@ -38,6 +47,10 @@ export interface ChatInputProps {
 
   reasoningEffort: ReasoningEffort;
   onReasoningChange: (e: ReasoningEffort) => void;
+
+  /** 权限/执行模式：strict（每次询问）/ auto_approve（自动放行） */
+  permissionMode: PermissionMode;
+  onPermissionChange: (m: PermissionMode) => void;
 
   mode: ChatMode;
   onModeChange: (m: ChatMode) => void;
@@ -56,6 +69,17 @@ export interface ChatInputProps {
   onRemoveFile: (path: string) => void;
   projectName?: string | null;
   onRemoveProject?: () => void;
+
+  /** 附件列表（提供时用 AttachmentChip 渲染，区分 text/image/binary；不提供则回退 files+FilePill） */
+  attachments?: Attachment[];
+  onRemoveAttachment?: (id: string) => void;
+
+  /**
+   * 语音意图回调：语音小球录音结束、后端转写成功后触发。
+   * 父组件收到转写文本后，应自动填入并调用 sendMessageStream 拉起 Agent 流程。
+   * 不提供则隐藏语音小球。
+   */
+  onVoicePrompt?: (text: string) => void;
 }
 
 /**
@@ -73,6 +97,7 @@ export const ChatInput = memo(function ChatInput({
   isSending,
   placeholder,
   disabled,
+  onStop,
   inputMinHeight,
   textareaRef: externalTextareaRef,
   draftKey,
@@ -81,6 +106,8 @@ export const ChatInput = memo(function ChatInput({
   onModelChange,
   reasoningEffort,
   onReasoningChange,
+  permissionMode,
+  onPermissionChange,
   mode,
   onModeChange,
   allowAgentChange = false,
@@ -94,21 +121,58 @@ export const ChatInput = memo(function ChatInput({
   onRemoveFile,
   projectName,
   onRemoveProject,
+  attachments,
+  onRemoveAttachment,
+  onVoicePrompt,
 }: ChatInputProps) {
+  const { t } = useTranslation();
   // 互斥规则：同一时刻只允许一个下拉展开，展开新胶囊自动关闭旧胶囊
   const [activePop, setActivePop] = useState<string | null>(null);
   // Ghost UI：底栏整组控件默认低存在感，鼠标移入底栏时平滑显现
   const [toolbarHovered, setToolbarHovered] = useState(false);
+  // 文件/图片拖拽：拖入输入卡时边框高亮 + 内嵌提示（dragDepth 计数防抖，避免子元素闪烁）
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragDepthRef = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = externalTextareaRef ?? internalTextareaRef;
+
+  // ── 语音录制 + 意图转写（仅当 onVoicePrompt 提供时启用）──
+  const voice = useVoiceRecorder();
+  const voiceEnabled = typeof onVoicePrompt === "function";
+
+  // 录音结束 → 自动转写 → 拉起 Agent 流程
+  const handleVoiceClick = useCallback(async () => {
+    if (!voiceEnabled || voice.isTranscribing) return;
+    // 先清掉上一次错误提示
+    voice.clearError();
+    if (voice.isRecording) {
+      // 停止并转写
+      const text = await voice.stop();
+      if (text) {
+        // 填入输入框（用户可见反馈）并触发发送
+        onChange(text);
+        onVoicePrompt?.(text);
+      }
+    } else {
+      await voice.start();
+    }
+  }, [voiceEnabled, voice, onChange, onVoicePrompt]);
+
+  // 转写错误以轻提示方式注入 placeholder 区域（不阻塞输入）
+  const voiceTitle = voice.isRecording
+    ? t("chat.voiceStop") || "点击停止录音并转写"
+    : voice.isTranscribing
+      ? t("chat.voiceTranscribing") || "正在转写…"
+      : t("chat.voiceStart") || "点击开始语音输入";
 
   const menuOpen = activePop === "menu";
   const agentOpen = activePop === "agent";
   const modelOpen = activePop === "model";
   const modeOpen = activePop === "mode";
   const reasoningOpen = activePop === "reasoning";
+  const permissionOpen = activePop === "permission";
 
   const closePop = useCallback(() => setActivePop(null), []);
   const togglePop = useCallback((key: string | null) => {
@@ -125,7 +189,7 @@ export const ChatInput = memo(function ChatInput({
     const resize = () => {
       if (cancelled) return;
       el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+      el.style.height = Math.min(el.scrollHeight, 135) + "px";
     };
     resize();
     const raf = requestAnimationFrame(resize);
@@ -186,6 +250,17 @@ export const ChatInput = memo(function ChatInput({
     }
   }, [draftKey]);
 
+  // 语音资源清理：组件卸载时若仍在录音，静默停止并释放麦克风（避免红点常亮 / 悬挂 stream）
+  useEffect(() => {
+    return () => {
+      // 仅在录音中触发清理；转写中的请求让其自然完成
+      if (voice.isRecording) {
+        voice.stop().catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handlePickFile = () => {
     closePop();
     fileInputRef.current?.click();
@@ -209,16 +284,62 @@ export const ChatInput = memo(function ChatInput({
     }
   };
 
+  // ──── 文件/图片拖拽上传（HTML5 DnD）────
+  const hasDragFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types ?? []).includes("Files");
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!hasDragFiles(e)) return;
+    e.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDragOver(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!hasDragFiles(e)) return;
+    e.preventDefault();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!hasDragFiles(e)) return;
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!hasDragFiles(e)) return;
+    e.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    for (const file of files) onUploadFile(file);
+  };
+
   return (
-    <div style={{
-      position: "relative",
-      border: "1px solid var(--border-primary)",
-      borderRadius: "var(--radius-2xl)",
-      background: "var(--bg-level-2)",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
-    }}>
+    <div
+      data-mfk-dropzone="input"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{
+        position: "relative",
+        border: isDragOver
+          ? "1px dashed var(--color-primary)"
+          : "1px solid var(--border-primary)",
+        borderRadius: "var(--radius-2xl)",
+        background: isDragOver
+          ? "color-mix(in srgb, var(--color-primary-light) 25%, var(--bg-level-2))"
+          : "var(--bg-level-2)",
+        boxShadow: isDragOver
+          ? "0 0 0 4px var(--color-primary-light)"
+          : "0 8px 32px rgba(0,0,0,0.06)",
+        transition:
+          "border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast)",
+      }}
+    >
       {/* 草稿 Pills（文件 + 项目） */}
-      {(files.length > 0 || (projectName && onRemoveProject)) && (
+      {(files.length > 0 || (projectName && onRemoveProject) || (attachments && attachments.length > 0)) && (
         <div style={{
           display: "flex",
           flexWrap: "wrap",
@@ -269,34 +390,104 @@ export const ChatInput = memo(function ChatInput({
           {files.map((filePath) => (
             <FilePill key={filePath} filePath={filePath} onRemove={onRemoveFile} />
           ))}
+          {attachments && onRemoveAttachment && attachments.length > 0 && (
+            <AttachmentChipList attachments={attachments} onRemove={onRemoveAttachment} />
+          )}
         </div>
       )}
 
-      {/* Textarea - 舒展自适应 */}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        rows={1}
-        disabled={isSending || disabled}
-        style={{
-          width: "100%",
-          padding: "10px 14px",
-          background: "transparent",
-          border: "none",
-          outline: "none",
-          resize: "none",
-          fontSize: "14px",
-          lineHeight: "1.5rem",
-          color: "var(--text-level-2)",
-          minHeight: `${inputMinHeight ?? 72}px`,
-          maxHeight: "120px",
-          fontFamily: "inherit",
-          boxSizing: "border-box",
-        }}
-      />
+      {/* Textarea - 舒展自适应（含左侧语音小球） */}
+      <div style={{ position: "relative", width: "100%" }}>
+        {voiceEnabled && (
+          <div style={{
+            position: "absolute",
+            left: "10px",
+            top: "10px",
+            zIndex: 2,
+            display: "flex",
+            alignItems: "center",
+          }}>
+            <VoiceOrb2D
+              isActive={voice.isRecording}
+              isTranscribing={voice.isTranscribing}
+              onClick={handleVoiceClick}
+              title={voiceTitle}
+              disabled={isSending || disabled}
+            />
+          </div>
+        )}
+        {/* 转写错误轻提示（小球右下方，不阻塞输入） */}
+        {voiceEnabled && voice.error && (
+          <div style={{
+            position: "absolute",
+            left: "44px",
+            top: "12px",
+            zIndex: 2,
+            maxWidth: "calc(100% - 120px)",
+            padding: "2px 8px",
+            borderRadius: "var(--radius-md)",
+            background: "var(--color-error-lighter, rgba(255,80,80,0.12))",
+            color: "var(--color-error, #e5484d)",
+            fontSize: "11px",
+            lineHeight: 1.4,
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>{voice.error}</div>
+        )}
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={(e) => {
+            // 剪贴板图片一键粘贴：捕获 Ctrl+V 中的图片数据（Win+Shift+S 截图后粘贴）
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            let hasImage = false;
+            for (const item of items) {
+              if (item.kind === "file" && item.type.startsWith("image/")) {
+                const file = item.getAsFile();
+                if (file) {
+                  hasImage = true;
+                  // 剪贴板图片 file.name 可能为空，补默认名
+                  if (!file.name) {
+                    const ext = file.type.split("/")[1] || "png";
+                    const renamed = new File([file], `clipboard-${Date.now()}.${ext}`, { type: file.type });
+                    onUploadFile(renamed);
+                  } else {
+                    onUploadFile(file);
+                  }
+                }
+              }
+            }
+            // 有图片时阻止默认粘贴（避免把图片二进制粘成乱码文本）
+            if (hasImage) e.preventDefault();
+          }}
+          placeholder={placeholder}
+          rows={1}
+          disabled={isSending || disabled}
+          style={{
+            width: "100%",
+            // 启用语音时左侧留出小球空间（10 球宽28 + 间距10 = 48），其余保持原 14px
+            padding: voiceEnabled ? "10px 14px 10px 48px" : "10px 14px",
+            background: "transparent",
+            border: "none",
+            outline: "none",
+            resize: "none",
+            fontSize: "14px",
+            lineHeight: "1.5rem",
+            color: "var(--text-level-2)",
+            minHeight: `${inputMinHeight ?? 87}px`,
+            maxHeight: "135px",
+            fontFamily: "inherit",
+            boxSizing: "border-box",
+            position: "relative",
+            zIndex: 1,
+          }}
+        />
+      </div>
 
       {/* 底部工具栏 - Ghost：整组默认低调（opacity 0.55），移入底栏平滑提升到 1 */}
       <div
@@ -392,9 +583,54 @@ export const ChatInput = memo(function ChatInput({
             onToggle={() => togglePop("reasoning")}
             onClose={closePop}
           />
+
+          {/* 权限/执行模式 - 下拉胶囊按钮 + Popover（向上弹出） */}
+          <PermissionSelector
+            permissionMode={permissionMode}
+            onPermissionChange={(m) => {
+              closePop();
+              onPermissionChange(m);
+            }}
+            open={permissionOpen}
+            onToggle={() => togglePop("permission")}
+            onClose={closePop}
+          />
         </div>
 
-        {/* 发送按钮 28x28 - 卡片右下角 */}
+        {/* 发送/停止按钮 28x28 - 卡片右下角 */}
+        {isSending && onStop ? (
+          <button
+            onClick={onStop}
+            title={t("chat.stop")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "28px",
+              height: "28px",
+              borderRadius: "var(--radius-md)",
+              border: "none",
+              background: "var(--color-error)",
+              cursor: "pointer",
+              color: "white",
+              transition: "all var(--transition-fast)",
+              flexShrink: 0,
+              outline: "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 85%, black)";
+              e.currentTarget.style.transform = "scale(1.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--color-error)";
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.95)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            <Square style={{ width: "12px", height: "12px", fill: "currentColor" }} />
+          </button>
+        ) : (
         <button
           onClick={() => {
             clearDraft();
@@ -431,7 +667,44 @@ export const ChatInput = memo(function ChatInput({
         >
           <Send style={{ width: "14px", height: "14px" }} />
         </button>
+        )}
       </div>
+
+      {/* 拖拽悬停提示层：半透明毛玻璃 + primary 虚线胶囊，覆盖整卡但不拦截指针 */}
+      {isDragOver && (
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "var(--radius-2xl)",
+          background: "color-mix(in srgb, var(--bg-level-2) 72%, transparent)",
+          backdropFilter: "var(--glass-blur)",
+          WebkitBackdropFilter: "var(--glass-blur)",
+          pointerEvents: "none",
+          zIndex: 10,
+          animation: "fadeIn 0.15s ease",
+        }}>
+          <span style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 16px",
+            borderRadius: "var(--radius-full)",
+            border: "1px dashed var(--color-primary)",
+            background: "var(--glass-bg)",
+            boxShadow: "0 0 0 3px var(--color-primary-light)",
+            fontSize: "13px",
+            fontWeight: 500,
+            color: "var(--color-primary)",
+            whiteSpace: "nowrap",
+          }}>
+            <FileUp style={{ width: "14px", height: "14px" }} />
+            {t("chat.dropToAttach")}
+          </span>
+        </div>
+      )}
     </div>
   );
 });

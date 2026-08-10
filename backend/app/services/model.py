@@ -246,6 +246,10 @@ async def _vision_fallback_extract(vision_context: dict) -> str:
             "请在设置中配置备用识图模型（vision_provider + vision_api_key + vision_model）。"
         )
 
+    # ── 检查备用识图 provider 是否被禁用 ──
+    if vp in model_service._disabled_providers:
+        return "[图片解析失败: 备用识图 Provider 已被禁用，请在设置中开启]"
+
     # ── 解析 API Base URL ──
     if not vbu:
         provider_def = PROVIDER_MAP.get(vp)
@@ -308,12 +312,28 @@ async def _vision_fallback_extract(vision_context: dict) -> str:
                     "LLM request finished:\nprovider=%s\nmodel=%s\nduration_ms=%d\nsuccess=%s",
                     vp or "unknown", vm or "unknown", _llm_duration_ms, False,
                 )
+                # 提取上游错误信息
+                error_detail = ""
+                try:
+                    error_data = response.json()
+                    error_detail = error_data.get("error", {}).get("message", "")
+                except Exception:
+                    pass
+                if not error_detail:
+                    error_detail = response.text[:200]
                 logger.warning(
-                    "Phase3 vision fallback: API error status=%s body=%s",
-                    response.status_code,
-                    response.text[:300],
+                    "Phase3 vision fallback: API error status=%s detail=%s",
+                    response.status_code, error_detail,
                 )
-                return "[图片解析失败: 请检查备用识图 API 配置]"
+                # 检查是否为 Model Not Found
+                if response.status_code == 404 or (
+                    response.status_code in (400, 422) and any(
+                        kw in (error_detail or "").lower()
+                        for kw in ("model not found", "invalid model", "does not exist", "unknown model", "no such model", "model disabled")
+                    )
+                ):
+                    return f"[图片解析失败: 备用识图模型 {vm} 不可用（{response.status_code}），请更换为可用模型：{error_detail[:150]}]"
+                return f"[图片解析失败: 备用识图 API 返回错误（{response.status_code}）：{error_detail[:150]}]"
 
             data = response.json()
             _llm_duration_ms = int((time.perf_counter() - _llm_start) * 1000)
@@ -337,7 +357,7 @@ async def _vision_fallback_extract(vision_context: dict) -> str:
         return "[图片解析失败: 备用识图 API 超时，请检查网络或 API 配置]"
     except Exception as e:
         logger.warning("Phase3 vision fallback: exception=%s", e)
-        return "[图片解析失败: 请检查备用识图 API 配置]"
+        return f"[图片解析失败: 备用识图 API 调用异常：{str(e)[:150]}]"
 
 
 def _inject_fallback_text_into_messages(messages: list, fallback_text: str) -> list:

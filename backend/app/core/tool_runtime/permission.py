@@ -23,7 +23,7 @@ class PermissionFilter:
         "git_status", "git_diff", "git_log", "git_commit", "git_restore",
         "search_files",
         "web_search", "fetch_url", "github_search",
-        "add_memory", "get_datetime", "format_json",
+        "add_memory", "manage_todos", "get_datetime", "format_json",
     ]
 
     # 写入/有副作用工具（plan 模式移除；派生自 risk_engine，与执行闸保持同步）

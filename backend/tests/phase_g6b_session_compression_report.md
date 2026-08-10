@@ -1,12 +1,12 @@
 # MfkAgent 会话压缩引擎 测试报告（Phase G6-B）
 
-- 时间: 2026-08-07 19:01:45
+- 时间: 2026-08-08 21:23:34
 
 ## 结果总览
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | T1  三段式拆分 + 摘要节点位置 | ✅ PASS | 2ms |
+| 1 | T1  三段式拆分 + 摘要节点位置 | ✅ PASS | 3ms |
 | 2 | T2  中间内容不足 → 返回原列表 | ✅ PASS | 1ms |
 | 3 | T3  摘要成功 → memory 节点注入（dict） | ✅ PASS | 1ms |
 | 4 | T4  摘要异常 → fail-safe 返回原列表 | ✅ PASS | 1ms |
@@ -14,7 +14,7 @@
 | 6 | T6  ModelMessage 类型保持 | ✅ PASS | 1ms |
 | 7 | T7  keep_recent 覆盖全部 → 不压缩 | ✅ PASS | 1ms |
 | 8 | T8  摘要 Prompt 内容正确 | ✅ PASS | 1ms |
-| 9 | T9  模型解析优先级 | ✅ PASS | 2ms |
+| 9 | T9  模型解析优先级 | ✅ PASS | 1ms |
 | 10 | T10 自定义 keep_recent / min_middle | ✅ PASS | 1ms |
 | 11 | T11 独立接口不破坏 run/run_stream | ✅ PASS | 1ms |
 

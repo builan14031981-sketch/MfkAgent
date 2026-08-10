@@ -1,43 +1,52 @@
 """本地项目沙箱文件工具集 —— 供 LLM Function Calling 使用。
 
-所有工具接收 `project_path` + `relative_path`，通过 realpath 沙箱校验，
-确保读写范围严格限定在项目工作区内，防止越权访问项目外文件。
+所有工具接收 `project_path` + `relative_path`，经由 app.core.sandbox 统一沙箱
+校验（resolve + is_relative_to，Windows 大小写安全），确保读写范围严格限定
+在项目工作区内，越权抛 PermissionError（SandboxViolation），防止路径穿越。
+
+Phase 9 P1: 写入文件时通过 sanitize_filename 清理非法字符。
 """
 from typing import Dict, List, Optional
 import os
+
+from app.core.sandbox import SandboxViolation, resolve_sandbox_path
+from app.core.sanitize import sanitize_filename
 
 
 class ToolExecutionError(Exception):
     """工具执行失败（消息会原样返回给 LLM）"""
 
 
-def _resolve_sandbox_path(project_path: str, relative_path: str = ".") -> str:
-    """沙箱解析：将项目内相对路径解析为绝对路径，并校验位于 project_path 内。"""
-    if not project_path:
-        raise ToolExecutionError("project_path 不能为空")
-    proj_real = os.path.realpath(project_path)
-    if not os.path.isdir(proj_real):
-        raise ToolExecutionError(f"项目目录不存在: {project_path}")
+def _sanitize_relative_path(relative_path: str) -> str:
+    """Phase 9: 逐级清理相对路径中的非法文件名字符。
 
-    target = os.path.realpath(os.path.join(proj_real, relative_path or "."))
-    if target != proj_real and not target.startswith(proj_real + os.sep):
-        raise ToolExecutionError(f"路径越权，禁止访问项目目录之外: {relative_path}")
-    return target
+    仅清理文件名组件（不含路径分隔符），保留目录结构。
+    """
+    parts = relative_path.replace("\\", "/").split("/")
+    cleaned = [sanitize_filename(p) for p in parts if p]
+    return "/".join(cleaned)
 
 
 def write_file(project_path: str, relative_path: str, content: str) -> str:
-    """写入/覆写本地项目文件。若父目录不存在会自动创建。"""
-    target = _resolve_sandbox_path(project_path, relative_path)
-    parent = os.path.dirname(target)
-    os.makedirs(parent, exist_ok=True)
+    """写入/覆写本地项目文件。若父目录不存在会自动创建。
+
+    目标路径先过沙箱校验；其父目录是校验后目标的前缀，天然仍在项目内，
+    因此 makedirs 不会越权。
+
+    Phase 9: 文件名组件通过 sanitize_filename 清理非法字符。
+    """
+    # Phase 9: 逐级清理文件名中的非法字符
+    sanitized = _sanitize_relative_path(relative_path)
+    target = resolve_sandbox_path(sanitized, project_path)
+    os.makedirs(target.parent, exist_ok=True)
     with open(target, "w", encoding="utf-8") as f:
         f.write(content)
-    return f"文件已写入: {relative_path} ({len(content)} 字符)"
+    return f"文件已写入: {sanitized} ({len(content)} 字符)"
 
 
 def read_file(project_path: str, relative_path: str) -> str:
     """读取本地项目文件内容。"""
-    target = _resolve_sandbox_path(project_path, relative_path)
+    target = resolve_sandbox_path(relative_path, project_path)
     if not os.path.isfile(target):
         raise ToolExecutionError(f"文件不存在: {relative_path}")
     if os.path.getsize(target) > 100 * 1024:
@@ -48,7 +57,7 @@ def read_file(project_path: str, relative_path: str) -> str:
 
 def list_files(project_path: str, relative_path: str = ".") -> str:
     """查看本地项目目录结构。"""
-    target = _resolve_sandbox_path(project_path, relative_path)
+    target = resolve_sandbox_path(relative_path, project_path)
     if not os.path.isdir(target):
         raise ToolExecutionError(f"目录不存在: {relative_path}")
     lines = []
@@ -177,6 +186,9 @@ def execute_file_tool(name: str, project_path: str, **kwargs) -> str:
         return f"错误: 未知工具 {name}"
     try:
         return fn(project_path=project_path, **kwargs)
+    except SandboxViolation as e:
+        # 路径越权（PermissionError）：显式拦截，不当作普通 Exception 吞掉
+        return f"错误: {e}"
     except ToolExecutionError as e:
         return f"错误: {e}"
     except Exception as e:

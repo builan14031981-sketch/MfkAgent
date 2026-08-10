@@ -10,6 +10,7 @@ declare global {
         electron?: string;
       };
       selectDirectory?: () => Promise<string | null>;
+      showNotification?: (opts: { title?: string; body?: string; silent?: boolean }) => Promise<boolean>;
     };
   }
 }

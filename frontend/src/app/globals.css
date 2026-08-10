@@ -589,3 +589,91 @@ button:active {
   opacity: 0.8;
 }
 
+/* ========================================
+ * 强调色主题（设置 > 通用 > 主题）
+ * 仅覆盖 --color-primary 家族；深色模式由 .dark.accent-* 双类单独调校。
+ * default = 原生 Apple 蓝（:root / .dark 已定义），无需额外类。
+ * 选择器层级：.dark.accent-* (0,2,0) > .accent-* (0,1,0)，
+ * 且 .accent-* 位于 .dark 之后按文件顺序覆盖单类 .dark 值。
+ * ======================================== */
+
+/* 翡翠青 Teal */
+.accent-teal {
+  --color-primary: #0d9488;
+  --color-primary-hover: #0f766e;
+  --color-primary-active: #115e59;
+  --color-primary-light: rgba(13, 148, 136, 0.10);
+  --color-primary-lighter: rgba(13, 148, 136, 0.05);
+}
+.dark.accent-teal {
+  --color-primary: #14b8a6;
+  --color-primary-hover: #2dd4bf;
+  --color-primary-active: #0d9488;
+  --color-primary-light: rgba(20, 184, 166, 0.16);
+  --color-primary-lighter: rgba(20, 184, 166, 0.08);
+}
+
+/* 琥珀橙 Amber */
+.accent-amber {
+  --color-primary: #e8732a;
+  --color-primary-hover: #f0832f;
+  --color-primary-active: #c85d17;
+  --color-primary-light: rgba(232, 115, 42, 0.12);
+  --color-primary-lighter: rgba(232, 115, 42, 0.06);
+}
+.dark.accent-amber {
+  --color-primary: #d97706;
+  --color-primary-hover: #b45309;
+  --color-primary-active: #92400e;
+  --color-primary-light: rgba(217, 119, 6, 0.15);
+  --color-primary-lighter: rgba(217, 119, 6, 0.08);
+}
+
+/* 星空紫 Violet */
+.accent-violet {
+  --color-primary: #7c3aed;
+  --color-primary-hover: #6d28d9;
+  --color-primary-active: #5b21b6;
+  --color-primary-light: rgba(124, 58, 237, 0.10);
+  --color-primary-lighter: rgba(124, 58, 237, 0.05);
+}
+.dark.accent-violet {
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #a78bfa;
+  --color-primary-active: #7c3aed;
+  --color-primary-light: rgba(139, 92, 246, 0.16);
+  --color-primary-lighter: rgba(139, 92, 246, 0.08);
+}
+
+/* 玫红 Rose */
+.accent-rose {
+  --color-primary: #e11d48;
+  --color-primary-hover: #be123c;
+  --color-primary-active: #9f1239;
+  --color-primary-light: rgba(225, 29, 72, 0.10);
+  --color-primary-lighter: rgba(225, 29, 72, 0.05);
+}
+.dark.accent-rose {
+  --color-primary: #f43f5e;
+  --color-primary-hover: #fb7185;
+  --color-primary-active: #e11d48;
+  --color-primary-light: rgba(244, 63, 94, 0.16);
+  --color-primary-lighter: rgba(244, 63, 94, 0.08);
+}
+
+/* 石墨中性 Graphite */
+.accent-graphite {
+  --color-primary: #1d1d1f;
+  --color-primary-hover: #2f2f32;
+  --color-primary-active: #000000;
+  --color-primary-light: rgba(29, 29, 31, 0.08);
+  --color-primary-lighter: rgba(29, 29, 31, 0.04);
+}
+.dark.accent-graphite {
+  --color-primary: #3a3a3c;
+  --color-primary-hover: #4a4a4e;
+  --color-primary-active: #2c2c2e;
+  --color-primary-light: rgba(58, 58, 60, 0.18);
+  --color-primary-lighter: rgba(58, 58, 60, 0.10);
+}
+

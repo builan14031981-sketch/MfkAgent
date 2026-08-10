@@ -1,17 +1,10 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
 import { apiGet, apiPost, apiDelete } from "@/lib/api";
+import type { MemoryItem, MemoryScope } from "@/types/memory";
 
-export interface MemoryItem {
-  id: number;
-  scope: "global" | "agent" | "project";
-  agent_id: string | null;
-  project_id: number | null;
-  content: string;
-  created_at: string;
-}
-
-export type MemoryScope = "global" | "agent" | "project";
+// 保持旧引用兼容：既有 import { MemoryItem } / { MemoryScope } from "@/hooks/useMemory"
+export type { MemoryItem, MemoryScope };
 
 /**
  * 极简记忆（memory_items 表）：按 scope 三作用域隔离

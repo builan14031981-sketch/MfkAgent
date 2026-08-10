@@ -1,14 +1,39 @@
 from pydantic_settings import BaseSettings
 from typing import List
+from pathlib import Path
 import os
+import sys
+
+# Phase 9 P1: 跨平台长路径兼容
+from app.core.path_utils import ensure_long_path, IS_WINDOWS
+
+# ── 后端根目录：基于本文件位置自动计算，与进程启动目录(CWD)彻底解耦 ──
+# config.py 位于 backend/app/core/config.py → 向上三级即为 backend/
+_BACKEND_DIR_RAW = Path(__file__).resolve().parent.parent.parent
+BACKEND_DIR = _BACKEND_DIR_RAW
+
+# 数据文件统一锚定到 backend/ 下的绝对路径（数据库 / 上传 / 向量库 / 备份），
+# 无论从哪个目录启动 uvicorn / Electron，都不会在根目录遗留散落的 db / uploads。
+# Phase 9: Windows 下挂载长路径前缀，突破 260 字符限制
+_DATABASE_PATH_RAW = BACKEND_DIR / "mfkagent.db"
+DATABASE_PATH = _DATABASE_PATH_RAW
+DATA_DIR = BACKEND_DIR
+
+# 如果 backend 目录路径超过 200 字符，提前启用长路径前缀
+if IS_WINDOWS:
+    _backend_str = str(BACKEND_DIR)
+    if len(_backend_str) > 200:
+        BACKEND_DIR = Path(ensure_long_path(BACKEND_DIR))
+        DATABASE_PATH = Path(ensure_long_path(_DATABASE_PATH_RAW))
+        DATA_DIR = BACKEND_DIR
 
 class Settings(BaseSettings):
     # 应用配置
     APP_NAME: str = "MfkAgent"
     DEBUG: bool = True
     
-    # 数据库配置
-    DATABASE_URL: str = "sqlite:///./mfkagent.db"
+    # 数据库配置（绝对路径，as_posix 保证 SQLAlchemy Windows 兼容）
+    DATABASE_URL: str = f"sqlite:///{DATABASE_PATH.as_posix()}"
     
     # 小米MiMo配置
     MIMO_API_KEY: str = ""
@@ -58,14 +83,14 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"]
     
     # 文件上传配置
-    UPLOAD_DIR: str = "./uploads"
+    UPLOAD_DIR: str = str(BACKEND_DIR / "uploads")
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     
     # 向量数据库配置
-    CHROMA_PERSIST_DIR: str = "./chroma_db"
+    CHROMA_PERSIST_DIR: str = str(BACKEND_DIR / "chroma_db")
     
     class Config:
-        env_file = ".env"
+        env_file = str(BACKEND_DIR / ".env")
         case_sensitive = True
 
 settings = Settings()

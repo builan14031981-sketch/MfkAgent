@@ -9,6 +9,7 @@ import type { ToolCall } from "@/components/ToolCallCard";
  */
 export type RuntimeEventType =
   | "thinking"
+  | "thinking_indicator"
   | "tool"
   | "approval"
   | "text"
@@ -32,6 +33,8 @@ export interface ApprovalRequest {
   risk_level: string;
   risk_reason: string;
   chat_id?: number;
+  /** Phase 1.5：用户审批后标记只读状态（undefined=待审批 / approved / rejected） */
+  resolvedAction?: "approved" | "rejected";
 }
 
 /** G6-A：LLM 每轮思考结束后的 Token 消耗与上下文水位事件（不进入 timeline 渲染） */
@@ -80,6 +83,13 @@ export interface RuntimeEventBase {
 /** 思考段：连续 thinking 增量合并到同一事件（中间穿插 tool 则新建） */
 export interface ThinkingEvent extends RuntimeEventBase {
   type: "thinking";
+  content: string;
+}
+
+/** 思考占位符：发送后立即可见，首 Token 前显示"正在思考..."指示器 */
+export interface ThinkingIndicatorEvent extends RuntimeEventBase {
+  type: "thinking_indicator";
+  /** 已累积的思考文本（空串时仅显示指示器；有内容时显示折叠面板） */
   content: string;
 }
 
@@ -179,6 +189,7 @@ export interface ExtensionEvent extends RuntimeEventBase {
 /** Runtime Event 判别联合：渲染层按 type 分发 */
 export type RuntimeEvent =
   | ThinkingEvent
+  | ThinkingIndicatorEvent
   | ToolEvent
   | ApprovalEvent
   | TextEvent

@@ -9,6 +9,7 @@ import {
 import { useAgents } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
 import { useMemory, MemoryScope } from "@/hooks/useMemory";
+import type { MemoryType } from "@/types/memory";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Panel } from "./Panel";
 import { AgentIcon } from "../AgentIcon";
@@ -26,18 +27,43 @@ const SCOPE_OPTIONS: { value: MemoryScope; key: "scopeGlobal" | "scopeAgent" | "
   { value: "project", key: "scopeProject" },
 ];
 
+/** 记忆分类筛选 Tabs：all = 不过滤；i18n key 统一挂 settings.memory.types.* */
+const TYPE_FILTER_OPTIONS: { value: MemoryType | "all"; key: string }[] = [
+  { value: "all", key: "settings.memory.types.all" },
+  { value: "preference", key: "settings.memory.types.preference" },
+  { value: "fact", key: "settings.memory.types.fact" },
+  { value: "workflow", key: "settings.memory.types.workflow" },
+  { value: "project", key: "settings.memory.types.project" },
+];
+
+/** 记忆类型 → 彩色 Badge 元信息（语义色变量，适配深色模式与强调色主题） */
+const TYPE_BADGE_META: Record<MemoryType, { color: string; key: string }> = {
+  preference: { color: "var(--color-warning)", key: "settings.memory.types.preference" },
+  fact: { color: "var(--color-info)", key: "settings.memory.types.fact" },
+  workflow: { color: "var(--color-success)", key: "settings.memory.types.workflow" },
+  project: { color: "var(--color-primary)", key: "settings.memory.types.project" },
+};
+
 export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelProps) {
   const { agents } = useAgents();
   const { projects } = useProjects();
   const { t } = useTranslation();
   const [scope, setScope] = useState<MemoryScope>("global");
-  const [selectedAgent, setSelectedAgent] = useState(agents[0]?.id || "");
+  // "" = 全部 Agent（不按 agent 过滤，后端返回 scope=agent 的所有记忆）；
+  // 具体 agent_id = 仅查看该 Agent 的记忆
+  const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [selectedProject, setSelectedProject] = useState<number | null>(projects[0]?.id ?? null);
   const [newValue, setNewValue] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
+  // 记忆分类筛选：all = 全部；旧数据无 memory_type 时兜底归为 fact
+  const [typeFilter, setTypeFilter] = useState<MemoryType | "all">("all");
   const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent, selectedProject, scope);
+
+  const filteredMemories = memories.filter((memory) =>
+    typeFilter === "all" ? true : (memory.memory_type || "fact") === typeFilter
+  );
 
   const agentScopeReady = scope !== "agent" || !!selectedAgent;
   const projectScopeReady = scope !== "project" || selectedProject != null;
@@ -117,7 +143,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
         ))}
       </div>
 
-      {/* Agent 选择（仅 agent 作用域） */}
+      {/* Agent 选择（仅 agent 作用域）：首位"全部"= 不按 agent 过滤，展示所有 Agent 记忆 */}
       {scope === "agent" && (
         <div style={{ marginBottom: "12px" }}>
           <label style={{
@@ -127,6 +153,23 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
             marginBottom: "8px",
           }}>{t("memory.selectAgent")}</label>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              onClick={() => setSelectedAgent("")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "6px 10px",
+                borderRadius: "var(--radius-full)",
+                border: "1px solid",
+                borderColor: selectedAgent === "" ? "var(--color-primary)" : "var(--border-primary)",
+                background: selectedAgent === "" ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
+                cursor: "pointer",
+                fontSize: "12px",
+                color: selectedAgent === "" ? "var(--color-primary)" : "var(--text-level-2)",
+              }}
+            >
+              <span>{t("memory.types.all")}</span>
+            </button>
             {agents.map((agent) => (
               <button
                 key={agent.id}
@@ -254,15 +297,47 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
 
       {/* 记忆列表 */}
       <div>
+        {/* 记忆分类筛选 Tabs */}
+        <div style={{
+          display: "flex",
+          gap: "6px",
+          flexWrap: "wrap",
+          marginBottom: "10px",
+        }}>
+          {TYPE_FILTER_OPTIONS.map((opt) => {
+            const active = typeFilter === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setTypeFilter(opt.value)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "var(--radius-full)",
+                  border: "1px solid",
+                  borderColor: active ? "var(--color-primary)" : "var(--border-primary)",
+                  background: active ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: active ? "600" : "400",
+                  color: active ? "var(--color-primary)" : "var(--text-level-3)",
+                  transition: "border-color 0.15s ease, background 0.15s ease, color 0.15s ease",
+                }}
+              >
+                {t(opt.key)}
+              </button>
+            );
+          })}
+        </div>
+
         <h3 style={{
           fontSize: "13px",
           fontWeight: "500",
           color: "var(--text-level-1)",
           margin: "0 0 10px 0",
         }}>{t("memory.memoryList")}</h3>
-        {loading && memories.length === 0 ? (
+        {loading && filteredMemories.length === 0 ? (
           <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
-        ) : memories.length === 0 ? (
+        ) : filteredMemories.length === 0 ? (
           <div style={{
             padding: "18px",
             textAlign: "center",
@@ -279,9 +354,12 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {memories.map((memory) => {
+            {filteredMemories.map((memory) => {
               const isConfirming = confirmingDeleteId === memory.id;
               const createdTime = formatTime(memory.created_at);
+              // 向下兼容：旧数据无 memory_type，统一兜底为 fact
+              const memType: MemoryType = memory.memory_type || "fact";
+              const typeMeta = TYPE_BADGE_META[memType];
               return (
                 <div
                   key={memory.id}
@@ -317,6 +395,19 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
                         lineHeight: 1.4,
                         color: "var(--color-primary)",
                       }}>{scopeLabel(memory.scope)}</span>
+                      {/* 记忆类型 Badge：语义色变量，随深色模式 / 强调色主题自适应 */}
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "1px 7px",
+                        borderRadius: "var(--radius-full)",
+                        background: `color-mix(in srgb, ${typeMeta.color} 12%, transparent)`,
+                        border: `1px solid color-mix(in srgb, ${typeMeta.color} 32%, transparent)`,
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        lineHeight: 1.4,
+                        color: typeMeta.color,
+                      }}>{t(typeMeta.key)}</span>
                       {createdTime && (
                         <span style={{
                           fontSize: "11px",

@@ -31,6 +31,7 @@ async def execute_tool(
     read_only: bool,
     ctx: Dict[str, Any] | None = None,
     emit: Optional[Callable[[Dict], None]] = None,
+    auto_approve: bool = False,
 ) -> Dict:
     """执行单个工具调用
 
@@ -40,6 +41,8 @@ async def execute_tool(
         read_only: 是否为只读模式
         ctx: 上下文（agent_id, project_id 等），供 add_memory 等工具使用
         emit: 可选事件发射器（接收 tool_start / tool_result 事件）。不传则静默（非流式路径零影响）。
+        auto_approve: Phase 12 — 自动审批模式。REQUIRE_APPROVAL 级工具自动放行；
+                      HIGH_RISK 级工具无视此标志，仍强制人工审批。
 
     Returns:
         {
@@ -85,8 +88,8 @@ async def execute_tool(
 
         if decision.verdict == Verdict.DENY:
             result_text = decision.reason
-        elif decision.verdict == Verdict.ASK:
-            # 需用户确认：登记审批并返回 pending record（tool_result 由后续 complete_approval 发射）
+        elif decision.verdict == Verdict.HIGH_RISK:
+            # Phase 12: 高危操作，无视 auto_approve，强制进入审批流程
             return _make_pending_approval(
                 tool_call_id=tool_call_id,
                 func_name=func_name,
@@ -96,6 +99,22 @@ async def execute_tool(
                 read_only=read_only,
                 emit=emit,
             )
+        elif decision.verdict == Verdict.REQUIRE_APPROVAL:
+            if auto_approve:
+                # Phase 12: 自动审批模式 → 直接执行，不等待用户确认
+                # tool_start 事件已在上面 emit，此处直接执行工具
+                result_text = await _run_tool(func_name, func_args, project_path, ctx)
+            else:
+                # 需用户确认：登记审批并返回 pending record
+                return _make_pending_approval(
+                    tool_call_id=tool_call_id,
+                    func_name=func_name,
+                    func_args=func_args,
+                    decision=decision,
+                    ctx=ctx,
+                    read_only=read_only,
+                    emit=emit,
+                )
         else:
             result_text = await _run_tool(func_name, func_args, project_path, ctx)
     except Exception as e:  # noqa: BLE001
@@ -224,6 +243,7 @@ def _make_pending_approval(
         "approval_timeout": info["timeout"],
         "risk_level": decision.risk_level.value,
         "risk_reason": decision.reason,
+        "verdict": decision.verdict.value,  # Phase 12: 供 auto_approve 逻辑判断
         "read_only": read_only,
     }
 

@@ -13,6 +13,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useProjectFiles, FileEntry } from "@/hooks/useProjectFiles";
 import { useTranslation } from "@/hooks/useTranslation";
 
+// 静态导出：动态路由需在 [id]/layout.tsx 提供 generateStaticParams（占位参数）。
 export default function ProjectFilesPage() {
   const router = useRouter();
   const params = useParams();

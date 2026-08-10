@@ -86,6 +86,32 @@ export function FontProvider({ children }: FontProviderProps) {
   return <>{children}</>;
 }
 
+// 强调色主题映射：设置值 -> <html> 上的类名（default 不添加类，保持原生 Apple 蓝）
+const ACCENT_CLASS_MAP: Record<string, string> = {
+  teal: "accent-teal",
+  amber: "accent-amber",
+  violet: "accent-violet",
+  rose: "accent-rose",
+  graphite: "accent-graphite",
+};
+
+export function AccentProvider({ children }: ThemeProviderProps) {
+  const { settings } = useSettingsStore();
+  const accent = settings?.accent_theme || "default";
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    // 先移除所有强调色类，再挂载当前选中项，避免多主题类残留互相覆盖
+    for (const cls of Object.values(ACCENT_CLASS_MAP)) {
+      root.classList.remove(cls);
+    }
+    const cls = ACCENT_CLASS_MAP[accent];
+    if (cls) root.classList.add(cls);
+  }, [accent]);
+
+  return <>{children}</>;
+}
+
 interface ProvidersProps {
   children: React.ReactNode;
 }
@@ -93,7 +119,9 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <ThemeProvider>
-      <FontProvider>{children}</FontProvider>
+      <AccentProvider>
+        <FontProvider>{children}</FontProvider>
+      </AccentProvider>
     </ThemeProvider>
   );
 }

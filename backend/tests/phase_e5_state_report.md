@@ -1,7 +1,7 @@
 # MfkAgent Runtime 状态管理 Phase E5 测试报告
 
-- 时间: 2026-08-07 16:04:41
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_stateE5_0vab2o1i`
+- 时间: 2026-08-08 11:15:40
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_stateE5_wyk33qdo`
 
 ## 交付内容
 
@@ -60,15 +60,15 @@ pending ──► building_context ──► routing ──► llm_call ──�
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
 | 1 | 状态机合法性 | ✅ PASS | 0ms |
-| 2 | 事件类型注册表 | ✅ PASS | 0ms |
-| 3 | Recorder.transition 单元 | ✅ PASS | 32ms |
-| 4 | 流式工具轮生命周期 | ✅ PASS | 233ms |
-| 5 | 流式纯文本生命周期 | ✅ PASS | 89ms |
-| 6 | 流式异常 failed | ✅ PASS | 69ms |
-| 7 | 流式取消 cancelled | ✅ PASS | 234ms |
+| 2 | 事件类型注册表 | ❌ FAIL | 0ms |
+| 3 | Recorder.transition 单元 | ✅ PASS | 35ms |
+| 4 | 流式工具轮生命周期 | ✅ PASS | 264ms |
+| 5 | 流式纯文本生命周期 | ✅ PASS | 99ms |
+| 6 | 流式异常 failed | ✅ PASS | 77ms |
+| 7 | 流式取消 cancelled | ✅ PASS | 253ms |
 | 8 | 非流式 run() 生命周期 | ✅ PASS | 86ms |
 
-**通过率: 8/8**
+**通过率: 7/8**
 
 ## 验证明细
 
@@ -78,7 +78,9 @@ pending ──► building_context ──► routing ──► llm_call ──�
 
 ### 2. 事件类型注册表
 
-- cases: [{'case': '注册表类型全集', 'ok': True, 'extra': [], 'missing': []}, {'case': '规范类型均注册', 'ok': True}, {'case': 'state_change 注册 / 未知未注册', 'ok': True}]
+- cases: [{'case': '注册表类型全集', 'ok': False, 'extra': ['agent_state_update', 'task_skipped'], 'missing': []}, {'case': '规范类型均注册', 'ok': True}, {'case': 'state_change 注册 / 未知未注册', 'ok': True}]
+
+> 失败: {'cases': [{'case': '注册表类型全集', 'ok': False, 'extra': ['agent_state_update', 'task_skipped'], 'missing': []}, {'case': '规范类型均注册', 'ok': True}, {'case': 'state_change 注册 / 未知未注册', 'ok': True}]}
 
 ### 3. Recorder.transition 单元
 
@@ -92,7 +94,7 @@ pending ──► building_context ──► routing ──► llm_call ──�
 - status: completed
 - state_path: ['building_context', 'llm_call', 'tool_execution', 'verifying', 'llm_call', 'completing']
 - state_events: 6
-- event_count: 14
+- event_count: 16
 
 ### 5. 流式纯文本生命周期
 
@@ -122,7 +124,7 @@ pending ──► building_context ──► routing ──► llm_call ──�
 
 ## 结论
 
-✅ **全部通过**：AgentRun 状态机覆盖正常/工具/异常/取消/非流式全生命周期。
+❌ **1 项未通过**，详见上方明细。
 
 ## 下阶段建议
 

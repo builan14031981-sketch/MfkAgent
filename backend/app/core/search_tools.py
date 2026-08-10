@@ -8,7 +8,8 @@ KnowledgeService：后者按 project_id + 显式 index 调用，且存内存易�
 import os
 from typing import Dict, List
 
-from app.core.tools import ToolExecutionError, _resolve_sandbox_path
+from app.core.tools import ToolExecutionError
+from app.core.sandbox import resolve_sandbox_path
 
 # 检索时跳过的大型/隐藏/构建目录（与 KnowledgeService.index_project 保持一致并扩展）
 SKIP_DIRS = {".git", ".idea", ".vscode", "node_modules", "__pycache__", "dist", "build", ".venv", "venv", ".next", ".nuxt"}
@@ -66,8 +67,8 @@ def search_files(project_path: str, query: str, relative_path: str = ".", max_re
     if not query:
         return "错误: query 不能为空"
     try:
-        target = _resolve_sandbox_path(project_path, relative_path)
-    except ToolExecutionError as e:
+        target = resolve_sandbox_path(relative_path, project_path)
+    except (ToolExecutionError, PermissionError) as e:
         return f"错误: {e}"
     if not os.path.isdir(target):
         return f"错误: 目录不存在: {relative_path}"
@@ -123,7 +124,7 @@ def execute_search_tool(name: str, project_path: str, **kwargs) -> str:
         return f"错误: 未知工具 {name}"
     try:
         return fn(project_path=project_path, **kwargs)
-    except ToolExecutionError as e:
+    except (ToolExecutionError, PermissionError) as e:
         return f"错误: {e}"
     except Exception as e:
         return f"错误: {e}"

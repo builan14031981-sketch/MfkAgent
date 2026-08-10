@@ -2,6 +2,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { API_BASE, apiGet, apiPost, apiDelete } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
+import type { Attachment, AttachmentKind } from "@/components/FileDropZone";
+import { getFileExt } from "@/components/FileDropZone";
+import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
 export interface Message {
@@ -11,6 +14,7 @@ export interface Message {
   content: string;
   thinking?: string;
   tool_calls?: ToolCall[];
+  attachments?: Array<{ name: string; path?: string; mime?: string; kind?: string; size?: number }>;
   created_at: string;
 }
 
@@ -79,14 +83,29 @@ export function useMessages(chatId: number | null) {
     onTaskEvent?: (evt: TaskEvent) => void,
     onTokenUsage?: (evt: TokenUsageEvent) => void,
     onAgentStateUpdate?: (evt: AgentStateUpdateEvent) => void,
-    onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void
+    onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void,
+    attachments?: Attachment[],
+    permissionMode?: PermissionMode,
+    signal?: AbortSignal
   ) {
     if (!chatId) throw new Error("No chat selected");
+
+    const body = {
+      content,
+      model,
+      personality_level: personalityLevel,
+      reasoning_effort: reasoningEffort,
+      permission_mode: permissionMode,
+      attachments: attachments?.map((a) => ({ name: a.name, path: a.path, mime: a.mime, kind: a.kind, size: a.size })) ?? [],
+    };
+    console.log("[sendMessageStream] 请求体 attachments:", JSON.stringify(body.attachments));
+    console.log("[sendMessageStream] 请求体 content 前200字符:", body.content.substring(0, 200));
 
     const response = await fetch(`${API_BASE}/api/chat/${chatId}/send/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, model, personality_level: personalityLevel, reasoning_effort: reasoningEffort }),
+      body: JSON.stringify(body),
+      signal,
     });
 
     if (!response.ok) {
@@ -120,6 +139,11 @@ export function useMessages(chatId: number | null) {
     const toolCallMap = new Map<string, ToolCall>();
 
     const flush = () => {
+      // Phase 1.5：信号已中断（会话切换/卸载）→ 丢弃残余 buffer，不再投递
+      if (signal?.aborted) {
+        buffer = "";
+        return;
+      }
       if (buffer === "") return;
       const chunk = buffer;
       buffer = "";
@@ -146,6 +170,16 @@ export function useMessages(chatId: number | null) {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
+        // Phase 1.5：外部信号中断（会话切换/卸载）→ 立即静默退出，不再投递残余 chunk
+        if (signal?.aborted) {
+          buffer = "";
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+          return;
+        }
 
         const text = decoder.decode(value);
         const lines = text.split("\n");
@@ -323,6 +357,7 @@ export function useMessages(chatId: number | null) {
       }
 
       flushNowAndClear();
+      if (signal?.aborted) return;
       onComplete?.(fullContent, Array.from(toolCallMap.values()), fullThinking);
       onFinish();
     } finally {
@@ -336,4 +371,34 @@ export function useMessages(chatId: number | null) {
   }, []);
 
   return { messages, setMessages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages, appendMessage };
+}
+
+/**
+ * 上传项目外文件到 Chat 绑定项目的 .mfkagent/uploads/ 目录。
+ * 后端返回相对 project_path 的路径，供 context_builder 安全读取。
+ * 要求 Chat 已绑定项目（否则后端返回 400）。
+ */
+export async function uploadAttachment(chatId: number, file: File): Promise<Attachment | null> {
+  const formData = new FormData();
+  formData.append("file", file);
+  try {
+    const response = await fetch(`${API_BASE}/api/chat/${chatId}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      name: data.name,
+      path: data.path,
+      mime: data.mime || "application/octet-stream",
+      size: data.size || 0,
+      kind: (data.kind as AttachmentKind) || "text",
+      ext: getFileExt(data.name || "unknown"),
+    };
+  } catch (err) {
+    console.error("uploadAttachment failed:", err);
+    return null;
+  }
 }

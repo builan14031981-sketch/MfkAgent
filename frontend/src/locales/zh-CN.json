@@ -347,7 +347,8 @@
     "maxTokens": "最大 Token",
     "temperature": "温度",
     "noCustom": "暂无自定义模型",
-    "confirmDelete": "确定删除该自定义模型？"
+    "confirmDelete": "确定删除该自定义模型？",
+    "supportsVision": "支持多模态识图（Vision）"
    }
   },
   "ai": {

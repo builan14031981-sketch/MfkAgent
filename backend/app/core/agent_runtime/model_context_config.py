@@ -1,12 +1,14 @@
 """模型上下文窗口配置（G6-A）。
 
 记录各模型的最大 Context Window（token 数），用于计算上下文水位。
-未知模型使用默认值 128000。
+查询优先级：PROVIDERS 注册表（ProviderModel.context_window）> 硬编码字典 > 默认值 128K。
 """
 
 from typing import Dict
 
-# ──── 模型最大上下文窗口配置 ────
+from app.core.model_providers import PROVIDERS
+
+# ──── 模型最大上下文窗口配置（兼容旧数据，优先使用 PROVIDERS 中的值）────
 
 MODEL_CONTEXT_WINDOWS: Dict[str, int] = {
     # OpenAI
@@ -19,41 +21,44 @@ MODEL_CONTEXT_WINDOWS: Dict[str, int] = {
     "claude-3-5-sonnet": 200000,
     "claude-3-5-haiku": 200000,
     "claude-3-opus": 200000,
-    # DeepSeek
-    "deepseek-chat": 64000,
-    "deepseek-coder": 64000,
-    "deepseek-reasoner": 64000,
-    # Qwen
-    "qwen-max": 32768,
-    "qwen-plus": 131072,
     # 默认
-    "default": 128000,
+    "default": 256000,
 }
 
-# 默认上下文窗口
-DEFAULT_CONTEXT_WINDOW = 128000
+# 默认上下文窗口（G6-B：从 128K 提升到 256K，覆盖主流免费模型）
+DEFAULT_CONTEXT_WINDOW = 256000
 
 
 def get_model_max_tokens(model_id: str) -> int:
     """获取指定模型的最大上下文窗口（token 数）。
 
-    匹配规则：精确匹配 > 前缀匹配 > 默认值。
+    查询优先级：
+      1. PROVIDERS 注册表（ProviderModel.context_window）—— 主数据源
+      2. MODEL_CONTEXT_WINDOWS 硬编码字典 —— 兼容旧数据 / 自定义模型
+      3. DEFAULT_CONTEXT_WINDOW —— 最终兜底
+
     未知模型返回 DEFAULT_CONTEXT_WINDOW。
     """
     if not model_id:
         return DEFAULT_CONTEXT_WINDOW
 
-    # 精确匹配
+    # 1. 优先从 PROVIDERS 注册表查询（精确匹配 model_id）
+    for p in PROVIDERS:
+        for m in p.models:
+            if m.id == model_id:
+                return m.context_window
+
+    # 2. 回退硬编码字典：精确匹配 > 前缀匹配
     if model_id in MODEL_CONTEXT_WINDOWS:
         return MODEL_CONTEXT_WINDOWS[model_id]
 
-    # 前缀模糊匹配（如 "gpt-4o-2024-08-06" → "gpt-4o"）
     for key, size in MODEL_CONTEXT_WINDOWS.items():
         if key == "default":
             continue
         if model_id.startswith(key):
             return size
 
+    # 3. 最终兜底
     return DEFAULT_CONTEXT_WINDOW
 
 

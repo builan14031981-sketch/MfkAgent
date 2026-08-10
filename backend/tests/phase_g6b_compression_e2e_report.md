@@ -1,6 +1,6 @@
 # MfkAgent 会话压缩 端到端验证报告（Phase G6-B E2E）
 
-- 时间: 2026-08-07 19:01:32
+- 时间: 2026-08-08 21:23:35
 
 - 链路: ChatContextBuilder → 历史 payload → 压缩引擎 → 模型 payload
 

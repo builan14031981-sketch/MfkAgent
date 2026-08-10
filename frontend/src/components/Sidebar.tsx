@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
   Settings,
   FolderPlus,
+  ChevronRight,
+  MessageSquare,
+  FolderOpen,
 } from "lucide-react";
 import { useChat, Chat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
@@ -21,6 +24,7 @@ import { ChatRow } from "./sidebar/ChatRow";
 import { ProjectNode } from "./sidebar/ProjectNode";
 import { SidebarContextMenu, SidebarContextMenuState } from "./sidebar/SidebarContextMenu";
 import { ProjectCreateForm } from "./sidebar/ProjectCreateForm";
+import { TodoPanel } from "./TodoPanel";
 
 interface SidebarProps {
   currentChatId?: number | null;
@@ -40,7 +44,7 @@ function sortChats(chats: Chat[]): Chat[] {
 export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const { chats, deleteChat, updateChat, pinChat, createChat, refetch: refetchChats } = useChat();
+  const { chats, deleteChat, updateChat, pinChat, refetch: refetchChats } = useChat();
   const { projects, createProject, deleteProject, pinProject, refetch: refetchProjects } = useProjects(1, 100);
   const { agents } = useAgents();
   const { settings } = useSettingsStore();
@@ -62,6 +66,20 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const [newProjectPath, setNewProjectPath] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [initProject, setInitProject] = useState<Project | null>(null);
+  const [quickCreateProject, setQuickCreateProject] = useState<Project | null>(null);
+  const [collapsedGeneralChats, setCollapsedGeneralChats] = useState(false);
+  const generalChatsListRef = useRef<HTMLDivElement>(null);
+  const [collapsedProjectWorkspace, setCollapsedProjectWorkspace] = useState(false);
+  const projectWorkspaceRef = useRef<HTMLDivElement>(null);
+
+  // 阻止 Chromium 自动聚焦启发式：页面加载时若"新建任务"按钮被自动聚焦，立即移除焦点
+  // 仅在 mount 时执行一次，不影响用户后续点击 / Tab 键聚焦
+  const newTaskBtnRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (newTaskBtnRef.current && document.activeElement === newTaskBtnRef.current) {
+      newTaskBtnRef.current.blur();
+    }
+  }, []);
 
   // 按项目分组：有 project_id 的进项目工作区，null 进通用对话
   const { projectChats, generalChats } = useMemo(() => {
@@ -105,6 +123,42 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
     if (activeProjectId != null) set.delete(activeProjectId);
     return set;
   }, [collapsedProjects, activeProjectId]);
+
+  // 当前会话是通用对话时自动展开
+  const effectiveCollapsedGeneralChats = useMemo(() => {
+    if (activeProjectId == null && currentChatId != null) return false;
+    return collapsedGeneralChats;
+  }, [collapsedGeneralChats, activeProjectId, currentChatId]);
+
+  // 当前会话在项目工作区时自动展开
+  const effectiveCollapsedProjectWorkspace = useMemo(() => {
+    if (activeProjectId != null) return false;
+    return collapsedProjectWorkspace;
+  }, [collapsedProjectWorkspace, activeProjectId]);
+
+  // 通用对话折叠/展开动画
+  useEffect(() => {
+    if (!generalChatsListRef.current) return;
+    if (effectiveCollapsedGeneralChats) {
+      generalChatsListRef.current.style.maxHeight = "0px";
+      generalChatsListRef.current.style.opacity = "0";
+    } else {
+      generalChatsListRef.current.style.maxHeight = "2000px";
+      generalChatsListRef.current.style.opacity = "1";
+    }
+  }, [effectiveCollapsedGeneralChats]);
+
+  // 项目工作区折叠/展开动画
+  useEffect(() => {
+    if (!projectWorkspaceRef.current) return;
+    if (effectiveCollapsedProjectWorkspace) {
+      projectWorkspaceRef.current.style.maxHeight = "0px";
+      projectWorkspaceRef.current.style.opacity = "0";
+    } else {
+      projectWorkspaceRef.current.style.maxHeight = "2000px";
+      projectWorkspaceRef.current.style.opacity = "1";
+    }
+  }, [effectiveCollapsedProjectWorkspace]);
 
   const handleContextMenu = (e: React.MouseEvent, chatId: number) => {
     e.preventDefault();
@@ -176,7 +230,6 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const handleDeleteProject = async (id: number) => {
     try {
       await deleteProject(id);
-      window.dispatchEvent(new Event("mfk-projects-changed"));
     } catch (err) {
       console.error("Failed to delete project:", err);
     }
@@ -236,17 +289,11 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
     });
   };
 
-  // 在指定项目下快速新建会话
+  // 在指定项目下快速新建会话：弹出 ProjectInitModal 复用窗口
   const quickCreateChat = useCallback(async (projectId: number) => {
-    const agentId = settings?.default_agent || agents[0]?.id || "general";
-    const modelId = settings?.default_model || null;
-    try {
-      const chat = await createChat(agentId, t("sidebar.newChatTitle"), projectId, modelId);
-      router.push(`/chat/${chat.id}`);
-    } catch (err) {
-      console.error("Failed to create chat in project:", err);
-    }
-  }, [settings, agents, createChat, router, t]);
+    const project = projects.find((p) => p.id === projectId);
+    if (project) setQuickCreateProject(project);
+  }, [projects]);
 
   const handleCreateProject = async () => {
     const name = newProjectName.trim();
@@ -258,7 +305,6 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       setNewProjectName("");
       setNewProjectPath("");
       setProjectModalOpen(false);
-      window.dispatchEvent(new Event("mfk-projects-changed"));
       setInitProject(project);
     } catch (err) {
       console.error("Failed to create project:", err);
@@ -279,7 +325,6 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       setNewProjectName("");
       setNewProjectPath("");
       setProjectModalOpen(false);
-      window.dispatchEvent(new Event("mfk-projects-changed"));
       setInitProject(project);
     } catch (err) {
       // 自动创建失败：保留表单填充，用户可手动提交
@@ -325,6 +370,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       {/* 新建任务 */}
       <div style={{ padding: "12px 12px 4px" }}>
         <button
+          ref={newTaskBtnRef}
           onClick={() => router.push("/")}
           style={{
             width: "100%",
@@ -334,6 +380,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             padding: "6px 10px",
             borderRadius: "var(--radius-md)",
             border: "none",
+            outline: "none",
             background: "var(--bg-level-3)",
             cursor: "pointer",
             fontSize: "14px",
@@ -348,6 +395,11 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
         </button>
       </div>
 
+      {/* 待办面板（可折叠，位于 New Task 与 Projects 之间） */}
+      <div style={{ padding: "0 4px" }}>
+        <TodoPanel />
+      </div>
+
       {/* 聊天列表 */}
       <div style={{
         flex: 1,
@@ -356,20 +408,43 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       }}>
         {/* ===== 项目工作区 ===== */}
         <div style={{ marginBottom: "8px" }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "8px 8px 4px",
-          }}>
-            <p style={{
-              fontSize: "11px",
-              fontWeight: "600",
-              color: "var(--text-level-4)",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-              margin: 0,
-            }}>{t("sidebar.projectWorkspace")}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <button
+              onClick={() => setCollapsedProjectWorkspace((c) => !c)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                flex: 1,
+                minWidth: 0,
+                padding: "6px 4px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                outline: "none",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <ChevronRight style={{
+                width: "13px",
+                height: "13px",
+                color: "var(--text-level-4)",
+                flexShrink: 0,
+                transform: effectiveCollapsedProjectWorkspace ? "rotate(0deg)" : "rotate(90deg)",
+                transition: "transform var(--transition-fast)",
+              }} />
+              <FolderOpen style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
+              <p style={{
+                fontSize: "11px",
+                fontWeight: "600",
+                color: "var(--text-level-4)",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                margin: 0,
+                whiteSpace: "nowrap",
+              }}>{t("sidebar.projectWorkspace")}</p>
+            </button>
             <button
               onClick={() => setProjectModalOpen(true)}
               title={t("sidebar.openProject")}
@@ -384,6 +459,8 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                 background: "transparent",
                 cursor: "pointer",
                 color: "var(--text-level-3)",
+                flexShrink: 0,
+                padding: 0,
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
@@ -392,58 +469,92 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             </button>
           </div>
 
-          {projects.length === 0 ? (
-            <button
-              onClick={() => setProjectModalOpen(true)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                width: "100%",
-                padding: "6px 8px",
-                borderRadius: "var(--radius-sm)",
-                border: "1px dashed var(--border-primary)",
-                background: "transparent",
-                cursor: "pointer",
-                fontSize: "12px",
-                color: "var(--text-level-3)",
-                textAlign: "left",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.color = "var(--color-primary)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.color = "var(--text-level-3)"; }}
-            >
-              <FolderPlus style={{ width: "13px", height: "13px", flexShrink: 0 }} />
-              <span>{t("sidebar.noProjectsDesc")}</span>
-            </button>
-          ) : projects.map((project) => (
-            <ProjectNode
-              key={project.id}
-              project={project}
-              chats={projectChats.get(project.id) ?? []}
-              isCollapsed={effectiveCollapsed.has(project.id)}
-              isActiveProject={activeProjectId === project.id}
-              isHovered={hoveredProjectId === project.id}
-              onToggleCollapse={() => toggleProject(project.id)}
-              onHoverChange={(hovered) => setHoveredProjectId(hovered ? project.id : null)}
-              onContextMenu={handleProjectContextMenu}
-              onMoreProject={handleMoreProject}
-              onQuickCreateChat={quickCreateChat}
-              currentChatId={currentChatId}
-              streams={streams}
-              renamingChatId={renamingChatId}
-              renameValue={renameValue}
-              onRenameValueChange={setRenameValue}
-              onRenameCommit={handleRenameCommit}
-              onRenameCancel={() => setRenamingChatId(null)}
-              onChatContextMenu={handleContextMenu}
-              onChatMore={handleMoreChat}
-            />
-          ))}
+          <div
+            ref={projectWorkspaceRef}
+            style={{
+              overflow: "hidden",
+              maxHeight: "2000px",
+              opacity: 1,
+              transition: "max-height var(--transition-normal), opacity var(--transition-normal)",
+            }}
+          >
+            {projects.length === 0 ? (
+              <button
+                onClick={() => setProjectModalOpen(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  width: "100%",
+                  padding: "6px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px dashed var(--border-primary)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  color: "var(--text-level-3)",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.color = "var(--color-primary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.color = "var(--text-level-3)"; }}
+              >
+                <FolderPlus style={{ width: "13px", height: "13px", flexShrink: 0 }} />
+                <span>{t("sidebar.noProjectsDesc")}</span>
+              </button>
+            ) : projects.map((project) => (
+              <ProjectNode
+                key={project.id}
+                project={project}
+                chats={projectChats.get(project.id) ?? []}
+                isCollapsed={effectiveCollapsed.has(project.id)}
+                isActiveProject={activeProjectId === project.id}
+                isHovered={hoveredProjectId === project.id}
+                onToggleCollapse={() => toggleProject(project.id)}
+                onHoverChange={(hovered) => setHoveredProjectId(hovered ? project.id : null)}
+                onContextMenu={handleProjectContextMenu}
+                onMoreProject={handleMoreProject}
+                onQuickCreateChat={quickCreateChat}
+                currentChatId={currentChatId}
+                streams={streams}
+                renamingChatId={renamingChatId}
+                renameValue={renameValue}
+                onRenameValueChange={setRenameValue}
+                onRenameCommit={handleRenameCommit}
+                onRenameCancel={() => setRenamingChatId(null)}
+                onChatContextMenu={handleContextMenu}
+                onChatMore={handleMoreChat}
+              />
+            ))}
+          </div>
         </div>
 
         {/* ===== 通用对话 ===== */}
         <div>
-          <div style={{ padding: "8px 8px 4px" }}>
+          <button
+            onClick={() => setCollapsedGeneralChats((c) => !c)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+              padding: "6px 4px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              outline: "none",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <ChevronRight style={{
+              width: "13px",
+              height: "13px",
+              color: "var(--text-level-4)",
+              flexShrink: 0,
+              transform: effectiveCollapsedGeneralChats ? "rotate(0deg)" : "rotate(90deg)",
+              transition: "transform var(--transition-fast)",
+            }} />
+            <MessageSquare style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
             <p style={{
               fontSize: "11px",
               fontWeight: "600",
@@ -451,20 +562,32 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
               letterSpacing: "0.04em",
               textTransform: "uppercase",
               margin: 0,
+              whiteSpace: "nowrap",
             }}>{t("sidebar.generalChats")}</p>
+          </button>
+
+          <div
+            ref={generalChatsListRef}
+            style={{
+              overflow: "hidden",
+              maxHeight: "2000px",
+              opacity: 1,
+              transition: "max-height var(--transition-normal), opacity var(--transition-normal)",
+            }}
+          >
+            {chats.length === 0 ? (
+              <div style={{ padding: "12px", textAlign: "center" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-level-3)", margin: 0 }}>{t("sidebar.noChats")}</p>
+                <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "2px 0 0 0" }}>{t("sidebar.noChatsDesc")}</p>
+              </div>
+            ) : generalChats.length === 0 && projects.length > 0 ? (
+              <p style={{ padding: "4px 8px", fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
+                {t("sidebar.noChats")}
+              </p>
+            ) : (
+              generalChats.map(renderGeneralChatRow)
+            )}
           </div>
-          {chats.length === 0 ? (
-            <div style={{ padding: "12px", textAlign: "center" }}>
-              <p style={{ fontSize: "13px", color: "var(--text-level-3)", margin: 0 }}>{t("sidebar.noChats")}</p>
-              <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "2px 0 0 0" }}>{t("sidebar.noChatsDesc")}</p>
-            </div>
-          ) : generalChats.length === 0 && projects.length > 0 ? (
-            <p style={{ padding: "4px 8px", fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
-              {t("sidebar.noChats")}
-            </p>
-          ) : (
-            generalChats.map(renderGeneralChatRow)
-          )}
         </div>
       </div>
 
@@ -535,6 +658,16 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             <span>{t("sidebar.settings")}</span>
           </button>
         )}
+        {activeProjectId == null && (
+          <p style={{
+            fontSize: "10px",
+            lineHeight: 1.4,
+            color: "var(--text-level-4)",
+            margin: "6px 0 0 0",
+            padding: "0 4px",
+            pointerEvents: "none",
+          }}>{t("chat.noProjectHint")}</p>
+        )}
       </div>
 
       {/* 项目初始化向导弹窗 */}
@@ -542,7 +675,15 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
         project={initProject}
         onClose={() => setInitProject(null)}
         onCreated={() => {
-          refetchChats();
+          window.dispatchEvent(new Event("mfk-projects-changed"));
+        }}
+      />
+
+      {/* 项目内快速新建会话：复用 ProjectInitModal */}
+      <ProjectInitModal
+        project={quickCreateProject}
+        onClose={() => setQuickCreateProject(null)}
+        onCreated={() => {
           window.dispatchEvent(new Event("mfk-projects-changed"));
         }}
       />

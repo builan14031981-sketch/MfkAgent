@@ -25,7 +25,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // 从URL解析当前chatId
   const currentChatId = useMemo(() => {
-    const match = pathname.match(/^\/chat\/(\d+)$/);
+    const match = pathname.match(/^\/chat\/(\d+)\/?$/);
     return match ? Number(match[1]) : null;
   }, [pathname]);
 

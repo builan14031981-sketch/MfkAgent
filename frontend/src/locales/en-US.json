@@ -347,7 +347,8 @@
     "maxTokens": "Max Tokens",
     "temperature": "Temperature",
     "noCustom": "No custom models yet",
-    "confirmDelete": "Delete this custom model?"
+    "confirmDelete": "Delete this custom model?",
+    "supportsVision": "Supports Vision (Multimodal)"
    }
   },
   "ai": {

@@ -3,12 +3,12 @@
 import { useRef, useCallback, useEffect, useMemo, memo, useState } from "react";
 import { ArrowDown, AlertTriangle, RotateCw, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
-import { ChatMessage, ThinkingPanel } from "@/components/ChatMessage";
+import { ChatMessage, ThinkingPanel, StreamingThinkingPanel } from "@/components/ChatMessage";
 import { AgentIcon } from "@/components/AgentIcon";
 import { AgentOrb } from "@/components/AgentOrb";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ToolCallCard } from "@/components/ToolCallCard";
-import { ApprovalCard } from "@/components/ApprovalCard";
+import { ToolApprovalCard } from "@/components/ToolApprovalCard";
 import { TaskProgressCard } from "@/components/TaskProgressCard";
 import type { RuntimeEvent, TaskNode } from "@/types/runtime";
 import type { OrbStage } from "@/lib/streamStore";
@@ -24,14 +24,15 @@ interface MessageListProps {
   isStreaming: boolean;
   /** 流式加载阶段：非空时在流式块头部显示 Orb 动画 */
   streamingStage?: OrbStage | null;
+  reasoningActive?: boolean;
   currentAgent?: { id: string; name: string } | null;
   onQuote: (content: string) => void;
   onRegenerate: (messageId: number) => void;
   onRetry?: () => void;
   onEdit: (message: Message) => void;
   /** 审批卡片回调（timeline 中的 approval event 使用） */
-  onApproveApproval?: (approvalId: string) => void;
-  onDenyApproval?: (approvalId: string) => void;
+  onApproveApproval?: (approvalId: string, toolCallId?: string) => void;
+  onDenyApproval?: (approvalId: string, toolCallId?: string) => void;
   /** 当前视口对应的用户消息 id 变化时回调（供对话大纲定位/高亮） */
   onActiveUserMessageChange?: (messageId: number | null) => void;
   /** 滚动位置持久化 key（如 `mfk_chat_scroll_${chatId}`）：存当前活跃用户消息 id，进入会话时恢复 */
@@ -127,7 +128,7 @@ function CompressionNodeCard({ content }: { content: string }) {
  * 若此处每帧重渲染会全量重跑 400 条消息的 Markdown 树导致卡顿，
  * memo 确保父级 re-render 时消息树跳过。
  */
-export const MessageList = memo(function MessageList({ messages, timeline, tasks, streamingError, isStreaming, streamingStage, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
+export const MessageList = memo(function MessageList({ messages, timeline, tasks, streamingError, isStreaming, streamingStage, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -354,7 +355,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
         ) : (
           <div style={{ maxWidth: "800px", margin: "0 auto" }}>
             {messages.map((message) => (
-              <div key={message.id} id={`msg-${message.id}`} style={{ marginBottom: "20px" }}>
+              <div key={message.id} id={`msg-${message.id}`} style={{ marginBottom: "8px" }}>
                 {isCompressionNode(message) ? (
                   <CompressionNodeCard content={message.content} />
                 ) : (
@@ -384,6 +385,8 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
                   switch (seg.type) {
                     case "thinking":
                       return <ThinkingPanel key={seg.id} thinking={seg.content} />;
+                    case "thinking_indicator":
+                      return <StreamingThinkingPanel key={seg.id} content={seg.content} isActive={reasoningActive ?? false} />;
                     case "tool":
                       return (
                         <div key={seg.id} style={{ marginBottom: "8px" }}>
@@ -393,10 +396,10 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
                     case "approval":
                       return (
                         <div key={seg.id} style={{ marginTop: "8px" }}>
-                          <ApprovalCard
+                          <ToolApprovalCard
                             approval={seg.approval}
-                            onApprove={(id) => onApproveApproval?.(id)}
-                            onDeny={(id) => onDenyApproval?.(id)}
+                            onApprove={(id) => onApproveApproval?.(id, seg.approval.tool_call_id)}
+                            onDeny={(id) => onDenyApproval?.(id, seg.approval.tool_call_id)}
                           />
                         </div>
                       );

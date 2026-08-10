@@ -22,6 +22,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 from types import SimpleNamespace as _NS
+import os
 
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Agent, Message, MemoryItem, Setting
@@ -30,6 +31,7 @@ from app.services.personality import get_personality_prompt
 from app.core.capability_profiles import get_capability_prompt
 from app.core.identity_principle import get_identity_principle
 from app.core.tool_runtime import tool_runtime
+from app.core.tool_runtime.guidance import get_tool_guidance
 from app.core.tool_runtime.policy import (
     get_execution_policy,
     get_permission_context,
@@ -102,6 +104,8 @@ class ContextBuildInput:
     max_tokens: int = 4096
     reasoning_effort: Optional[str] = None
     planning_level: Optional[int] = None  # G2-B: Planner 层级控制
+    attachments: list = field(default_factory=list)  # Phase 2: AttachmentItem 列表
+    auto_approve: bool = False  # Phase 12: 自治模式，自动审批 REQUIRE_APPROVAL 级工具
 
 
 @dataclass
@@ -231,6 +235,188 @@ def _build_memory_text(db, project_id: Optional[int] = None) -> str:
     )
 
 
+# 文本附件最大读取字节数（约 256KB，防止超大文件撑爆 Prompt）
+_MAX_TEXT_ATTACHMENT_BYTES = 256 * 1024
+
+
+def _is_path_within(base_dir: str, file_path: str) -> bool:
+    """校验 file_path 是否位于 base_dir 目录内（含自身），防附件路径越权。"""
+    if not base_dir or not file_path:
+        return False
+    base_real = os.path.realpath(base_dir)
+    file_real = os.path.realpath(file_path)
+    return file_real == base_real or file_real.startswith(base_real + os.sep)
+
+
+def _read_text_attachment_ladder(abs_path: str) -> Optional[str]:
+    """阶梯容错解码读取文本附件：UTF-8 → GBK → errors='replace' 兜底。
+
+    严禁因编码问题抛出 UnicodeDecodeError：
+      1. 优先 UTF-8 解码（现代文件主流）
+      2. UTF-8 失败 → 尝试 GBK（Windows 中文文件常见编码）
+      3. GBK 失败 → UTF-8 + errors='replace'（用替换符兜底，保证不抛异常）
+
+    读取上限 _MAX_TEXT_ATTACHMENT_BYTES 字节，防撑爆 Prompt。
+    任何 OSError（文件不存在/无权限）返回 None。
+    """
+    try:
+        # 先按字节读取（限定上限），再做解码尝试
+        with open(abs_path, "rb") as f:
+            raw = f.read(_MAX_TEXT_ATTACHMENT_BYTES)
+    except OSError:
+        return None
+
+    # 阶梯解码：UTF-8 → GBK → replace 兜底
+    for encoding in ("utf-8", "gbk"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    # 兜底：UTF-8 + replace（不会抛异常，无法识别的字节用 替换符）
+    return raw.decode("utf-8", errors="replace")
+
+
+def _build_attachment_prompt(attachments: list, project_path: Optional[str]) -> str:
+    """将附件列表组装为 system prompt 第 ⑨ 层文本块（严密版格式）。
+
+    注入格式（按 Phase 2 严密版规范）：
+      - text  : [附件上下文]\n[文件: {name}] ({path})\n{file_content}
+      - image : [图片附件: {name}] ({path})
+      - binary: [二进制/压缩包附件: {name}] (大小: {size}B, 类型: {mime})
+
+    安全：
+      - text 附件读取仅限 project_path 内文件（_is_path_within 防越权）
+      - text 附件阶梯解码（UTF-8 → GBK → replace），严禁 UnicodeDecodeError
+      - 读取失败注入"无法读取"说明，不中断整体组装
+
+    attachments 元素为 Pydantic AttachmentItem 或 dict（兼容测试构造）。
+    """
+    text_blocks = []
+    binary_meta = []
+    image_lines = []
+
+    for att in attachments:
+        # 兼容 Pydantic model 与 dict
+        if hasattr(att, "model_dump"):
+            a = att.model_dump()
+        elif isinstance(att, dict):
+            a = att
+        else:
+            continue
+
+        kind = a.get("kind", "text")
+        name = a.get("name", "unknown")
+        rel_path = a.get("path")
+        size = a.get("size", 0)
+        mime = a.get("mime", "application/octet-stream")
+
+        if kind == "image":
+            # image 不入 system prompt 内容（由 build() 写入 vision_context），
+            # 仅写入名称+路径提示，让 Agent 知道有图片附件已传入视觉通道
+            path_hint = rel_path if rel_path else "(无路径)"
+            image_lines.append(f"[图片附件: {name}] ({path_hint})")
+            continue
+
+        if kind == "binary":
+            # binary：注入元数据说明，提示 Agent 必要时用工具命令读取
+            binary_meta.append(
+                f"[二进制/压缩包附件: {name}] (大小: {size}B, 类型: {mime})"
+            )
+            continue
+
+        # kind == "text"：阶梯解码读取内容
+        content_text = None
+        used_path = rel_path
+        if rel_path and project_path:
+            abs_path = os.path.join(project_path, rel_path)
+            if _is_path_within(project_path, abs_path) and os.path.isfile(abs_path):
+                content_text = _read_text_attachment_ladder(abs_path)
+
+        path_hint = used_path if used_path else "(无路径)"
+        if content_text is None:
+            text_blocks.append(
+                f"[附件上下文]\n[文件: {name}] ({path_hint})\n（无法读取文件内容）"
+            )
+        else:
+            text_blocks.append(
+                f"[附件上下文]\n[文件: {name}] ({path_hint})\n{content_text}"
+            )
+
+    sections = []
+    if text_blocks:
+        sections.append("\n\n".join(text_blocks))
+    if binary_meta:
+        sections.append("\n".join(binary_meta))
+    if image_lines:
+        sections.append("\n".join(image_lines))
+
+    if not sections:
+        return ""
+    preamble = (
+        "<!-- ATTACHMENT_CONTEXT_NOTICE: 以下内容已由前端读取并注入内存，"
+        "请直接基于此内容回答，无需调用任何文件读取工具，也绝对不需要项目路径。 -->"
+    )
+    return preamble + "\n<attachments>\n" + "\n\n".join(sections) + "\n</attachments>"
+
+
+def _build_vision_context(attachments: list, project_path: Optional[str]) -> Optional[dict]:
+    """从附件列表提取 image 附件，构造 vision_context（供 AgentContext.vision_context）。
+
+    返回 None 表示无图片附件。结构：
+        {
+            "images": [
+                {"name": ..., "path": 绝对路径, "rel_path": 相对路径, "mime": ..., "size": ...},
+                ...
+            ]
+        }
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    images = []
+    for att in attachments:
+        if hasattr(att, "model_dump"):
+            a = att.model_dump()
+        elif isinstance(att, dict):
+            a = att
+        else:
+            continue
+        if a.get("kind") != "image":
+            continue
+        rel_path = a.get("path")
+        abs_path = None
+        if rel_path and project_path:
+            candidate = os.path.join(project_path, rel_path)
+            if _is_path_within(project_path, candidate) and os.path.isfile(candidate):
+                abs_path = candidate
+            else:
+                logger.warning(
+                    "vision_context: 图片路径解析失败 rel_path=%s project_path=%s candidate=%s isfile=%s",
+                    rel_path, project_path, candidate, os.path.isfile(candidate) if candidate else False,
+                )
+        elif rel_path and not project_path:
+            # 无项目关联：rel_path 可能是绝对路径或 .mfkagent/uploads/ 相对路径
+            if os.path.isabs(rel_path) and os.path.isfile(rel_path):
+                abs_path = rel_path
+            else:
+                logger.warning(
+                    "vision_context: 无项目关联且路径非绝对路径 rel_path=%s", rel_path,
+                )
+        images.append({
+            "name": a.get("name", "unknown"),
+            "path": abs_path,  # 绝对路径，供模型层/工具读取
+            "rel_path": rel_path,
+            "mime": a.get("mime", "application/octet-stream"),
+            "size": a.get("size", 0),
+        })
+    if not images:
+        return None
+    logger.info(
+        "vision_context: 构建完成 images=%d, 有效路径=%d",
+        len(images), sum(1 for i in images if i["path"]),
+    )
+    return {"images": images}
+
+
 class ChatContextBuilder:
     """Chat 级上下文组装器（Phase E3 正式实现）。
 
@@ -251,8 +437,10 @@ class ChatContextBuilder:
         workspace_context: str,
         tool_context: Optional[dict],
         task_context: Optional[dict] = None,
+        attachments: Optional[list] = None,
+        tool_guidance: Optional[str] = None,
     ) -> str:
-        """按 ①-⑦ 层组装完整 system prompt（memory_text 由模型层单独注入）。"""
+        """按 ①-⑩ 层组装完整 system prompt（memory_text 由模型层单独注入）。"""
         # ⓪ 最高身份准则（强制置顶，锁定桌面端 Agent 身份认知）
         full_prompt = get_identity_principle()
 
@@ -298,6 +486,21 @@ class ChatContextBuilder:
             plan_section = get_runtime_task_context_adapter().render(task_context)
             if plan_section:
                 full_prompt += "\n\n" + plan_section
+
+        # ⑨ tool_guidance（Tool Guidance V1：动态工具使用指导）
+        if tool_guidance:
+            full_prompt += "\n\n" + tool_guidance
+
+        # ⑩ attachments（Phase 2：附件上下文层）
+        # - text 附件：读取文件内容注入 Prompt（仅 project_path 内文件，防越权）
+        # - image 附件：不注入 system prompt，由 build() 写入 vision_context
+        # - binary 附件：注入元数据说明，提示 Agent 用工具自行读取
+        if attachments:
+            attachment_section = _build_attachment_prompt(
+                attachments, getattr(effective_chat, "project_path", None)
+            )
+            if attachment_section:
+                full_prompt += "\n\n" + attachment_section
 
         return full_prompt
 
@@ -383,6 +586,17 @@ class ChatContextBuilder:
                 workspace_context=workspace_context,
                 tool_context=tool_context,
                 task_context=task_context,
+                attachments=input.attachments,
+                tool_guidance=get_tool_guidance(
+                    intent=(decision or {}).get("intent", "general_chat"),
+                    project_bound=bool(effective_chat.project_path),
+                    message=input.content,
+                ),
+            )
+
+            # ──── Phase 2: image 附件 → vision_context ────
+            vision_ctx = _build_vision_context(
+                input.attachments, effective_chat.project_path
             )
 
             # ──── 6. History（全量加载；未来 token budget / compression / window）────
@@ -422,7 +636,7 @@ class ChatContextBuilder:
                     "workspace_context": workspace_context or None,
                     "mode": chat_mode,
                 },
-                vision_context=None,  # 预留：Vision（本阶段不实现）
+                vision_context=vision_ctx,  # Phase 2: image 附件视觉上下文（无图片为 None）
                 task_context=task_context,  # Phase G1：Planner V1 注入（非任务型请求为 None）
                 planning_level=input.planning_level,  # Phase G2-B：Planner 层级控制
                 plan=plan,  # G4-B: 原始 Plan 对象（供 AgentRuntime init_task_graph）
@@ -436,6 +650,7 @@ class ChatContextBuilder:
                     "intent": (decision or {}).get("intent"),
                     **planner_meta,  # G2-C: Planner 可观测性
                 },
+                auto_approve=input.auto_approve,  # Phase 12: 自治模式
             )
 
             # ──── messages：system + pruned history（G6-B Phase 2 已裁剪思考段）────

@@ -289,7 +289,7 @@ class TestAgentRuntimePhase3:
     @patch("app.core.tool_runtime.executor.execute_tool")
     @patch("app.services.model.model_service")
     async def test_max_rounds_limit(self, mock_model_service, mock_execute_tool):
-        """测试：模型持续返回 tool_calls → 第 3 轮无 tools → 强制文本回答"""
+        """测试：模型持续返回 tool_calls → 第 10 轮无 tools → 强制文本回答"""
         from app.core.agent_runtime.agent import AgentRuntime
 
         # 模型始终返回 tool_calls（模拟"不听话"的模型）
@@ -321,16 +321,15 @@ class TestAgentRuntimePhase3:
 
         # 验证
         assert "总结" in result.content, f"预期包含总结，实际: {result.content}"
-        # MAX_ROUNDS=3：前 2 轮有 tools（返回 tool_calls），第 3 轮无 tools（返回文本）
+        # MAX_ROUNDS=10：前 9 轮有 tools（返回 tool_calls），第 10 轮无 tools（返回文本）
         # round_no 从 0 开始，每次 tool_calls 后 +1
-        # round 0: tools=yes → tool_calls → round_no=1
-        # round 1: tools=yes → tool_calls → round_no=2
-        # round 2: tools=no → no tool_calls → break
-        # rounds = 2 + 1 = 3
-        assert result.rounds == 3, f"预期 rounds=3，实际: {result.rounds}"
+        # round 0..8: tools=yes → tool_calls → round_no 递增
+        # round 9: tools=no → no tool_calls → break
+        # rounds = 9 + 1 = 10
+        assert result.rounds == 10, f"预期 rounds=10，实际: {result.rounds}"
         assert result.finish_reason == "stop", f"预期 finish_reason=stop，实际: {result.finish_reason}"
-        assert len(result.tool_calls) == 2, f"预期 2 个 tool_call（前 2 轮），实际: {len(result.tool_calls)}"
-        assert mock_model_service.call_once.call_count == 3, "预期 3 次 call_once"
+        assert len(result.tool_calls) == 9, f"预期 9 个 tool_call（前 9 轮），实际: {len(result.tool_calls)}"
+        assert mock_model_service.call_once.call_count == 10, "预期 10 次 call_once"
 
         print("  [PASS] Test 5: MAX_ROUNDS 限制流程")
 

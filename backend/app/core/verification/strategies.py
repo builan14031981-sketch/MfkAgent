@@ -24,20 +24,17 @@ from app.core.verification.models import (
     FAILED,
     NEED_RETRY,
 )
+from app.core.sandbox import SandboxViolation, resolve_sandbox_path
 
 
 def _resolve_path(project_path: Optional[str], relative_path: str) -> Optional[str]:
-    """沙箱内解析绝对路径；路径越权/非法时返回 None。"""
+    """沙箱内解析绝对路径；路径越权/非法时返回 None（统一沙箱校验）。"""
     if not project_path or not relative_path:
         return None
     try:
-        target = os.path.realpath(os.path.join(project_path, relative_path))
-    except (ValueError, TypeError):
+        return str(resolve_sandbox_path(relative_path, project_path))
+    except (SandboxViolation, PermissionError, ValueError, TypeError):
         return None
-    root = os.path.realpath(project_path)
-    if target != root and not target.startswith(root + os.sep):
-        return None
-    return target
 
 
 def verify_write_file(record: dict, project_path: Optional[str]) -> VerificationResult:

@@ -6,7 +6,8 @@ from datetime import datetime
 
 router = APIRouter()
 
-BACKUP_DIR = "./backups"
+# 备份目录同样锚定到 backend/ 绝对路径，与启动目录无关
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "backups")
 
 
 @router.post("/backup")

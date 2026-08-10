@@ -449,8 +449,13 @@ class TestRunStreamTaskEvents(unittest.TestCase):
             raise RuntimeError("LLM 调用失败")
             yield  # noqa: unreachable
 
+        async def boom_reflection(*args, **kwargs):
+            raise RuntimeError("反思调用失败")
+            yield  # noqa: unreachable
+
         events = []
         with patch("app.services.model.model_service.stream_once", boom), \
+             patch("app.services.model.model_service.call_once", boom_reflection), \
              patch("app.core.agent_runtime.recorder.runtime_event_recorder"):
             async def collect():
                 async for event in self.runtime.run_stream(context, messages):

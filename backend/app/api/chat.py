@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
@@ -6,6 +6,9 @@ from datetime import datetime
 import json
 import os
 import time
+import asyncio
+import uuid
+import logging
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Message, Agent, Project
 from app.core.pagination import paginate
@@ -13,8 +16,52 @@ from app.core.tokens import count_tokens
 from app.core.tool_runtime.approval import approval_registry
 from app.core.agent_runtime import AgentRuntime, get_chat_context_builder, ContextBuildInput
 from app.core.agent_runtime.context_builder import get_default_model as _get_default_model
+from app.services.memory_extractor import run_memory_extraction
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ── Phase 1.6: Agent 后台任务管理（HTTP 生命周期解耦）──
+# Agent 执行由 chat_id 驱动的独立 asyncio.Task 承载，与 SSE 响应对象解耦。
+# 前端切页/断连（未显式 cancel）只断开响应流，后台 Task 继续跑完并落库；
+# 仅 POST /api/chat/{id}/cancel 显式取消。
+_agent_runs: dict[int, "_AgentRun"] = {}
+
+
+class _AgentRun:
+    """一次 Agent 流式执行的后台句柄。
+
+    - task: 后台 asyncio.Task（运行 agent_runtime.run_stream，独立于 HTTP 生命周期）
+    - queue: 事件队列（后台 → SSE 消费者）
+    - finished: 后台任务是否已结束（含 finish 事件）
+    - db_persisted: assistant 消息是否已落库
+    """
+
+    def __init__(self, chat_id: int):
+        self.chat_id = chat_id
+        self.queue: asyncio.Queue = asyncio.Queue(maxsize=256)
+        self.task: Optional["asyncio.Task"] = None
+        self.finished = False
+        self.db_persisted = False
+        self.exception: Optional[Exception] = None
+
+
+def cancel_chat_stream_task(chat_id: int) -> bool:
+    """显式取消某会话正在运行的后台 Agent Task（POST /cancel / 测试用）。
+
+    仅此入口会终止后台 LLM/工具循环；HTTP 断连不会触发取消。
+    返回是否成功发起取消；Task 不存在或已结束返回 False。
+    """
+    run = _agent_runs.get(chat_id)
+    if run is None or run.task is None or run.task.done():
+        return False
+    run.task.cancel()
+    return True
+
+
+def _cleanup_agent_run(chat_id: int) -> None:
+    _agent_runs.pop(chat_id, None)
 
 
 class ChatCreate(BaseModel):
@@ -61,7 +108,9 @@ class MessageResponse(BaseModel):
     content: str
     thinking: Optional[str] = None
     tool_calls: Optional[List[dict]] = None
+    attachments: Optional[List[dict]] = None  # Phase 3: 用户消息附件
     timeline: Optional[List[dict]] = None
+    task_graph: Optional[dict] = None
     created_at: datetime
 
     class Config:
@@ -455,6 +504,21 @@ async def delete_message_from(chat_id: int, message_id: int):
         db.close()
 
 
+class AttachmentItem(BaseModel):
+    """附件元数据：前端随 SendRequest 发送，描述一个附件文件。
+
+    kind 取值：
+      text   — 文本文件，后端读取内容注入 Prompt（需 path）
+      image  — 图片，信息写入 vision_context（需 path）
+      binary — 二进制文件，仅注入元数据说明，Agent 自行用工具读取（需 path）
+    """
+    name: str
+    path: Optional[str] = None  # 相对 project_path 的路径（上传文件为 .mfkagent/uploads/xxx）
+    mime: str = "application/octet-stream"
+    kind: str = "text"  # "text" | "image" | "binary"
+    size: int = 0
+
+
 class SendRequest(BaseModel):
     content: str
     model: Optional[str] = None
@@ -464,6 +528,9 @@ class SendRequest(BaseModel):
     use_tools: bool = True
     reasoning_effort: Optional[str] = None
     planning_level: Optional[int] = None  # G2-B: Planner 层级控制
+    attachments: List[AttachmentItem] = []  # Phase 2: 多模态附件元数据
+    auto_approve: bool = False  # Phase 12: 自治模式，自动审批 REQUIRE_APPROVAL 级工具
+    permission_mode: Optional[str] = None  # 'ask_always' | 'auto_approve' — 优先级高于 auto_approve
 
 
 class SendResponse(BaseModel):
@@ -481,6 +548,8 @@ async def send_message(chat_id: int, request: SendRequest):
             raise HTTPException(status_code=404, detail="Chat not found")
 
         user_msg = Message(chat_id=chat_id, role="user", content=request.content)
+        if request.attachments:
+            user_msg.attachments = [a.model_dump() for a in request.attachments]
         db.add(user_msg)
         db.flush()
 
@@ -494,6 +563,13 @@ async def send_message(chat_id: int, request: SendRequest):
         # 同时确保 ChatContextBuilder 在新 Session 中能读到刚写入的 user_msg。
         db.commit()
 
+        # permission_mode → auto_approve 映射（permission_mode 优先级高于 auto_approve 字段）
+        _auto_approve = request.auto_approve
+        if request.permission_mode == "auto_approve":
+            _auto_approve = True
+        elif request.permission_mode == "ask_always":
+            _auto_approve = False
+
         # Phase E3: ChatContextBuilder 统一组装（AgentContext + system prompt + messages + 参数）
         built = await get_chat_context_builder().build(
             ContextBuildInput(
@@ -506,6 +582,8 @@ async def send_message(chat_id: int, request: SendRequest):
                 max_tokens=request.max_tokens,
                 reasoning_effort=request.reasoning_effort,
                 planning_level=request.planning_level,
+                attachments=request.attachments,
+                auto_approve=_auto_approve,
             )
         )
 
@@ -565,6 +643,19 @@ async def send_message(chat_id: int, request: SendRequest):
         db.refresh(user_msg)
         db.refresh(ai_msg)
 
+        # Phase 10: 后台无感记忆提取（非阻塞，独立 Session 落库，Fail-safe）
+        try:
+            asyncio.create_task(
+                run_memory_extraction(
+                    chat_id=chat_id,
+                    project_id=chat.project_id,
+                    user_message=request.content,
+                    ai_content=ai_content,
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         if api_usage and isinstance(api_usage, dict) and api_usage.get("total_tokens", 0) > 0:
             token_usage = api_usage
         else:
@@ -594,6 +685,8 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             raise HTTPException(status_code=404, detail="Chat not found")
 
         user_msg = Message(chat_id=chat_id, role="user", content=request.content)
+        if request.attachments:
+            user_msg.attachments = [a.model_dump() for a in request.attachments]
         db.add(user_msg)
         db.flush()
 
@@ -607,6 +700,13 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         # 同时确保 ChatContextBuilder 在新 Session 中能读到刚写入的 user_msg。
         db.commit()
 
+        # permission_mode → auto_approve 映射（permission_mode 优先级高于 auto_approve 字段）
+        _auto_approve = request.auto_approve
+        if request.permission_mode == "auto_approve":
+            _auto_approve = True
+        elif request.permission_mode == "ask_always":
+            _auto_approve = False
+
         # Phase E3: ChatContextBuilder 统一组装（AgentContext + system prompt + messages + 参数）
         built = await get_chat_context_builder().build(
             ContextBuildInput(
@@ -619,6 +719,8 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 max_tokens=request.max_tokens,
                 reasoning_effort=request.reasoning_effort,
                 planning_level=request.planning_level,
+                attachments=request.attachments,
+                auto_approve=_auto_approve,
             )
         )
 
@@ -629,77 +731,42 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         max_tokens = built.max_tokens
         reasoning_effort = built.reasoning_effort
         read_only = built.read_only
+        mem_project_id = chat.project_id
+        mem_user_content = request.content
     finally:
         db.close()
 
-    async def generate():
+    # ── Phase 1.6: Agent 后台任务与 SSE 生命周期解耦 ──
+    # 后台 asyncio.Task 独立运行 AgentRuntime.run_stream，与 SSE HTTP 响应解耦。
+    # 前端切页/断连只断开 SSE 消费者，后台 Task 继续跑完并落库；
+    # 仅 POST /api/chat/{id}/cancel 显式取消。
+    # 若同一 chat 已有运行中的后台任务，先取消旧任务
+    if chat_id in _agent_runs:
+        cancel_chat_stream_task(chat_id)
+
+    run = _AgentRun(chat_id)
+    _agent_runs[chat_id] = run
+
+    async def _background_agent():
+        """后台 Agent 执行：独立于 SSE 生命周期，事件写入队列供消费，结果落库。"""
         full_content = ""
         full_thinking = ""
+        thinking_chunk_count = 0
+        thinking_total_chars = 0
         recorded_tool_calls: List[dict] = []
         timeline_events: List[dict] = []
-        buffer = ""
-        last_flush = time.monotonic()
-        BATCH_MAX_CHARS = 200
-        BATCH_INTERVAL = 0.02  # 20ms 微型时间窗口
 
-        def _should_flush() -> bool:
-            return len(buffer) >= BATCH_MAX_CHARS or (time.monotonic() - last_flush) >= BATCH_INTERVAL
+        def _put(event):
+            """非阻塞写入队列；客户端断连或队列满时跳过（不影响后台执行）。"""
+            try:
+                run.queue.put_nowait(event)
+            except asyncio.QueueFull:
+                pass
 
-        try:
-            agent_runtime = AgentRuntime()
-            async for chunk in agent_runtime.run_stream(
-                context=agent_context,
-                messages=model_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                reasoning_effort=reasoning_effort,
-                read_only=read_only,
-            ):
-                etype = chunk.get("type")
-
-                # 思考段增量：立即透传（不攒批），前端第一时间显示"思考中/灰色思考块"
-                if etype == "thinking":
-                    content = chunk.get("content", "")
-                    full_thinking += content
-                    timeline_events.append({"type": "thinking", "content": content})
-                    yield f"data: {json.dumps({'type': 'thinking', 'content': content})}\n\n"
-                    continue
-
-                # 文本增量：攒批打包为一个 SSE 事件，减轻前端高频 DOM 渲染压力
-                if etype == "text":
-                    content = chunk.get("content", "")
-                    full_content += content
-                    buffer += content
-                    if _should_flush():
-                        yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
-                        buffer = ""
-                        last_flush = time.monotonic()
-                    continue
-
-                # 工具调用汇总：仅记录，不直接透传（前端用 tool_start/tool_result 实时渲染）
-                if etype == "tool_calls":
-                    recorded_tool_calls = chunk.get("calls") or recorded_tool_calls
-                    continue
-
-                # 其余事件（tool_start/tool_result/finish/error）：先 flush 残留 buffer，再原样透传
-                if buffer:
-                    yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
-                    buffer = ""
-                    last_flush = time.monotonic()
-                # 轨迹事件写入 timeline（过滤 SSE 控制信号 finish/error）
-                if etype in ("tool_start", "tool_result", "tool_approval"):
-                    timeline_events.append(chunk)
-                yield f"data: {json.dumps(chunk)}\n\n"
-
-            # 流结束：flush 剩余 buffer
-            if buffer:
-                yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
-                buffer = ""
-
-            # 记录最终 text 轨迹事件（完整内容，非增量片段）
-            if full_content:
-                timeline_events.append({"type": "text", "content": full_content})
-
+        def _persist():
+            """将 assistant 消息落库（正常完成/取消/异常均调用）。"""
+            if not full_content and not full_thinking and not recorded_tool_calls:
+                return
             db2 = SessionLocal()
             try:
                 chat2 = db2.query(Chat).filter(Chat.id == chat_id).first()
@@ -718,18 +785,150 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             finally:
                 db2.close()
 
-            yield "data: [DONE]\n\n"
+        try:
+            agent_runtime = AgentRuntime()
+            async for chunk in agent_runtime.run_stream(
+                context=agent_context,
+                messages=model_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                reasoning_effort=reasoning_effort,
+                read_only=read_only,
+            ):
+                etype = chunk.get("type")
+
+                # 收集数据供 DB 持久化
+                if etype == "thinking":
+                    content = chunk.get("content", "")
+                    full_thinking += content
+                    thinking_chunk_count += 1
+                    thinking_total_chars += len(content)
+                    timeline_events.append({"type": "thinking", "content": content})
+                elif etype == "text":
+                    full_content += chunk.get("content", "")
+                elif etype == "tool_calls":
+                    recorded_tool_calls = chunk.get("calls") or recorded_tool_calls
+                elif etype in ("tool_start", "tool_result", "tool_approval"):
+                    timeline_events.append(chunk)
+
+                # 转发事件给 SSE 消费者（非阻塞）
+                _put(chunk)
+
+            # 记录最终 text 轨迹事件
+            if full_content:
+                timeline_events.append({"type": "text", "content": full_content})
+
+            if thinking_chunk_count > 0:
+                logger.info(
+                    "Phase12 SSE thinking: chat_id=%s chunks=%d total_chars=%d",
+                    chat_id, thinking_chunk_count, thinking_total_chars,
+                )
+
+            # DB 持久化（无论客户端是否断连，始终执行）
+            _persist()
+            run.db_persisted = True
+
+            # Phase 10: 后台无感记忆提取
+            try:
+                asyncio.create_task(
+                    run_memory_extraction(
+                        chat_id=chat_id,
+                        project_id=mem_project_id,
+                        user_message=mem_user_content,
+                        ai_content=full_content,
+                    )
+                )
+            except Exception:  # noqa: BLE001
+                pass
+
+        except asyncio.CancelledError:
+            logger.info("Agent background task cancelled: chat_id=%s", chat_id)
+            # 即使被取消也持久化已有结果
+            _persist()
+            run.db_persisted = True
+            raise
+        except Exception as e:
+            logger.error("Agent background task error: chat_id=%s error=%s", chat_id, e)
+            # run_stream 已在 yield error 事件后 raise，此处不再重复发送
+            run.exception = e
+        finally:
+            # 通知 SSE 消费者结束
+            _put(None)
+            run.finished = True
+            # 清理未决审批
+            approval_registry.cancel_by_chat(chat_id)
+            # 清理注册表
+            _agent_runs.pop(chat_id, None)
+
+    # 启动后台任务
+    run.task = asyncio.create_task(_background_agent())
+
+    # SSE 生成器：仅从队列消费事件，格式化后转发给客户端
+    async def generate():
+        buffer = ""
+        last_flush = time.monotonic()
+        BATCH_MAX_CHARS = 200
+        BATCH_INTERVAL = 0.02
+
+        def _should_flush() -> bool:
+            return len(buffer) >= BATCH_MAX_CHARS or (time.monotonic() - last_flush) >= BATCH_INTERVAL
+
+        try:
+            while True:
+                chunk = await run.queue.get()
+                if chunk is None:  # 哨兵：后台任务已结束
+                    if buffer:
+                        yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                        buffer = ""
+                    yield "data: [DONE]\n\n"
+                    break
+
+                etype = chunk.get("type")
+
+                # 思考段：立即透传
+                if etype == "thinking":
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    continue
+
+                # 文本增量：攒批
+                if etype == "text":
+                    buffer += chunk.get("content", "")
+                    if _should_flush():
+                        yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                        buffer = ""
+                        last_flush = time.monotonic()
+                    continue
+
+                # 其他事件：先 flush buffer，再透传
+                if buffer:
+                    yield f"data: {json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                    buffer = ""
+                    last_flush = time.monotonic()
+                yield f"data: {json.dumps(chunk)}\n\n"
+
+        except asyncio.CancelledError:
+            # 客户端断连 — 不取消后台任务，Agent 继续执行并落库
+            logger.info("[INFO] SSE consumer disconnected: chat_id=%s (background task continues)", chat_id)
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-        finally:
-            # 断连/结束清理：将本会话未决审批置为 cancelled，防止 Future 泄漏
-            approval_registry.cancel_by_chat(chat_id)
 
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+@router.post("/{chat_id}/cancel")
+async def cancel_chat(chat_id: int):
+    """Phase 1.6: 显式取消会话正在运行的后台 Agent Task。
+
+    只有此端点会终止后台 LLM/工具执行循环；HTTP 断连不会触发取消。
+    """
+    if cancel_chat_stream_task(chat_id):
+        logger.info("Chat cancelled via /cancel: chat_id=%s", chat_id)
+        return {"status": "ok", "chat_id": chat_id, "action": "cancelled"}
+    raise HTTPException(status_code=404, detail="No active agent task for this chat")
 
 
 class CompressRequest(BaseModel):
@@ -848,3 +1047,260 @@ async def tool_approval(chat_id: int, request: ToolApprovalRequest):
         raise HTTPException(status_code=409, detail="审批已处理或已超时")
 
     return {"status": "ok", "approval_id": request.approval_id, "action": request.action}
+
+
+class ApproveRequest(BaseModel):
+    # Phase 1.5 新契约（推荐）：按 tool_call_id 决策
+    tool_call_id: Optional[str] = None
+    decision: Optional[str] = None  # "approved" | "rejected"
+    # 兼容旧契约：approval_id + action
+    approval_id: Optional[str] = None
+    action: Optional[str] = None  # "approve" | "deny"
+
+
+def _normalize_decision(request: ApproveRequest) -> Optional[str]:
+    """将请求归一化为 (approval_id, action)。新契约决策映射：
+    decision="approved" → action="approve"；"rejected" → "deny"。"""
+    if request.tool_call_id is not None or request.decision is not None:
+        if not request.tool_call_id:
+            raise HTTPException(status_code=422, detail="tool_call_id 不能为空")
+        if request.decision not in ("approved", "rejected"):
+            raise HTTPException(status_code=422, detail="decision 必须是 approved 或 rejected")
+        info = approval_registry.find_by_tool_call_id(request.tool_call_id)
+        if not info:
+            raise HTTPException(status_code=404, detail="审批不存在或已处理")
+        return info["approval_id"], "approve" if request.decision == "approved" else "deny"
+
+    if not request.approval_id:
+        raise HTTPException(status_code=422, detail="tool_call_id 或 approval_id 必须提供")
+    if request.action not in ("approve", "deny"):
+        raise HTTPException(status_code=422, detail="action 必须是 approve 或 deny")
+    return request.approval_id, request.action
+
+
+@router.post("/{chat_id}/approve")
+async def approve_command(chat_id: int, request: ApproveRequest):
+    """Phase 1.5: 审批流决策接口（用户同意/拒绝挂起的命令执行）。
+
+    新契约（推荐）：{"tool_call_id": "...", "decision": "approved" | "rejected"}
+      按 tool_call_id 反查待审批操作，仅允许已注册的 tool_call_id。
+    兼容旧契约：{"approval_id": "...", "action": "approve" | "deny"}。
+
+    返回:
+        - 200: {"status": "ok", "approval_id": "...", "action": "approve|deny", "tool": ..., "command": ...}
+        - 404: 审批不存在、不属于该会话或已处理
+        - 409: 审批已处理或已超时
+        - 422: 参数缺失或 decision/action 非法
+    """
+    approval_id, action = _normalize_decision(request)
+
+    info = approval_registry.get(approval_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="审批不存在")
+    if info.get("chat_id") != chat_id:
+        raise HTTPException(status_code=404, detail="审批不属于该会话")
+
+    if not approval_registry.resolve(approval_id, action):
+        raise HTTPException(status_code=409, detail="审批已处理或已超时")
+
+    logger.info(
+        "Phase15 approve: chat_id=%s approval_id=%s decision=%s tool=%s command=%s",
+        chat_id, approval_id, "approved" if action == "approve" else "rejected",
+        info.get("tool", ""), info.get("command", "")[:100],
+    )
+
+    return {
+        "status": "ok",
+        "approval_id": approval_id,
+        "action": action,
+        "tool": info.get("tool", ""),
+        "command": info.get("command", ""),
+    }
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 2: 附件上传（严密版加固：始终加唯一前缀防覆盖 + 10MB 硬上限 + 返回原始名）
+# ──────────────────────────────────────────────────────────────────────────
+
+# 单文件上传大小硬上限（10MB，超限返回 HTTP 400）
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+
+# 文本类附件：后端直接读取内容注入 Prompt 的白名单扩展名
+_TEXT_EXTS = {
+    ".txt", ".md", ".markdown", ".rst", ".py", ".js", ".ts", ".tsx", ".jsx",
+    ".json", ".yaml", ".yml", ".xml", ".html", ".htm", ".css", ".scss", ".less",
+    ".java", ".kt", ".swift", ".go", ".rs", ".c", ".cpp", ".cc", ".h", ".hpp",
+    ".cs", ".rb", ".php", ".sh", ".bash", ".zsh", ".sql", ".ini", ".toml",
+    ".cfg", ".conf", ".log", ".csv", ".tsv", ".vue", ".svelte",
+}
+
+# 图片类附件 MIME 前缀
+_IMAGE_MIME_PREFIX = "image/"
+
+# 图片类附件扩展名兜底白名单（部分上传链路 MIME 丢失/退化成 octet-stream，需按扩展名兜底识别为 image）
+_IMAGE_EXTS = {
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif",
+    ".svg", ".ico", ".heic", ".heif", ".avif",
+}
+
+
+def _detect_attachment_kind(filename: str, mime: str) -> str:
+    """根据文件名扩展名与 MIME 推断附件 kind：text / image / binary。
+
+    分类优先级：
+    1. MIME 以 image/ 开头 → image（标准情况）
+    2. 文件扩展名命中 _IMAGE_EXTS → image（MIME 丢失/退化为 octet-stream 时的兜底）
+    3. 文件扩展名命中 _TEXT_EXTS → text
+    4. 其余 → binary
+
+    text/binary 分类逻辑保持不变；仅新增图片扩展名兜底。
+    """
+    if mime and mime.startswith(_IMAGE_MIME_PREFIX):
+        return "image"
+    _, ext = os.path.splitext(filename.lower())
+    if ext in _IMAGE_EXTS:
+        return "image"
+    if ext in _TEXT_EXTS:
+        return "text"
+    return "binary"
+
+
+def _build_unique_disk_name(original_name: str) -> str:
+    """生成防覆盖磁盘文件名：<timestamp>_<uuid8>_<original_name>。
+
+    - 始终加唯一前缀，彻底杜绝同名覆盖历史文件
+    - original_name 经 os.path.basename 防路径穿越
+    - 返回的磁盘文件名（含前缀），供落盘使用；返回给前端的 name 仍为原始名
+    """
+    safe_base = os.path.basename(original_name or "unnamed") or "unnamed"
+    ts = int(time.time())
+    uid = uuid.uuid4().hex[:8]
+    return f"{ts}_{uid}_{safe_base}"
+
+
+@router.post("/{chat_id}/upload", response_model=AttachmentItem)
+async def upload_attachment(chat_id: int, file: UploadFile = File(...)):
+    """上传附件文件，保存至 {project_path}/.mfkagent/uploads/，返回 AttachmentItem。
+
+    严密版加固：
+    - 🚨 校验 chat.project_path，未关联项目直接 HTTP 400
+    - 🛡️ 始终加 `<timestamp>_<uuid8>_<original>` 前缀落盘，彻底防覆盖
+    - 🛡️ 返回的 AttachmentItem.name 保持原始文件名（不含前缀）
+    - 🛡️ 单文件最大 10MB，写入超限立即终止并删除残留文件，返回 HTTP 400
+    - 返回 path 为相对 project_path 的路径（如 .mfkagent/uploads/123_abc_x.png）
+    """
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+
+        project_path = chat.project_path or (chat.project.path if chat.project else None)
+
+        # 上传目录：有项目时存到 {project_path}/.mfkagent/uploads/，无项目时存到全局 data/uploads/{chat_id}/
+        if project_path:
+            upload_dir = os.path.join(project_path, ".mfkagent", "uploads")
+        else:
+            # 无项目关联：使用后端全局上传目录
+            global_upload_root = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "uploads", str(chat_id))
+            upload_dir = global_upload_root
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # 始终加唯一前缀落盘（防覆盖）；返回 name 仍为原始文件名
+        original_name = file.filename or "unnamed"
+        disk_name = _build_unique_disk_name(original_name)
+        dest = os.path.join(upload_dir, disk_name)
+
+        # 流式写入 + 大小硬上限校验（超限立即终止，删除残留文件）
+        size = 0
+        oversized = False
+        try:
+            with open(dest, "wb") as f:
+                while True:
+                    chunk = await file.read(64 * 1024)  # 64KB chunks
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > MAX_UPLOAD_SIZE:
+                        oversized = True
+                        break
+                    f.write(chunk)
+        except OSError:
+            # 写入异常：清理残留文件，避免脏数据
+            try:
+                if os.path.exists(dest):
+                    os.remove(dest)
+            except OSError:
+                pass
+            raise HTTPException(status_code=500, detail="附件写入磁盘失败")
+
+        if oversized:
+            # 超限：删除已写部分，返回 400
+            try:
+                os.remove(dest)
+            except OSError:
+                pass
+            raise HTTPException(
+                status_code=400,
+                detail=f"附件过大（单文件上限 10MB，已接收 {size} 字节）",
+            )
+
+        # 路径：有项目时返回相对路径（正斜杠跨平台一致），无项目时返回绝对路径
+        if project_path:
+            rel_path = os.path.relpath(dest, project_path).replace(os.sep, "/")
+        else:
+            rel_path = dest.replace(os.sep, "/")
+        mime = file.content_type or "application/octet-stream"
+        # kind 推断基于原始文件名（扩展名未被前缀影响）
+        kind = _detect_attachment_kind(original_name, mime)
+
+        return AttachmentItem(
+            name=original_name,  # 返回原始文件名（不含 timestamp_uuid 前缀）
+            path=rel_path,
+            mime=mime,
+            kind=kind,
+            size=size,
+        )
+    finally:
+        db.close()
+
+
+@router.get("/{chat_id}/file")
+async def serve_attachment_file(chat_id: int, path: str):
+    """提供附件文件（图片等）供前端渲染。
+    
+    Query params:
+        path: 附件相对路径（如 .mfkagent/uploads/xxx.png）
+    
+    安全：仅允许访问项目路径下的 .mfkagent/uploads/ 目录。
+    """
+    from fastapi.responses import FileResponse
+    import mimetypes
+
+    db = SessionLocal()
+    try:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat not found")
+        
+        project_path = chat.project_path
+        if not project_path:
+            raise HTTPException(status_code=400, detail="Chat 未绑定项目路径")
+        
+        # 安全检查：仅允许 .mfkagent/uploads/ 下的文件
+        normalized = os.path.normpath(path).replace("\\", "/")
+        if not normalized.startswith(".mfkagent/uploads/"):
+            raise HTTPException(status_code=403, detail="仅允许访问上传目录下的文件")
+        
+        abs_path = os.path.join(project_path, normalized)
+        abs_path = os.path.normpath(abs_path)
+        if not abs_path.startswith(os.path.normpath(project_path)):
+            raise HTTPException(status_code=403, detail="路径越界")
+        
+        if not os.path.isfile(abs_path):
+            raise HTTPException(status_code=404, detail="文件不存在")
+        
+        mime, _ = mimetypes.guess_type(abs_path)
+        return FileResponse(abs_path, media_type=mime or "application/octet-stream")
+    finally:
+        db.close()

@@ -124,7 +124,9 @@ class Message(Base):
     content = Column(Text, nullable=False)
     thinking = Column(Text, nullable=True)
     tool_calls  = Column(JSON)
+    attachments = Column(JSON)       # Phase 3: 用户消息附件（image/text/binary 元数据）
     timeline    = Column(JSON)
+    task_graph  = Column(JSON)  # Phase 1.6: TaskGraph 进度摘要（前端切页后重放用）
     created_at  = Column(DateTime, default=datetime.utcnow)
 
     chat = relationship("Chat", back_populates="messages")
@@ -163,6 +165,22 @@ class Memory(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class Todo(Base):
+    """待办事项表 — 供 Agent manage_todos 工具与前端 /api/todos 使用。
+
+    status 取值：pending（未完成）/ completed（已完成）
+    project_id 可选，关联 Project 表，支持项目作用域隔离。
+    """
+    __tablename__ = "todos"
+
+    id = Column(String(36), primary_key=True, index=True)  # UUID
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    title = Column(String(500), nullable=False)
+    status = Column(String(20), default="pending", nullable=False)  # pending / completed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class MemoryItem(Base):
     """统一记忆表：供 add_memory 工具 / 前端记忆 UI 使用，三作用域隔离。
 
@@ -178,6 +196,9 @@ class MemoryItem(Base):
     agent_id = Column(String(100), nullable=True)
     project_id = Column(Integer, nullable=True)
     content = Column(Text, nullable=False)
+    memory_type = Column(String(50), default="preference")  # preference / fact / workflow / project
+    confidence = Column(Float, default=0.8)                 # 提取置信度 0.0 ~ 1.0
+    source_chat_id = Column(Integer, nullable=True)         # 记忆来源 Chat ID（自动提取时回填）
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -229,5 +250,6 @@ class CustomModel(Base):
     max_tokens = Column(Integer, default=4096)
     temperature = Column(Float, default=0.7)
     enabled = Column(Boolean, default=True)
+    supports_vision = Column(Boolean, default=False)  # 模型是否支持多模态图片识别
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

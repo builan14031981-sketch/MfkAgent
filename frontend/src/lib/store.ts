@@ -35,14 +35,25 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   },
   updateSetting: async (key: string, value: string) => {
     try {
-      await apiFetch(`/api/settings/${key}`, {
+      const resp = await apiFetch(`/api/settings/${key}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value }),
       });
-      // 本地乐观合并，避免全量拉取引发的 loading 翻转与整树重渲染
+      // 敏感 key（api_key_* / vision_api_key）：后端返回脱敏值，用响应值更新本地状态，
+      // 避免本地明文残留 + 保证刷新前后判定一致（非空脱敏值 = 已配置）。
+      const isSensitive = key.startsWith("api_key_") || key === "vision_api_key" || key === "stt_api_key";
+      let localValue = value;
+      if (isSensitive && resp.ok) {
+        try {
+          const body = await resp.json();
+          if (body && typeof body.value === "string") localValue = body.value;
+        } catch {
+          /* 解析失败回退到原始值 */
+        }
+      }
       set((state) => ({
-        settings: state.settings ? { ...state.settings, [key]: value } : state.settings,
+        settings: state.settings ? { ...state.settings, [key]: localValue } : state.settings,
       }));
     } catch (err) {
       console.error("Failed to update setting:", err);

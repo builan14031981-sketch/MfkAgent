@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Electron 主进程为 CommonJS（require），不受 Next.js TS 规则约束
+    "electron/**",
   ]),
 ]);
 

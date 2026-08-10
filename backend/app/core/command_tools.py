@@ -1,10 +1,13 @@
 """项目沙箱命令执行工具 —— 供 LLM Function Calling 使用。
 
-设计说明（Phase B-1）：
+设计说明（Phase B-1 / Phase 8 P0）：
 - 命令是否可执行由 Command Risk Engine（risk_engine.py）在 executor 层判定，
   本模块只负责"执行"：解析 argv → subprocess 运行 → 输出解码/截断。
 - 保留 shell 元字符防御（_FORBIDDEN_RE）作为纵深防御。
-- 始终在 project_path 下运行（cwd=项目根），绝对超时，输出截断，GBK 安全解码。
+- 始终在 project_path 下运行（cwd=沙箱锚定项目根），绝对超时，输出截断。
+- subprocess 统一走 sandbox.run_subprocess（PYTHONIOENCODING=utf-8 +
+  CREATE_NO_WINDOW），输出用阶梯解码（UTF-8 → GBK → CP936 → 替换兜底），
+  杜绝 Windows 下 GBK 乱码与解码崩溃。
 """
 import os
 import re
@@ -12,9 +15,18 @@ import subprocess
 from typing import Dict, List
 
 from app.core.tools import ToolExecutionError
+from app.core.sandbox import (
+    SandboxViolation,
+    decode_subprocess_output,
+    resolve_sandbox_path,
+    run_subprocess,
+)
 
 # 危险的 shell 元字符/重定向，一律拒绝（防注入，纵深防御）
 _FORBIDDEN_RE = re.compile(r"[;&|`$<>]|\(|\)")
+
+# 显式 cd 到外部目录（绝对路径 / UNC / .. 逃逸）：工作目录已锚定，直接拦截
+_CD_ESCAPE_RE = re.compile(r"\bcd\s+([A-Za-z]:[\\/]|\\\\|\.\.)", re.I)
 
 TIMEOUT = 30
 MAX_OUTPUT_CHARS = 8000
@@ -43,17 +55,6 @@ def _split_command(command: str) -> List[str]:
     return args
 
 
-def _decode_bytes(b: bytes) -> str:
-    """先按 UTF-8 解码，失败再按 GBK（Windows 中文输出常见），仍失败则逐字节替换。"""
-    try:
-        return b.decode("utf-8")
-    except UnicodeDecodeError:
-        try:
-            return b.decode("gbk")
-        except UnicodeDecodeError:
-            return b.decode("utf-8", errors="replace")
-
-
 def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     """执行命令并返回 stdout+stderr 合并输出（策略判定已在 executor 层完成）。
     如果没有 project_path，允许执行系统级命令（如 ipconfig、netstat 等）。
@@ -63,30 +64,27 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
         return "错误: command 不能为空"
     if _FORBIDDEN_RE.search(command):
         return "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行"
+    if _CD_ESCAPE_RE.search(command):
+        return "错误: 不支持 cd 切换到项目外目录（工作目录已锚定在项目内），请直接使用项目内相对命令"
 
     # 解析命令行（支持双引号含空格参数）
     argv = _split_command(command)
 
-    # 确定工作目录：有 project_path 则用项目目录，否则用当前目录（允许系统级命令）
+    # 确定工作目录：有 project_path 则用沙箱解析后的项目根；否则用当前目录（允许系统级命令）
     if project_path:
-        proj_real = os.path.realpath(project_path)
-        if not os.path.isdir(proj_real):
+        try:
+            cwd = str(resolve_sandbox_path(".", project_path))
+        except SandboxViolation as e:
+            return f"错误: {e}"
+        if not os.path.isdir(cwd):
             return f"错误: 项目目录不存在: {project_path}"
-        cwd = proj_real
     else:
         # 没有绑定项目，允许执行系统级命令（如 ipconfig、netstat）
         cwd = os.getcwd()
 
     timeout = max(1, min(int(timeout or TIMEOUT), 120))
     try:
-        proc = subprocess.run(
-            argv,
-            cwd=cwd,
-            capture_output=True,
-            text=False,
-            timeout=timeout,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
+        proc = run_subprocess(argv, cwd=cwd, timeout=timeout)
     except FileNotFoundError:
         return f"错误: 找不到命令 '{argv[0]}'（可能未安装或不在 PATH）"
     except subprocess.TimeoutExpired:
@@ -94,8 +92,8 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     except Exception as e:
         return f"错误: 命令执行失败: {e}"
 
-    out = _decode_bytes(proc.stdout)
-    err = _decode_bytes(proc.stderr)
+    out = decode_subprocess_output(proc.stdout)
+    err = decode_subprocess_output(proc.stderr)
     combined = (out + ("\n" + err if err else "")).strip()
     if not combined:
         combined = "(无输出)"
