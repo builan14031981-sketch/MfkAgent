@@ -39,6 +39,19 @@ Thumbs.db
 _trash/
 _backup/
 
+# Backup & debug artifacts (added 2026-08-10)
+*.bak
+*.bak*
+*.bak_*
+/_*.py
+/_test*.txt
+/_test*.xml
+/.proxy_debug/
+/backend/data/
+/backend/.mfkagent_port
+/_-w
+/codex_responses_proxy.py
+
 # Electron
 electron/node_modules/
 

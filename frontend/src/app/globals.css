@@ -80,6 +80,22 @@
   /* 复制成功反馈 - 低饱和米灰中性色（贴近背景，柔和不刺眼） */
   --color-copied: #d9cfc0;
   --color-copied-text: #8a7a5f;
+
+  /* === V76 新增：硬编码收敛 / UX 精修 统一 Token === */
+
+  /* 弹层/模态遮罩：与主背景同色但加 alpha，深浅模式下都可形成层级感 */
+  --overlay-modal: rgba(0, 0, 0, 0.32);
+
+  /* Composer 卡片阴影：仅在 hover/聚焦/拖拽态使用的柔和阴影，比 --shadow-md 更轻 */
+  --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+
+  /* 行高体系：紧凑 / 标准 / 舒展（统一引用，避免散落 1.5 / 1.6 / 1.625） */
+  --line-height-tight: 1.3;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* 主色按钮/气泡内的文字色：默认白，主题色背景对比度足够 */
+  --text-on-primary: #ffffff;
 }
 
 /* ========================================
@@ -129,6 +145,14 @@
   /* 复制成功反馈 - 深色模式下低饱和灰米色（贴近背景） */
   --color-copied: #4a4640;
   --color-copied-text: #a99d8a;
+
+  /* === V76 新增：深色模式镜像 === */
+  --overlay-modal: rgba(0, 0, 0, 0.55);
+  --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --line-height-tight: 1.3;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --text-on-primary: #ffffff;
 }
 
 /* ========================================
