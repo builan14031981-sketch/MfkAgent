@@ -1,6 +1,6 @@
 "use client";
 
-import { Code2, Palette, Server, Sparkles, BarChart2, PenTool, Bot, MessageCircle } from "lucide-react";
+import { Code2, Palette, Server, Sparkles, BarChart2, PenTool, Bot, MessageCircle, Shield, Compass, Brain, User, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 
@@ -13,6 +13,11 @@ const AGENT_ICONS: Record<string, LucideIcon> = {
   analyst: BarChart2,
   writer: PenTool,
   gpt: MessageCircle,
+  g: Shield,
+  product: Compass,
+  mentor: Brain,
+  personal: User,
+  spark: Zap,
   // 后端 Agent.avatar 语义值（seed 归一化后的 icon 字段）也映射到同一套图标
   code: Code2,
   palette: Palette,
@@ -20,6 +25,11 @@ const AGENT_ICONS: Record<string, LucideIcon> = {
   sparkles: Sparkles,
   search: BarChart2,
   pen: PenTool,
+  shield: Shield,
+  compass: Compass,
+  brain: Brain,
+  user: User,
+  zap: Zap,
   heart: MessageCircle,
   target: BarChart2,
   bot: Bot,

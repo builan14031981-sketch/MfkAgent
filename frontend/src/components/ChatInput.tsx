@@ -48,7 +48,7 @@ export interface ChatInputProps {
   reasoningEffort: ReasoningEffort;
   onReasoningChange: (e: ReasoningEffort) => void;
 
-  /** 权限/执行模式：strict（每次询问）/ auto_approve（自动放行） */
+  /** Phase 3 T3/T8 权限模式：safe（安全）/ standard（标准）/ autonomous（自主） */
   permissionMode: PermissionMode;
   onPermissionChange: (m: PermissionMode) => void;
 

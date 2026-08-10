@@ -8,10 +8,17 @@
 - subprocess 统一走 sandbox.run_subprocess（PYTHONIOENCODING=utf-8 +
   CREATE_NO_WINDOW），输出用阶梯解码（UTF-8 → GBK → CP936 → 替换兜底），
   杜绝 Windows 下 GBK 乱码与解码崩溃。
+
+execute_command（Secure Execution Runtime V1）：
+- 专为项目命令设计（pytest / npm test / npm run build 等）
+- 返回结构化结果：stdout / stderr / exit_code / execution_time
+- 风险策略：安全命令 ALLOW，未知命令 REQUIRE_APPROVAL，危险命令 HIGH_RISK
 """
+import json
 import os
 import re
 import subprocess
+import time
 from typing import Dict, List
 
 from app.core.tools import ToolExecutionError
@@ -104,6 +111,86 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     return prefix + combined
 
 
+# ──── execute_command（Secure Execution Runtime V1）────
+
+EXECUTE_TIMEOUT = 60
+EXECUTE_MAX_OUTPUT = 10000
+
+
+def execute_command(project_path: str, command: str, cwd: str = "", timeout: int = EXECUTE_TIMEOUT) -> str:
+    """安全执行项目命令，返回结构化 JSON 结果。
+
+    安全约束：
+      - 必须绑定 project_path（沙箱锚定）
+      - 禁止 shell 元字符
+      - 禁止 cd 逃逸到项目外
+      - 超时自动终止
+      - 输出截断保护
+
+    Returns:
+        JSON 字符串: {"stdout": "...", "stderr": "...", "exit_code": 0, "execution_time": 0.123}
+    """
+    command = (command or "").strip()
+    if not command:
+        return json.dumps({"stdout": "", "stderr": "command 不能为空", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    if not project_path:
+        return json.dumps({"stdout": "", "stderr": "execute_command 需要绑定项目（project_path 不能为空）", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    if _FORBIDDEN_RE.search(command):
+        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（; & | ` $ < > 等），拒绝执行", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    if _CD_ESCAPE_RE.search(command):
+        return json.dumps({"stdout": "", "stderr": "不支持 cd 切换到项目外目录", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    # 沙箱校验：工作目录必须在 project_path 内
+    try:
+        if cwd and cwd.strip():
+            work_dir = str(resolve_sandbox_path(cwd.strip(), project_path))
+        else:
+            work_dir = str(resolve_sandbox_path(".", project_path))
+    except SandboxViolation as e:
+        return json.dumps({"stdout": "", "stderr": f"路径越权: {e}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    if not os.path.isdir(work_dir):
+        return json.dumps({"stdout": "", "stderr": f"工作目录不存在: {work_dir}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    timeout = max(1, min(int(timeout or EXECUTE_TIMEOUT), 300))
+    argv = _split_command(command)
+
+    start = time.monotonic()
+    try:
+        proc = run_subprocess(argv, cwd=work_dir, timeout=timeout)
+    except FileNotFoundError:
+        elapsed = time.monotonic() - start
+        return json.dumps({"stdout": "", "stderr": f"找不到命令 '{argv[0]}'（可能未安装或不在 PATH）", "exit_code": -1, "execution_time": round(elapsed, 3)}, ensure_ascii=False)
+    except subprocess.TimeoutExpired:
+        elapsed = time.monotonic() - start
+        return json.dumps({"stdout": "", "stderr": f"命令执行超时（>{timeout}s），已终止", "exit_code": -1, "execution_time": round(elapsed, 3)}, ensure_ascii=False)
+    except Exception as e:
+        elapsed = time.monotonic() - start
+        return json.dumps({"stdout": "", "stderr": f"命令执行异常: {e}", "exit_code": -1, "execution_time": round(elapsed, 3)}, ensure_ascii=False)
+
+    elapsed = time.monotonic() - start
+    stdout = decode_subprocess_output(proc.stdout) or ""
+    stderr = decode_subprocess_output(proc.stderr) or ""
+
+    # 输出截断
+    if len(stdout) > EXECUTE_MAX_OUTPUT:
+        stdout = stdout[:EXECUTE_MAX_OUTPUT] + f"\n...(stdout 已截断，共 {len(stdout)} 字符)"
+    if len(stderr) > EXECUTE_MAX_OUTPUT:
+        stderr = stderr[:EXECUTE_MAX_OUTPUT] + f"\n...(stderr 已截断，共 {len(stderr)} 字符)"
+
+    return json.dumps({
+        "stdout": stdout,
+        "stderr": stderr,
+        "exit_code": proc.returncode,
+        "execution_time": round(elapsed, 3),
+    }, ensure_ascii=False)
+
+
+# ──── Schema & 注册 ────
+
 COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
     {
         "type": "function",
@@ -139,10 +226,42 @@ COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_command",
+            "description": (
+                "安全执行项目命令（Secure Execution Runtime V1）。\n"
+                "专为项目内命令设计：pytest / npm test / npm run build / python app.py 等。\n"
+                "返回结构化 JSON：stdout / stderr / exit_code / execution_time。\n"
+                "安全命令（pytest/npm test）自动放行；未知命令需审批；危险命令（rm/del/format）强制拦截。\n"
+                "当用户说「运行测试」「启动项目」「编译」「执行命令」时调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "要执行的命令，如 'pytest'、'npm test'、'npm run build'、'python app.py'",
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "工作目录（相对于 project_path，可选，默认项目根目录）",
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "超时秒数（默认 60，上限 300）",
+                    },
+                },
+                "required": ["command"],
+            },
+        },
+    },
 ]
 
 COMMAND_TOOLS = {
     "run_command": run_command,
+    "execute_command": execute_command,
 }
 
 

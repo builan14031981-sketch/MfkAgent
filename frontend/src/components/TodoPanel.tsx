@@ -5,6 +5,16 @@ import { Check, Trash2, ChevronRight, ListTodo, Plus } from "lucide-react";
 import { useTodos } from "@/hooks/useTodos";
 import { useTranslation } from "@/hooks/useTranslation";
 
+// ── localStorage keys ──
+const TODO_COLLAPSED_KEY = "mfk_todo_collapsed";
+const TODO_SHOW_COMPLETED_KEY = "mfk_todo_show_completed";
+
+function readLocalBool(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  try { return localStorage.getItem(key) === "1"; }
+  catch { return false; }
+}
+
 /**
  * Google Tasks 风格待办面板（侧边栏顶部内嵌版）：
  * - 折叠/展开 Header，折叠时显示未完成数量 Badge
@@ -23,6 +33,12 @@ export function TodoPanel() {
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // 客户端挂载后从 localStorage 同步折叠状态（避免 SSR hydration mismatch）
+  useEffect(() => {
+    setCollapsed(readLocalBool(TODO_COLLAPSED_KEY));
+    setShowCompleted(readLocalBool(TODO_SHOW_COMPLETED_KEY));
+  }, []);
 
   const handleAddTodo = useCallback(
     async (refocus = true) => {
@@ -52,6 +68,7 @@ export function TodoPanel() {
   const handlePlusClick = useCallback(() => {
     // 展开面板并聚焦输入框，直接进入"新建待办"态
     setCollapsed(false);
+    try { localStorage.setItem(TODO_COLLAPSED_KEY, "0"); } catch { /* noop */ }
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
 
@@ -87,6 +104,7 @@ export function TodoPanel() {
   const handleToggleCompleted = useCallback(() => {
     setShowCompleted((prev) => {
       const next = !prev;
+      try { localStorage.setItem(TODO_SHOW_COMPLETED_KEY, next ? "1" : "0"); } catch { /* noop */ }
       if (next) fetchCompletedTodos();
       return next;
     });
@@ -99,7 +117,7 @@ export function TodoPanel() {
       listRef.current.style.maxHeight = "0px";
       listRef.current.style.opacity = "0";
     } else {
-      listRef.current.style.maxHeight = "300px";
+      listRef.current.style.maxHeight = "160px";
       listRef.current.style.opacity = "1";
     }
   }, [collapsed]);
@@ -130,7 +148,13 @@ export function TodoPanel() {
         }}
       >
         <button
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => {
+            setCollapsed((c) => {
+              const next = !c;
+              try { localStorage.setItem(TODO_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* noop */ }
+              return next;
+            });
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -229,7 +253,7 @@ export function TodoPanel() {
         ref={listRef}
         style={{
           overflow: "hidden",
-          maxHeight: "300px",
+          maxHeight: "160px",
           opacity: 1,
           transition: "max-height var(--transition-normal), opacity var(--transition-normal)",
         }}
@@ -251,8 +275,8 @@ export function TodoPanel() {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
-                    padding: "4px 8px",
+                    gap: "6px",
+                    padding: "2px 8px",
                     borderRadius: "var(--radius-sm)",
                     opacity: isCompleting ? 0 : 1,
                     transform: isCompleting ? "translateX(6px)" : "translateX(0)",
@@ -359,7 +383,7 @@ export function TodoPanel() {
             display: "flex",
             alignItems: "center",
             gap: "6px",
-            padding: "4px 12px 6px",
+            padding: "2px 12px 4px",
           }}
         >
           <span
@@ -417,7 +441,8 @@ export function TodoPanel() {
           )}
         </div>
 
-        {/* 查看更多：查看已完成的待办 */}
+        {/* 查看更多：仅在有已完成待办时显示 */}
+        {completedTodos.length > 0 && (
         <div
           style={{
             borderTop: "1px solid var(--border-primary, rgba(255,255,255,0.06))",
@@ -547,6 +572,7 @@ export function TodoPanel() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );

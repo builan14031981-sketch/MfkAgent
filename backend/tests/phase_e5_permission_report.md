@@ -1,6 +1,6 @@
 # MfkAgent Plan / Build 权限模型修正 — Phase E5 测试报告
 
-- 时间: 2026-08-07 19:02:48
+- 时间: 2026-08-10 14:46:36
 
 ## 修正前：Plan 权限实际行为
 
@@ -52,10 +52,10 @@
 | 1 | evaluate_tool 三态矩阵 | ✅ PASS | 0ms |
 | 2 | 命令引擎 Plan 只读约束 | ✅ PASS | 0ms |
 | 3 | 权限目录 + 单一事实来源 | ✅ PASS | 0ms |
-| 4 | E2E: plan 只读 read_file 放行 | ✅ PASS | 242ms |
-| 5 | E2E: plan write_file 拒绝 | ✅ PASS | 165ms |
-| 6 | E2E: plan add_memory 拒绝(写库) | ✅ PASS | 182ms |
-| 7 | E2E: build add_memory 放行 | ✅ PASS | 195ms |
+| 4 | E2E: plan 只读 read_file 放行 | ✅ PASS | 329ms |
+| 5 | E2E: plan write_file 拒绝 | ✅ PASS | 203ms |
+| 6 | E2E: plan add_memory 拒绝(写库) | ✅ PASS | 328ms |
+| 7 | E2E: build add_memory 放行 | ✅ PASS | 328ms |
 | 8 | 审批注册表无残留 | ✅ PASS | 0ms |
 
 **通过率: 8/8**
@@ -64,15 +64,15 @@
 
 ### 1. evaluate_tool 三态矩阵
 
-- cases: [{'case': '只读 read_file', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 list_files', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 search_files', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 git_status', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 git_diff', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 git_log', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 web_search', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 fetch_url', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 github_search', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '写入 write_file', 'ok': True, 'build': 'ask', 'plan': 'deny'}, {'case': '写入 git_commit', 'ok': True, 'build': 'ask', 'plan': 'deny'}, {'case': '写入 git_restore', 'ok': True, 'build': 'ask', 'plan': 'deny'}, {'case': '写入 git_revert', 'ok': True, 'build': 'ask', 'plan': 'deny'}, {'case': '写入 delete_file', 'ok': True, 'build': 'ask', 'plan': 'deny'}, {'case': '写入 rename_file', 'ok': True, 'build': 'ask', 'plan': 'deny'}, {'case': 'add_memory(写库)', 'ok': True, 'build': 'allow', 'plan': 'deny'}, {'case': '未知 future_write_tool', 'ok': True, 'build': 'allow', 'plan': 'deny'}, {'case': '未知 some_new_registry_tool', 'ok': True, 'build': 'allow', 'plan': 'deny'}]
+- cases: [{'case': '只读 read_file', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 list_files', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 search_files', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 git_status', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 git_diff', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 git_log', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 web_search', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 fetch_url', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '只读 github_search', 'ok': True, 'build': 'allow', 'plan': 'allow'}, {'case': '写入 write_file', 'ok': True, 'build': 'require_approval', 'plan': 'deny'}, {'case': '写入 git_commit', 'ok': True, 'build': 'require_approval', 'plan': 'deny'}, {'case': '写入 git_restore', 'ok': True, 'build': 'high_risk', 'plan': 'deny'}, {'case': '写入 git_revert', 'ok': True, 'build': 'high_risk', 'plan': 'deny'}, {'case': '写入 delete_file', 'ok': True, 'build': 'high_risk', 'plan': 'deny'}, {'case': '写入 rename_file', 'ok': True, 'build': 'require_approval', 'plan': 'deny'}, {'case': 'add_memory(写库)', 'ok': True, 'build': 'allow', 'plan': 'deny'}, {'case': '未知 future_write_tool', 'ok': True, 'build': 'allow', 'plan': 'deny'}, {'case': '未知 some_new_registry_tool', 'ok': True, 'build': 'allow', 'plan': 'deny'}]
 
 ### 2. 命令引擎 Plan 只读约束
 
-- cases: [{'case': "只读命令 'pytest'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'git status'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'git diff'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'ipconfig'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'systeminfo'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'python -m py_compile app.py'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'npm run test'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'reg query HKCU'", 'ok': True, 'plan': 'allow'}, {'case': "写入命令 'git reset --hard HEAD'", 'ok': True, 'plan': 'deny', 'build': 'ask'}, {'case': "写入命令 'pip install requests'", 'ok': True, 'plan': 'deny', 'build': 'ask'}, {'case': "写入命令 'rm -rf .'", 'ok': True, 'plan': 'deny', 'build': 'ask'}, {'case': "写入命令 'npm install lodash'", 'ok': True, 'plan': 'deny', 'build': 'ask'}, {'case': "写入命令 'taskkill /f /im test.exe'", 'ok': True, 'plan': 'deny', 'build': 'ask'}]
+- cases: [{'case': "只读命令 'pytest'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'git status'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'git diff'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'ipconfig'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'systeminfo'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'python -m py_compile app.py'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'npm run test'", 'ok': True, 'plan': 'allow'}, {'case': "只读命令 'reg query HKCU'", 'ok': True, 'plan': 'allow'}, {'case': "写入命令 'git reset --hard HEAD'", 'ok': True, 'plan': 'deny', 'build': 'high_risk'}, {'case': "写入命令 'pip install requests'", 'ok': True, 'plan': 'deny', 'build': 'require_approval'}, {'case': "写入命令 'rm -rf .'", 'ok': True, 'plan': 'deny', 'build': 'high_risk'}, {'case': "写入命令 'npm install lodash'", 'ok': True, 'plan': 'deny', 'build': 'require_approval'}, {'case': "写入命令 'taskkill /f /im test.exe'", 'ok': True, 'plan': 'deny', 'build': 'high_risk'}]
 
 ### 3. 权限目录 + 单一事实来源
 
-- cases: [{'case': '目录过滤与风险引擎清单同步', 'ok': True, 'plan_forbidden': ['add_memory', 'delete_file', 'git_add', 'git_clean', 'git_commit', 'git_pull', 'git_push', 'git_reset', 'git_restore', 'git_revert', 'rename_file', 'write_file']}, {'case': 'build+项目 = 基础全集', 'ok': True, 'diff': []}, {'case': 'plan 保留只读工具', 'ok': True, 'missing': []}, {'case': 'plan 移除写入工具', 'ok': True, 'leak': []}]
+- cases: [{'case': '目录过滤与风险引擎清单同步', 'ok': True, 'plan_forbidden': ['add_memory', 'delete_file', 'git_add', 'git_clean', 'git_clone', 'git_commit', 'git_pull', 'git_push', 'git_reset', 'git_restore', 'git_revert', 'github_create_pr', 'manage_todos', 'rename_file', 'write_file']}, {'case': 'build+项目 = 基础全集', 'ok': True, 'diff': []}, {'case': 'plan 保留只读工具', 'ok': True, 'missing': []}, {'case': 'plan 移除写入工具', 'ok': True, 'leak': []}]
 
 ### 4. E2E: plan 只读 read_file 放行
 

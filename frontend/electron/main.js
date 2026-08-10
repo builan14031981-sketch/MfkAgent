@@ -392,6 +392,24 @@ function registerIpcHandlers() {
     }
   });
   console.log("[Electron] IPC handler 'show-notification' registered");
+
+  // 在系统文件管理器中打开文件/文件夹
+  ipcMain.handle("open-in-folder", async (_evt, filePath) => {
+    try {
+      if (!filePath || typeof filePath !== "string") return false;
+      const absPath = path.isAbsolute(filePath) ? filePath : path.resolve(filePath);
+      if (!fs.existsSync(absPath)) {
+        console.warn("[Electron] open-in-folder: path not found:", absPath);
+        return false;
+      }
+      shell.showItemInFolder(absPath);
+      return true;
+    } catch (err) {
+      console.error("[Electron] open-in-folder failed:", err);
+      return false;
+    }
+  });
+  console.log("[Electron] IPC handler 'open-in-folder' registered");
 }
 
 app.on("window-all-closed", () => {

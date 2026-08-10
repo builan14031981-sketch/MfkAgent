@@ -462,6 +462,138 @@ class ToolRegistry:
         return await tool.execute(**kwargs)
 
 
+class GitHubCreatePRTool(Tool):
+    """GitHub Pull Request 创建工具 — 通过 GitHub API 创建 PR。
+
+    要求配置 GitHub Token（.env 中的 GITHUB_TOKEN 或 settings 表中的 github_token）。
+    无 Token 时明确失败，不允许伪造成功结果。
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="github_create_pr",
+            description=(
+                "在 GitHub 上创建 Pull Request。"
+                "当用户说「创建 PR」「提交 Pull Request」「发起合并请求」时调用。"
+                "注意：需要 GitHub Token 配置，且此操作需要用户审批。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": "GitHub 仓库全名（如 owner/repo）",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "PR 标题",
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "PR 描述内容（可选）",
+                    },
+                    "head_branch": {
+                        "type": "string",
+                        "description": "源分支名称（要合并的分支）",
+                    },
+                    "base_branch": {
+                        "type": "string",
+                        "description": "目标分支名称（默认 main）",
+                    },
+                },
+                "required": ["repo", "title", "head_branch"],
+            },
+        )
+
+    def _get_github_token(self) -> str:
+        """获取 GitHub Token（优先级：.env > settings 表）。"""
+        # 1. 尝试从 .env 读取
+        from app.core.config import settings as app_settings
+        token = (app_settings.GITHUB_TOKEN or "").strip()
+        if token:
+            return token
+
+        # 2. 尝试从 settings 表读取
+        try:
+            from app.core.database import SessionLocal
+            from app.models.agent import Setting
+            db = SessionLocal()
+            try:
+                row = db.query(Setting).filter(Setting.key == "github_token").first()
+                if row and row.value:
+                    token = row.value.strip()
+            finally:
+                db.close()
+        except Exception:
+            pass
+
+        return token
+
+    async def execute(self, repo: str = "", title: str = "", body: str = "",
+                      head_branch: str = "", base_branch: str = "main", **kwargs) -> ToolResult:
+        import httpx
+        import json as _json
+
+        if not repo or not repo.strip():
+            return ToolResult(success=False, output="", error="repo 不能为空")
+        if not title or not title.strip():
+            return ToolResult(success=False, output="", error="title 不能为空")
+        if not head_branch or not head_branch.strip():
+            return ToolResult(success=False, output="", error="head_branch 不能为空")
+
+        token = self._get_github_token()
+        if not token:
+            return ToolResult(
+                success=False, output="",
+                error="未配置 GitHub Token。请在 .env 中设置 GITHUB_TOKEN 或在设置页面配置 github_token。",
+            )
+
+        base = base_branch.strip() or "main"
+        url = f"https://api.github.com/repos/{repo.strip()}/pulls"
+        payload = {
+            "title": title.strip(),
+            "head": head_branch.strip(),
+            "base": base,
+        }
+        if body and body.strip():
+            payload["body"] = body.strip()
+
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "MfkAgent/1.0",
+        }
+
+        try:
+            from app.core.proxy import build_httpx_client
+            async with build_httpx_client(timeout=30.0) as client:
+                response = await client.post(url, json=payload, headers=headers, timeout=30.0)
+                resp_data = response.json()
+
+                if response.status_code in (200, 201):
+                    pr_url = resp_data.get("html_url", "")
+                    pr_number = resp_data.get("number", "")
+                    pr_state = resp_data.get("state", "")
+                    return ToolResult(
+                        success=True,
+                        output=_json.dumps({
+                            "status": "success",
+                            "pr_url": pr_url,
+                            "pr_number": pr_number,
+                            "state": pr_state,
+                            "message": f"PR 已创建: {pr_url}",
+                        }, ensure_ascii=False),
+                    )
+                else:
+                    error_msg = resp_data.get("message", "") or _json.dumps(resp_data)
+                    return ToolResult(
+                        success=False, output="",
+                        error=f"GitHub API 返回错误（HTTP {response.status_code}）: {error_msg}",
+                    )
+        except Exception as e:
+            return ToolResult(success=False, output="", error=f"创建 PR 失败: {str(e)}")
+
+
 class ManageTodosTool(Tool):
     """待办事项管理工具 — 供 LLM 通过 Tool Calling 管理用户待办。
 
@@ -581,6 +713,7 @@ tool_registry.register(DateTimeTool())           # 获取当前时间
 tool_registry.register(JsonFormatTool())         # 格式化 JSON
 tool_registry.register(AddMemoryTool())          # 保存记忆
 tool_registry.register(ManageTodosTool())        # 待办事项管理
+tool_registry.register(GitHubCreatePRTool())     # GitHub PR 创建
 
 # 注意：文件操作工具（read_file/write_file/list_files）已在 core/tools.py 中实现
 # 带有沙箱保护，只在有 project_path 时通过 FILE_TOOLS_DEFINITIONS 提供

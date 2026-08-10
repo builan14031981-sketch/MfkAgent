@@ -14,6 +14,8 @@ from app.models.agent import Chat, Message, Agent, Project
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
 from app.core.tool_runtime.approval import approval_registry
+from app.core.tool_runtime.notification import event_bus, NotificationType
+from app.core.tool_runtime.executor import _update_approval_status
 from app.core.agent_runtime import AgentRuntime, get_chat_context_builder, ContextBuildInput
 from app.core.agent_runtime.context_builder import get_default_model as _get_default_model
 from app.services.memory_extractor import run_memory_extraction
@@ -529,8 +531,7 @@ class SendRequest(BaseModel):
     reasoning_effort: Optional[str] = None
     planning_level: Optional[int] = None  # G2-B: Planner 层级控制
     attachments: List[AttachmentItem] = []  # Phase 2: 多模态附件元数据
-    auto_approve: bool = False  # Phase 12: 自治模式，自动审批 REQUIRE_APPROVAL 级工具
-    permission_mode: Optional[str] = None  # 'ask_always' | 'auto_approve' — 优先级高于 auto_approve
+    # Phase 3 T3/T8: auto_approve / permission_mode 已废弃，权限模式统一从 Settings 读取
 
 
 class SendResponse(BaseModel):
@@ -563,12 +564,7 @@ async def send_message(chat_id: int, request: SendRequest):
         # 同时确保 ChatContextBuilder 在新 Session 中能读到刚写入的 user_msg。
         db.commit()
 
-        # permission_mode → auto_approve 映射（permission_mode 优先级高于 auto_approve 字段）
-        _auto_approve = request.auto_approve
-        if request.permission_mode == "auto_approve":
-            _auto_approve = True
-        elif request.permission_mode == "ask_always":
-            _auto_approve = False
+        # Phase 3 T3/T8: 权限模式统一从 Settings 读取，不再从前端参数透传
 
         # Phase E3: ChatContextBuilder 统一组装（AgentContext + system prompt + messages + 参数）
         built = await get_chat_context_builder().build(
@@ -583,7 +579,6 @@ async def send_message(chat_id: int, request: SendRequest):
                 reasoning_effort=request.reasoning_effort,
                 planning_level=request.planning_level,
                 attachments=request.attachments,
-                auto_approve=_auto_approve,
             )
         )
 
@@ -700,12 +695,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         # 同时确保 ChatContextBuilder 在新 Session 中能读到刚写入的 user_msg。
         db.commit()
 
-        # permission_mode → auto_approve 映射（permission_mode 优先级高于 auto_approve 字段）
-        _auto_approve = request.auto_approve
-        if request.permission_mode == "auto_approve":
-            _auto_approve = True
-        elif request.permission_mode == "ask_always":
-            _auto_approve = False
+        # Phase 3 T3/T8: 权限模式统一从 Settings 读取，不再从前端参数透传
 
         # Phase E3: ChatContextBuilder 统一组装（AgentContext + system prompt + messages + 参数）
         built = await get_chat_context_builder().build(
@@ -720,7 +710,6 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 reasoning_effort=request.reasoning_effort,
                 planning_level=request.planning_level,
                 attachments=request.attachments,
-                auto_approve=_auto_approve,
             )
         )
 
@@ -828,6 +817,14 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             _persist()
             run.db_persisted = True
 
+            # Phase 3 T3/T8: 发布任务完成通知
+            event_bus.task_completed(
+                chat_id=chat_id,
+                task_description="Agent 任务完成",
+                success=True,
+                result_summary=full_content[:200] if full_content else "",
+            )
+
             # Phase 10: 后台无感记忆提取
             try:
                 asyncio.create_task(
@@ -851,6 +848,13 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             logger.error("Agent background task error: chat_id=%s error=%s", chat_id, e)
             # run_stream 已在 yield error 事件后 raise，此处不再重复发送
             run.exception = e
+            # Phase 3 T3/T8: 发布错误通知
+            event_bus.error(
+                chat_id=chat_id,
+                error_type="agent_error",
+                error_message=str(e)[:200],
+                recoverable=False,
+            )
         finally:
             # 通知 SSE 消费者结束
             _put(None)
@@ -1102,6 +1106,18 @@ async def approve_command(chat_id: int, request: ApproveRequest):
 
     if not approval_registry.resolve(approval_id, action):
         raise HTTPException(status_code=409, detail="审批已处理或已超时")
+
+    # Phase 3 T3/T8: 同步更新 approval_requests 表状态
+    _update_approval_status(approval_id, action)
+
+    # Phase 3 T3/T8: 发布审批完成通知（RuntimeEventBus）
+    event_bus.approval_completed(
+        chat_id=chat_id,
+        approval_id=approval_id,
+        tool_call_id=info.get("tool_call_id", ""),
+        tool=info.get("tool", ""),
+        action=action,
+    )
 
     logger.info(
         "Phase15 approve: chat_id=%s approval_id=%s decision=%s tool=%s command=%s",

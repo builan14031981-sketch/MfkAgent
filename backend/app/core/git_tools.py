@@ -5,7 +5,9 @@
 """
 from typing import Dict, List, Optional
 import os
+import re
 import subprocess
+from urllib.parse import urlparse
 
 from app.core.sandbox import (
     SandboxViolation,
@@ -162,6 +164,124 @@ def git_remote(project_path: str) -> str:
     return out
 
 
+# ──── 写操作工具 ────
+
+
+def _derive_repo_name(url: str) -> str:
+    """从 GitHub HTTPS URL 提取仓库名（如 my-repo）。"""
+    # 支持格式: https://github.com/owner/repo.git 或 https://github.com/owner/repo
+    path = urlparse(url).path.rstrip("/")
+    name = path.rsplit("/", 1)[-1]
+    if name.endswith(".git"):
+        name = name[:-4]
+    return name or "cloned_repo"
+
+
+def _validate_github_url(url: str) -> None:
+    """校验 URL 为合法的 GitHub HTTPS 地址。"""
+    if not url:
+        raise GitToolError("clone URL 不能为空")
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise GitToolError("只支持 HTTPS 协议的 GitHub 地址（如 https://github.com/owner/repo.git）")
+    if "github.com" not in parsed.netloc:
+        raise GitToolError("只支持 github.com 的仓库地址")
+    if not parsed.path or parsed.path == "/":
+        raise GitToolError("URL 缺少仓库路径")
+
+
+def git_clone(project_path: str, url: str, target_dir: str = "") -> str:
+    """从 GitHub HTTPS 地址 clone 仓库到项目工作区。
+
+    Args:
+        project_path: 当前项目路径（用作 clone 的目标父目录）
+        url: GitHub HTTPS 仓库地址
+        target_dir: 目标目录名（可选，默认从 URL 提取）
+
+    Returns:
+        clone 结果描述（含目标路径）
+    """
+    _validate_github_url(url)
+    if not target_dir or not target_dir.strip():
+        target_dir = _derive_repo_name(url)
+    else:
+        target_dir = target_dir.strip()
+        # 禁止目录名含路径分隔符或特殊字符
+        if re.search(r'[/\\:*?"<>|]', target_dir):
+            raise GitToolError(f"目标目录名包含非法字符: {target_dir}")
+
+    # 沙箱校验：目标路径必须在 project_path 内
+    try:
+        target_real = str(resolve_sandbox_path(target_dir, project_path))
+    except SandboxViolation as e:
+        raise GitToolError(f"clone 目标路径越权: {e}")
+
+    if os.path.exists(target_real):
+        raise GitToolError(f"目标目录已存在: {target_dir}（请选择其他目录名或先删除已有目录）")
+
+    try:
+        _git(project_path, ["clone", url, target_dir], timeout=300)
+    except GitToolError as e:
+        raise GitToolError(f"clone 失败: {e}")
+
+    return (
+        f"已成功 clone 仓库到: {target_real}\n"
+        f"仓库地址: {url}\n"
+        f"目标目录: {target_dir}"
+    )
+
+
+def git_pull(project_path: str) -> str:
+    """拉取远程更新（git pull），基于当前 project_path。
+
+    要求当前项目已配置 remote，自动识别 .git/config。
+    """
+    if not _is_repo(project_path):
+        return "该项目尚未初始化 Git 仓库（无 .git 目录）"
+    remote_info = _git(project_path, ["remote", "-v"])
+    if not remote_info:
+        return "未配置远程仓库（无 remote），无法 pull。请先配置 remote。"
+    try:
+        out = _git(project_path, ["pull"], timeout=120)
+    except GitToolError as e:
+        raise GitToolError(f"pull 失败: {e}")
+    return out if out else "已拉取远程更新（无冲突）。"
+
+
+def git_push(project_path: str) -> str:
+    """推送本地提交到远程仓库（git push）。
+
+    基于当前 project_path 和当前分支，自动推送。
+    """
+    if not _is_repo(project_path):
+        return "该项目尚未初始化 Git 仓库（无 .git 目录）"
+    remote_info = _git(project_path, ["remote", "-v"])
+    if not remote_info:
+        return "未配置远程仓库（无 remote），无法 push。请先配置 remote。"
+    try:
+        out = _git(project_path, ["push"], timeout=120)
+    except GitToolError as e:
+        raise GitToolError(f"push 失败: {e}")
+    return out if out else "已推送成功。"
+
+
+def git_fetch(project_path: str) -> str:
+    """从远程仓库获取最新信息（git fetch，只读操作）。
+
+    不合并代码，仅更新远程跟踪分支。
+    """
+    if not _is_repo(project_path):
+        return "该项目尚未初始化 Git 仓库（无 .git 目录）"
+    remote_info = _git(project_path, ["remote", "-v"])
+    if not remote_info:
+        return "未配置远程仓库（无 remote），无法 fetch。请先配置 remote。"
+    try:
+        out = _git(project_path, ["fetch"], timeout=120)
+    except GitToolError as e:
+        raise GitToolError(f"fetch 失败: {e}")
+    return out if out else "已获取远程更新（fetch 完成）。"
+
+
 # ============ OpenAI Function Calling Schema ============
 
 GIT_TOOLS_DEFINITIONS: List[Dict] = [
@@ -308,6 +428,75 @@ GIT_TOOLS_DEFINITIONS: List[Dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_clone",
+            "description": (
+                "从 GitHub HTTPS 地址 clone 仓库到项目工作区。"
+                "当用户说「clone 这个仓库」「下载这个项目」「克隆 xxx」时调用。"
+                "注意：此操作需要用户审批。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "GitHub HTTPS 仓库地址（如 https://github.com/owner/repo.git）",
+                    },
+                    "target_dir": {
+                        "type": "string",
+                        "description": "目标目录名（可选，默认从 URL 自动提取仓库名）",
+                    },
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_pull",
+            "description": (
+                "拉取远程仓库的更新到本地（git pull）。"
+                "当用户说「拉取更新」「同步远程代码」「pull 一下」时调用。"
+                "注意：此操作需要用户审批。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_push",
+            "description": (
+                "推送本地提交到远程仓库（git push）。"
+                "当用户说「推送代码」「push 到远程」「上传提交」时调用。"
+                "注意：此操作需要用户审批。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "git_fetch",
+            "description": (
+                "从远程仓库获取最新信息（git fetch，只读操作，不合并）。"
+                "当用户说「获取远程更新」「fetch 一下」「查看远程有没有新提交」时调用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
 ]
 
 GIT_TOOLS = {
@@ -319,6 +508,10 @@ GIT_TOOLS = {
     "git_revert": git_revert,
     "git_branch_list": git_branch_list,
     "git_remote": git_remote,
+    "git_clone": git_clone,
+    "git_pull": git_pull,
+    "git_push": git_push,
+    "git_fetch": git_fetch,
 }
 
 

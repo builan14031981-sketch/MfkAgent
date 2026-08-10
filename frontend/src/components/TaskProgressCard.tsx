@@ -1,7 +1,7 @@
 "use client";
 
-import { memo } from "react";
-import { Loader2, Check, X, ListTodo } from "lucide-react";
+import { memo, useState, useEffect, useRef } from "react";
+import { Loader2, Check, X, ListTodo, ChevronUp, ChevronDown } from "lucide-react";
 import type { TaskNode, TaskStatus } from "@/types/runtime";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -31,7 +31,7 @@ function StatusIcon({ status }: { status: TaskStatus }) {
     return <Loader2 style={{ width: 14, height: 14, color: "var(--color-primary)", flexShrink: 0 }} className="animate-spin" />;
   }
   if (status === "completed") {
-    return <Check style={{ width: 14, height: 14, color: "var(--color-success, #10b981)", flexShrink: 0 }} />;
+    return <Check style={{ width: 14, height: 14, color: "var(--text-level-4)", flexShrink: 0 }} />;
   }
   if (status === "failed") {
     return <X style={{ width: 14, height: 14, color: "var(--color-error)", flexShrink: 0 }} />;
@@ -43,7 +43,6 @@ function StatusIcon({ status }: { status: TaskStatus }) {
 /** Agent 角色 Badge */
 function AgentBadge({ agent }: { agent: string }) {
   const colors = AGENT_BADGE[agent] ?? DEFAULT_BADGE;
-  // 友好显示名：去 _agent 后缀 + 首字母大写
   const label = agent.replace(/_agent$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) || agent;
   return (
     <span style={{
@@ -69,24 +68,38 @@ function AgentBadge({ agent }: { agent: string }) {
  */
 export const TaskProgressCard = memo(function TaskProgressCard({ tasks }: TaskProgressCardProps) {
   const { t } = useTranslation();
+  const [collapsed, setCollapsed] = useState(false);
+  const prevTaskCountRef = useRef(tasks.length);
+
+  // 智能行为：新任务到达时自动展开
+  useEffect(() => {
+    const prevCount = prevTaskCountRef.current;
+    prevTaskCountRef.current = tasks.length;
+    if (tasks.length > prevCount) {
+      setCollapsed(false);
+    }
+  }, [tasks]);
+
   if (tasks.length === 0) return null;
 
   const completed = tasks.filter((task) => task.status === "completed").length;
   const failed = tasks.filter((task) => task.status === "failed").length;
+  const running = tasks.filter((task) => task.status === "running").length;
 
   return (
     <div style={{
-      marginBottom: "12px",
       borderRadius: "var(--radius-md)",
       border: "1px solid var(--border-primary)",
       background: "var(--bg-level-2)",
-      padding: "12px 14px",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+      padding: "4px 12px",
+      position: "relative",
     }}>
-      {/* 头部：标题 + 汇总 */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+      {/* 头部：标题 + 汇总 + 折叠按钮 */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <ListTodo style={{ width: 14, height: 14, color: "var(--text-level-2)", flexShrink: 0 }} />
         <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-level-1)", lineHeight: 1.25 }}>
-          {t("chat.taskProgress.title", { defaultValue: "任务执行" })}
+          {t("chat.taskProgress.title")}
         </span>
         <span style={{
           fontSize: "11px",
@@ -96,49 +109,104 @@ export const TaskProgressCard = memo(function TaskProgressCard({ tasks }: TaskPr
         }}>
           {completed}/{tasks.length}{failed > 0 && ` · ${failed} failed`}
         </span>
+        {/* 折叠/展开按钮 */}
+        <button
+          onClick={() => setCollapsed((prev) => !prev)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "24px",
+            height: "24px",
+            padding: 0,
+            border: "none",
+            borderRadius: "var(--radius-sm)",
+            background: "transparent",
+            cursor: "pointer",
+            color: "var(--text-level-3)",
+            flexShrink: 0,
+            transition: "background 0.15s ease",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          title={collapsed ? t("chat.taskProgress.expand") : t("chat.taskProgress.collapse")}
+        >
+          {collapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
       </div>
 
+      {/* 收起态：显示摘要 */}
+      {collapsed && (
+        <div style={{
+          marginTop: "2px",
+          fontSize: "12px",
+          color: "var(--text-level-3)",
+          lineHeight: 1.4,
+        }}>
+          {running > 0 ? (
+            <span>{completed}/{tasks.length} {t("chat.taskProgress.completed")} · {running} {t("chat.taskProgress.running")}</span>
+          ) : (
+            <span>{completed}/{tasks.length} {t("chat.taskProgress.completed")}</span>
+          )}
+        </div>
+      )}
+
       {/* 任务列表 */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-        {tasks.map((task) => (
-          <div
-            key={task.task_id}
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: "8px",
-              padding: "6px 8px",
-              borderRadius: "var(--radius-sm)",
-              background: task.status === "failed" ? "color-mix(in srgb, var(--color-error) 6%, transparent)" : "transparent",
-            }}
-          >
-            <div style={{ marginTop: "2px" }}>
-              <StatusIcon status={task.status} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                <span style={{
-                  fontSize: "12px",
-                  color: task.status === "failed" ? "var(--text-level-1)" : "var(--text-level-2)",
-                  lineHeight: 1.4,
-                  wordBreak: "break-word",
-                }}>{task.action || task.task_id}</span>
-                <AgentBadge agent={task.assigned_agent} />
+      {!collapsed && (
+        <div style={{ display: "flex", flexDirection: "column", marginTop: "2px" }}>
+          {tasks.map((task) => {
+            const isCompleted = task.status === "completed";
+            const isFailed = task.status === "failed";
+            const isRunning = task.status === "running";
+            return (
+              <div
+                key={task.task_id}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "8px",
+                  padding: "2px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: isFailed
+                    ? "color-mix(in srgb, var(--color-error) 8%, transparent)"
+                    : "transparent",
+                  opacity: isCompleted ? 0.65 : 1,
+                  transition: "opacity 0.2s ease",
+                }}
+              >
+                <div style={{ marginTop: "1px" }}>
+                  <StatusIcon status={task.status} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                    <span style={{
+                      fontSize: "12px",
+                      color: isFailed
+                        ? "var(--color-error)"
+                        : isCompleted
+                        ? "var(--text-level-3)"
+                        : "var(--text-level-2)",
+                      lineHeight: 1.4,
+                      wordBreak: "break-word",
+                    }}>{task.action || task.task_id}</span>
+                    <AgentBadge agent={task.assigned_agent} />
+                  </div>
+                  {isFailed && task.error && (
+                    <p style={{
+                      margin: "4px 0 0 0",
+                      fontSize: "11px",
+                      lineHeight: 1.5,
+                      color: "var(--color-error)",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}>{task.error}</p>
+                  )}
+                </div>
               </div>
-              {task.status === "failed" && task.error && (
-                <p style={{
-                  margin: "4px 0 0 0",
-                  fontSize: "11px",
-                  lineHeight: 1.5,
-                  color: "var(--color-error)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}>{task.error}</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 });

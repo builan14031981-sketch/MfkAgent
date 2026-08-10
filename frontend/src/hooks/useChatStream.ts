@@ -29,7 +29,7 @@ export interface SendStreamOptions {
   modelId?: string | null;
   personalityLevel?: number;
   reasoningEffort?: ReasoningEffort;
-  /** 权限/执行模式：strict（每次询问）/ auto_approve（自动放行） */
+  /** 权限/执行模式：safe（安全）/ standard（标准）/ autonomous（自主） */
   permissionMode?: PermissionMode;
   /** 是否乐观追加用户消息到本地列表（重试/重新生成时已有消息，置 false） */
   appendUserMessage?: boolean;
@@ -136,6 +136,12 @@ export function useChatStream({
   const resolveApproval = useCallback(
     async (approvalId: string, action: "approve" | "deny", toolCallId?: string) => {
       if (!chatId) return;
+      // 重复点击保护：检查当前状态是否已处理
+      const session = store.getSession(chatId);
+      const existing = session.timeline.find(
+        (s) => s.type === "approval" && s.approval.approval_id === approvalId
+      );
+      if (existing?.type === "approval" && existing.approval.resolvedAction) return;
       const resolvedAction = action === "approve" ? "approved" : "rejected";
       // 乐观 UI：立即将卡片置为只读状态
       store.updateSession(chatId, (prev) => ({
@@ -255,7 +261,6 @@ export function useChatStream({
       const appendAssistant = (final: string, toolCalls: ToolCall[], finalThinking: string) => {
         store.updateSession(targetChatId, () => ({
           timeline: [],
-          tasks: [],
           streamingError: null,
           reasoningActive: false,
           currentAgentState: null,
@@ -338,7 +343,6 @@ export function useChatStream({
           () => {
             store.updateSession(targetChatId, () => ({
               timeline: [],
-              tasks: [],
               isSending: false,
               reasoningActive: false,
               currentAgentState: null,
@@ -504,6 +508,14 @@ export function useChatStream({
                 };
                 return { tasks: next };
               });
+              // Phase 3 T3/T8: 任务完成/失败通知（仅后台会话时触发）
+              if (activeChatIdRef.current !== targetChatId) {
+                if (evt.type === "task_completed") {
+                  showDesktopNotification("任务完成", node.action || "子任务已完成");
+                } else if (evt.type === "task_failed") {
+                  showDesktopNotification("任务失败", node.error || node.action || "子任务执行失败");
+                }
+              }
             }
           },
           // onTokenUsage

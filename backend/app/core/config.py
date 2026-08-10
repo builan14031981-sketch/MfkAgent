@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     # G6-B 会话压缩：摘要模型 ID（留空则使用默认便宜模型）
     COMPRESSION_MODEL: str = ""
 
+    # GitHub Token（用于 GitHub API 工具，如 github_create_pr）
+    GITHUB_TOKEN: str = ""
+
     # Google Gemini 配置
     GOOGLE_API_KEY: str = ""
     

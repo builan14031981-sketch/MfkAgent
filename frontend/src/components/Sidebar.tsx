@@ -9,6 +9,7 @@ import {
   ChevronRight,
   MessageSquare,
   FolderOpen,
+  PanelLeftClose,
 } from "lucide-react";
 import { useChat, Chat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
@@ -26,9 +27,32 @@ import { SidebarContextMenu, SidebarContextMenuState } from "./sidebar/SidebarCo
 import { ProjectCreateForm } from "./sidebar/ProjectCreateForm";
 import { TodoPanel } from "./TodoPanel";
 
+// ── localStorage keys ──
+const COLLAPSED_PROJECTS_KEY = "mfk_sidebar_collapsed_projects";
+const COLLAPSED_GENERAL_CHATS_KEY = "mfk_sidebar_collapsed_general_chats";
+const COLLAPSED_PROJECT_WORKSPACE_KEY = "mfk_sidebar_collapsed_project_workspace";
+
+function readLocalBool(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  try { return localStorage.getItem(key) === "1"; }
+  catch { return false; }
+}
+
+function readLocalNumSet(key: string): Set<number> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved) return new Set();
+    const arr = JSON.parse(saved);
+    return Array.isArray(arr) ? new Set(arr) : new Set();
+  } catch { return new Set(); }
+}
+
 interface SidebarProps {
   currentChatId?: number | null;
   onSettingsClick?: () => void;
+  collapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 /** 排序：置顶的聊天在前，再按更新时间倒序 */
@@ -41,7 +65,7 @@ function sortChats(chats: Chat[]): Chat[] {
   });
 }
 
-export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
+export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSidebar }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { chats, deleteChat, updateChat, pinChat, refetch: refetchChats } = useChat();
@@ -71,6 +95,17 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   const generalChatsListRef = useRef<HTMLDivElement>(null);
   const [collapsedProjectWorkspace, setCollapsedProjectWorkspace] = useState(false);
   const projectWorkspaceRef = useRef<HTMLDivElement>(null);
+
+  // 客户端挂载后从 localStorage 同步 UI 折叠状态（避免 SSR hydration mismatch）
+  useEffect(() => {
+    setCollapsedProjects(readLocalNumSet(COLLAPSED_PROJECTS_KEY));
+  }, []);
+  useEffect(() => {
+    setCollapsedGeneralChats(readLocalBool(COLLAPSED_GENERAL_CHATS_KEY));
+  }, []);
+  useEffect(() => {
+    setCollapsedProjectWorkspace(readLocalBool(COLLAPSED_PROJECT_WORKSPACE_KEY));
+  }, []);
 
   // 阻止 Chromium 自动聚焦启发式：页面加载时若"新建任务"按钮被自动聚焦，立即移除焦点
   // 仅在 mount 时执行一次，不影响用户后续点击 / Tab 键聚焦
@@ -118,47 +153,31 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   }, [refetchProjects, refetchChats]);
 
   // 当前会话所在项目保持展开（渲染时派生，避免在 effect 中 setState）
-  const effectiveCollapsed = useMemo(() => {
-    const set = new Set(collapsedProjects);
-    if (activeProjectId != null) set.delete(activeProjectId);
-    return set;
-  }, [collapsedProjects, activeProjectId]);
-
-  // 当前会话是通用对话时自动展开
-  const effectiveCollapsedGeneralChats = useMemo(() => {
-    if (activeProjectId == null && currentChatId != null) return false;
-    return collapsedGeneralChats;
-  }, [collapsedGeneralChats, activeProjectId, currentChatId]);
-
-  // 当前会话在项目工作区时自动展开
-  const effectiveCollapsedProjectWorkspace = useMemo(() => {
-    if (activeProjectId != null) return false;
-    return collapsedProjectWorkspace;
-  }, [collapsedProjectWorkspace, activeProjectId]);
+  // ⚠️ 已移除强制展开逻辑：用户手动折叠优先，不因活跃会话自动展开
 
   // 通用对话折叠/展开动画
   useEffect(() => {
     if (!generalChatsListRef.current) return;
-    if (effectiveCollapsedGeneralChats) {
+    if (collapsedGeneralChats) {
       generalChatsListRef.current.style.maxHeight = "0px";
       generalChatsListRef.current.style.opacity = "0";
     } else {
       generalChatsListRef.current.style.maxHeight = "2000px";
       generalChatsListRef.current.style.opacity = "1";
     }
-  }, [effectiveCollapsedGeneralChats]);
+  }, [collapsedGeneralChats]);
 
   // 项目工作区折叠/展开动画
   useEffect(() => {
     if (!projectWorkspaceRef.current) return;
-    if (effectiveCollapsedProjectWorkspace) {
+    if (collapsedProjectWorkspace) {
       projectWorkspaceRef.current.style.maxHeight = "0px";
       projectWorkspaceRef.current.style.opacity = "0";
     } else {
       projectWorkspaceRef.current.style.maxHeight = "2000px";
       projectWorkspaceRef.current.style.opacity = "1";
     }
-  }, [effectiveCollapsedProjectWorkspace]);
+  }, [collapsedProjectWorkspace]);
 
   const handleContextMenu = (e: React.MouseEvent, chatId: number) => {
     e.preventDefault();
@@ -285,6 +304,23 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       } else {
         next.add(projectId);
       }
+      try { localStorage.setItem(COLLAPSED_PROJECTS_KEY, JSON.stringify([...next])); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  const toggleProjectWorkspace = () => {
+    setCollapsedProjectWorkspace((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(COLLAPSED_PROJECT_WORKSPACE_KEY, next ? "1" : "0"); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  const toggleGeneralChats = () => {
+    setCollapsedGeneralChats((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(COLLAPSED_GENERAL_CHATS_KEY, next ? "1" : "0"); } catch { /* noop */ }
       return next;
     });
   };
@@ -359,21 +395,24 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
   return (
     <aside style={{
       width: "var(--sidebar-width)",
+      minWidth: collapsed ? 0 : undefined,
       height: "100%",
       display: "flex",
       flexDirection: "column",
-      borderRight: "1px solid var(--border-primary)",
+      borderRight: collapsed ? "none" : "1px solid var(--border-primary)",
       background: "var(--bg-level-1)",
       flexShrink: 0,
       position: "relative",
+      overflow: collapsed ? "hidden" : "visible",
+      transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-right 0.3s ease",
     }}>
       {/* 新建任务 */}
-      <div style={{ padding: "12px 12px 4px" }}>
+      <div style={{ padding: "12px 12px 4px", display: "flex", alignItems: "center", gap: "6px" }}>
         <button
           ref={newTaskBtnRef}
           onClick={() => router.push("/")}
           style={{
-            width: "100%",
+            flex: 1,
             display: "flex",
             alignItems: "center",
             gap: "8px",
@@ -393,6 +432,37 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
           <Plus style={{ width: "16px", height: "16px" }} />
           <span>{t("sidebar.newTask")}</span>
         </button>
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "28px",
+              height: "28px",
+              padding: 0,
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              background: "transparent",
+              cursor: "pointer",
+              color: "var(--text-level-4)",
+              flexShrink: 0,
+              transition: "background 0.15s ease, color 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-3)";
+              e.currentTarget.style.color = "var(--text-level-2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-level-4)";
+            }}
+            title="收起侧边栏"
+          >
+            <PanelLeftClose size={16} />
+          </button>
+        )}
       </div>
 
       {/* 待办面板（可折叠，位于 New Task 与 Projects 之间） */}
@@ -410,7 +480,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
         <div style={{ marginBottom: "8px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
             <button
-              onClick={() => setCollapsedProjectWorkspace((c) => !c)}
+              onClick={toggleProjectWorkspace}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -431,7 +501,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                 height: "13px",
                 color: "var(--text-level-4)",
                 flexShrink: 0,
-                transform: effectiveCollapsedProjectWorkspace ? "rotate(0deg)" : "rotate(90deg)",
+                transform: collapsedProjectWorkspace ? "rotate(0deg)" : "rotate(90deg)",
                 transition: "transform var(--transition-fast)",
               }} />
               <FolderOpen style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
@@ -506,7 +576,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
                 key={project.id}
                 project={project}
                 chats={projectChats.get(project.id) ?? []}
-                isCollapsed={effectiveCollapsed.has(project.id)}
+                isCollapsed={collapsedProjects.has(project.id)}
                 isActiveProject={activeProjectId === project.id}
                 isHovered={hoveredProjectId === project.id}
                 onToggleCollapse={() => toggleProject(project.id)}
@@ -531,7 +601,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
         {/* ===== 通用对话 ===== */}
         <div>
           <button
-            onClick={() => setCollapsedGeneralChats((c) => !c)}
+            onClick={toggleGeneralChats}
             style={{
               display: "flex",
               alignItems: "center",
@@ -551,7 +621,7 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
               height: "13px",
               color: "var(--text-level-4)",
               flexShrink: 0,
-              transform: effectiveCollapsedGeneralChats ? "rotate(0deg)" : "rotate(90deg)",
+              transform: collapsedGeneralChats ? "rotate(0deg)" : "rotate(90deg)",
               transition: "transform var(--transition-fast)",
             }} />
             <MessageSquare style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
@@ -627,7 +697,9 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
       {/* 底部按钮 */}
       <div style={{
         padding: "12px",
+        paddingBottom: activeProjectId == null ? "32px" : "12px",
         borderTop: "1px solid var(--border-primary)",
+        transition: "padding-bottom 0.2s ease",
       }}>
         {onSettingsClick && (
           <button
@@ -658,16 +730,6 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
             <span>{t("sidebar.settings")}</span>
           </button>
         )}
-        {activeProjectId == null && (
-          <p style={{
-            fontSize: "10px",
-            lineHeight: 1.4,
-            color: "var(--text-level-4)",
-            margin: "6px 0 0 0",
-            padding: "0 4px",
-            pointerEvents: "none",
-          }}>{t("chat.noProjectHint")}</p>
-        )}
       </div>
 
       {/* 项目初始化向导弹窗 */}
@@ -687,6 +749,26 @@ export function Sidebar({ currentChatId, onSettingsClick }: SidebarProps) {
           window.dispatchEvent(new Event("mfk-projects-changed"));
         }}
       />
+
+      {/* 底部提示条：绝对定位，不影响主布局 */}
+      {activeProjectId == null && (
+        <div style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: "4px 12px",
+          fontSize: "10px",
+          lineHeight: 1.4,
+          color: "var(--text-level-4)",
+          background: "var(--bg-level-1)",
+          borderTop: "1px solid var(--border-primary)",
+          zIndex: 1,
+          whiteSpace: "pre-line",
+        }}>
+          {t("chat.noProjectHint")}
+        </div>
+      )}
     </aside>
   );
 }

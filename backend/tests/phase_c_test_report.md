@@ -1,7 +1,7 @@
 # MfkAgent Tool Runtime Phase C 测试报告
 
-- 时间: 2026-08-09 23:41:07
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseC_2ixo8lpg`
+- 时间: 2026-08-10 13:54:07
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseC_bc2bnfoe`
 - 测试模式: 单元级 (normalizer) + FastAPI TestClient + 脚本化 LLM
 
 ## 结果总览
@@ -9,9 +9,9 @@
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
 | 1 | Normalizer 单元用例 | ✅ PASS | 0ms |
-| 2 | 集成: XML invoke 归一化执行 | ✅ PASS | 1390ms |
-| 3 | 集成: 纯文本调用归一化执行 | ✅ PASS | 1094ms |
-| 4 | 集成: 解析失败回馈重生成 | ✅ PASS | 891ms |
+| 2 | 集成: XML invoke 归一化执行 | ✅ PASS | 1328ms |
+| 3 | 集成: 纯文本调用归一化执行 | ✅ PASS | 1016ms |
+| 4 | 集成: 解析失败回馈重生成 | ✅ PASS | 812ms |
 | 5 | 非流式审批明确拒绝 | ❌ FAIL | 0ms |
 
 **通过率: 4/5**

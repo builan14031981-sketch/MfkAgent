@@ -18,10 +18,11 @@ class PermissionFilter:
 
     # 第一阶段工具目录（基础工具，默认开放）
     BASE_TOOLS = [
-        "run_command",
+        "run_command", "execute_command",
         "read_file", "write_file", "list_files",
         "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
-        "git_commit", "git_restore",
+        "git_commit", "git_restore", "git_clone", "git_pull", "git_push", "git_fetch",
+        "github_create_pr",
         "search_files",
         "web_search", "fetch_url", "github_search",
         "add_memory", "manage_todos", "get_datetime", "format_json",
@@ -34,7 +35,7 @@ class PermissionFilter:
     _project_only_tools = {
         "read_file", "write_file", "list_files", "search_files",
         "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
-        "git_commit", "git_restore",
+        "git_commit", "git_restore", "git_clone", "git_pull", "git_push", "git_fetch",
     }
 
     def resolve(

@@ -11,11 +11,16 @@ router = APIRouter()
 # Agent 展示优先级：核心研发 Agent 置顶，其余辅助 Agent 按定义顺序排列
 AGENT_ORDER = {
     "general": 0,
-    "frontend_ui": 1,
-    "backend": 2,
-    "analyst": 3,
-    "coder": 4,
-    "writer": 5,
+    "g": 1,
+    "coder": 2,
+    "frontend_ui": 3,
+    "backend": 4,
+    "product": 5,
+    "analyst": 6,
+    "writer": 7,
+    "mentor": 8,
+    "personal": 9,
+    "spark": 10,
 }
 
 

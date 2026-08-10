@@ -12,7 +12,7 @@
  */
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Moon, Sun, Monitor, Plus, Trash2, Globe, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { Moon, Sun, Monitor, Plus, Trash2, Globe, ChevronDown, ChevronRight, Check, ShieldAlert } from "lucide-react";
 import { PluginPanel } from "./PluginPanel";
 import { ModelProvidersBasic } from "./ModelConfigSection";
 import { SwitchButton } from "@/components/SwitchButton";
@@ -20,7 +20,7 @@ import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
 
 /** 设置导航项 id 联合类型（与 SettingsPanel 共享，保证 activeSection 类型安全） */
-export type SettingSectionId = "general" | "model" | "ai" | "plugins" | "about";
+export type SettingSectionId = "general" | "model" | "ai" | "security" | "plugins" | "about";
 
 /** 统管状态注入 props（由 SettingsPanel 下发） */
 export interface SettingsViewProps {
@@ -753,6 +753,84 @@ function AiBasic(props: AdvancedSettingsViewProps) {
   );
 }
 
+// ── security 区块：Agent 权限模式 ──
+function SecurityBasic(props: SettingsViewProps) {
+  const { settings, saving, onUpdate, t } = props;
+  const currentMode = settings?.agent_permission_mode || "standard";
+
+  const modes = [
+    { value: "safe", label: t("settings.security.permission.safe"), desc: t("settings.security.permission.safeDesc") },
+    { value: "standard", label: t("settings.security.permission.standard"), desc: t("settings.security.permission.standardDesc") },
+    { value: "autonomous", label: t("settings.security.permission.autonomous"), desc: t("settings.security.permission.autonomousDesc") },
+  ];
+
+  return (
+    <>
+      <div style={{ marginBottom: "18px" }}>
+        <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+          {t("settings.security.title")}
+        </h3>
+        <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 12px 0" }}>
+          {t("settings.security.desc")}
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {modes.map((mode) => {
+            const active = currentMode === mode.value;
+            return (
+              <button
+                key={mode.value}
+                onClick={() => onUpdate("agent_permission_mode", mode.value)}
+                disabled={saving === "agent_permission_mode"}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: "12px",
+                  width: "100%", padding: "14px 16px",
+                  borderRadius: "var(--radius-md)",
+                  border: active ? "2px solid var(--color-primary)" : "1px solid var(--border-primary)",
+                  background: active ? "var(--bg-level-2)" : "transparent",
+                  cursor: "pointer", textAlign: "left",
+                  opacity: saving === "agent_permission_mode" ? 0.7 : 1,
+                }}
+              >
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "32px", height: "32px", borderRadius: "50%",
+                  background: active ? "var(--color-primary)" : "var(--bg-level-3)",
+                  flexShrink: 0, marginTop: "2px",
+                }}>
+                  <ShieldAlert style={{
+                    width: "16px", height: "16px",
+                    color: active ? "#fff" : "var(--text-level-3)",
+                  }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-level-1)", marginBottom: "4px" }}>
+                    {mode.label}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "var(--text-level-3)", lineHeight: 1.5 }}>
+                    {mode.desc}
+                  </div>
+                </div>
+                {active && (
+                  <div style={{
+                    marginLeft: "auto", alignSelf: "center",
+                    width: "20px", height: "20px", borderRadius: "50%",
+                    background: "var(--color-primary)", display: "flex",
+                    alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <Check style={{ width: "12px", height: "12px", color: "#fff" }} />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── about 区块 ──
 function AboutSection(props: SettingsViewProps) {
   const { t } = props;
@@ -788,6 +866,8 @@ export function BasicSettingsView(
       // ai 基础区块需要 agents；未传入时安全降级为 null
       if (!props.agents) return null;
       return <AiBasic {...props} agents={props.agents} onManageAgents={props.onManageAgents!} />;
+    case "security":
+      return <SecurityBasic {...props} />;
     case "plugins":
       return <PluginPanel />;
     case "about":

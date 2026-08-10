@@ -9,8 +9,7 @@ import { AgentOrb } from "@/components/AgentOrb";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ToolCallCard } from "@/components/ToolCallCard";
 import { ToolApprovalCard } from "@/components/ToolApprovalCard";
-import { TaskProgressCard } from "@/components/TaskProgressCard";
-import type { RuntimeEvent, TaskNode } from "@/types/runtime";
+import type { RuntimeEvent } from "@/types/runtime";
 import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -18,8 +17,6 @@ interface MessageListProps {
   messages: Message[];
   /** 运行时事件时间线：按 SSE 真实到达顺序排列 thinking/tool/approval/text（及未来扩展类型） */
   timeline: RuntimeEvent[];
-  /** 多 Agent 任务协同列表（task_started/completed/failed 累积，独立渲染为任务进度卡片） */
-  tasks?: TaskNode[];
   streamingError?: string | null;
   isStreaming: boolean;
   /** 流式加载阶段：非空时在流式块头部显示 Orb 动画 */
@@ -128,7 +125,7 @@ function CompressionNodeCard({ content }: { content: string }) {
  * 若此处每帧重渲染会全量重跑 400 条消息的 Markdown 树导致卡顿，
  * memo 确保父级 re-render 时消息树跳过。
  */
-export const MessageList = memo(function MessageList({ messages, timeline, tasks, streamingError, isStreaming, streamingStage, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
+export const MessageList = memo(function MessageList({ messages, timeline, streamingError, isStreaming, streamingStage, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -292,7 +289,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
       scrollToBottom();
     });
     return () => cancelAnimationFrame(raf);
-  }, [messages, timeline, tasks, streamingError, isEmptyState, updateNearBottom, scrollToBottom]);
+  }, [messages, timeline, streamingError, isEmptyState, updateNearBottom, scrollToBottom]);
 
   // 监听发送状态或流式开始（false -> true）：强制重置吸底锁并滚动到底部
   const isActive = isStreaming;
@@ -453,8 +450,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, tasks
                 })}
               </div>
             )}
-            {/* 多 Agent 任务进度卡片：tasks 为空时不渲染，保持聊天界面干净 */}
-            <TaskProgressCard tasks={tasks ?? []} />
+            {/* 多 Agent 任务进度卡片已移至输入框上方（TaskProgressCard 在 page.tsx 中渲染） */}
             {streamingError && (
               <div style={{
                 marginBottom: "16px",

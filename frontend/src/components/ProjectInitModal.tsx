@@ -34,10 +34,19 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
 
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [agentId, setAgentId] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>("strict");
+  const [agentId, setAgentId] = useState<string | null>(() => settings?.default_agent || null);
+  const [selectedModel, setSelectedModel] = useState<Model | null>(() => {
+    const def = settings?.default_model;
+    return def ? models.find(m => m.id === def) || null : null;
+  });
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">(() => {
+    const def = settings?.default_reasoning_effort;
+    return def === "high" || def === "max" ? def : "none";
+  });
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => {
+    const def = settings?.agent_permission_mode;
+    return def === "safe" || def === "standard" || def === "autonomous" ? def : "standard";
+  });
   const [mode, setMode] = useState<"build" | "plan">("build");
   const [files, setFiles] = useState<string[]>([]);
 

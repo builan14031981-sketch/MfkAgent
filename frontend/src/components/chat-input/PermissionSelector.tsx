@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Shield, Zap, Check, ChevronDown } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, Zap, Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
   ghostPillStyle,
@@ -16,8 +16,8 @@ import {
   ghostPillHoverShadow,
 } from "./styles";
 
-/** 权限模式：strict = 每次询问 / auto_approve = 自动放行 */
-export type PermissionMode = "strict" | "auto_approve";
+/** Phase 3 T3/T8 权限模式：safe = 安全模式 / standard = 标准模式 / autonomous = 自主模式 */
+export type PermissionMode = "safe" | "standard" | "autonomous";
 
 interface PermissionSelectorProps {
   permissionMode: PermissionMode;
@@ -27,7 +27,7 @@ interface PermissionSelectorProps {
   onClose: () => void;
 }
 
-/** 权限/执行模式选择胶囊：严格模式 / 最高权限模式；受控 open 由 ChatInput 互斥协调 */
+/** 权限模式指示胶囊：显示当前全局安全模式，点击可切换（调用 Settings API 保存） */
 export function PermissionSelector({ permissionMode, onPermissionChange, open, onToggle, onClose }: PermissionSelectorProps) {
   const { t } = useTranslation();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -35,19 +35,31 @@ export function PermissionSelector({ permissionMode, onPermissionChange, open, o
 
   const options: { value: PermissionMode; label: string; icon: React.ReactNode; desc: string }[] = [
     {
-      value: "strict",
-      label: t("chat.permission.strict"),
-      icon: <Shield style={{ width: "13px", height: "13px", flexShrink: 0 }} />,
-      desc: t("chat.permission.strictDesc"),
+      value: "safe",
+      label: t("settings.security.permission.safe"),
+      icon: <ShieldAlert style={{ width: "13px", height: "13px", flexShrink: 0 }} />,
+      desc: t("settings.security.permission.safeDesc"),
     },
     {
-      value: "auto_approve",
-      label: t("chat.permission.autoApprove"),
+      value: "standard",
+      label: t("settings.security.permission.standard"),
+      icon: <Shield style={{ width: "13px", height: "13px", flexShrink: 0 }} />,
+      desc: t("settings.security.permission.standardDesc"),
+    },
+    {
+      value: "autonomous",
+      label: t("settings.security.permission.autonomous"),
       icon: <Zap style={{ width: "13px", height: "13px", flexShrink: 0 }} />,
-      desc: t("chat.permission.autoApproveDesc"),
+      desc: t("settings.security.permission.autonomousDesc"),
     },
   ];
-  const current = options.find((o) => o.value === permissionMode) ?? options[0];
+  const current = options.find((o) => o.value === permissionMode) ?? options[1]; // 默认 standard
+
+  const modeColor = permissionMode === "autonomous"
+    ? "var(--color-error)"
+    : permissionMode === "standard"
+    ? "var(--color-warning, #f59e0b)"
+    : "var(--color-info)";
 
   // 点击外部关闭
   useEffect(() => {
@@ -71,11 +83,7 @@ export function PermissionSelector({ permissionMode, onPermissionChange, open, o
         style={{
           ...ghostPillStyle,
           background: open ? pillActiveBackground : "transparent",
-          color: open
-            ? pillActiveColor
-            : permissionMode === "auto_approve"
-              ? "var(--color-warning, #f59e0b)"
-              : "var(--text-level-4)",
+          color: open ? pillActiveColor : modeColor,
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = ghostPillHoverBackground;
@@ -84,19 +92,11 @@ export function PermissionSelector({ permissionMode, onPermissionChange, open, o
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = open ? pillActiveBackground : "transparent";
-          e.currentTarget.style.color = open
-            ? pillActiveColor
-            : permissionMode === "auto_approve"
-              ? "var(--color-warning, #f59e0b)"
-              : "var(--text-level-4)";
+          e.currentTarget.style.color = open ? pillActiveColor : modeColor;
           e.currentTarget.style.boxShadow = "none";
         }}
       >
-        {permissionMode === "auto_approve" ? (
-          <Zap style={{ width: "13px", height: "13px", color: "var(--color-warning, #f59e0b)", flexShrink: 0 }} />
-        ) : (
-          <Shield style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
-        )}
+        {current.icon}
         <span style={{ fontWeight: 400 }}>{current.label}</span>
         <ChevronDown style={{
           ...chevronStyle,
@@ -106,7 +106,11 @@ export function PermissionSelector({ permissionMode, onPermissionChange, open, o
       </button>
 
       {open && (
-        <div ref={popRef} style={popoverStyle}>
+        <div ref={popRef} style={{
+          ...popoverStyle,
+          minWidth: btnRef.current?.offsetWidth ?? undefined,
+          width: btnRef.current?.offsetWidth ?? undefined,
+        }}>
           {options.map((opt) => {
             const active = permissionMode === opt.value;
             return (
@@ -120,24 +124,19 @@ export function PermissionSelector({ permissionMode, onPermissionChange, open, o
                   ...popoverItemStyle,
                   color: active ? "var(--color-primary)" : "var(--text-level-2)",
                   fontWeight: active ? 600 : 400,
-                  whiteSpace: "normal",
-                  alignItems: "flex-start",
+                  whiteSpace: "nowrap",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 {opt.icon}
-                <span style={{ flex: 1 }}>
-                  <span style={{ display: "block", fontWeight: active ? 600 : 500 }}>{opt.label}</span>
-                  <span style={{
-                    display: "block",
-                    fontSize: "11px",
-                    color: "var(--text-level-4)",
-                    marginTop: "2px",
-                    lineHeight: 1.3,
-                  }}>{opt.desc}</span>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {opt.label}
+                  {opt.value === "autonomous" && (
+                    <span style={{ color: "var(--text-level-4)", fontWeight: 400, marginLeft: "4px" }}>{opt.desc}</span>
+                  )}
                 </span>
-                {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0, marginTop: "1px" }} />}
+                {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
               </button>
             );
           })}

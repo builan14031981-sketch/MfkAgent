@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { RuntimeEvent, TaskNode, TokenUsageEvent, AgentStateUpdateEvent } from "@/types/runtime";
 
 /**
@@ -90,7 +91,9 @@ interface StreamStore {
  * 改为每个 chatId 维护独立的 timeline + AbortController，
  * 切换会话仅切换 UI 订阅的 chatId，后台 SSE 连接继续运行。
  */
-export const useStreamStore = create<StreamStore>((set, get) => ({
+export const useStreamStore = create<StreamStore>()(
+  persist(
+    (set, get) => ({
   streams: {},
   setStream: (chatId, stage) =>
     set((state) => {
@@ -166,4 +169,33 @@ export const useStreamStore = create<StreamStore>((set, get) => ({
       refsMap.delete(chatId);
     }
   },
-}));
+}),
+  {
+    name: "mfk-task-store",
+    partialize: (state) => ({
+      sessions: Object.fromEntries(
+        Object.entries(state.sessions).map(([chatId, session]) => [
+          chatId,
+          { tasks: session.tasks },
+        ])
+      ),
+    }),
+    merge: (persisted, current) => {
+      const p = persisted as { sessions?: Record<string, { tasks: TaskNode[] }> };
+      if (!p.sessions) return current;
+      const mergedSessions = { ...current.sessions };
+      for (const [chatIdStr, data] of Object.entries(p.sessions)) {
+        const chatId = Number(chatIdStr);
+        if (data.tasks && data.tasks.length > 0) {
+          if (!mergedSessions[chatId] || mergedSessions[chatId].tasks.length === 0) {
+            mergedSessions[chatId] = {
+              ...(mergedSessions[chatId] ?? createDefaultSession()),
+              tasks: data.tasks,
+            };
+          }
+        }
+      }
+      return { ...current, sessions: mergedSessions };
+    },
+  })
+);

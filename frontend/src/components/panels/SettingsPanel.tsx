@@ -11,7 +11,7 @@
  */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Monitor, Cpu, Brain, Info, Puzzle } from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Puzzle, ShieldAlert } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
@@ -85,6 +85,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "general", label: t("settings.general.title"), icon: Monitor },
     { id: "model", label: t("settings.model.title"), icon: Cpu },
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
+    { id: "security", label: t("settings.security.title"), icon: ShieldAlert },
     { id: "plugins", label: t("settings.plugins.title"), icon: Puzzle },
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];

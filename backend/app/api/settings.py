@@ -54,6 +54,8 @@ DEFAULT_SETTINGS = {
     # Provider 整体禁用开关：JSON {providerId: true}，被禁用的 Provider
     # 不出现在 /api/models，call_once/stream_once 调用会抛 ModelConfigError
     "provider_disabled": "{}",
+    # Phase 3 T3/T8: Agent 权限模式 — safe / standard / autonomous
+    "agent_permission_mode": "standard",
 }
 
 

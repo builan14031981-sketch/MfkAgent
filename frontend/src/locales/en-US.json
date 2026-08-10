@@ -116,7 +116,7 @@
     "compressing": "Compressing..."
    },
   "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
-  "noProjectHint": "No local project linked. File operations will be saved to the app data directory by default.",
+  "noProjectHint": "No local project linked.\nFile operations will be saved to the app data directory by default.",
   "logTruncated": "… Log truncated ({count} chars, showing head & tail) …",
   "invalidId": "Invalid chat ID",
   "backToHome": "Back to Home",
@@ -129,12 +129,7 @@
    "fast": "high",
    "deep": "max"
   },
-  "permission": {
-   "strict": "Strict",
-   "strictDesc": "Sensitive actions require confirmation",
-   "autoApprove": "Auto-Approve",
-   "autoApproveDesc": "All actions are automatically approved"
-  },
+  "permission": {},
   "mode": {
    "build": "Build",
    "plan": "Plan"
@@ -167,6 +162,13 @@
   "dropToAttach": "Release to attach files as context",
   "dragHint": "Drag files here to use as context",
   "attachedFiles": "Attached Files",
+  "taskProgress": {
+   "title": "Task Execution",
+   "expand": "Expand",
+   "collapse": "Collapse",
+   "completed": "tasks completed",
+   "running": "running"
+  },
   "toolWritten": "Auto-written to disk",
   "codeExpand": "Expand",
   "codeCollapse": "Collapse",
@@ -388,6 +390,18 @@
     "fact": "Fact",
     "workflow": "Workflow",
     "project": "Project Rule"
+   }
+  },
+  "security": {
+   "title": "Security",
+   "desc": "Agent tool execution permission control",
+   "permission": {
+    "safe": "Safe",
+    "safeDesc": "All writes require manual approval",
+    "standard": "Standard",
+    "standardDesc": "Auto-execute normal ops, high-risk needs approval",
+    "autonomous": "Autonomous",
+    "autonomousDesc": "Only extremely high-risk ops need approval"
    }
   },
   "plugins": {

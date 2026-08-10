@@ -8,6 +8,7 @@
 - 通用工具执行（tool_registry）
 - Plan 模式只读拦截
 - ToolCallCard 格式化
+- Phase 3 T3/T8: 统一 ExecutionDecision 决策链
 """
 
 import asyncio
@@ -21,8 +22,13 @@ from app.core.search_tools import SEARCH_TOOLS, execute_search_tool
 from app.core.command_tools import COMMAND_TOOLS, execute_command_tool
 from app.services.tools import tool_registry
 from app.core.tool_runtime.events import make_tool_start, make_tool_result, make_tool_approval
-from app.core.tool_runtime.risk_engine import command_risk_engine, evaluate_tool, Verdict
+from app.core.tool_runtime.risk_engine import (
+    command_risk_engine, evaluate_tool, Verdict,
+    ExecutionDecision, ExecutionAction,
+)
 from app.core.tool_runtime.approval import approval_registry
+from app.core.tool_runtime.approval_policy import get_approval_policy
+from app.core.tool_runtime.notification import event_bus
 
 
 async def execute_tool(
@@ -41,8 +47,8 @@ async def execute_tool(
         read_only: 是否为只读模式
         ctx: 上下文（agent_id, project_id 等），供 add_memory 等工具使用
         emit: 可选事件发射器（接收 tool_start / tool_result 事件）。不传则静默（非流式路径零影响）。
-        auto_approve: Phase 12 — 自动审批模式。REQUIRE_APPROVAL 级工具自动放行；
-                      HIGH_RISK 级工具无视此标志，仍强制人工审批。
+        auto_approve: 已废弃（Phase 3 T3/T8），保留只为向后兼容。
+                      权限模式统一从 ApprovalPolicy 读取。
 
     Returns:
         {
@@ -79,43 +85,36 @@ async def execute_tool(
         mode = "plan" if read_only else "build"
 
         # 1. 风险判定（唯一执行闸）：命令走命令引擎，文件/git 等走工具策略。
-        #    只读工具 → ALLOW 直接执行；写入工具 → build 模式 ASK / plan 模式 DENY。
         if func_name in COMMAND_TOOLS:
             command = str(func_args.get("command", "") or "")
-            decision = command_risk_engine.evaluate(command, mode)
+            if func_name == "execute_command":
+                decision = command_risk_engine.evaluate_execute(command, mode)
+            else:
+                decision = command_risk_engine.evaluate(command, mode)
         else:
             decision = evaluate_tool(func_name, mode)
 
-        if decision.verdict == Verdict.DENY:
-            result_text = decision.reason
-        elif decision.verdict == Verdict.HIGH_RISK:
-            # Phase 12: 高危操作，无视 auto_approve，强制进入审批流程
+        # 2. Phase 3 T3/T8: 统一决策链 — ApprovalPolicy 将 RiskDecision 转为 ExecutionDecision
+        policy = get_approval_policy()
+        exec_decision = policy.decide(decision)
+
+        # 3. AgentRuntime 只消费 ExecutionDecision
+        if exec_decision.action == ExecutionAction.BLOCK:
+            result_text = exec_decision.reason
+        elif exec_decision.action == ExecutionAction.REQUIRE_APPROVAL:
+            # 需要用户审批：登记审批并返回 pending record
             return _make_pending_approval(
                 tool_call_id=tool_call_id,
                 func_name=func_name,
                 func_args=func_args,
                 decision=decision,
+                exec_decision=exec_decision,
                 ctx=ctx,
                 read_only=read_only,
                 emit=emit,
             )
-        elif decision.verdict == Verdict.REQUIRE_APPROVAL:
-            if auto_approve:
-                # Phase 12: 自动审批模式 → 直接执行，不等待用户确认
-                # tool_start 事件已在上面 emit，此处直接执行工具
-                result_text = await _run_tool(func_name, func_args, project_path, ctx)
-            else:
-                # 需用户确认：登记审批并返回 pending record
-                return _make_pending_approval(
-                    tool_call_id=tool_call_id,
-                    func_name=func_name,
-                    func_args=func_args,
-                    decision=decision,
-                    ctx=ctx,
-                    read_only=read_only,
-                    emit=emit,
-                )
         else:
+            # EXECUTE: 直接执行
             result_text = await _run_tool(func_name, func_args, project_path, ctx)
     except Exception as e:  # noqa: BLE001
         result_text = f"错误: 工具执行异常: {e}"
@@ -186,6 +185,8 @@ def _describe_tool_command(func_name: str, func_args: Dict[str, Any]) -> str:
     """生成审批卡片的可读描述文本。"""
     if func_name == "run_command":
         return str(func_args.get("command", "") or "")
+    if func_name == "execute_command":
+        return str(func_args.get("command", "") or "")
     if func_name == "write_file":
         return f"写入文件: {func_args.get('relative_path', '')}"
     if func_name in GIT_TOOLS:
@@ -201,6 +202,7 @@ def _make_pending_approval(
     ctx: Dict[str, Any],
     read_only: bool = False,
     emit: Optional[Callable[[Dict], None]] = None,
+    exec_decision: Optional[ExecutionDecision] = None,
 ) -> Dict:
     """登记待审批工具调用，发射 tool_approval 事件，返回 status=awaiting_approval 的 pending record。
 
@@ -228,7 +230,19 @@ def _make_pending_approval(
             chat_id=chat_id,
         ))
 
-    return {
+    # Phase 3 T3/T8: 发布 RuntimeEventBus 审批通知
+    if chat_id is not None:
+        event_bus.approval_required(
+            chat_id=chat_id,
+            approval_id=approval_id,
+            tool_call_id=tool_call_id,
+            tool=func_name,
+            command=command,
+            risk_level=decision.risk_level.value,
+            risk_reason=decision.reason,
+        )
+
+    record = {
         "name": func_name,
         "tool": func_name,
         "path": str(func_args.get("relative_path", "")),
@@ -243,9 +257,61 @@ def _make_pending_approval(
         "approval_timeout": info["timeout"],
         "risk_level": decision.risk_level.value,
         "risk_reason": decision.reason,
-        "verdict": decision.verdict.value,  # Phase 12: 供 auto_approve 逻辑判断
+        "verdict": decision.verdict.value,
         "read_only": read_only,
+        "chat_id": chat_id,  # Phase 3 T3/T8: 供通知链路使用
     }
+
+    # Phase 3 T3/T8: 持久化审批请求到 approval_requests 表
+    if exec_decision:
+        record["exec_decision"] = exec_decision.to_dict()
+    _persist_approval_request(
+        approval_id=approval_id,
+        tool_call_id=tool_call_id,
+        tool_name=func_name,
+        command=command,
+        risk_level=decision.risk_level.value,
+        risk_reason=decision.reason,
+        chat_id=chat_id,
+    )
+
+    return record
+
+
+def _persist_approval_request(
+    approval_id: str,
+    tool_call_id: str,
+    tool_name: str,
+    command: str,
+    risk_level: str,
+    risk_reason: str,
+    chat_id: Optional[int] = None,
+) -> None:
+    """Phase 3 T3/T8: 持久化审批请求到数据库（旁路，不阻断执行）。"""
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import ApprovalRequest
+
+        db = SessionLocal()
+        try:
+            ar = ApprovalRequest(
+                approval_id=approval_id,
+                tool_call_id=tool_call_id,
+                tool_name=tool_name,
+                command=command,
+                risk_level=risk_level,
+                risk_reason=risk_reason,
+                chat_id=chat_id,
+                status="pending",
+            )
+            db.add(ar)
+            db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+    except Exception:
+        pass  # 旁路：持久化失败不影响主流程
 
 
 async def complete_approval(
@@ -253,10 +319,11 @@ async def complete_approval(
     project_path: Optional[str] = None,
     emit: Optional[Callable[[Dict], None]] = None,
 ) -> Dict:
-    """等待审批结果并完成工具闭环（Phase B-1）。
+    """等待审批结果并完成工具闭环（Phase B-1 + Phase 3 T3/T8 DB 持久化）。
 
     - approve → 执行命令，构造成功/失败 record，发射 tool_result
     - deny / timeout / cancelled → 注入拒绝结果（success=False），发射 tool_result
+    - Phase 3 T3/T8: 审批结果持久化到 approval_requests 表
 
     调用方约定：在 tool_approval 事件已 yield 给前端后调用本函数。
     """
@@ -265,6 +332,18 @@ async def complete_approval(
     except asyncio.TimeoutError:
         action = "timeout"
     approval_registry.remove(record["approval_id"])
+
+    # Phase 3 T3/T8: 发布审批完成通知
+    event_bus.approval_completed(
+        chat_id=record.get("chat_id"),
+        approval_id=record.get("approval_id", ""),
+        tool_call_id=record.get("tool_call_id", ""),
+        tool=record.get("tool", ""),
+        action=action,
+    )
+
+    # Phase 3 T3/T8: 更新审批请求 DB 状态
+    _update_approval_status(record.get("approval_id", ""), action)
 
     start = time.monotonic()
     if action == "approve":
@@ -303,3 +382,27 @@ async def complete_approval(
         ))
 
     return final
+
+
+def _update_approval_status(approval_id: str, action: str) -> None:
+    """Phase 3 T3/T8: 更新审批请求 DB 状态（旁路，不阻断执行）。"""
+    if not approval_id:
+        return
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import ApprovalRequest
+        from datetime import datetime
+
+        db = SessionLocal()
+        try:
+            ar = db.query(ApprovalRequest).filter(ApprovalRequest.approval_id == approval_id).first()
+            if ar:
+                ar.status = action
+                ar.resolved_at = datetime.utcnow()
+                db.commit()
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+    except Exception:
+        pass  # 旁路

@@ -25,7 +25,8 @@ import type { PermissionMode } from "@/components/chat-input/PermissionSelector"
 import { MessageList } from "@/components/MessageList";
 import { MessageOutline } from "@/components/MessageOutline";
 import { ChatHeader } from "@/components/ChatHeader";
-import { AgentStatusCard } from "@/components/AgentStatusCard";
+import { TaskProgressCard } from "@/components/TaskProgressCard";
+import { ProjectPathContext } from "@/lib/projectPathContext";
 
 // 静态导出：动态路由需在 [id]/layout.tsx 提供 generateStaticParams（占位参数）。
 export default function ChatPage() {
@@ -70,7 +71,7 @@ function ChatPageInner() {
   const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
   const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
-  const { settings } = useSettingsStore();
+  const { settings, updateSettings } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
   const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
 
@@ -114,7 +115,10 @@ function ChatPageInner() {
 
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
   const [reasoningInitForChatId, setReasoningInitForChatId] = useState<number | null>(null);
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>("strict");
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(
+    (settings?.agent_permission_mode as PermissionMode) || "standard"
+  );
+  const [permissionInitForChatId, setPermissionInitForChatId] = useState<number | null>(null);
   const [mode, setMode] = useState<ChatMode>("build");
   const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
   const [projectContextOpen, setProjectContextOpen] = useState(false);
@@ -146,6 +150,15 @@ function ChatPageInner() {
   if (modeInitForChatId !== chatId && currentChat) {
     setModeInitForChatId(chatId);
     setMode(currentChat.mode === "plan" ? "plan" : "build");
+  }
+
+  // Phase 3 T3/T8: 权限模式同步 settings.agent_permission_mode（safe/standard/autonomous）
+  if (permissionInitForChatId !== chatId && settings) {
+    setPermissionInitForChatId(chatId);
+    const mode = settings.agent_permission_mode;
+    if (mode === "safe" || mode === "standard" || mode === "autonomous") {
+      setPermissionMode(mode);
+    }
   }
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -537,7 +550,7 @@ function ChatPageInner() {
   };
 
   return (
-    <>
+    <ProjectPathContext.Provider value={currentProject?.path ?? null}>
       {/* 聊天头部（memo：流式期间跳过重渲染） */}
       <ChatHeader
         chat={currentChat}
@@ -567,7 +580,6 @@ function ChatPageInner() {
         <MessageList
           messages={messages}
           timeline={timeline}
-          tasks={tasks}
           streamingError={streamingError}
           isStreaming={isSending}
           streamingStage={orbStage}
@@ -585,8 +597,10 @@ function ChatPageInner() {
         <MessageOutline messages={messages} activeUserMessageId={activeUserMessageId} />
       </div>
 
-      {/* 动态 Agent 状态名片：仅 currentAgentState 非 null 时渲染（输入框上方专属区域） */}
-      <AgentStatusCard state={currentAgentState} />
+      {/* 多 Agent 任务进度面板：输入框上方，与 ChatComposer 等宽对齐 */}
+      <div style={{ maxWidth: "768px", margin: "0 auto", padding: "0 16px", width: "100%" }}>
+        <TaskProgressCard tasks={tasks ?? []} />
+      </div>
 
       {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮） */}
       <div style={{
@@ -611,7 +625,10 @@ function ChatPageInner() {
             setPrefReasoning(e);
           }}
           permissionMode={permissionMode}
-          onPermissionChange={setPermissionMode}
+          onPermissionChange={(mode) => {
+            setPermissionMode(mode);
+            updateSettings({ agent_permission_mode: mode });
+          }}
           mode={mode}
           onModeChange={handleModeChange}
           onUploadFile={handleUploadFile}
@@ -645,6 +662,6 @@ function ChatPageInner() {
         }}
         onClearFiles={() => setAttachments([])}
       />
-    </>
+    </ProjectPathContext.Provider>
   );
 }

@@ -231,6 +231,37 @@ class Setting(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ApprovalRequest(Base):
+    """Phase 3 T3/T8: 审批请求持久化表 — 记录工具审批请求的生命周期。
+
+    用于：
+      - 重启后识别哪些任务在等待审批（V1 不恢复 Future，仅展示状态）
+      - UI 展示历史审批记录
+      - 审批审计追踪
+
+    status 取值：
+      pending   — 等待用户审批
+      approve   — 用户批准
+      deny      — 用户拒绝
+      timeout   — 超时自动拒绝
+      cancelled — 会话断开取消
+    """
+    __tablename__ = "approval_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    approval_id = Column(String(50), unique=True, nullable=False, index=True)
+    tool_call_id = Column(String(100), nullable=True, index=True)
+    agent_run_id = Column(Integer, ForeignKey("agent_runs.id"), nullable=True, index=True)
+    chat_id = Column(Integer, ForeignKey("chats.id"), nullable=True, index=True)
+    tool_name = Column(String(100), nullable=False)
+    command = Column(Text, nullable=True)
+    risk_level = Column(String(20), nullable=False)
+    risk_reason = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+
 class CustomModel(Base):
     """自定义模型表：models 表（用户自定义 OpenAI 兼容接入，可覆盖任意 provider 端点）。
 

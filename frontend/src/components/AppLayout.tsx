@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { SettingsPanel } from "./panels/SettingsPanel";
 
@@ -22,6 +23,11 @@ function clampWidth(w: number): number {
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => !prev);
+  }, []);
 
   // 从URL解析当前chatId
   const currentChatId = useMemo(() => {
@@ -116,31 +122,35 @@ export function AppLayout({ children }: AppLayoutProps) {
         height: "100vh",
         background: "var(--bg-level-2)",
         position: "relative",
-        "--sidebar-width": `${width}px`,
+        "--sidebar-width": `${sidebarCollapsed ? 0 : width}px`,
       } as React.CSSProperties}
     >
-      {/* 左侧 Sidebar - 固定存在 */}
+      {/* 左侧 Sidebar */}
       <Sidebar
         currentChatId={currentChatId}
         onSettingsClick={() => setIsSettingsOpen(true)}
+        collapsed={sidebarCollapsed}
+        onToggleSidebar={toggleSidebar}
       />
 
-      {/* 侧边栏拖拽调宽条：位置跟随 CSS 变量，拖拽中零 setState */}
-      <div
-        onMouseDown={startResize}
-        onDoubleClick={resetWidth}
-        style={{
-          position: "absolute",
-          left: "calc(var(--sidebar-width) - 3px)",
-          top: 0,
-          width: 6,
-          height: "100vh",
-          cursor: "col-resize",
-          zIndex: 20,
-          touchAction: "none",
-          userSelect: "none",
-        }}
-      />
+      {/* 侧边栏拖拽调宽条：收起时隐藏 */}
+      {!sidebarCollapsed && (
+        <div
+          onMouseDown={startResize}
+          onDoubleClick={resetWidth}
+          style={{
+            position: "absolute",
+            left: "calc(var(--sidebar-width) - 3px)",
+            top: 0,
+            width: 6,
+            height: "100vh",
+            cursor: "col-resize",
+            zIndex: 20,
+            touchAction: "none",
+            userSelect: "none",
+          }}
+        />
+      )}
 
       {/* 面板 - 全局覆盖 */}
       <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
@@ -156,6 +166,51 @@ export function AppLayout({ children }: AppLayoutProps) {
       }}>
         {children}
       </main>
+
+      {/* 收起后浮动展开按钮：玻璃质感，左侧边缘居中 */}
+      {sidebarCollapsed && (
+        <button
+          onClick={toggleSidebar}
+          style={{
+            position: "absolute",
+            left: 8,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            border: "1px solid var(--border-primary)",
+            background: "color-mix(in srgb, var(--bg-level-2) 80%, transparent)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "var(--text-level-3)",
+            zIndex: 30,
+            transition: "all 0.2s ease",
+            animation: "fadeInRight 0.3s ease-out",
+            padding: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-level-2)";
+            e.currentTarget.style.color = "var(--color-primary)";
+            e.currentTarget.style.transform = "translateY(-50%) scale(1.1)";
+            e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.12)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "color-mix(in srgb, var(--bg-level-2) 80%, transparent)";
+            e.currentTarget.style.color = "var(--text-level-3)";
+            e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+            e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)";
+          }}
+          title="展开侧边栏"
+        >
+          <PanelLeftOpen size={16} />
+        </button>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-"""命令风险策略引擎 — 三态判定（Phase B-1）
+"""命令风险策略引擎 — 三态判定（Phase B-1）+ 统一执行决策（Phase 3 T3/T8）
 
 替代 command_tools 的硬编码白名单，采用三层判定：
   L0 精确白名单（只读命令快速路径）→ allow
@@ -18,6 +18,13 @@ Plan / Build 权限模型（Phase E5 修正）：
     Build 模式放行（工具目录已由 PermissionFilter 收敛）。
   单一事实来源：TOOL_RISK_POLICY + READ_ONLY_TOOLS 为唯一权限清单，
   PermissionFilter 的 plan 目录过滤从本模块派生，避免两处清单漂移。
+
+Phase 3 T3/T8 统一执行决策模型：
+  RiskEngine → RiskDecision（原始风险判断）
+       ↓
+  ApprovalPolicy.apply() → ExecutionDecision（最终执行决策）
+       ↓
+  AgentRuntime 仅消费 ExecutionDecision，不再自行判断 auto_approve
 """
 from __future__ import annotations
 
@@ -39,6 +46,13 @@ class Verdict(str, Enum):
     DENY = "deny"                          # 始终阻断（shell 元字符等）
 
 
+class ExecutionAction(str, Enum):
+    """Phase 3 T3/T8: 统一执行动作 — AgentRuntime 唯一消费的决策结果。"""
+    EXECUTE = "execute"              # 直接执行
+    REQUIRE_APPROVAL = "require_approval"  # 需要用户审批
+    BLOCK = "block"                  # 拒绝执行
+
+
 class RiskDecision:
     __slots__ = ("verdict", "risk_level", "reason", "command")
 
@@ -52,6 +66,48 @@ class RiskDecision:
         return {
             "verdict": self.verdict,
             "risk_level": self.risk_level,
+            "reason": self.reason,
+            "command": self.command,
+        }
+
+
+class ExecutionDecision:
+    """Phase 3 T3/T8: 统一执行决策 — RiskEngine + ApprovalPolicy 后产生的最终决策。
+
+    AgentRuntime 只消费此对象，不再自行判断 auto_approve / safe / standard / autonomous。
+    """
+    __slots__ = ("action", "risk_level", "reason", "command", "original_verdict")
+
+    def __init__(
+        self,
+        action: ExecutionAction,
+        risk_level: RiskLevel,
+        reason: str,
+        command: str,
+        original_verdict: Optional[Verdict] = None,
+    ):
+        self.action = action
+        self.risk_level = risk_level
+        self.reason = reason
+        self.command = command
+        self.original_verdict = original_verdict
+
+    @property
+    def is_approved(self) -> bool:
+        return self.action == ExecutionAction.EXECUTE
+
+    @property
+    def needs_approval(self) -> bool:
+        return self.action == ExecutionAction.REQUIRE_APPROVAL
+
+    @property
+    def is_blocked(self) -> bool:
+        return self.action == ExecutionAction.BLOCK
+
+    def to_dict(self) -> dict:
+        return {
+            "action": self.action.value,
+            "risk_level": self.risk_level.value,
             "reason": self.reason,
             "command": self.command,
         }
@@ -205,6 +261,128 @@ class CommandRiskEngine:
     def _is_write(self, command: str) -> bool:
         return any(p.search(command) for p in _WRITE_PATTERNS)
 
+    # ──── execute_command 专用风险策略（Secure Execution Runtime V1）────
+
+    def evaluate_execute(self, command: str, mode: str = "build") -> RiskDecision:
+        """execute_command 工具的专用风险判定。
+
+        与 evaluate() 不同：execute_command 面向项目命令，采用更宽松的安全策略：
+          - 安全项目命令（pytest / npm test / npm run build 等）→ ALLOW
+          - 危险命令（rm / del / format 等）→ HIGH_RISK
+          - 未知命令 → REQUIRE_APPROVAL（保守默认）
+        """
+        command = (command or "").strip()
+        if not command:
+            return RiskDecision(Verdict.DENY, RiskLevel.READ_ONLY, "错误: command 不能为空", command)
+
+        if _FORBIDDEN_RE.search(command):
+            return RiskDecision(
+                Verdict.DENY, RiskLevel.DESTRUCTIVE,
+                "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行", command,
+            )
+
+        argv = re.split(r"\s+", command)
+        if not argv or not argv[0]:
+            return RiskDecision(Verdict.DENY, RiskLevel.READ_ONLY, "错误: 命令不能为空", command)
+
+        # 1. 危险命令 → HIGH_RISK（plan 模式下 DENY）
+        if self._is_destructive(command):
+            if mode == "plan":
+                return RiskDecision(
+                    Verdict.DENY, RiskLevel.DESTRUCTIVE,
+                    f"错误: plan 只读模式拒绝执行危险命令", command,
+                )
+            return RiskDecision(
+                Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE,
+                "危险命令，需你确认后执行", command,
+            )
+
+        # 2. 安全项目命令 → ALLOW
+        if self._is_safe_project_command(argv):
+            return RiskDecision(Verdict.ALLOW, RiskLevel.READ_ONLY, "安全项目命令，自动放行", command)
+
+        # 3. 未知命令 → REQUIRE_APPROVAL（plan 模式 DENY）
+        if mode == "plan":
+            return RiskDecision(
+                Verdict.DENY, RiskLevel.WRITE,
+                f"错误: plan 只读模式拒绝执行未知命令", command,
+            )
+        return RiskDecision(
+            Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE,
+            "未知命令，需你确认后执行", command,
+        )
+
+    # execute_command 安全命令白名单（仅可执行文件，不含 shell 内置命令）
+    _SAFE_EXECUTE_COMMANDS: Dict[str, frozenset] = {
+        "pytest": frozenset(),
+        "python": frozenset({"-m", "--version", "-V"}),
+        "node": frozenset({"--version", "-v"}),
+        "npm": frozenset({"test", "run", "--version", "-v"}),
+        "npx": frozenset(),
+        "yarn": frozenset({"test", "build", "lint", "typecheck", "--version", "-v"}),
+        "pnpm": frozenset({"test", "build", "lint", "typecheck", "--version", "-v"}),
+        "go": frozenset({"test", "build", "vet", "fmt", "version"}),
+        "cargo": frozenset({"test", "build", "check", "clippy", "fmt", "--version", "-V"}),
+        "make": frozenset({"test", "build", "lint", "check"}),
+        "dotnet": frozenset({"test", "build", "--version"}),
+        "tsc": frozenset({"--version", "-v", "--noEmit"}),
+        "eslint": frozenset(),
+        "prettier": frozenset({"--check"}),
+        "ruff": frozenset({"check"}),
+        "mypy": frozenset(),
+        "flake8": frozenset(),
+        "black": frozenset({"--check"}),
+        "cmd": frozenset(),  # cmd /c <command> for shell builtins
+        "git": frozenset({"status", "diff", "log", "branch", "remote", "show", "fetch"}),
+    }
+
+    # npm run 子命令白名单（仅测试/构建类命令放行）
+    _SAFE_NPM_RUN_SCRIPTS = frozenset({
+        "build", "test", "lint", "typecheck",
+        "check", "format", "prepare", "prepublishOnly",
+    })
+
+    def _is_safe_project_command(self, argv: List[str]) -> bool:
+        """判断是否为安全项目命令（execute_command 专用）。"""
+        if not argv:
+            return False
+        cmd = argv[0].lower()
+
+        # 检查命令是否在白名单中
+        if cmd not in self._SAFE_EXECUTE_COMMANDS:
+            return False
+
+        allowed_sub = self._SAFE_EXECUTE_COMMANDS[cmd]
+
+        # 空 frozenset = 该命令任意参数都安全
+        if not allowed_sub:
+            return True
+
+        # python -m 模块白名单
+        if cmd == "python" and len(argv) >= 2 and argv[1] == "-m":
+            if len(argv) >= 3:
+                return argv[2] in _ALLOWED_PY_MODULES
+            return True
+
+        # python --version / -V → 安全
+        if cmd == "python" and len(argv) >= 2 and argv[1] in ("--version", "-V"):
+            return True
+
+        # npm run <script> → 检查脚本名是否在白名单
+        if cmd == "npm" and len(argv) >= 3 and argv[1] == "run":
+            return argv[2] in self._SAFE_NPM_RUN_SCRIPTS
+
+        # npm test / npm --version → 安全
+        if cmd == "npm" and len(argv) >= 2:
+            return argv[1] in allowed_sub
+
+        # 其他命令：检查子命令
+        if len(argv) >= 2:
+            return argv[1] in allowed_sub
+
+        # 无子命令的命令（如 pytest）→ 安全
+        return True
+
 
 command_risk_engine = CommandRiskEngine()
 
@@ -223,10 +401,12 @@ TOOL_RISK_POLICY: Dict[str, Tuple[Verdict, RiskLevel, str]] = {
     "git_add": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 暂存会变更索引，需你确认后执行"),
     "git_push": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 推送会上传提交到远端，需你确认后执行"),
     "git_pull": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git 拉取会变更本地分支，需你确认后执行"),
+    "git_clone": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "Git clone 会下载外部仓库到本地，需你确认后执行"),
     "git_restore": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 恢复会覆盖/丢弃本地改动，需你确认后执行"),
     "git_reset": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 回退会重写历史/丢弃改动，需你确认后执行"),
     "git_clean": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 清理会删除未跟踪文件，需你确认后执行"),
     "git_revert": (Verdict.HIGH_RISK, RiskLevel.DESTRUCTIVE, "Git 回滚会生成反向提交，需你确认后执行"),
+    "github_create_pr": (Verdict.REQUIRE_APPROVAL, RiskLevel.WRITE, "创建 Pull Request 会在 GitHub 上提交变更，需你确认后执行"),
     # 数据库写入（plan 禁止修改数据库）：Build 放行（后台记忆），Plan deny
     "add_memory": (Verdict.ALLOW, RiskLevel.WRITE, "保存记忆会写入数据库，Plan 模式禁止修改数据库"),
     # 待办事项管理（Build 放行，Plan deny — 与 add_memory 同策略）
@@ -240,7 +420,7 @@ TOOL_RISK_POLICY: Dict[str, Tuple[Verdict, RiskLevel, str]] = {
 # 文件/结构/搜索只读 + git 只读 + 网络只读 + 通用只读。run_command 由命令引擎单独判定。
 READ_ONLY_TOOLS = frozenset({
     "read_file", "list_files", "search_files",
-    "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
+    "git_status", "git_diff", "git_log", "git_branch_list", "git_remote", "git_fetch",
     "web_search", "fetch_url", "github_search",
     "date_time", "json_format",
 })

@@ -116,7 +116,7 @@
     "compressing": "压缩中..."
    },
   "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
-  "noProjectHint": "当前未关联本地项目，文件操作将默认保存在软件数据目录",
+  "noProjectHint": "当前未关联本地项目，\n文件操作将默认保存在软件数据目录",
   "logTruncated": "… 日志已截断（共 {count} 字符，仅显示首尾）…",
   "invalidId": "无效的聊天 ID",
   "backToHome": "返回首页",
@@ -129,12 +129,7 @@
    "fast": "high",
    "deep": "max"
   },
-  "permission": {
-   "strict": "严格模式",
-   "strictDesc": "敏感操作需手动确认",
-   "autoApprove": "最高权限",
-   "autoApproveDesc": "所有操作自动批准执行"
-  },
+  "permission": {},
   "mode": {
    "build": "构建",
    "plan": "规划"
@@ -167,6 +162,13 @@
   "dropToAttach": "松开以添加文件到上下文",
   "dragHint": "拖拽文件到此处作为上下文",
   "attachedFiles": "已附加文件",
+  "taskProgress": {
+   "title": "任务执行",
+   "expand": "展开",
+   "collapse": "折叠",
+   "completed": "任务完成",
+   "running": "运行中"
+  },
   "toolWritten": "已自动写入硬盘",
   "codeExpand": "展开",
   "codeCollapse": "折叠",
@@ -388,6 +390,18 @@
     "fact": "事实",
     "workflow": "工作流",
     "project": "项目规则"
+   }
+  },
+  "security": {
+   "title": "安全",
+   "desc": "Agent 工具执行权限控制",
+   "permission": {
+    "safe": "安全模式",
+    "safeDesc": "所有写入操作需人工审批",
+    "standard": "标准模式",
+    "standardDesc": "普通操作自动执行，高风险需审批",
+    "autonomous": "自主模式",
+    "autonomousDesc": "仅极高风险操作需审批"
    }
   },
   "plugins": {

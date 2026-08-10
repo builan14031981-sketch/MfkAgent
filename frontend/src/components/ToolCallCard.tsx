@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { resolveToolMeta } from "@/lib/toolMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useProjectPath } from "@/lib/projectPathContext";
 
 export type ToolStatus = "pending" | "running" | "success" | "failed" | "cancelled";
 
@@ -57,6 +58,53 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
   const { t } = useTranslation();
   const { tool, input, status, result, duration_ms } = normalized;
   const [expanded, setExpanded] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const projectPath = useProjectPath();
+
+  /** 文件类工具：提取文件路径，供右键菜单打开资源管理器 */
+  const filePath = useMemo(() => {
+    const fileTools = ["write_file", "read_file", "list_directory", "list_files"];
+    if (!fileTools.includes(tool ?? "")) return null;
+    const raw = (input as Record<string, unknown> | undefined)?.["relative_path"]
+      || (input as Record<string, unknown> | undefined)?.["path"];
+    if (typeof raw !== "string" || !raw) return null;
+    // 相对路径拼接项目根目录
+    if (projectPath && !raw.match(/^[A-Za-z]:[\\/]/)) {
+      return projectPath.replace(/[\\/]+$/, "") + "\\" + raw.replace(/^[\\/]+/, "");
+    }
+    return raw;
+  }, [tool, input, projectPath]);
+
+  /** 右键打开文件 */
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!filePath || typeof window === "undefined" || !window.electronAPI?.openInFolder) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, [filePath]);
+
+  /** 关闭右键菜单 */
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  /** 执行打开文件 */
+  const handleOpenInFolder = useCallback(async () => {
+    closeContextMenu();
+    if (filePath) {
+      try {
+        await window.electronAPI?.openInFolder?.(filePath);
+      } catch {
+        // 忽略错误
+      }
+    }
+  }, [filePath, closeContextMenu]);
+
+  // 点击页面其他位置关闭右键菜单
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => closeContextMenu();
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [contextMenu, closeContextMenu]);
 
   const { icon: Icon, color, title } = useMemo(
     () => resolveToolMeta(tool ?? "", input),
@@ -117,6 +165,7 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
   };
 
   return (
+    <>
     <div
       style={{
         display: "flex",
@@ -155,7 +204,10 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
             borderColor: "color-mix(in srgb, var(--border-primary) 80%, transparent)",
           }}>{tool}</span>
         )}
-        <code style={{
+        <code
+          onContextMenu={handleContextMenu}
+          title={filePath ? "右键 → 在文件管理器中打开" : undefined}
+          style={{
           fontSize: "12px",
           color: failed ? "var(--color-error)" : "var(--text-level-2)",
           fontFamily: "var(--font-geist-mono), var(--font-family)",
@@ -164,6 +216,9 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
           whiteSpace: "nowrap",
           minWidth: 0,
           flex: 1,
+          cursor: filePath ? "context-menu" : undefined,
+          textDecoration: filePath ? "underline dotted" : undefined,
+          textUnderlineOffset: "3px",
         }}>{title}</code>
         {running && (
           <Loader2
@@ -249,6 +304,47 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
         </div>
       )}
     </div>
+      {/* 右键菜单：在文件管理器中打开 */}
+      {contextMenu && filePath && (
+        <div
+          style={{
+            position: "fixed",
+            left: contextMenu.x,
+            top: contextMenu.y,
+            zIndex: 9999,
+            background: "var(--bg-level-2)",
+            border: "1px solid var(--border-primary)",
+            borderRadius: "var(--radius-md)",
+            boxShadow: "var(--shadow-lg)",
+            padding: "4px",
+            minWidth: "160px",
+          }}
+        >
+          <button
+            onClick={handleOpenInFolder}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              width: "100%",
+              padding: "6px 10px",
+              border: "none",
+              borderRadius: "var(--radius-sm)",
+              background: "transparent",
+              cursor: "pointer",
+              fontSize: "12px",
+              color: "var(--text-level-2)",
+              textAlign: "left",
+              outline: "none",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            在文件管理器中打开
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

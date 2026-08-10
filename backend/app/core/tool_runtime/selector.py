@@ -44,7 +44,7 @@ class ToolSelector:
             "read_file", "write_file", "list_files",
             "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
             "git_commit",
-            "git_add", "git_reset", "git_push", "git_pull",
+            "git_add", "git_reset", "git_push", "git_pull", "git_clone", "git_fetch",
             "search_files",
         }
 

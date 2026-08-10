@@ -43,8 +43,11 @@ export default function Home() {
   const [greetingFavorites, setGreetingFavorites] = useState<string[]>([]);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
-  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>("strict");
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">(() => prefReasoningEffort);
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => {
+    const def = settings?.agent_permission_mode;
+    return def === "safe" || def === "standard" || def === "autonomous" ? def : "standard";
+  });
   const [mode, setMode] = useState<ChatMode>("build");
   // 初始随机抽取标记：防止收藏变化触发重新抽取（避免主页台词频繁跳变）
   const initialQuotePickedRef = useRef(false);

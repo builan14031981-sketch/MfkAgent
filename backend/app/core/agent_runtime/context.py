@@ -70,9 +70,6 @@ class AgentContext:
     # ──── Phase 11: 工具轮次配置 ────
     max_tool_rounds: Optional[int] = None
 
-    # ──── Phase 12: 自治模式 ────
-    auto_approve: bool = False
-
     @property
     def identity(self) -> str:
         """结构化别名：identity == agent_identity（来自 Agent.identity）。"""
