@@ -506,7 +506,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               }} />
               <FolderOpen style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
               <p style={{
-                fontSize: "11px",
+                fontSize: "12px",
                 fontWeight: "600",
                 color: "var(--text-level-4)",
                 letterSpacing: "0.04em",
