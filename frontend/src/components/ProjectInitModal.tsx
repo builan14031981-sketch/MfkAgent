@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback, startTransition } from "react";
+import { useState, useCallback, useEffect, useRef, startTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
-import { useAgents } from "@/hooks/useAgents";
-import { useModels, Model } from "@/hooks/useModels";
+import { useAgents, triggerAgentsRefresh } from "@/hooks/useAgents";
+import { useModels, Model, triggerModelsRefresh } from "@/hooks/useModels";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChatInput } from "@/components/ChatInput";
@@ -23,6 +23,14 @@ interface ProjectInitModalProps {
  * 项目初始化向导：项目创建成功后弹出，置顶于全屏正中央。
  * 内置一体化 ChatInput（Agent / 模型 / 思考模式 / 附件），
  * 发送后自动创建会话并无缝跳转至 Chat 页。
+ *
+ * 数据同步契约（V77 修复）：
+ * - 弹窗打开瞬间（project 从 null → 非 null）主动触发 triggerModelsRefresh
+ *   + triggerAgentsRefresh，保证下拉里的列表是当下最新的。
+ * - 监听 models / agents 变化：当前 selectedModel/agentId 若已不在最新列表
+ *   里（被禁用/删除），自动置空让 fallback 链 (default → models[0]) 兜底，
+ *   不会让用户看到一个指向不存在 model 的"幽灵选中"。
+ * - Agent 选择只展示 status === "active" 的，与设置页 AiBasic 对齐。
  */
 export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitModalProps) {
   const router = useRouter();
@@ -58,6 +66,45 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
 
   const projectId = project?.id;
 
+  // ── 弹窗打开瞬间（project 从 null → 非 null）主动拉取最新数据 ──
+  // 解决：在 settings 里改了 enabled_models / provider_disabled / agent 状态后，
+  // 立即点击"新建项目"，弹窗仍展示旧数据的"幽灵选中"问题。
+  const prevProjectIdRef = useRef<number | null>(null);
+  useEffect(() => {
+    const currentId = project?.id ?? null;
+    const wasClosed = prevProjectIdRef.current === null;
+    const isNowOpen = currentId !== null;
+    if (wasClosed && isNowOpen) {
+      // 弹窗刚打开：触发全局刷新（去抖交给底层 hook）
+      triggerModelsRefresh();
+      triggerAgentsRefresh();
+    }
+    prevProjectIdRef.current = currentId;
+  }, [project?.id]);
+
+  // ── selectedModel 失效回退 ──
+  // 当 models 列表刷新后，若当前 selectedModel 已不在新列表里（被禁用/删除），
+  // 置空让 (default_model → models[0]) fallback 链兜底。
+  useEffect(() => {
+    if (selectedModel && !models.find((m) => m.id === selectedModel.id)) {
+      setSelectedModel(null);
+    }
+  }, [models, selectedModel]);
+
+  // ── agentId 失效回退 ──
+  // 同上：当前选中的 agent 若已不在 active 列表里，置空让 fallback 兜底。
+  // 只在弹窗打开期间生效（project 非 null），避免空跑。
+  useEffect(() => {
+    if (!project) return;
+    if (!agentId) return;
+    if (!agents.find((a) => a.id === agentId)) {
+      setAgentId(null);
+    }
+  }, [agents, agentId, project]);
+
+  // 内联过滤 active agents：与设置页 AiBasic.getSortedActiveAgents 对齐
+  const activeAgents = agents.filter((a) => a.status === "active");
+
   const handleSend = useCallback(async () => {
     if (!input.trim() || isSending) return;
     const userMessage = input.trim();
@@ -65,7 +112,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
     setInput("");
     try {
       const chat = await createChat(
-        agentId || settings?.default_agent || agents[0]?.id || "general",
+        agentId || settings?.default_agent || activeAgents[0]?.id || "general",
         userMessage.slice(0, 50) || "New Chat",
         projectId,
         (selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null,
@@ -86,7 +133,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
       setInput(userMessage);
       setIsSending(false);
     }
-  }, [input, isSending, agentId, settings, agents, selectedModel, models, projectId, files, mode, createChat, onCreated, onClose, router]);
+  }, [input, isSending, agentId, settings, activeAgents, selectedModel, models, projectId, files, mode, createChat, onCreated, onClose, router]);
 
   /**
    * 跳过：创建关联当前 project 的空会话（无 ?message 参数，不触发自动发送），
@@ -98,7 +145,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
     setIsSending(true);
     try {
       const chat = await createChat(
-        agentId || settings?.default_agent || agents[0]?.id || "general",
+        agentId || settings?.default_agent || activeAgents[0]?.id || "general",
         t("chat.projectInitDefaultTitle", { name: project.name }),
         projectId,
         (selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null,
@@ -118,7 +165,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
       console.error("Failed to create chat on skip:", err);
       setIsSending(false);
     }
-  }, [isSending, agentId, settings, agents, selectedModel, models, projectId, mode, project, createChat, onCreated, onClose, router, t]);
+  }, [isSending, agentId, settings, activeAgents, selectedModel, models, projectId, mode, project, createChat, onCreated, onClose, router, t]);
 
   // 防空保护：project 缺失或字段不全时直接不渲染，防止崩溃
   if (!project || typeof project.id !== "number" || !project.name) {
@@ -237,7 +284,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             mode={mode}
             onModeChange={setMode}
             allowAgentChange
-            agentId={agentId || settings?.default_agent || agents[0]?.id || "general"}
+            agentId={agentId || settings?.default_agent || activeAgents[0]?.id || "general"}
             onAgentChange={(id) => setAgentId(id)}
             onUploadFile={handleAttachFile}
             onSelectDirectory={() => {}}
