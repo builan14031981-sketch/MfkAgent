@@ -207,10 +207,10 @@ html, body {
   transform: scale(0.98);
 }
 
-/* 滚动条样式 */
+/* 滚动条样式 - 低调薄条，hover 时才显形 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -218,12 +218,13 @@ html, body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-level-4);
+  background: color-mix(in srgb, var(--text-level-4) 35%, transparent);
   border-radius: var(--radius-full);
+  transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-level-3);
+  background: color-mix(in srgb, var(--text-level-3) 70%, transparent);
 }
 
 /* 隐藏滚动条但保留滚动能力（用于下拉菜单等紧凑弹层） */
@@ -721,7 +722,7 @@ button:active {
 .md-heading {
   font-weight: 650;
   color: var(--text-level-1);
-  line-height: 1.35;
+  line-height: var(--line-height-tight);
 }
 .md-h1 { font-size: 22px; margin: 20px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border-primary); }
 .md-h2 { font-size: 18px; margin: 16px 0 8px 0; }
@@ -785,7 +786,7 @@ button:active {
   padding: 10px 14px;
   overflow-x: auto;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: var(--line-height-relaxed);
   font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, monospace;
   color: var(--text-level-2);
 }
@@ -814,7 +815,7 @@ button:active {
   gap: 8px;
   margin: 0 0 4px 0;
   font-size: 14px;
-  line-height: 1.625;
+  line-height: var(--line-height-relaxed);
 }
 
 /* 有序列表 */
@@ -823,11 +824,12 @@ button:active {
   gap: 8px;
   margin: 0 0 4px 0;
   font-size: 14px;
-  line-height: 1.625;
+  line-height: var(--line-height-relaxed);
 }
 
 /* 段落 */
 .md-paragraph {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
+  line-height: var(--line-height-relaxed);
 }
 

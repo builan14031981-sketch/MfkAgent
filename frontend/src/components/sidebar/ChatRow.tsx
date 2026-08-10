@@ -47,7 +47,7 @@ export function ChatRow({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: indented ? "3px 10px 3px 26px" : "3px 10px",
+        padding: indented ? "5px 10px 5px 26px" : "5px 10px",
         borderRadius: "var(--radius-sm)",
         background: isActive ? "var(--color-primary-light)" : "transparent",
         cursor: "pointer",
