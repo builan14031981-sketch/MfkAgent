@@ -41,7 +41,8 @@ def write_file(project_path: str, relative_path: str, content: str) -> str:
     os.makedirs(target.parent, exist_ok=True)
     with open(target, "w", encoding="utf-8") as f:
         f.write(content)
-    return f"文件已写入: {sanitized} ({len(content)} 字符)"
+    abs_path = str(target)
+    return f"文件已写入: {sanitized} ({len(content)} 字符) | abs_path={abs_path}"
 
 
 def read_file(project_path: str, relative_path: str) -> str:

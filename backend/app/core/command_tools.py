@@ -1,6 +1,6 @@
 """项目沙箱命令执行工具 —— 供 LLM Function Calling 使用。
 
-设计说明（Phase B-1 / Phase 8 P0）：
+设计说明（Phase B-1 / Phase 8 P0 / Phase 4 T1）：
 - 命令是否可执行由 Command Risk Engine（risk_engine.py）在 executor 层判定，
   本模块只负责"执行"：解析 argv → subprocess 运行 → 输出解码/截断。
 - 保留 shell 元字符防御（_FORBIDDEN_RE）作为纵深防御。
@@ -9,25 +9,35 @@
   CREATE_NO_WINDOW），输出用阶梯解码（UTF-8 → GBK → CP936 → 替换兜底），
   杜绝 Windows 下 GBK 乱码与解码崩溃。
 
-execute_command（Secure Execution Runtime V1）：
+execute_command（Secure Execution Runtime V1 + Phase 4 T1 增强）：
 - 专为项目命令设计（pytest / npm test / npm run build 等）
 - 返回结构化结果：stdout / stderr / exit_code / execution_time
 - 风险策略：安全命令 ALLOW，未知命令 REQUIRE_APPROVAL，危险命令 HIGH_RISK
+- Phase 4 T1: 执行前 cwd 禁执行目录黑名单检查（黑名单命中直接拒绝）
+- Phase 4 T1: 执行后写审计日志到 sandbox_audit_logs（写入失败不影响执行）
+- Phase 4 T1: 高风险磁盘操作（git clone / npm install / pip install）执行前检查磁盘配额
 """
 import json
+import logging
 import os
 import re
 import subprocess
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from app.core.tools import ToolExecutionError
 from app.core.sandbox import (
     SandboxViolation,
+    check_disk_quota,
     decode_subprocess_output,
+    detect_high_risk_disk_op,
+    is_forbidden_cwd,
     resolve_sandbox_path,
     run_subprocess,
+    DISK_QUOTA_BYTES,
 )
+
+logger = logging.getLogger(__name__)
 
 # 危险的 shell 元字符/重定向，一律拒绝（防注入，纵深防御）
 _FORBIDDEN_RE = re.compile(r"[;&|`$<>]|\(|\)")
@@ -37,6 +47,9 @@ _CD_ESCAPE_RE = re.compile(r"\bcd\s+([A-Za-z]:[\\/]|\\\\|\.\.)", re.I)
 
 TIMEOUT = 30
 MAX_OUTPUT_CHARS = 8000
+
+# 审计日志 command/cwd 截断（避免超长 LLM 输出撑爆数据库 TEXT 字段）
+_AUDIT_TEXT_MAX = 8192
 
 
 def _split_command(command: str) -> List[str]:
@@ -111,19 +124,110 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     return prefix + combined
 
 
-# ──── execute_command（Secure Execution Runtime V1）────
+# ──── execute_command（Secure Execution Runtime V1 + Phase 4 T1）────
 
 EXECUTE_TIMEOUT = 60
 EXECUTE_MAX_OUTPUT = 10000
 
 
-def execute_command(project_path: str, command: str, cwd: str = "", timeout: int = EXECUTE_TIMEOUT) -> str:
+def _truncate_audit_text(text: str, max_len: int = _AUDIT_TEXT_MAX) -> str:
+    """审计日志文本截断（避免 LLM 长输出撑爆数据库）。"""
+    if not text:
+        return ""
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + f"...(truncated, total {len(text)} chars)"
+
+
+def _write_sandbox_audit(
+    tool_name: str,
+    command: str,
+    cwd: str,
+    duration_ms: int,
+    exit_code: Optional[int],
+    output_size: int,
+    success: bool,
+    error_message: Optional[str] = None,
+    chat_id: Optional[int] = None,
+    agent_run_id: Optional[int] = None,
+) -> None:
+    """Phase 4 T1: 写审计日志到 sandbox_audit_logs 表。
+
+    旁路设计：所有异常 try/except 兜底，绝不抛回主流程，绝不阻断命令执行。
+    仅记录元信息（命令、cwd、耗时、退出码、输出大小、success），不记录 stdout/stderr 内容。
+    """
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import SandboxAuditLog
+
+        db = SessionLocal()
+        try:
+            log = SandboxAuditLog(
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+                tool_name=tool_name,
+                command=_truncate_audit_text(command),
+                cwd=_truncate_audit_text(cwd) if cwd else None,
+                duration_ms=duration_ms,
+                exit_code=exit_code,
+                output_size=output_size,
+                success=success,
+                error_message=_truncate_audit_text(error_message) if error_message else None,
+            )
+            db.add(log)
+            db.commit()
+        except Exception as e:
+            logger.warning("[sandbox_audit] 写入审计日志失败: %s", e)
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+    except Exception as e:
+        # 数据库 SessionLocal 创建失败时（极端情况），静默吞掉
+        logger.warning("[sandbox_audit] 初始化审计会话失败: %s", e)
+
+
+def _check_disk_quota_for_command(command: str, work_dir: str) -> Optional[str]:
+    """检查命令对应的高风险磁盘操作的磁盘配额。
+
+    Returns:
+        None: 通过
+        str: 拒绝原因（人类可读）
+    """
+    op = detect_high_risk_disk_op(command)
+    if not op:
+        return None
+    required = DISK_QUOTA_BYTES.get(op, 0)
+    if required <= 0:
+        return None
+    ok, message = check_disk_quota(work_dir, required)
+    if not ok:
+        return message
+    return None
+
+
+def execute_command(
+    project_path: str,
+    command: str,
+    cwd: str = "",
+    timeout: int = EXECUTE_TIMEOUT,
+    chat_id: Optional[int] = None,
+    agent_run_id: Optional[int] = None,
+) -> str:
     """安全执行项目命令，返回结构化 JSON 结果。
 
     安全约束：
       - 必须绑定 project_path（沙箱锚定）
       - 禁止 shell 元字符
       - 禁止 cd 逃逸到项目外
+      - Phase 4 T1: 禁止 cwd 落入禁执行目录黑名单（Windows 系统目录/Program Files/用户根目录等）
+      - Phase 4 T1: 高风险磁盘操作（git clone/npm install/pip install）执行前检查磁盘配额
+      - Phase 4 T1: 执行后写审计日志（写入失败不影响执行）
       - 超时自动终止
       - 输出截断保护
 
@@ -155,38 +259,111 @@ def execute_command(project_path: str, command: str, cwd: str = "", timeout: int
     if not os.path.isdir(work_dir):
         return json.dumps({"stdout": "", "stderr": f"工作目录不存在: {work_dir}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
 
+    # Phase 4 T1: 禁执行目录黑名单兜底（即使 work_dir 已被沙箱校验过，再做一次系统级黑名单检查）
+    forbidden, forbid_reason = is_forbidden_cwd(work_dir)
+    if forbidden:
+        return json.dumps({"stdout": "", "stderr": f"【安全拦截】{forbid_reason}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    # Phase 4 T1: 高风险磁盘操作配额检查
+    quota_err = _check_disk_quota_for_command(command, work_dir)
+    if quota_err:
+        return json.dumps({"stdout": "", "stderr": f"【安全拦截】{quota_err}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
     timeout = max(1, min(int(timeout or EXECUTE_TIMEOUT), 300))
     argv = _split_command(command)
 
     start = time.monotonic()
     try:
         proc = run_subprocess(argv, cwd=work_dir, timeout=timeout)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        stdout = decode_subprocess_output(proc.stdout) or ""
+        stderr = decode_subprocess_output(proc.stderr) or ""
+        exit_code = proc.returncode
+        success = (exit_code == 0)
+
+        # 输出截断
+        if len(stdout) > EXECUTE_MAX_OUTPUT:
+            stdout = stdout[:EXECUTE_MAX_OUTPUT] + f"\n...(stdout 已截断，共 {len(stdout)} 字符)"
+        if len(stderr) > EXECUTE_MAX_OUTPUT:
+            stderr = stderr[:EXECUTE_MAX_OUTPUT] + f"\n...(stderr 已截断，共 {len(stderr)} 字符)"
+
+        # Phase 4 T1: 写审计日志（双重 try/except 兜底，失败不影响主流程）
+        try:
+            _write_sandbox_audit(
+                tool_name="execute_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=exit_code,
+                output_size=len(stdout) + len(stderr),
+                success=success,
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[execute_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+
+        return json.dumps({
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": exit_code,
+            "execution_time": round(elapsed_ms / 1000, 3),
+        }, ensure_ascii=False)
+
     except FileNotFoundError:
-        elapsed = time.monotonic() - start
-        return json.dumps({"stdout": "", "stderr": f"找不到命令 '{argv[0]}'（可能未安装或不在 PATH）", "exit_code": -1, "execution_time": round(elapsed, 3)}, ensure_ascii=False)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        try:
+            _write_sandbox_audit(
+                tool_name="execute_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=-1,
+                output_size=0,
+                success=False,
+                error_message=f"找不到命令 '{argv[0] if argv else ''}'（可能未安装或不在 PATH）",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[execute_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+        return json.dumps({"stdout": "", "stderr": f"找不到命令 '{argv[0]}'（可能未安装或不在 PATH）", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
     except subprocess.TimeoutExpired:
-        elapsed = time.monotonic() - start
-        return json.dumps({"stdout": "", "stderr": f"命令执行超时（>{timeout}s），已终止", "exit_code": -1, "execution_time": round(elapsed, 3)}, ensure_ascii=False)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        try:
+            _write_sandbox_audit(
+                tool_name="execute_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=-1,
+                output_size=0,
+                success=False,
+                error_message=f"命令执行超时（>{timeout}s）",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[execute_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+        return json.dumps({"stdout": "", "stderr": f"命令执行超时（>{timeout}s），已终止", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
     except Exception as e:
-        elapsed = time.monotonic() - start
-        return json.dumps({"stdout": "", "stderr": f"命令执行异常: {e}", "exit_code": -1, "execution_time": round(elapsed, 3)}, ensure_ascii=False)
-
-    elapsed = time.monotonic() - start
-    stdout = decode_subprocess_output(proc.stdout) or ""
-    stderr = decode_subprocess_output(proc.stderr) or ""
-
-    # 输出截断
-    if len(stdout) > EXECUTE_MAX_OUTPUT:
-        stdout = stdout[:EXECUTE_MAX_OUTPUT] + f"\n...(stdout 已截断，共 {len(stdout)} 字符)"
-    if len(stderr) > EXECUTE_MAX_OUTPUT:
-        stderr = stderr[:EXECUTE_MAX_OUTPUT] + f"\n...(stderr 已截断，共 {len(stderr)} 字符)"
-
-    return json.dumps({
-        "stdout": stdout,
-        "stderr": stderr,
-        "exit_code": proc.returncode,
-        "execution_time": round(elapsed, 3),
-    }, ensure_ascii=False)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        try:
+            _write_sandbox_audit(
+                tool_name="execute_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=-1,
+                output_size=0,
+                success=False,
+                error_message=f"命令执行异常: {e}",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[execute_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+        return json.dumps({"stdout": "", "stderr": f"命令执行异常: {e}", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
 
 
 # ──── Schema & 注册 ────

@@ -262,6 +262,52 @@ class ApprovalRequest(Base):
     resolved_at = Column(DateTime, nullable=True)
 
 
+class SandboxAuditLog(Base):
+    """Phase 4 T1: 本地代码沙箱执行审计表 — 记录每次 execute_command / git clone 等高风险命令的元信息。
+
+    设计原则：
+      - 独立新表，不修改任何已有核心表（Chat/Message/ToolCall/Task/AgentRun/RuntimeState/RuntimeEvent）
+      - 写入失败 try/except 兜底，绝不阻断主执行链
+      - 仅记录元信息（命令、cwd、耗时、退出码、输出大小），不记录 stdout/stderr 内容
+        （避免 LLM 输出敏感信息被持久化到审计表）
+      - command / cwd 截断存储（TEXT 字段，无长度限制但 LLM 传超长字符串时按 8K 截断）
+    """
+    __tablename__ = "sandbox_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, ForeignKey("chats.id"), nullable=True, index=True)
+    agent_run_id = Column(Integer, ForeignKey("agent_runs.id"), nullable=True, index=True)
+    tool_name = Column(String(100), nullable=False, index=True)
+    command = Column(Text, nullable=False)
+    cwd = Column(Text, nullable=True)
+    duration_ms = Column(Integer, default=0, nullable=False)
+    exit_code = Column(Integer, nullable=True)
+    output_size = Column(Integer, default=0, nullable=False)
+    success = Column(Boolean, default=True, nullable=False, index=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+class SkillDefinition(Base):
+    """Phase 4 T3: Skill Prompt Fragment 定义表 — 静态 prompt 片段，仅用于增强模型行为。
+
+    设计原则：
+      - Skill 只是数据（name + system_prompt_fragment），不包含 Tool / Code / API / Executor
+      - 由 skill_store 加载 enabled 记录，context_builder 拼接到 system prompt
+      - 不修改 ToolRegistry / Executor / RiskEngine
+    """
+    __tablename__ = "skill_definitions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(Text, default="", nullable=False)
+    category = Column(String(50), default="general", nullable=False, index=True)
+    system_prompt_fragment = Column(Text, nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
 class CustomModel(Base):
     """自定义模型表：models 表（用户自定义 OpenAI 兼容接入，可覆盖任意 provider 端点）。
 

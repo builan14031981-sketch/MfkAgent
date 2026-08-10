@@ -594,6 +594,469 @@ class GitHubCreatePRTool(Tool):
             return ToolResult(success=False, output="", error=f"创建 PR 失败: {str(e)}")
 
 
+# ──── Phase 4 T2: GitHub Read-Only 工具（无 Token 也能用，Token 提升限流）────
+
+
+def _github_read_token() -> str:
+    """读取 GitHub Token（与 GitHubCreatePRTool 相同的 .env > settings 表优先级）。"""
+    try:
+        from app.core.config import settings as app_settings
+        token = (app_settings.GITHUB_TOKEN or "").strip()
+        if token:
+            return token
+    except Exception:
+        pass
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import Setting
+        db = SessionLocal()
+        try:
+            row = db.query(Setting).filter(Setting.key == "github_token").first()
+            if row and row.value:
+                return row.value.strip()
+        finally:
+            db.close()
+    except Exception:
+        pass
+    return ""
+
+
+def _github_headers(token: str) -> dict:
+    """构造 GitHub API 请求头（不返回 token 本身，只返回 header dict）。"""
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "MfkAgent/1.0",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+class _GitHubReadOnlyBase(Tool):
+    """Phase 4 T2: GitHub 只读工具基类。
+
+    共同约定：
+      - Token 可选（无 Token 也能用，仅限流低：60 req/h）
+      - Token 不写入日志 / 不进入 prompt / 不返回给模型（仅在内部使用）
+      - 返回结构中带 `authenticated: bool` 字段告知调用方认证状态
+      - 不修改任何状态（纯 GET 请求）
+    """
+
+    def _repo_help(self) -> str:
+        return "GitHub 仓库全名，格式 owner/repo（例如 microsoft/vscode）"
+
+    async def _gh_get(self, url: str, params: Optional[dict] = None) -> tuple:
+        """统一 GitHub GET 请求处理。
+
+        Returns:
+            (success: bool, data: dict | str, status_code: int, authenticated: bool)
+        """
+        import httpx
+        token = _github_read_token()
+        headers = _github_headers(token)
+        authenticated = bool(token)
+        try:
+            from app.core.proxy import build_httpx_client
+            async with build_httpx_client(timeout=20.0) as client:
+                response = await client.get(url, params=params, headers=headers, timeout=20.0)
+                if response.status_code == 200:
+                    return True, response.json(), 200, authenticated
+                # 错误时尝试解析 message
+                try:
+                    err_data = response.json()
+                    msg = err_data.get("message", "") or str(err_data)
+                except Exception:
+                    msg = response.text[:200]
+                return False, {"message": msg, "status": response.status_code}, response.status_code, authenticated
+        except Exception as e:
+            return False, {"message": f"GitHub API 请求失败: {str(e)}", "status": -1}, -1, authenticated
+
+
+class GitHubListIssuesTool(_GitHubReadOnlyBase):
+    """Phase 4 T2: 列出 GitHub 仓库的 Issue 摘要列表。"""
+
+    def __init__(self):
+        super().__init__(
+            name="github_list_issues",
+            description=(
+                "列出 GitHub 仓库的 Issue（只读）。"
+                "支持 state 参数：open / closed / all。"
+                "返回的每个 Issue 包含：number / title / state / user / created_at / comments / labels。"
+                "当用户想了解某个仓库有哪些 Issue、查看待办 Bug 时调用。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": self._repo_help(),
+                    },
+                    "state": {
+                        "type": "string",
+                        "enum": ["open", "closed", "all"],
+                        "description": "Issue 状态过滤，默认 open",
+                    },
+                    "labels": {
+                        "type": "string",
+                        "description": "按 label 过滤（可选，多个用逗号分隔）",
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "description": "返回条数（默认 10，最大 30）",
+                    },
+                },
+                "required": ["repo"],
+            },
+        )
+
+    async def execute(self, repo: str = "", state: str = "open", labels: str = "",
+                      per_page: int = 10, **kwargs) -> ToolResult:
+        import json as _json
+        if not repo or "/" not in repo:
+            return ToolResult(success=False, output="", error="repo 必须为 owner/repo 格式")
+        state = (state or "open").strip().lower()
+        if state not in ("open", "closed", "all"):
+            state = "open"
+        try:
+            per_page = max(1, min(int(per_page or 10), 30))
+        except (TypeError, ValueError):
+            per_page = 10
+
+        params = {"state": state, "per_page": per_page, "sort": "updated", "direction": "desc"}
+        if labels and labels.strip():
+            params["labels"] = labels.strip()
+
+        url = f"https://api.github.com/repos/{repo.strip()}/issues"
+        success, data, status, authenticated = await self._gh_get(url, params=params)
+
+        if not success:
+            return ToolResult(
+                success=False, output="",
+                error=f"列出 Issue 失败: {data.get('message', '')} (HTTP {status})",
+            )
+
+        # 注意：GitHub API 的 /issues 端点会同时返回 PR，过滤掉
+        items = []
+        for it in data if isinstance(data, list) else []:
+            if "pull_request" in it:
+                continue  # 跳过 PR
+            items.append({
+                "number": it.get("number"),
+                "title": it.get("title", ""),
+                "state": it.get("state", ""),
+                "user": (it.get("user") or {}).get("login", ""),
+                "created_at": it.get("created_at", ""),
+                "updated_at": it.get("updated_at", ""),
+                "comments": it.get("comments", 0),
+                "labels": [lb.get("name", "") for lb in (it.get("labels") or [])],
+                "html_url": it.get("html_url", ""),
+            })
+
+        return ToolResult(
+            success=True,
+            output=_json.dumps({
+                "authenticated": authenticated,
+                "repo": repo.strip(),
+                "state": state,
+                "count": len(items),
+                "items": items,
+            }, ensure_ascii=False, indent=2),
+        )
+
+
+class GitHubReadIssueTool(_GitHubReadOnlyBase):
+    """Phase 4 T2: 读取 GitHub Issue 详情 + 评论（只读）。"""
+
+    def __init__(self):
+        super().__init__(
+            name="github_read_issue",
+            description=(
+                "读取 GitHub Issue 的详情与评论（只读）。"
+                "返回：title / body / state / author / labels / comments 列表。"
+                "当用户想了解某个具体 Issue 的内容、讨论时调用。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": self._repo_help(),
+                    },
+                    "issue_number": {
+                        "type": "integer",
+                        "description": "Issue 编号（必填）",
+                    },
+                    "include_comments": {
+                        "type": "boolean",
+                        "description": "是否包含评论（默认 true，最多 20 条）",
+                    },
+                },
+                "required": ["repo", "issue_number"],
+            },
+        )
+
+    async def execute(self, repo: str = "", issue_number: int = 0,
+                      include_comments: bool = True, **kwargs) -> ToolResult:
+        import json as _json
+        if not repo or "/" not in repo:
+            return ToolResult(success=False, output="", error="repo 必须为 owner/repo 格式")
+        try:
+            n = int(issue_number)
+        except (TypeError, ValueError):
+            return ToolResult(success=False, output="", error="issue_number 必须为整数")
+        if n <= 0:
+            return ToolResult(success=False, output="", error="issue_number 必须为正整数")
+
+        url = f"https://api.github.com/repos/{repo.strip()}/issues/{n}"
+        success, data, status, authenticated = await self._gh_get(url)
+        if not success:
+            return ToolResult(
+                success=False, output="",
+                error=f"读取 Issue 失败: {data.get('message', '')} (HTTP {status})",
+            )
+
+        # 验证不是 PR（PR 也走 /issues 端点）
+        is_pr = "pull_request" in data
+
+        result = {
+            "authenticated": authenticated,
+            "repo": repo.strip(),
+            "issue_number": n,
+            "is_pull_request": is_pr,
+            "title": data.get("title", ""),
+            "body": (data.get("body") or "")[:8000],  # 截断避免撑爆
+            "state": data.get("state", ""),
+            "user": (data.get("user") or {}).get("login", ""),
+            "created_at": data.get("created_at", ""),
+            "updated_at": data.get("updated_at", ""),
+            "closed_at": data.get("closed_at"),
+            "comments_count": data.get("comments", 0),
+            "labels": [lb.get("name", "") for lb in (data.get("labels") or [])],
+            "html_url": data.get("html_url", ""),
+            "comments": [],
+        }
+
+        if include_comments and not is_pr:
+            comments_url = data.get("comments_url")
+            if comments_url:
+                c_ok, c_data, c_status, _ = await self._gh_get(comments_url, params={"per_page": 20})
+                if c_ok and isinstance(c_data, list):
+                    result["comments"] = [
+                        {
+                            "user": (c.get("user") or {}).get("login", ""),
+                            "body": (c.get("body") or "")[:2000],
+                            "created_at": c.get("created_at", ""),
+                        }
+                        for c in c_data[:20]
+                    ]
+
+        return ToolResult(
+            success=True,
+            output=_json.dumps(result, ensure_ascii=False, indent=2),
+        )
+
+
+class GitHubListPullRequestsTool(_GitHubReadOnlyBase):
+    """Phase 4 T2: 列出 GitHub 仓库的 PR 摘要列表。"""
+
+    def __init__(self):
+        super().__init__(
+            name="github_list_pull_requests",
+            description=(
+                "列出 GitHub 仓库的 Pull Request（只读）。"
+                "支持 state 参数：open / closed / all。"
+                "返回的每个 PR 包含：number / title / state / user / base / head / created_at / comments。"
+                "当用户想了解某个仓库有哪些 PR、查看进行中的合并请求时调用。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": self._repo_help(),
+                    },
+                    "state": {
+                        "type": "string",
+                        "enum": ["open", "closed", "all"],
+                        "description": "PR 状态过滤，默认 open",
+                    },
+                    "base": {
+                        "type": "string",
+                        "description": "按目标分支过滤（可选）",
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "description": "返回条数（默认 10，最大 30）",
+                    },
+                },
+                "required": ["repo"],
+            },
+        )
+
+    async def execute(self, repo: str = "", state: str = "open", base: str = "",
+                      per_page: int = 10, **kwargs) -> ToolResult:
+        import json as _json
+        if not repo or "/" not in repo:
+            return ToolResult(success=False, output="", error="repo 必须为 owner/repo 格式")
+        state = (state or "open").strip().lower()
+        if state not in ("open", "closed", "all"):
+            state = "open"
+        try:
+            per_page = max(1, min(int(per_page or 10), 30))
+        except (TypeError, ValueError):
+            per_page = 10
+
+        params = {"state": state, "per_page": per_page, "sort": "updated", "direction": "desc"}
+        if base and base.strip():
+            params["base"] = base.strip()
+
+        url = f"https://api.github.com/repos/{repo.strip()}/pulls"
+        success, data, status, authenticated = await self._gh_get(url, params=params)
+
+        if not success:
+            return ToolResult(
+                success=False, output="",
+                error=f"列出 PR 失败: {data.get('message', '')} (HTTP {status})",
+            )
+
+        items = []
+        for it in data if isinstance(data, list) else []:
+            items.append({
+                "number": it.get("number"),
+                "title": it.get("title", ""),
+                "state": it.get("state", ""),
+                "user": (it.get("user") or {}).get("login", ""),
+                "base": (it.get("base") or {}).get("ref", ""),
+                "head": (it.get("head") or {}).get("ref", ""),
+                "created_at": it.get("created_at", ""),
+                "updated_at": it.get("updated_at", ""),
+                "comments": it.get("comments", 0),
+                "html_url": it.get("html_url", ""),
+                "draft": it.get("draft", False),
+                "merged": it.get("merged_at") is not None,
+            })
+
+        return ToolResult(
+            success=True,
+            output=_json.dumps({
+                "authenticated": authenticated,
+                "repo": repo.strip(),
+                "state": state,
+                "count": len(items),
+                "items": items,
+            }, ensure_ascii=False, indent=2),
+        )
+
+
+class GitHubReadPullRequestTool(_GitHubReadOnlyBase):
+    """Phase 4 T2: 读取 GitHub PR 详情（含元信息，不含完整 diff）。
+
+    不默认返回 diff 是为了：
+      1. 减少 token 消耗
+      2. 避免大型 diff 撑爆 prompt
+    用户需要 diff 时可调用 get_diff 风格的工具（V1 不实现，留作 V2）。
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="github_read_pull_request",
+            description=(
+                "读取 GitHub Pull Request 的详情（只读）。"
+                "返回：title / body / state / author / base+head 分支 / changed_files / additions / deletions / merged 状态。"
+                "注意：默认不返回完整 diff（避免撑爆上下文）。"
+                "当用户想了解某个具体 PR 的内容、影响范围时调用。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "repo": {
+                        "type": "string",
+                        "description": self._repo_help(),
+                    },
+                    "pr_number": {
+                        "type": "integer",
+                        "description": "PR 编号（必填）",
+                    },
+                    "include_files": {
+                        "type": "boolean",
+                        "description": "是否包含变更文件列表（默认 true，最多 20 个文件名）",
+                    },
+                },
+                "required": ["repo", "pr_number"],
+            },
+        )
+
+    async def execute(self, repo: str = "", pr_number: int = 0,
+                      include_files: bool = True, **kwargs) -> ToolResult:
+        import json as _json
+        if not repo or "/" not in repo:
+            return ToolResult(success=False, output="", error="repo 必须为 owner/repo 格式")
+        try:
+            n = int(pr_number)
+        except (TypeError, ValueError):
+            return ToolResult(success=False, output="", error="pr_number 必须为整数")
+        if n <= 0:
+            return ToolResult(success=False, output="", error="pr_number 必须为正整数")
+
+        url = f"https://api.github.com/repos/{repo.strip()}/pulls/{n}"
+        success, data, status, authenticated = await self._gh_get(url)
+        if not success:
+            return ToolResult(
+                success=False, output="",
+                error=f"读取 PR 失败: {data.get('message', '')} (HTTP {status})",
+            )
+
+        result = {
+            "authenticated": authenticated,
+            "repo": repo.strip(),
+            "pr_number": n,
+            "title": data.get("title", ""),
+            "body": (data.get("body") or "")[:8000],
+            "state": data.get("state", ""),
+            "user": (data.get("user") or {}).get("login", ""),
+            "base": (data.get("base") or {}).get("ref", ""),
+            "head": (data.get("head") or {}).get("ref", ""),
+            "created_at": data.get("created_at", ""),
+            "updated_at": data.get("updated_at", ""),
+            "closed_at": data.get("closed_at"),
+            "merged_at": data.get("merged_at"),
+            "merge_commit_sha": data.get("merge_commit_sha"),
+            "comments": data.get("comments", 0),
+            "review_comments": data.get("review_comments", 0),
+            "changed_files": data.get("changed_files", 0),
+            "additions": data.get("additions", 0),
+            "deletions": data.get("deletions", 0),
+            "commits": data.get("commits", 0),
+            "draft": data.get("draft", False),
+            "merged": data.get("merged", False),
+            "mergeable": data.get("mergeable"),
+            "html_url": data.get("html_url", ""),
+            "files": [],
+        }
+
+        if include_files:
+            files_url = data.get("url")  # /repos/{owner}/{repo}/pulls/{n}
+            if files_url:
+                f_url = f"{files_url}/files"
+                f_ok, f_data, f_status, _ = await self._gh_get(f_url, params={"per_page": 20})
+                if f_ok and isinstance(f_data, list):
+                    result["files"] = [
+                        {
+                            "filename": f.get("filename", ""),
+                            "status": f.get("status", ""),
+                            "additions": f.get("additions", 0),
+                            "deletions": f.get("deletions", 0),
+                            "changes": f.get("changes", 0),
+                        }
+                        for f in f_data[:20]
+                    ]
+
+        return ToolResult(
+            success=True,
+            output=_json.dumps(result, ensure_ascii=False, indent=2),
+        )
+
+
 class ManageTodosTool(Tool):
     """待办事项管理工具 — 供 LLM 通过 Tool Calling 管理用户待办。
 
@@ -714,6 +1177,12 @@ tool_registry.register(JsonFormatTool())         # 格式化 JSON
 tool_registry.register(AddMemoryTool())          # 保存记忆
 tool_registry.register(ManageTodosTool())        # 待办事项管理
 tool_registry.register(GitHubCreatePRTool())     # GitHub PR 创建
+
+# Phase 4 T2: GitHub 只读工具（自动 ALLOW，无需审批）
+tool_registry.register(GitHubListIssuesTool())
+tool_registry.register(GitHubReadIssueTool())
+tool_registry.register(GitHubListPullRequestsTool())
+tool_registry.register(GitHubReadPullRequestTool())
 
 # 注意：文件操作工具（read_file/write_file/list_files）已在 core/tools.py 中实现
 # 带有沙箱保护，只在有 project_path 时通过 FILE_TOOLS_DEFINITIONS 提供

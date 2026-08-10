@@ -73,8 +73,12 @@ def make_tool_result(
     success: bool,
     result: str,
     duration_ms: int,
+    file_path: Optional[str] = None,
 ) -> Dict:
-    """构造 tool_result 事件。"""
+    """构造 tool_result 事件。
+
+    file_path: 可选，文件类工具操作后返回的绝对路径，供前端直接用于打开/定位文件。
+    """
     event: Dict = {
         "type": "tool_result",
         "tool_call_id": tool_call_id,
@@ -85,6 +89,8 @@ def make_tool_result(
     }
     if not success and result:
         event["error"] = result[:500]
+    if file_path:
+        event["file_path"] = file_path
     return event
 
 

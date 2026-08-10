@@ -23,6 +23,9 @@ class PermissionFilter:
         "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
         "git_commit", "git_restore", "git_clone", "git_pull", "git_push", "git_fetch",
         "github_create_pr",
+        # Phase 4 T2: GitHub 只读工具（自动 ALLOW，无需审批）
+        "github_list_issues", "github_read_issue",
+        "github_list_pull_requests", "github_read_pull_request",
         "search_files",
         "web_search", "fetch_url", "github_search",
         "add_memory", "manage_todos", "get_datetime", "format_json",

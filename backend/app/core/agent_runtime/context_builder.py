@@ -31,6 +31,7 @@ from app.services.personality import get_personality_prompt
 from app.core.capability_profiles import get_capability_prompt
 from app.core.identity_principle import get_identity_principle
 from app.core.agent_base_instruction import get_agent_base_instruction
+from app.core.skill_store import get_enabled_skills_prompt  # Phase 4 T3: Skill Prompt Fragment 加载
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
 from app.core.tool_runtime.policy import (
@@ -515,6 +516,13 @@ class ChatContextBuilder:
         capability_prompt = get_capability_prompt(capabilities)
         if capability_prompt:
             full_prompt += "\n\n" + capability_prompt
+
+        # ②b Skill Prompt Fragment（Phase 4 T3: 能力增强层，注入位置在 capability 之后、execution_policy 之前）
+        # Skill = Prompt Fragment，仅文本，无 Tool/Code/Executor 能力
+        # 加载失败/无 Skill 时返回空串，不影响 prompt 结构
+        skills_prompt = get_enabled_skills_prompt()
+        if skills_prompt:
+            full_prompt += "\n\n" + skills_prompt
 
         # ③ execution_policy（统一执行规范 v1）
         full_prompt += "\n\n" + get_execution_policy()

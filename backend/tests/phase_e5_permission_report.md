@@ -1,6 +1,6 @@
 # MfkAgent Plan / Build 权限模型修正 — Phase E5 测试报告
 
-- 时间: 2026-08-10 14:46:36
+- 时间: 2026-08-10 21:38:18
 
 ## 修正前：Plan 权限实际行为
 
@@ -49,13 +49,13 @@
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | evaluate_tool 三态矩阵 | ✅ PASS | 0ms |
+| 1 | evaluate_tool 三态矩阵 | ✅ PASS | 15ms |
 | 2 | 命令引擎 Plan 只读约束 | ✅ PASS | 0ms |
 | 3 | 权限目录 + 单一事实来源 | ✅ PASS | 0ms |
-| 4 | E2E: plan 只读 read_file 放行 | ✅ PASS | 329ms |
-| 5 | E2E: plan write_file 拒绝 | ✅ PASS | 203ms |
-| 6 | E2E: plan add_memory 拒绝(写库) | ✅ PASS | 328ms |
-| 7 | E2E: build add_memory 放行 | ✅ PASS | 328ms |
+| 4 | E2E: plan 只读 read_file 放行 | ✅ PASS | 657ms |
+| 5 | E2E: plan write_file 拒绝 | ✅ PASS | 375ms |
+| 6 | E2E: plan add_memory 拒绝(写库) | ✅ PASS | 531ms |
+| 7 | E2E: build add_memory 放行 | ✅ PASS | 547ms |
 | 8 | 审批注册表无残留 | ✅ PASS | 0ms |
 
 **通过率: 8/8**

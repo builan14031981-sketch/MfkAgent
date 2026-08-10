@@ -13,6 +13,7 @@
 
 import asyncio
 import json
+import os
 import time
 from typing import Callable, Dict, Any, Optional
 
@@ -137,6 +138,13 @@ async def execute_tool(
     }
 
     # 工具结束事件：构造 record 前发射
+    # 文件类工具：计算绝对路径供前端直接用于打开/定位
+    _file_path = None
+    if func_name in ("write_file", "read_file") and project_path and success:
+        _rel = str(func_args.get("relative_path", ""))
+        if _rel:
+            _file_path = os.path.join(project_path, _rel.replace("/", os.sep))
+
     if emit:
         emit(make_tool_result(
             tool_call_id=tool_call_id,
@@ -144,6 +152,7 @@ async def execute_tool(
             success=success,
             result=result_text,
             duration_ms=duration_ms,
+            file_path=_file_path,
         ))
 
     return record
@@ -373,12 +382,19 @@ async def complete_approval(
     })
 
     if emit:
+        # 文件类工具审批完成后：计算绝对路径供前端
+        _fp = None
+        if final["tool"] in ("write_file", "read_file") and project_path and success:
+            _rel = str(final.get("arguments", {}).get("relative_path", ""))
+            if _rel:
+                _fp = os.path.join(project_path, _rel.replace("/", os.sep))
         emit(make_tool_result(
             tool_call_id=final["tool_call_id"],
             tool=final["tool"],
             success=success,
             result=result_text,
             duration_ms=duration_ms,
+            file_path=_fp,
         ))
 
     return final

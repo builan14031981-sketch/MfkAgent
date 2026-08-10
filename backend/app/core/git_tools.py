@@ -2,23 +2,89 @@
 
 全部通过 subprocess 调用系统 git（参数用 list 数组，不拼接 shell 字符串，
 杜绝注入）；工作目录限定在 project_path 内（统一沙箱锚定）。无需下载任何额外文件。
+
+Phase 4 T1 增强：
+- git_clone 执行前检查磁盘配额（剩余空间 ≥ 2GB），不足时拒绝
+- git_clone 执行后写审计日志到 sandbox_audit_logs（旁路，失败不影响主流程）
 """
-from typing import Dict, List, Optional
-import os
+import logging
 import re
 import subprocess
+from typing import Dict, List, Optional
+import os
 from urllib.parse import urlparse
 
 from app.core.sandbox import (
     SandboxViolation,
+    check_disk_quota,
     decode_subprocess_output,
     resolve_sandbox_path,
     run_subprocess,
+    DISK_QUOTA_BYTES,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class GitToolError(Exception):
     """Git 工具执行失败（消息原样返回给 LLM）"""
+
+
+def _truncate_audit_text(text: str, max_len: int = 8192) -> str:
+    """审计日志文本截断（避免 LLM 长输出撑爆数据库）。"""
+    if not text:
+        return ""
+    if len(text) <= max_len:
+        return text
+    return text[:max_len] + f"...(truncated, total {len(text)} chars)"
+
+
+def _write_git_audit(
+    tool_name: str,
+    command: str,
+    cwd: str,
+    duration_ms: int,
+    exit_code: Optional[int],
+    output_size: int,
+    success: bool,
+    error_message: Optional[str] = None,
+    chat_id: Optional[int] = None,
+    agent_run_id: Optional[int] = None,
+) -> None:
+    """Phase 4 T1: 写 git 操作审计日志（旁路设计，失败不影响主流程）。"""
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import SandboxAuditLog
+
+        db = SessionLocal()
+        try:
+            log = SandboxAuditLog(
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+                tool_name=tool_name,
+                command=_truncate_audit_text(command),
+                cwd=_truncate_audit_text(cwd) if cwd else None,
+                duration_ms=duration_ms,
+                exit_code=exit_code,
+                output_size=output_size,
+                success=success,
+                error_message=_truncate_audit_text(error_message) if error_message else None,
+            )
+            db.add(log)
+            db.commit()
+        except Exception as e:
+            logger.warning("[sandbox_audit] 写入 git 审计日志失败: %s", e)
+            try:
+                db.rollback()
+            except Exception:
+                pass
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning("[sandbox_audit] 初始化 git 审计会话失败: %s", e)
 
 
 def _git(project_path: str, args: List[str], timeout: int = 60) -> str:
@@ -190,7 +256,13 @@ def _validate_github_url(url: str) -> None:
         raise GitToolError("URL 缺少仓库路径")
 
 
-def git_clone(project_path: str, url: str, target_dir: str = "") -> str:
+def git_clone(
+    project_path: str,
+    url: str,
+    target_dir: str = "",
+    chat_id: Optional[int] = None,
+    agent_run_id: Optional[int] = None,
+) -> str:
     """从 GitHub HTTPS 地址 clone 仓库到项目工作区。
 
     Args:
@@ -219,10 +291,57 @@ def git_clone(project_path: str, url: str, target_dir: str = "") -> str:
     if os.path.exists(target_real):
         raise GitToolError(f"目标目录已存在: {target_dir}（请选择其他目录名或先删除已有目录）")
 
+    # Phase 4 T1: 磁盘配额检查（剩余空间 ≥ 2GB）
+    required_bytes = DISK_QUOTA_BYTES.get("git_clone", 0)
+    if required_bytes > 0:
+        ok, message = check_disk_quota(target_real, required_bytes)
+        if not ok:
+            _write_git_audit(
+                tool_name="git_clone",
+                command=f"git clone {url} {target_dir}".strip(),
+                cwd=project_path or "",
+                duration_ms=0,
+                exit_code=None,
+                output_size=0,
+                success=False,
+                error_message=f"磁盘配额不足: {message}",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+            raise GitToolError(f"【安全拦截】磁盘配额检查未通过: {message}")
+
+    import time as _time
+    start = _time.monotonic()
     try:
         _git(project_path, ["clone", url, target_dir], timeout=300)
     except GitToolError as e:
+        elapsed_ms = int((_time.monotonic() - start) * 1000)
+        _write_git_audit(
+            tool_name="git_clone",
+            command=f"git clone {url} {target_dir}".strip(),
+            cwd=project_path or "",
+            duration_ms=elapsed_ms,
+            exit_code=1,
+            output_size=0,
+            success=False,
+            error_message=str(e),
+            chat_id=chat_id,
+            agent_run_id=agent_run_id,
+        )
         raise GitToolError(f"clone 失败: {e}")
+
+    elapsed_ms = int((_time.monotonic() - start) * 1000)
+    _write_git_audit(
+        tool_name="git_clone",
+        command=f"git clone {url} {target_dir}".strip(),
+        cwd=project_path or "",
+        duration_ms=elapsed_ms,
+        exit_code=0,
+        output_size=0,
+        success=True,
+        chat_id=chat_id,
+        agent_run_id=agent_run_id,
+    )
 
     return (
         f"已成功 clone 仓库到: {target_real}\n"

@@ -744,6 +744,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         thinking_total_chars = 0
         recorded_tool_calls: List[dict] = []
         timeline_events: List[dict] = []
+        # 待落盘的 text 缓冲段：遇到工具事件时先 flush，
+        # 使 timeline 保留“文本→工具→文本”的真实交错时序（而非全部文本合并到末尾）
+        pending_text = ""
 
         def _put(event):
             """非阻塞写入队列；客户端断连或队列满时跳过（不影响后台执行）。"""
@@ -754,6 +757,11 @@ async def send_message_stream(chat_id: int, request: SendRequest):
 
         def _persist():
             """将 assistant 消息落库（正常完成/取消/异常均调用）。"""
+            nonlocal pending_text
+            # flush 残余文本段：三条落库路径（正常/取消/异常）统一覆盖
+            if pending_text:
+                timeline_events.append({"type": "text", "content": pending_text})
+                pending_text = ""
             if not full_content and not full_thinking and not recorded_tool_calls:
                 return
             db2 = SessionLocal()
@@ -794,18 +802,19 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     thinking_total_chars += len(content)
                     timeline_events.append({"type": "thinking", "content": content})
                 elif etype == "text":
-                    full_content += chunk.get("content", "")
+                    piece = chunk.get("content", "")
+                    full_content += piece
+                    pending_text += piece
                 elif etype == "tool_calls":
                     recorded_tool_calls = chunk.get("calls") or recorded_tool_calls
                 elif etype in ("tool_start", "tool_result", "tool_approval"):
+                    if pending_text:
+                        timeline_events.append({"type": "text", "content": pending_text})
+                        pending_text = ""
                     timeline_events.append(chunk)
 
                 # 转发事件给 SSE 消费者（非阻塞）
                 _put(chunk)
-
-            # 记录最终 text 轨迹事件
-            if full_content:
-                timeline_events.append({"type": "text", "content": full_content})
 
             if thinking_chunk_count > 0:
                 logger.info(
