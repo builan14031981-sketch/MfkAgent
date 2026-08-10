@@ -42,7 +42,8 @@
   "createProject": "Create",
   "pickDirectory": "Pick Folder",
   "newChatInProject": "New chat in this project",
-  "newChatTitle": "New Chat"
+  "newChatTitle": "New Chat",
+  "openProjectFolder": "Open Project Folder"
  },
  "home": {
   "welcome": [
@@ -221,6 +222,33 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System"
+   },
+   "visualTheme": {
+    "desc": "Choose the visual theme; each ships a full palette and layer system",
+    "obsidian": "Obsidian Dark",
+    "obsidianDesc": "Professional AI workspace · Default",
+    "studio": "Apple Studio Light",
+    "studioDesc": "Clean & bright · Daily use",
+    "terminal": "Developer Terminal",
+    "terminalDesc": "Developer terminal · High density"
+   },
+   "experimentalTheme": {
+    "title": "Experimental Themes",
+    "desc": "Themes in exploration. Preview and pick; may be adjusted or removed in future releases",
+    "placeholder": "Select an experimental theme",
+    "backToOfficial": "Back to official theme (Obsidian Dark)",
+    "titanium": "Titanium",
+    "titaniumDesc": "Cool titanium gray · Metallic light",
+    "paper": "Paper Studio",
+    "paperDesc": "Warm paper studio · Creative",
+    "midnight": "Midnight",
+    "midnightDesc": "Deep midnight blue · Calm",
+    "mono": "Mono",
+    "monoDesc": "Pure monochrome · Zero-hue inverse accent",
+    "warmMinimal": "Warm Minimal",
+    "warmMinimalDesc": "Warm minimal · Soft off-white",
+    "aurora": "Aurora",
+    "auroraDesc": "Low-saturation teal · Not neon"
    },
    "language": {
     "title": "Language",
@@ -422,6 +450,70 @@
    "statusInactive": "Inactive",
    "statusInstalled": "Installed",
    "statusError": "Error"
+  },
+  "extensions": {
+   "title": "Extensions",
+   "desc": "Manage AI augmentation capabilities",
+   "futureNote": "Plugins and Connections are coming in a future release. Only Skills are available in V1.",
+   "skills": {
+    "sectionTitle": "Skills",
+    "sectionDesc": "Manage AI professional capability packs",
+    "scenarios": "Best for",
+    "capabilities": "Capabilities",
+    "install": "Install",
+    "installed": "Enabled",
+    "enabled": "Enabled",
+    "disable": "Disable",
+    "installedCount": "{{count}} of {{total}} enabled",
+    "moreInfo": "Click a card for details"
+   },
+   "plugins": {
+    "sectionTitle": "Plugins",
+    "sectionDesc": "System-level functional plugins. V1 is read-only.",
+    "softNote": "Plugin ecosystem opens in a future release. V1 only displays backend default plugins and their status.",
+    "empty": "No plugins",
+    "activeCount": "{{count}} of {{total}} active",
+    "statusActive": "Active",
+    "statusInstalled": "Installed",
+    "statusInactive": "Inactive",
+    "statusError": "Error"
+   },
+   "skillDetail": {
+    "backToList": "Back to Skills list",
+    "notFound": "Skill not found"
+   },
+   "skillList": {
+    "ppt": {
+     "name": "PPT Expert",
+     "summary": "Helps the agent plan presentation structure, design slide flow, and polish delivery.",
+     "scenarios": "When you need to build or refine a deck",
+     "capabilities": "Structure planning, key-point distillation, slide logic, delivery polish"
+    },
+    "python": {
+     "name": "Python Expert",
+     "summary": "Helps the agent write Python, debug issues, and suggest engineering best practices.",
+     "scenarios": "When you need to write, debug, or refactor Python",
+     "capabilities": "Scripting, debugging, engineering practice, performance tuning"
+    },
+    "research": {
+     "name": "Deep Research",
+     "summary": "Helps the agent run multi-round retrieval, cross-check facts, and produce sourced reports.",
+     "scenarios": "When you need topic research or report drafting",
+     "capabilities": "Multi-round search, cross-check, structured reports, source attribution"
+    },
+    "ui": {
+     "name": "UI Design Expert",
+     "summary": "Helps the agent design interface structure, visual hierarchy, and component reuse.",
+     "scenarios": "When you need to design or review UI",
+     "capabilities": "Information architecture, hierarchy, reusability, accessibility"
+    },
+    "security": {
+     "name": "Security Audit Expert",
+     "summary": "Helps the agent identify security risks, propose fixes, and assess impact.",
+     "scenarios": "When you need code review or risk assessment",
+     "capabilities": "Risk detection, fix suggestions, impact analysis, compliance hints"
+    }
+   }
   },
   "about": {
    "title": "About",

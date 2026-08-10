@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_SC, IBM_Plex_Sans, Press_Start_2P, VT323, DotGothic16 } from "next/font/google";
 import "./globals.css";
+import "../styles/tokens.css";
 import { Providers } from "@/components/providers";
 import { AppLayout } from "@/components/AppLayout";
 

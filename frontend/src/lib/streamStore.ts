@@ -59,6 +59,10 @@ function createDefaultRefs(): StreamSessionRefs {
 }
 
 interface StreamStore {
+  /** 当前 UI 活跃会话（chat 页挂载时写入，卸载置 null）：供后台流结束时的通知判定使用 */
+  activeChatId: number | null;
+  setActiveChatId: (chatId: number | null) => void;
+
   /** chatId → 流式加载阶段（侧边栏指示器） */
   streams: Record<number, OrbStage>;
   setStream: (chatId: number, stage: OrbStage | null) => void;
@@ -94,6 +98,9 @@ interface StreamStore {
 export const useStreamStore = create<StreamStore>()(
   persist(
     (set, get) => ({
+  activeChatId: null,
+  setActiveChatId: (chatId) => set({ activeChatId: chatId }),
+
   streams: {},
   setStream: (chatId, stage) =>
     set((state) => {

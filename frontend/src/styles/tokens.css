@@ -1,0 +1,576 @@
+/* ============================================================
+ * MfkAgent Design System V2.0 — Theme Tokens
+ *
+ * 视觉关键词：Quiet / Professional / Structured / Calm
+ * 参考：Adobe 专业软件 · macOS · Codex · VS Code
+ *
+ * 三套视觉主题（html[data-theme] 驱动）：
+ *   obsidian —— Obsidian Dark，专业 AI 工作站（默认）
+ *   studio   —— Apple Studio Light，简洁明亮日间
+ *   terminal —— Developer Terminal，开发者高密度
+ *
+ * 兼容策略：
+ *   1) 新语义 Token 前缀 --mf-*（V2 组件使用）
+ *   2) 旧名 --bg-level-* / --text-level-* / --color-primary 等
+ *      在每个主题块中做别名映射，存量组件零改动可用。
+ *   3) :root 默认即 obsidian，保证首屏与默认主题一致。
+ * ============================================================ */
+
+/* ------------------------------------------------------------
+ * Theme A：Obsidian Dark（默认）
+ * 带蓝相石墨层阶，层级靠亮度阶步进，不用纯黑。
+ * ------------------------------------------------------------ */
+:root,
+html[data-theme="obsidian"] {
+  /* ── V2 语义 Token ── */
+  --mf-bg-app: #0f1114;              /* 应用主背景 */
+  --mf-bg-surface: #15181d;          /* 侧边栏 / 次级区域 */
+  --mf-bg-card: #1b1f26;             /* 卡片 / 输入框 / 下拉 */
+  --mf-bg-elevated: #222732;         /* 弹层 / 选中 / hover 步进 */
+
+  --mf-text-1: #e8eaed;              /* 标题 / 激活文本 */
+  --mf-text-2: #c6cad2;              /* 正文 */
+  --mf-text-3: #9aa1ac;              /* 辅助信息 */
+  --mf-text-4: #6a7180;              /* 占位 / 元数据 */
+
+  --mf-border-1: #262b34;            /* 主边框 */
+  --mf-border-2: #1e222b;            /* 次边框 */
+
+  --mf-accent: #4e8cd9;              /* 降饱和工具蓝（唯一品牌色） */
+  --mf-accent-hover: #619be3;
+  --mf-accent-active: #3d7bc4;
+  --mf-on-accent: #f2f5f9;
+
+  --mf-selection: rgba(78, 140, 217, 0.30);
+  --mf-focus-ring: rgba(78, 140, 217, 0.55);
+
+  --mf-state-success: #3fb96f;
+  --mf-state-warning: #d9a13b;
+  --mf-state-error: #e05b52;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.42);
+
+  --mf-motion-fast: 0.12s ease;      /* 微交互 */
+  --mf-motion-base: 0.2s ease;       /* 面板 */
+  --mf-motion-slow: 0.3s ease;       /* 页面级 */
+
+  /* ── 旧名兼容别名（存量组件继续可用） ── */
+  --bg-level-1: var(--mf-bg-surface);
+  --bg-level-2: var(--mf-bg-app);
+  --bg-level-3: var(--mf-bg-card);
+  --bg-level-4: var(--mf-bg-elevated);
+
+  --text-level-1: var(--mf-text-1);
+  --text-level-2: var(--mf-text-2);
+  --text-level-3: var(--mf-text-3);
+  --text-level-4: var(--mf-text-4);
+
+  --border-primary: var(--mf-border-1);
+  --border-secondary: var(--mf-border-2);
+
+  --color-primary: var(--mf-accent);
+  --color-primary-hover: var(--mf-accent-hover);
+  --color-primary-active: var(--mf-accent-active);
+  --color-primary-light: color-mix(in srgb, var(--mf-accent) 14%, transparent);
+  --color-primary-lighter: color-mix(in srgb, var(--mf-accent) 7%, transparent);
+  --text-on-primary: var(--mf-on-accent);
+
+  --color-success: var(--mf-state-success);
+  --color-warning: var(--mf-state-warning);
+  --color-error: var(--mf-state-error);
+  --color-info: var(--mf-accent);
+
+  --shadow-sm: var(--mf-shadow-sm);
+  --shadow-md: var(--mf-shadow-md);
+  --shadow-lg: var(--mf-shadow-lg);
+
+  --glass-bg: rgba(21, 24, 29, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --overlay-modal: rgba(0, 0, 0, 0.55);
+  --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ------------------------------------------------------------
+ * Theme B：Apple Studio Light
+ * 卡片靠 1px 边框而非阴影；hover 用灰阶步进。
+ * ------------------------------------------------------------ */
+html[data-theme="studio"] {
+  --mf-bg-app: #ffffff;
+  --mf-bg-surface: #f6f6f8;
+  --mf-bg-card: #f7f7f9;
+  --mf-bg-elevated: #efeff2;
+
+  --mf-text-1: #1a1b1e;
+  --mf-text-2: #3c4047;
+  --mf-text-3: #5d626c;
+  --mf-text-4: #8a8f98;
+
+  --mf-border-1: #e4e5e9;
+  --mf-border-2: #ededf0;
+
+  --mf-accent: #0a6cd6;              /* 降饱和 Apple 蓝 */
+  --mf-accent-hover: #1479e0;
+  --mf-accent-active: #085bb4;
+  --mf-on-accent: #ffffff;
+
+  --mf-selection: rgba(10, 108, 214, 0.22);
+  --mf-focus-ring: rgba(10, 108, 214, 0.45);
+
+  --mf-state-success: #2e9e5b;
+  --mf-state-warning: #b97f1f;
+  --mf-state-error: #cc4b42;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --bg-level-1: var(--mf-bg-surface);
+  --bg-level-2: var(--mf-bg-app);
+  --bg-level-3: var(--mf-bg-card);
+  --bg-level-4: var(--mf-bg-elevated);
+
+  --text-level-1: var(--mf-text-1);
+  --text-level-2: var(--mf-text-2);
+  --text-level-3: var(--mf-text-3);
+  --text-level-4: var(--mf-text-4);
+
+  --border-primary: var(--mf-border-1);
+  --border-secondary: var(--mf-border-2);
+
+  --color-primary: var(--mf-accent);
+  --color-primary-hover: var(--mf-accent-hover);
+  --color-primary-active: var(--mf-accent-active);
+  --color-primary-light: color-mix(in srgb, var(--mf-accent) 11%, transparent);
+  --color-primary-lighter: color-mix(in srgb, var(--mf-accent) 5%, transparent);
+  --text-on-primary: var(--mf-on-accent);
+
+  --color-success: var(--mf-state-success);
+  --color-warning: var(--mf-state-warning);
+  --color-error: var(--mf-state-error);
+  --color-info: var(--mf-accent);
+
+  --shadow-sm: var(--mf-shadow-sm);
+  --shadow-md: var(--mf-shadow-md);
+  --shadow-lg: var(--mf-shadow-lg);
+
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.5);
+
+  --overlay-modal: rgba(0, 0, 0, 0.32);
+  --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ------------------------------------------------------------
+ * Theme C：Developer Terminal（VS Code 语言）
+ * ------------------------------------------------------------ */
+html[data-theme="terminal"] {
+  --mf-bg-app: #1e1e1e;
+  --mf-bg-surface: #252526;
+  --mf-bg-card: #2d2d30;
+  --mf-bg-elevated: #37373d;
+
+  --mf-text-1: #e7e7e7;
+  --mf-text-2: #d4d4d4;
+  --mf-text-3: #9d9d9d;
+  --mf-text-4: #6e6e6e;
+
+  --mf-border-1: #3c3c40;
+  --mf-border-2: #303034;
+
+  --mf-accent: #3794ff;              /* VS Code 聚焦蓝 */
+  --mf-accent-hover: #4da3ff;
+  --mf-accent-active: #2a7fe0;
+  --mf-on-accent: #ffffff;
+
+  --mf-selection: rgba(55, 148, 255, 0.28);
+  --mf-focus-ring: rgba(55, 148, 255, 0.55);
+
+  --mf-state-success: #3fb96f;
+  --mf-state-warning: #d9a13b;
+  --mf-state-error: #e05b52;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  --bg-level-1: var(--mf-bg-surface);
+  --bg-level-2: var(--mf-bg-app);
+  --bg-level-3: var(--mf-bg-card);
+  --bg-level-4: var(--mf-bg-elevated);
+
+  --text-level-1: var(--mf-text-1);
+  --text-level-2: var(--mf-text-2);
+  --text-level-3: var(--mf-text-3);
+  --text-level-4: var(--mf-text-4);
+
+  --border-primary: var(--mf-border-1);
+  --border-secondary: var(--mf-border-2);
+
+  --color-primary: var(--mf-accent);
+  --color-primary-hover: var(--mf-accent-hover);
+  --color-primary-active: var(--mf-accent-active);
+  --color-primary-light: color-mix(in srgb, var(--mf-accent) 14%, transparent);
+  --color-primary-lighter: color-mix(in srgb, var(--mf-accent) 7%, transparent);
+  --text-on-primary: var(--mf-on-accent);
+
+  --color-success: var(--mf-state-success);
+  --color-warning: var(--mf-state-warning);
+  --color-error: var(--mf-state-error);
+  --color-info: var(--mf-accent);
+
+  --shadow-sm: var(--mf-shadow-sm);
+  --shadow-md: var(--mf-shadow-md);
+  --shadow-lg: var(--mf-shadow-lg);
+
+  --glass-bg: rgba(37, 37, 38, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --overlay-modal: rgba(0, 0, 0, 0.5);
+  --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+/* ------------------------------------------------------------
+ * V2 旧名共享别名层
+ * 实验主题只需定义 --mf-* Token（含 accent-soft/faint、
+ * glass、shadow、状态色全套），旧名在此统一解析。
+ * 三套官方主题自带更高特异性的别名块，不受影响。
+ * ------------------------------------------------------------ */
+:root {
+  --bg-level-1: var(--mf-bg-surface);
+  --bg-level-2: var(--mf-bg-app);
+  --bg-level-3: var(--mf-bg-card);
+  --bg-level-4: var(--mf-bg-elevated);
+
+  --text-level-1: var(--mf-text-1);
+  --text-level-2: var(--mf-text-2);
+  --text-level-3: var(--mf-text-3);
+  --text-level-4: var(--mf-text-4);
+
+  --border-primary: var(--mf-border-1);
+  --border-secondary: var(--mf-border-2);
+
+  --color-primary: var(--mf-accent);
+  --color-primary-hover: var(--mf-accent-hover);
+  --color-primary-active: var(--mf-accent-active);
+  --color-primary-light: var(--mf-accent-soft);
+  --color-primary-lighter: var(--mf-accent-faint);
+  --text-on-primary: var(--mf-on-accent);
+
+  --color-success: var(--mf-state-success);
+  --color-warning: var(--mf-state-warning);
+  --color-error: var(--mf-state-error);
+  --color-info: var(--mf-accent);
+
+  --shadow-sm: var(--mf-shadow-sm);
+  --shadow-md: var(--mf-shadow-md);
+  --shadow-lg: var(--mf-shadow-lg);
+
+  --glass-bg: var(--mf-glass-bg);
+  --glass-border: var(--mf-glass-border);
+
+  --overlay-modal: var(--mf-overlay-modal);
+  --shadow-composer: var(--mf-shadow-composer);
+}
+
+/* ============================================================
+ * Experimental Themes（实验主题，探索阶段）
+ * 均为完整主题（背景层级/文字/边框/Accent/阴影/玻璃/状态色），
+ * 不是简单换主色。待用户验收后筛选转正或移除。
+ * ============================================================ */
+
+/* Exp-1：Titanium —— 钛金属冷灰（浅色） */
+html[data-theme="titanium"] {
+  --mf-bg-app: #e1e3e6;
+  --mf-bg-surface: #d6d9dd;
+  --mf-bg-card: #edeff1;
+  --mf-bg-elevated: #f5f6f8;
+
+  --mf-text-1: #1f2328;
+  --mf-text-2: #454b54;
+  --mf-text-3: #676f7a;
+  --mf-text-4: #8b929c;
+
+  --mf-border-1: #c9cdd3;
+  --mf-border-2: #d4d8dc;
+
+  --mf-accent: #4d6a8a;
+  --mf-accent-hover: #5b7a9c;
+  --mf-accent-active: #3e5871;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(77, 106, 138, 0.14);
+  --mf-accent-faint: rgba(77, 106, 138, 0.07);
+
+  --mf-selection: rgba(77, 106, 138, 0.22);
+  --mf-focus-ring: rgba(77, 106, 138, 0.45);
+
+  --mf-state-success: #2e9e5b;
+  --mf-state-warning: #b97f1f;
+  --mf-state-error: #cc4b42;
+
+  --mf-shadow-sm: 0 1px 2px rgba(30, 36, 44, 0.05);
+  --mf-shadow-md: 0 4px 12px rgba(30, 36, 44, 0.09);
+  --mf-shadow-lg: 0 8px 24px rgba(30, 36, 44, 0.13);
+
+  --mf-glass-bg: rgba(237, 239, 241, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(31, 35, 40, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(30, 36, 44, 0.04), 0 2px 8px rgba(30, 36, 44, 0.05);
+}
+
+/* Exp-2：Paper Studio —— 纸面工作室（暖浅色，赭朱 accent） */
+html[data-theme="paper"] {
+  --mf-bg-app: #f4f1ea;
+  --mf-bg-surface: #ece8de;
+  --mf-bg-card: #faf7f0;
+  --mf-bg-elevated: #f0ebdf;
+
+  --mf-text-1: #2a2721;
+  --mf-text-2: #4f4a40;
+  --mf-text-3: #6b655a;
+  --mf-text-4: #948d7e;
+
+  --mf-border-1: #e0dacc;
+  --mf-border-2: #e8e3d7;
+
+  --mf-accent: #9c422a;
+  --mf-accent-hover: #b05238;
+  --mf-accent-active: #83371f;
+  --mf-on-accent: #fdf8f4;
+  --mf-accent-soft: rgba(156, 66, 42, 0.12);
+  --mf-accent-faint: rgba(156, 66, 42, 0.06);
+
+  --mf-selection: rgba(156, 66, 42, 0.20);
+  --mf-focus-ring: rgba(156, 66, 42, 0.42);
+
+  --mf-state-success: #5b7f4a;
+  --mf-state-warning: #a97b24;
+  --mf-state-error: #a94438;
+
+  --mf-shadow-sm: 0 1px 2px rgba(90, 75, 50, 0.06);
+  --mf-shadow-md: 0 4px 12px rgba(90, 75, 50, 0.10);
+  --mf-shadow-lg: 0 8px 24px rgba(90, 75, 50, 0.14);
+
+  --mf-glass-bg: rgba(250, 247, 240, 0.72);
+  --mf-glass-border: rgba(255, 253, 248, 0.5);
+  --mf-overlay-modal: rgba(60, 52, 38, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(90, 75, 50, 0.04), 0 2px 8px rgba(90, 75, 50, 0.06);
+}
+
+/* Exp-3：Midnight —— 午夜深蓝（深色） */
+html[data-theme="midnight"] {
+  --mf-bg-app: #0b0e14;
+  --mf-bg-surface: #10141d;
+  --mf-bg-card: #161b26;
+  --mf-bg-elevated: #1d2331;
+
+  --mf-text-1: #dde3ec;
+  --mf-text-2: #b8c0ce;
+  --mf-text-3: #8791a3;
+  --mf-text-4: #5c6577;
+
+  --mf-border-1: #232a3a;
+  --mf-border-2: #1b2130;
+
+  --mf-accent: #6d8fbf;
+  --mf-accent-hover: #82a3ce;
+  --mf-accent-active: #59789f;
+  --mf-on-accent: #f0f4fa;
+  --mf-accent-soft: rgba(109, 143, 191, 0.16);
+  --mf-accent-faint: rgba(109, 143, 191, 0.08);
+
+  --mf-selection: rgba(109, 143, 191, 0.30);
+  --mf-focus-ring: rgba(109, 143, 191, 0.55);
+
+  --mf-state-success: #3fb96f;
+  --mf-state-warning: #d9a13b;
+  --mf-state-error: #e05b52;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  --mf-glass-bg: rgba(16, 20, 29, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.08);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.58);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* Exp-4：Mono —— 纯单色（深色，零彩度，反白 accent） */
+html[data-theme="mono"] {
+  --mf-bg-app: #111112;
+  --mf-bg-surface: #171718;
+  --mf-bg-card: #1d1d1f;
+  --mf-bg-elevated: #252527;
+
+  --mf-text-1: #e5e5e6;
+  --mf-text-2: #c2c2c4;
+  --mf-text-3: #8f8f93;
+  --mf-text-4: #636366;
+
+  --mf-border-1: #2a2a2d;
+  --mf-border-2: #212124;
+
+  --mf-accent: #e5e5e6;
+  --mf-accent-hover: #f2f2f3;
+  --mf-accent-active: #cfcfd1;
+  --mf-on-accent: #111112;
+  --mf-accent-soft: rgba(229, 229, 230, 0.12);
+  --mf-accent-faint: rgba(229, 229, 230, 0.06);
+
+  --mf-selection: rgba(229, 229, 230, 0.24);
+  --mf-focus-ring: rgba(229, 229, 230, 0.50);
+
+  --mf-state-success: #3fb96f;
+  --mf-state-warning: #d9a13b;
+  --mf-state-error: #e05b52;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.26);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.34);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.44);
+
+  --mf-glass-bg: rgba(23, 23, 24, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.08);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.58);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* Exp-5：Warm Minimal —— 暖调极简（浅色，焦糖 accent） */
+html[data-theme="warm-minimal"] {
+  --mf-bg-app: #faf8f5;
+  --mf-bg-surface: #f2eee9;
+  --mf-bg-card: #f5f1ec;
+  --mf-bg-elevated: #ede8e1;
+
+  --mf-text-1: #2b2825;
+  --mf-text-2: #524e49;
+  --mf-text-3: #75706a;
+  --mf-text-4: #9b968f;
+
+  --mf-border-1: #e5e0d8;
+  --mf-border-2: #ece7e0;
+
+  --mf-accent: #a56f45;
+  --mf-accent-hover: #b57f54;
+  --mf-accent-active: #8f5d38;
+  --mf-on-accent: #fdfaf6;
+  --mf-accent-soft: rgba(165, 111, 69, 0.13);
+  --mf-accent-faint: rgba(165, 111, 69, 0.06);
+
+  --mf-selection: rgba(165, 111, 69, 0.20);
+  --mf-focus-ring: rgba(165, 111, 69, 0.42);
+
+  --mf-state-success: #5b7f4a;
+  --mf-state-warning: #a97b24;
+  --mf-state-error: #b04a3e;
+
+  --mf-shadow-sm: 0 1px 2px rgba(80, 68, 55, 0.05);
+  --mf-shadow-md: 0 4px 12px rgba(80, 68, 55, 0.09);
+  --mf-shadow-lg: 0 8px 24px rgba(80, 68, 55, 0.13);
+
+  --mf-glass-bg: rgba(245, 241, 236, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(55, 48, 40, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(80, 68, 55, 0.03), 0 2px 8px rgba(80, 68, 55, 0.05);
+}
+
+/* Exp-6：Aurora —— 极光青绿（深色，低饱和，非霓虹） */
+html[data-theme="aurora"] {
+  --mf-bg-app: #0d1210;
+  --mf-bg-surface: #121815;
+  --mf-bg-card: #18201c;
+  --mf-bg-elevated: #1f2923;
+
+  --mf-text-1: #dfe7e2;
+  --mf-text-2: #bac6bf;
+  --mf-text-3: #88958d;
+  --mf-text-4: #5d6961;
+
+  --mf-border-1: #24302a;
+  --mf-border-2: #1c2420;
+
+  --mf-accent: #5fa893;
+  --mf-accent-hover: #72b8a4;
+  --mf-accent-active: #4c8f7b;
+  --mf-on-accent: #0e1412;
+  --mf-accent-soft: rgba(95, 168, 147, 0.15);
+  --mf-accent-faint: rgba(95, 168, 147, 0.07);
+
+  --mf-selection: rgba(95, 168, 147, 0.28);
+  --mf-focus-ring: rgba(95, 168, 147, 0.50);
+
+  --mf-state-success: #3fb96f;
+  --mf-state-warning: #d9a13b;
+  --mf-state-error: #e05b52;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.26);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.34);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.44);
+
+  --mf-glass-bg: rgba(18, 24, 21, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.08);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.58);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* ============================================================
+ * 全局规范：选区 / 焦点环 / 图标描边
+ * ============================================================ */
+
+/* 选区颜色跟随主题 accent（低饱和） */
+::selection {
+  background: var(--mf-selection);
+}
+
+/* 键盘焦点环：仅 :focus-visible 触发，无发光 */
+:focus-visible {
+  outline: 2px solid var(--mf-focus-ring);
+  outline-offset: 1px;
+}
+
+/* Icon 规范：lucide 统一 1.75 描边（CSS 覆盖 SVG 表现属性） */
+svg.lucide {
+  stroke-width: 1.75;
+}
+
+/* ============================================================
+ * 系统状态反馈动画（Quiet 版）
+ * 原则：单色、小振幅、传递状态而非表演。
+ * ============================================================ */
+
+@keyframes mfSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* 单色环形 spinner：Agent 思考 / 流式状态 */
+.mf-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--mf-text-4) 45%, transparent);
+  border-top-color: var(--mf-accent);
+  animation: mfSpin 0.9s linear infinite;
+}
+
+/* 语音录音指示环：微幅扩散淡出，无光晕 */
+@keyframes mfVoiceRing {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+
+.mf-voice-ring {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  border: 1px solid var(--mf-accent);
+  animation: mfVoiceRing 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
+/* 尊重系统减少动态效果偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .mf-spinner { animation-duration: 1.8s; }
+  .mf-voice-ring { animation: none; opacity: 0.35; }
+}

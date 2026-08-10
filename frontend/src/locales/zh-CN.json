@@ -42,7 +42,8 @@
   "createProject": "创建",
   "pickDirectory": "选择文件夹",
   "newChatInProject": "在此项目中新建会话",
-  "newChatTitle": "新会话"
+  "newChatTitle": "新会话",
+  "openProjectFolder": "打开项目目录"
  },
  "home": {
   "welcome": [
@@ -221,6 +222,33 @@
     "light": "浅色",
     "dark": "深色",
     "system": "跟随系统"
+   },
+   "visualTheme": {
+    "desc": "选择界面视觉主题，每套主题包含完整配色与层级体系",
+    "obsidian": "Obsidian Dark",
+    "obsidianDesc": "专业 AI 工作站 · 默认",
+    "studio": "Apple Studio Light",
+    "studioDesc": "简洁明亮 · 日间通用",
+    "terminal": "Developer Terminal",
+    "terminalDesc": "开发者终端 · 高密度"
+   },
+   "experimentalTheme": {
+    "title": "实验主题",
+    "desc": "探索中的主题，用于预览与筛选，可能在未来版本调整或移除",
+    "placeholder": "选择实验主题",
+    "backToOfficial": "返回官方主题（Obsidian Dark）",
+    "titanium": "Titanium",
+    "titaniumDesc": "钛金冷灰 · 金属质感浅色",
+    "paper": "Paper Studio",
+    "paperDesc": "纸面工作室 · 暖调创作",
+    "midnight": "Midnight",
+    "midnightDesc": "午夜深蓝 · 深沉静谧",
+    "mono": "Mono",
+    "monoDesc": "纯单色 · 零彩度反白强调",
+    "warmMinimal": "Warm Minimal",
+    "warmMinimalDesc": "暖调极简 · 柔和米白",
+    "aurora": "Aurora",
+    "auroraDesc": "极光青绿 · 低饱和非霓虹"
    },
    "language": {
     "title": "语言",
@@ -422,6 +450,70 @@
    "statusInactive": "未激活",
    "statusInstalled": "已安装",
    "statusError": "异常"
+  },
+  "extensions": {
+   "title": "扩展",
+   "desc": "管理 AI 增强能力",
+   "futureNote": "未来将支持 Plugins（插件生态）与 Connections（外部连接），当前仅开放 Skills。",
+   "skills": {
+    "sectionTitle": "Skills",
+    "sectionDesc": "管理 AI 专业能力增强包",
+    "scenarios": "适用场景",
+    "capabilities": "能力说明",
+    "install": "安装",
+    "installed": "已启用",
+    "enabled": "已启用",
+    "disable": "关闭",
+    "installedCount": "已启用 {{count}} / {{total}}",
+    "moreInfo": "点击卡片查看详情"
+   },
+   "plugins": {
+    "sectionTitle": "Plugins",
+    "sectionDesc": "系统级功能插件，V1 只读显示当前状态",
+    "softNote": "插件生态将在后续版本开放，本期仅展示后端默认插件及其运行状态。",
+    "empty": "暂无插件",
+    "activeCount": "已激活 {{count}} / {{total}}",
+    "statusActive": "已激活",
+    "statusInstalled": "已安装",
+    "statusInactive": "未激活",
+    "statusError": "异常"
+   },
+   "skillDetail": {
+    "backToList": "返回 Skills 列表",
+    "notFound": "未找到该 Skill"
+   },
+   "skillList": {
+    "ppt": {
+     "name": "PPT 专家",
+     "summary": "帮助 Agent 规划演示结构、设计页面逻辑、优化表达方式。",
+     "scenarios": "需要制作或优化演示文稿时",
+     "capabilities": "演示结构规划、要点提炼、页面逻辑、表达润色"
+    },
+    "python": {
+     "name": "Python 专家",
+     "summary": "帮助 Agent 编写 Python 代码、调试问题、提供工程化建议。",
+     "scenarios": "需要编写、调试或重构 Python 代码时",
+     "capabilities": "脚本编写、调试诊断、工程实践、性能优化"
+    },
+    "research": {
+     "name": "深度研究助手",
+     "summary": "帮助 Agent 进行多轮检索、交叉验证、输出有据可查的研究报告。",
+     "scenarios": "需要主题调研、信息汇总、报告生成时",
+     "capabilities": "多轮检索、信息交叉、报告结构化、来源标注"
+    },
+    "ui": {
+     "name": "UI 设计专家",
+     "summary": "帮助 Agent 设计界面结构、视觉层级与组件复用。",
+     "scenarios": "需要设计或评审 UI 方案时",
+     "capabilities": "信息架构、视觉层级、组件复用、可访问性"
+    },
+    "security": {
+     "name": "安全审计专家",
+     "summary": "帮助 Agent 识别安全风险、给出修复建议并标注潜在影响。",
+     "scenarios": "需要审查代码安全、评估风险时",
+     "capabilities": "风险识别、修复建议、影响评估、合规提示"
+    }
+   }
   },
   "about": {
    "title": "关于",

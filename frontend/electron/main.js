@@ -20,6 +20,13 @@ app.on("second-instance", () => {
   }
 });
 
+// ── Windows 通知身份（Toast 归属）：与 electron-builder appId 保持一致 ──
+// 必须在 app.whenReady() 前调用；未设置时 Windows Toast 会归到 "Electron" 默认身份，
+// 导致通知不显示应用名/图标且无法进入系统通知设置管理
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.mfkagent.app");
+}
+
 const BACKEND_HOST = "127.0.0.1";
 let BACKEND_PORT = null; // 运行时动态探测
 let mainWindow;
@@ -300,7 +307,34 @@ async function createWindow() {
   });
 }
 
+/**
+ * Windows dev 模式通知身份补建：Windows 10+ 要求 Toast 的 AppUserModelId 必须对应
+ * 一个带 System.AppUserModel.ID 属性的开始菜单快捷方式，否则通知被系统静默丢弃。
+ * 打包版由 NSIS 安装器自动创建；dev 模式首次启动时用脚本补建（已存在则跳过）。
+ */
+function ensureDevNotificationShortcut() {
+  if (process.platform !== "win32" || process.env.ELECTRON_DEV !== "true") return;
+  try {
+    const programsDir = path.join(process.env.APPDATA || "", "Microsoft", "Windows", "Start Menu", "Programs");
+    const shortcutPath = path.join(programsDir, "MfkAgent Dev.lnk");
+    if (fs.existsSync(shortcutPath)) return;
+    const script = path.join(__dirname, "dev-notification-shortcut.ps1");
+    if (!fs.existsSync(script)) return;
+    console.log("[Electron] Creating dev notification shortcut (Windows Toast identity)...");
+    spawn("powershell", [
+      "-NoProfile", "-ExecutionPolicy", "Bypass",
+      "-File", script,
+      "-TargetExe", process.execPath,
+    ], { windowsHide: true, stdio: "ignore" }).on("error", (err) => {
+      console.warn("[Electron] dev notification shortcut failed:", err.message);
+    });
+  } catch (err) {
+    console.warn("[Electron] ensureDevNotificationShortcut failed:", err.message);
+  }
+}
+
 app.whenReady().then(async () => {
+  ensureDevNotificationShortcut();
   await startBackend();
   registerIpcHandlers();
   createTray();
@@ -410,6 +444,32 @@ function registerIpcHandlers() {
     }
   });
   console.log("[Electron] IPC handler 'open-in-folder' registered");
+
+  // 直接打开系统文件管理器进入指定目录（区别于 showItemInFolder 的“在父目录中选中”）
+  ipcMain.handle("open-path", async (_evt, dirPath) => {
+    try {
+      if (!dirPath || typeof dirPath !== "string") {
+        console.warn("[Electron] open-path: invalid path:", dirPath);
+        return false;
+      }
+      const absPath = path.isAbsolute(dirPath) ? dirPath : path.resolve(dirPath);
+      if (!fs.existsSync(absPath)) {
+        console.warn("[Electron] open-path: path not found:", absPath);
+        return false;
+      }
+      // shell.openPath 返回 Promise<string>：成功返回空字符串，失败返回错误信息
+      const errMsg = await shell.openPath(absPath);
+      if (errMsg) {
+        console.error("[Electron] open-path failed:", errMsg);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("[Electron] open-path exception:", err);
+      return false;
+    }
+  });
+  console.log("[Electron] IPC handler 'open-path' registered");
 }
 
 app.on("window-all-closed", () => {

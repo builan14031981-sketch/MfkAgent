@@ -4,14 +4,14 @@
  * SettingsPanel —— 设置面板薄壳（字段级边界重构后）
  *
  * 设计说明：
- * - 5 个导航 Tab 完整展示，严禁隐藏 ai/plugins 顶级入口。
+ * - 6 个导航 Tab 完整展示，严禁隐藏 ai/extensions 顶级入口。
  * - 每个 section 渲染 BasicSettingsView（基础选项）；
  *   model/ai 额外直接渲染 AdvancedSettingsView（深水区参数），无折叠交互，全量展示。
  * - 统管 props 和单向数据流不变，子组件通过 props 消费。
  */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Monitor, Cpu, Brain, Info, Puzzle, ShieldAlert } from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
@@ -50,6 +50,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   });
   const [currentView, setCurrentView] = useState<ViewState>("main_settings");
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  // 三级导航：Skill 详情（在扩展区点击 Skill 卡片后进入）
+  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [direction, setDirection] = useState<1 | -1>(1);
 
   useEffect(() => {
@@ -59,6 +61,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const handleClose = () => {
     setCurrentView("main_settings");
     setEditingAgentId(null);
+    setEditingSkillId(null);
     onClose();
   };
 
@@ -86,7 +89,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "model", label: t("settings.model.title"), icon: Cpu },
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
     { id: "security", label: t("settings.security.title"), icon: ShieldAlert },
-    { id: "plugins", label: t("settings.plugins.title"), icon: Puzzle },
+    { id: "extensions", label: t("settings.extensions.title"), icon: Blocks },
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
@@ -155,6 +158,8 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       key={item.id}
                       onClick={() => {
                         setActiveSection(item.id);
+                        // 切 Tab 时重置 Skill 详情，返回扩展主页
+                        setEditingSkillId(null);
                         try { localStorage.setItem("mfk_settings_active_section", item.id); } catch { /* noop */ }
                       }}
                       style={{
@@ -189,6 +194,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       setDirection(1);
                       setCurrentView("agent_list");
                     }}
+                    editingSkillId={editingSkillId}
+                    onSelectSkill={(id) => setEditingSkillId(id)}
+                    onBackToExtensionList={() => setEditingSkillId(null)}
                   />
 
                   {/* 高级区块（model/ai 深水区参数，全量直接展示，无折叠） */}

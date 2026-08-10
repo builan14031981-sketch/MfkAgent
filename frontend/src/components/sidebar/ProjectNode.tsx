@@ -29,7 +29,16 @@ interface ProjectNodeProps {
   onChatMore: (e: React.MouseEvent, chatId: number) => void;
 }
 
-/** 项目文件夹节点 + 其下会话列表 */
+/**
+ * 项目文件夹节点 + 其下会话列表
+ *
+ * V77 设计规则（与 ChatRow 对齐）：
+ * - 行内图标统一 var(--sidebar-icon-size) = 14px
+ * - 小标识（Pin/角标）统一 var(--sidebar-icon-size-sm) = 12px
+ * - 行内次级按钮统一 22×22，圆角 radius-sm (8px)
+ * - 活动态：背景 --sidebar-active-bg + 文字 --sidebar-active-fg + 2px 左侧指示条
+ * - hover 才显形的按钮：默认 opacity 0（不用 color: transparent，避免色相不一致）
+ */
 export function ProjectNode({
   project,
   chats,
@@ -52,6 +61,7 @@ export function ProjectNode({
   onChatMore,
 }: ProjectNodeProps) {
   const { t } = useTranslation();
+  const isActive = isActiveProject;
 
   return (
     <div style={{ marginBottom: "1px" }}>
@@ -62,52 +72,121 @@ export function ProjectNode({
         onMouseEnter={() => onHoverChange(true)}
         onMouseLeave={() => onHoverChange(false)}
         style={{
+          position: "relative",
           display: "flex",
           alignItems: "center",
-          gap: "6px",
-          padding: "5px 8px",
+          gap: "8px",
+          padding: "var(--sidebar-row-py) var(--sidebar-row-px)",
           borderRadius: "var(--radius-sm)",
           cursor: "pointer",
-          background: isActiveProject ? "var(--color-primary-lighter)" : "transparent",
+          background: isActive ? "var(--sidebar-active-bg)" : "transparent",
           transition: "background var(--transition-fast)",
         }}
       >
-        <span style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "14px",
-          height: "14px",
-          transition: "transform var(--transition-fast)",
-          transform: isCollapsed ? "none" : "rotate(90deg)",
-        }}>
-          <ChevronRight style={{ width: "12px", height: "12px", color: "var(--text-level-4)" }} />
+        {/* 活动项目：2px 左侧指示条（与 ChatRow 对齐） */}
+        {isActive && (
+          <span
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: "4px",
+              top: "20%",
+              bottom: "20%",
+              width: "var(--sidebar-indicator-w)",
+              borderRadius: "var(--radius-full)",
+              background: "var(--sidebar-active-fg)",
+            }}
+          />
+        )}
+
+        {/* 折叠/展开 Chevron：与小图标档同尺寸 */}
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "var(--sidebar-icon-size-sm)",
+            height: "var(--sidebar-icon-size-sm)",
+            flexShrink: 0,
+            transition: "transform var(--transition-fast)",
+            transform: isCollapsed ? "none" : "rotate(90deg)",
+          }}
+        >
+          <ChevronRight
+            style={{
+              width: "var(--sidebar-icon-size-sm)",
+              height: "var(--sidebar-icon-size-sm)",
+              color: "var(--text-level-4)",
+            }}
+          />
         </span>
+
+        {/* 文件夹图标：行内统一 14px */}
         {isCollapsed ? (
-          <Folder style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
+          <Folder
+            style={{
+              width: "var(--sidebar-icon-size)",
+              height: "var(--sidebar-icon-size)",
+              color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-3)",
+              flexShrink: 0,
+            }}
+          />
         ) : (
-          <FolderOpen style={{ width: "13px", height: "13px", color: isActiveProject ? "var(--color-primary)" : "var(--text-level-3)", flexShrink: 0 }} />
+          <FolderOpen
+            style={{
+              width: "var(--sidebar-icon-size)",
+              height: "var(--sidebar-icon-size)",
+              color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-3)",
+              flexShrink: 0,
+            }}
+          />
         )}
-        <span style={{
-          flex: 1,
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontSize: "13px",
-          fontWeight: "500",
-          color: isActiveProject ? "var(--color-primary)" : "var(--text-level-2)",
-        }}>{project.name}</span>
+
+        {/* 项目名：13px / 500 weight / 活动态 primary 色 */}
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: "13px",
+            fontWeight: 500,
+            lineHeight: "var(--line-height-normal)",
+            color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-2)",
+          }}
+        >
+          {project.name}
+        </span>
+
+        {/* Pin 标识：小图标档 12px */}
         {project.is_pinned && (
-          <Pin style={{ width: "11px", height: "11px", flexShrink: 0, color: "var(--color-primary)" }} />
+          <Pin
+            style={{
+              width: "var(--sidebar-icon-size-sm)",
+              height: "var(--sidebar-icon-size-sm)",
+              flexShrink: 0,
+              color: "var(--sidebar-active-fg)",
+            }}
+          />
         )}
-        <span style={{
-          fontSize: "11px",
-          color: "var(--text-level-4)",
-          flexShrink: 0,
-          fontVariantNumeric: "tabular-nums",
-        }}>{chats.length}</span>
-        {/* 悬停显示 +：快速新建会话 */}
+
+        {/* chat 数量角标：12px + tabular-nums（与提示同档） */}
+        <span
+          style={{
+            fontSize: "12px",
+            lineHeight: "var(--line-height-normal)",
+            color: "var(--text-level-4)",
+            flexShrink: 0,
+            fontVariantNumeric: "tabular-nums",
+            minWidth: "14px",
+            textAlign: "right",
+          }}
+        >
+          {chats.length}
+        </span>
+
+        {/* 悬停显示 +：快速新建会话（22×22 / 圆角 radius-sm） */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -118,23 +197,36 @@ export function ProjectNode({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "18px",
-            height: "18px",
-            borderRadius: "var(--radius-xs)",
+            width: "var(--sidebar-btn-size)",
+            height: "var(--sidebar-btn-size)",
+            borderRadius: "var(--radius-sm)",
             border: "none",
-            background: isHovered ? "var(--bg-level-3)" : "transparent",
+            background: "transparent",
             cursor: "pointer",
-            color: isHovered ? "var(--color-primary)" : "transparent",
-            opacity: isHovered ? 1 : 0,
+            color: "var(--text-level-3)",
             flexShrink: 0,
-            transition: "opacity var(--transition-fast), color var(--transition-fast)",
+            opacity: isHovered ? 1 : 0,
+            transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
+            outline: "none",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-primary)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "transparent"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-level-3)";
+            e.currentTarget.style.color = "var(--sidebar-active-fg)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--text-level-3)";
+          }}
         >
-          <Plus style={{ width: "12px", height: "12px" }} />
+          <Plus
+            style={{
+              width: "var(--sidebar-icon-size-sm)",
+              height: "var(--sidebar-icon-size-sm)",
+            }}
+          />
         </button>
-        {/* 悬停显示 ...：更多操作（删除项目） */}
+
+        {/* 悬停显示 ...：更多操作（22×22 / 圆角 radius-sm） */}
         <button
           onClick={(e) => onMoreProject(e, project.id)}
           title={t("sidebar.more")}
@@ -142,26 +234,37 @@ export function ProjectNode({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            width: "18px",
-            height: "18px",
-            borderRadius: "var(--radius-xs)",
+            width: "var(--sidebar-btn-size)",
+            height: "var(--sidebar-btn-size)",
+            borderRadius: "var(--radius-sm)",
             border: "none",
-            background: isHovered ? "var(--bg-level-3)" : "transparent",
+            background: "transparent",
             cursor: "pointer",
-            color: isHovered ? "var(--text-level-3)" : "transparent",
-            opacity: isHovered ? 1 : 0,
+            color: "var(--text-level-3)",
             flexShrink: 0,
-            transition: "opacity var(--transition-fast), color var(--transition-fast)",
+            opacity: isHovered ? 1 : 0,
+            transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
             outline: "none",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--text-level-1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "transparent"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-level-3)";
+            e.currentTarget.style.color = "var(--text-level-1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--text-level-3)";
+          }}
         >
-          <MoreHorizontal style={{ width: "13px", height: "13px" }} />
+          <MoreHorizontal
+            style={{
+              width: "var(--sidebar-icon-size)",
+              height: "var(--sidebar-icon-size)",
+            }}
+          />
         </button>
       </div>
 
-      {/* 项目内会话 */}
+      {/* 项目内会话：与 ChatRow 一致的缩进（22px 对齐项目图标起点） */}
       {!isCollapsed && chats.length > 0 && (
         <div style={{ paddingTop: "1px" }}>
           {chats.map((chat) => (

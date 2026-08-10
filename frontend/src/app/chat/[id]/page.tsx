@@ -12,6 +12,7 @@ import { uploadAttachment } from "@/hooks/useMessages";
 import { useChatStream } from "@/hooks/useChatStream";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
+import { useStreamStore } from "@/lib/streamStore";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useProviderConfig } from "@/hooks/useProviderConfig";
 import { compressMessages } from "@/lib/api";
@@ -89,6 +90,16 @@ function ChatPageInner() {
     reasoningActive,
     stop,
   } = useChatStream({ chatId, sendMessageStream, appendMessage, refetch });
+
+  // 全局活跃会话同步：后台流结束时的通知判定依赖它（组件卸载→置 null，
+  // 修复“离开聊天页后 ref 冻结导致永远不弹通知”的缺陷）
+  useEffect(() => {
+    if (chatId == null) return;
+    useStreamStore.getState().setActiveChatId(chatId);
+    return () => {
+      useStreamStore.getState().setActiveChatId(null);
+    };
+  }, [chatId]);
 
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);

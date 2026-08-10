@@ -64,7 +64,7 @@ function AiAdvanced(props: AdvancedSettingsViewProps) {
 
 /**
  * 高级区块视图入口：根据 activeSection 路由到对应 section 的高级部分。
- * general / plugins / about 无高级区块，返回 null。
+ * general / extensions / about 无高级区块，返回 null。
  */
 export function AdvancedSettingsView(
   props: AdvancedSettingsViewProps & { activeSection: SettingSectionId }
@@ -77,7 +77,7 @@ export function AdvancedSettingsView(
       return <ModelAdvanced />;
     case "ai":
       return <AiAdvanced {...props} />;
-    case "plugins":
+    case "extensions":
     case "about":
     default:
       return null;

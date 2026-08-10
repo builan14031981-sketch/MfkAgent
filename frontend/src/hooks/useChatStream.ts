@@ -6,6 +6,7 @@ import type { PermissionMode } from "@/components/chat-input/PermissionSelector"
 import type { Attachment } from "@/components/FileDropZone";
 import { apiPost } from "@/lib/api";
 import { showDesktopNotification } from "@/lib/notify";
+import { formatDuration } from "@/lib/format";
 import { useStreamStore, OrbStage } from "@/lib/streamStore";
 import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ThinkingIndicatorEvent } from "@/types/runtime";
 
@@ -121,6 +122,8 @@ export function useChatStream({
       refs.agentStateTimer = null;
     }
     store.resetSession(targetChatId);
+    // 同步清除侧边栏加载指示器（后台会话出错时页面 effect 不会触发）
+    store.setStream(targetChatId, null);
   }, [store]);
 
   /** 用户手动停止生成：abort 当前 chatId 的 SSE 连接 */
@@ -177,6 +180,15 @@ export function useChatStream({
     async (content: string, options: SendStreamOptions = {}) => {
       if (!chatId) throw new Error("No chat selected");
       const targetChatId = chatId; // 捕获发送时的 chatId，后续所有操作都使用此值
+      const startedAt = Date.now(); // 任务开始时刻：用于完成通知与用时展示
+
+      // “用户离开”判定（系统通知触发条件）：切到其他会话/离开聊天页（全局活跃会话追踪，
+      // 不受组件卸载后 ref 冻结影响）、窗口最小化/隐藏、或焦点在其他应用——任一成立即弹通知；
+      // 用户正在查看该会话时界面已有反馈，不重复弹。
+      const isUserAway = (): boolean =>
+        useStreamStore.getState().activeChatId !== targetChatId ||
+        (typeof document !== "undefined" &&
+          (document.visibilityState !== "visible" || !document.hasFocus()));
       const { modelId, personalityLevel, reasoningEffort, permissionMode, appendUserMessage = true, buildContent, attachments } = options;
 
       const refs = store.getRefs(targetChatId);
@@ -314,6 +326,9 @@ export function useChatStream({
           clearTimeout(refs.agentStateTimer);
           refs.agentStateTimer = null;
         }
+        // 后台完成时侧边栏加载指示器无人清理（页面 effect 仅在当前会话生效）→ 主动清除，
+        // 修复“后台任务完成后侧边栏一直转圈，点进去才恢复”
+        store.setStream(targetChatId, null);
 
         // 仅当目标会话是当前活跃会话时追加 AI 消息到本地列表
         if (activeChatIdRef.current === targetChatId) {
@@ -334,10 +349,11 @@ export function useChatStream({
         // 如果目标会话不是当前活跃会话，AI 消息已由后端持久化，
         // 用户切回该会话时 useMessages 会自动 fetchMessages 获取最新消息
 
-        // 长任务完成通知：目标会话非当前活跃会话时弹通知（用户可能在看其他会话或最小化窗口）
-        if (activeChatIdRef.current !== targetChatId) {
+        // 长任务完成通知：用户离开（切会话/离开页面/最小化/切应用）时弹通知，正文附用时
+        if (isUserAway()) {
           const preview = final.slice(0, 80) + (final.length > 80 ? "..." : "");
-          showDesktopNotification("任务完成", preview || "AI 回复已完成");
+          const elapsed = formatDuration(Date.now() - startedAt);
+          showDesktopNotification("任务完成", `${preview || "AI 回复已完成"} · 用时 ${elapsed}`);
         }
       };
 
@@ -442,8 +458,11 @@ export function useChatStream({
               }
               return { timeline: [...prev.timeline, { id: `approval-${approval.approval_id}`, type: "approval" as const, approval }] };
             });
-            // 审批请求通知（仅新审批时触发，去重逻辑已在上方保证）
-            showDesktopNotification("需要审批", `工具 ${approval.tool || "未知工具"} 请求执行，请确认`);
+            // 审批请求通知（仅新审批时触发，去重逻辑已在上方保证）；
+            // 与任务完成通知一致：用户正在查看该会话时界面已有审批卡片，不重复弹系统通知
+            if (isUserAway()) {
+              showDesktopNotification("需要审批", `工具 ${approval.tool || "未知工具"} 请求执行，请确认`);
+            }
           },
           // onToolOutput
           () => {},
@@ -545,8 +564,8 @@ export function useChatStream({
                 };
                 return { tasks: next };
               });
-              // Phase 3 T3/T8: 任务完成/失败通知（仅后台会话时触发）
-              if (activeChatIdRef.current !== targetChatId) {
+              // Phase 3 T3/T8: 任务完成/失败通知（仅用户离开时触发）
+              if (isUserAway()) {
                 if (evt.type === "task_completed") {
                   showDesktopNotification("任务完成", node.action || "子任务已完成");
                 } else if (evt.type === "task_failed") {
@@ -596,8 +615,10 @@ export function useChatStream({
           isSending: false,
           streamingError: msg,
         }));
-        // 流式错误通知
-        showDesktopNotification("任务出错", msg.slice(0, 100));
+        // 流式错误通知：与任务完成通知一致，仅用户离开时弹（在场时界面已有错误卡片）
+        if (isUserAway()) {
+          showDesktopNotification("任务出错", msg.slice(0, 100));
+        }
       }
     },
     [chatId, sendMessageStream, appendMessage, refetch, resetStreaming, store]

@@ -11,19 +11,11 @@ interface TaskProgressCardProps {
 }
 
 /**
- * Agent 标识 → Badge 配色映射。
- * 不同角色用不同色调，便于一眼区分多 Agent 协同分工。
- * 未列出的 agent 走兜底色（中性灰）。
+ * V2 规范：Agent 身份不再分配专属色（废除彩虹徽章）。
+ * 统一中性灰阶徽章；仅任务状态使用语义色（running=accent / failed=error）。
  */
-const AGENT_BADGE: Record<string, { bg: string; color: string }> = {
-  coding_agent: { bg: "color-mix(in srgb, var(--color-primary) 12%, transparent)", color: "var(--color-primary)" },
-  research_agent: { bg: "color-mix(in srgb, #a855f7 14%, transparent)", color: "#a855f7" },
-  backend_agent: { bg: "color-mix(in srgb, #3b82f6 14%, transparent)", color: "#3b82f6" },
-  frontend_agent: { bg: "color-mix(in srgb, #ec4899 14%, transparent)", color: "#ec4899" },
-  analyst_agent: { bg: "color-mix(in srgb, #f59e0b 14%, transparent)", color: "#f59e0b" },
-  writer_agent: { bg: "color-mix(in srgb, #10b981 14%, transparent)", color: "#10b981" },
-};
-const DEFAULT_BADGE = { bg: "color-mix(in srgb, var(--text-level-4) 14%, transparent)", color: "var(--text-level-2)" };
+const AGENT_BADGE: { bg: string; color: string } = { bg: "color-mix(in srgb, var(--text-level-4) 12%, transparent)", color: "var(--text-level-2)" };
+const DEFAULT_BADGE = AGENT_BADGE;
 
 /** 状态 → 图标 + 主色 */
 function StatusIcon({ status }: { status: TaskStatus }) {
@@ -40,9 +32,9 @@ function StatusIcon({ status }: { status: TaskStatus }) {
   return <span style={{ width: 8, height: 8, borderRadius: "50%", border: "1.5px solid var(--text-level-4)", flexShrink: 0 }} />;
 }
 
-/** Agent 角色 Badge */
+/** Agent 角色 Badge（V2：统一中性灰阶，不再按角色分色） */
 function AgentBadge({ agent }: { agent: string }) {
-  const colors = AGENT_BADGE[agent] ?? DEFAULT_BADGE;
+  const colors = DEFAULT_BADGE;
   const label = agent.replace(/_agent$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) || agent;
   return (
     <span style={{
@@ -62,8 +54,8 @@ function AgentBadge({ agent }: { agent: string }) {
 /**
  * 多 Agent 任务进度卡片：实时展示当前回合的任务执行情况。
  * - 任务按 task_started 到达顺序排列
- * - Running 显示 spinner，Completed 显示绿色 ✓，Failed 显示红色 ✗
- * - 每个任务带 Agent 角色 Badge（不同颜色）
+ * - Running 显示 spinner，Completed 显示灰色 ✓，Failed 显示红色 ✗
+ * - 每个任务带 Agent 角色 Badge（统一中性灰阶，V2 规范）
  * - tasks 为空时不渲染（保持聊天界面干净）
  */
 export const TaskProgressCard = memo(function TaskProgressCard({ tasks }: TaskProgressCardProps) {

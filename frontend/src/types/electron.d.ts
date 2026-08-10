@@ -12,6 +12,7 @@ declare global {
       selectDirectory?: () => Promise<string | null>;
       showNotification?: (opts: { title?: string; body?: string; silent?: boolean }) => Promise<boolean>;
       openInFolder?: (filePath: string) => Promise<boolean>;
+      openPath?: (dirPath: string) => Promise<boolean>;
     };
   }
 }

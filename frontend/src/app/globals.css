@@ -1,15 +1,14 @@
 /* ========================================
- * MfkAgent 主题设计规范
- * 
- * 设计理念：
- * - 简洁、柔和、现代、克制、高级
- * - 长时间阅读舒适
- * - 参考 Apple、ChatGPT、豆包 的设计理念
- * - 形成 Agent 平台自己的视觉风格
+ * MfkAgent 全局基础样式（V2.0）
+ *
+ * 视觉 Token 与主题配色已迁移至 src/styles/tokens.css
+ * （--mf-* 语义 Token + obsidian/studio/terminal 三主题）。
+ * 本文件保留：全局 reset、滚动条、动画、按钮基础、
+ * Markdown 排版，以及旧 Token 名的 SSR 兜底值。
  * ======================================== */
 
 /* ========================================
- * 浅色主题
+ * 浅色兜底（SSR 首屏 / data-theme 未就绪时使用）
  * ======================================== */
 :root {
   /* 主题色 - 统一使用 */
@@ -71,11 +70,11 @@
   --transition-slow: 0.3s ease;
   --transition-click: 0.6s ease;
 
-  /* 状态颜色 */
-  --color-success: #34C759;
-  --color-warning: #FF9500;
-  --color-error: #FF3B30;
-  --color-info: #007AFF;
+  /* 状态颜色（低饱和语义色） */
+  --color-success: #2e9e5b;
+  --color-warning: #b97f1f;
+  --color-error: #cc4b42;
+  --color-info: #0a6cd6;
 
   /* 复制成功反馈 - 低饱和米灰中性色（贴近背景，柔和不刺眼） */
   --color-copied: #d9cfc0;
@@ -96,51 +95,61 @@
 
   /* 主色按钮/气泡内的文字色：默认白，主题色背景对比度足够 */
   --text-on-primary: #ffffff;
+
+  /* === V77 侧栏 Token 浅色原件（修复：此前仅 .dark 定义，浅色主题变量失效导致图标炸大/行距发紧/激活态丢失） === */
+  --sidebar-row-py: 5px;
+  --sidebar-row-px: 10px;
+  --sidebar-icon-size: 14px;
+  --sidebar-icon-size-sm: 12px;
+  --sidebar-btn-size: 22px;
+  --sidebar-indicator-w: 2px;
+  /* active-bg/fg 引用主色变量，深浅主题各自解析，无需镜像 */
+  --sidebar-active-bg: var(--color-primary-light);
+  --sidebar-active-fg: var(--color-primary);
 }
 
 /* ========================================
- * 深色主题
- * 设计理念：柔和炭黑体系，降低视觉压迫感
+ * 深色兜底（与 Obsidian Dark 对齐：柔和石墨，避免纯黑）
  * ======================================== */
 .dark {
-  /* 主题色 - 深色模式下略微调整 */
-  --color-primary: #0a84ff;
-  --color-primary-hover: #409cff;
-  --color-primary-active: #0077ed;
-  --color-primary-light: rgba(10, 132, 255, 0.15);
-  --color-primary-lighter: rgba(10, 132, 255, 0.08);
+  /* 主题色 - 降饱和工具蓝 */
+  --color-primary: #4e8cd9;
+  --color-primary-hover: #619be3;
+  --color-primary-active: #3d7bc4;
+  --color-primary-light: rgba(78, 140, 217, 0.14);
+  --color-primary-lighter: rgba(78, 140, 217, 0.07);
 
-  /* 背景层级 - 柔和炭黑体系 */
-  --bg-level-1: #1c1c1e;           /* 侧边栏背景 */
-  --bg-level-2: #0a0a0a;           /* 主内容背景 */
-  --bg-level-3: #2c2c2e;           /* 卡片、输入框、按钮容器 */
-  --bg-level-4: #3a3a3c;           /* 选中、高亮、交互元素 */
+  /* 背景层级 - 石墨层阶（侧边栏比主区亮一档，符合桌面工具惯例） */
+  --bg-level-1: #15181d;           /* 侧边栏背景 */
+  --bg-level-2: #0f1114;           /* 主内容背景 */
+  --bg-level-3: #1b1f26;           /* 卡片、输入框、按钮容器 */
+  --bg-level-4: #222732;           /* 选中、高亮、交互元素 */
 
-  /* 文字层级 - 深色模式下提高对比度 */
-  --text-level-1: #ffffff;         /* 页面标题 */
-  --text-level-2: #f5f5f7;         /* 正文内容 */
-  --text-level-3: #b0b0b5;         /* 辅助信息 */
-  --text-level-4: #8e8e93;         /* 提示信息、占位文字 */
+  /* 文字层级 */
+  --text-level-1: #e8eaed;         /* 页面标题 */
+  --text-level-2: #c6cad2;         /* 正文内容 */
+  --text-level-3: #9aa1ac;         /* 辅助信息 */
+  --text-level-4: #6a7180;         /* 提示信息、占位文字 */
 
   /* 边框 */
-  --border-primary: #38383a;       /* 主要边框 */
-  --border-secondary: #2c2c2e;     /* 次要边框 */
+  --border-primary: #262b34;       /* 主要边框 */
+  --border-secondary: #1e222b;     /* 次要边框 */
 
-  /* 阴影 */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  /* 阴影 - 深色下收敛强度 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.42);
 
   /* 毛玻璃 */
-  --glass-bg: rgba(28, 28, 30, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-bg: rgba(21, 24, 29, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
   --glass-blur: blur(20px) saturate(180%);
 
-  /* 状态颜色 - 深色模式下略微调整 */
-  --color-success: #30d158;
-  --color-warning: #ff9f0a;
-  --color-error: #ff453a;
-  --color-info: #0a84ff;
+  /* 状态颜色 - 降饱和 */
+  --color-success: #3fb96f;
+  --color-warning: #d9a13b;
+  --color-error: #e05b52;
+  --color-info: #4e8cd9;
 
   /* 复制成功反馈 - 深色模式下低饱和灰米色（贴近背景） */
   --color-copied: #4a4640;
@@ -153,6 +162,17 @@
   --line-height-normal: 1.5;
   --line-height-relaxed: 1.625;
   --text-on-primary: #ffffff;
+
+  /* === V77 新增：侧栏 Token 深色模式镜像 === */
+  /* 深色模式下 primary-light / primary 自动从 .dark 块继承，无需重复 */
+  --sidebar-row-py: 5px;
+  --sidebar-row-px: 10px;
+  --sidebar-icon-size: 14px;
+  --sidebar-icon-size-sm: 12px;
+  --sidebar-btn-size: 22px;
+  --sidebar-active-bg: var(--color-primary-light);
+  --sidebar-active-fg: var(--color-primary);
+  --sidebar-indicator-w: 2px;
 }
 
 /* ========================================
@@ -626,92 +646,11 @@ button:active {
 }
 
 /* ========================================
- * 强调色主题（设置 > 通用 > 主题）
- * 仅覆盖 --color-primary 家族；深色模式由 .dark.accent-* 双类单独调校。
- * default = 原生 Apple 蓝（:root / .dark 已定义），无需额外类。
- * 选择器层级：.dark.accent-* (0,2,0) > .accent-* (0,1,0)，
- * 且 .accent-* 位于 .dark 之后按文件顺序覆盖单类 .dark 值。
+ * 强调色体系已于 V2.0 废除：
+ * 每个视觉主题自带唯一 accent，不再提供
+ * teal/amber/violet/rose/graphite 多选。
+ * 见 src/styles/tokens.css。
  * ======================================== */
-
-/* 翡翠青 Teal */
-.accent-teal {
-  --color-primary: #0d9488;
-  --color-primary-hover: #0f766e;
-  --color-primary-active: #115e59;
-  --color-primary-light: rgba(13, 148, 136, 0.10);
-  --color-primary-lighter: rgba(13, 148, 136, 0.05);
-}
-.dark.accent-teal {
-  --color-primary: #14b8a6;
-  --color-primary-hover: #2dd4bf;
-  --color-primary-active: #0d9488;
-  --color-primary-light: rgba(20, 184, 166, 0.16);
-  --color-primary-lighter: rgba(20, 184, 166, 0.08);
-}
-
-/* 琥珀橙 Amber */
-.accent-amber {
-  --color-primary: #e8732a;
-  --color-primary-hover: #f0832f;
-  --color-primary-active: #c85d17;
-  --color-primary-light: rgba(232, 115, 42, 0.12);
-  --color-primary-lighter: rgba(232, 115, 42, 0.06);
-}
-.dark.accent-amber {
-  --color-primary: #d97706;
-  --color-primary-hover: #b45309;
-  --color-primary-active: #92400e;
-  --color-primary-light: rgba(217, 119, 6, 0.15);
-  --color-primary-lighter: rgba(217, 119, 6, 0.08);
-}
-
-/* 星空紫 Violet */
-.accent-violet {
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-primary-active: #5b21b6;
-  --color-primary-light: rgba(124, 58, 237, 0.10);
-  --color-primary-lighter: rgba(124, 58, 237, 0.05);
-}
-.dark.accent-violet {
-  --color-primary: #8b5cf6;
-  --color-primary-hover: #a78bfa;
-  --color-primary-active: #7c3aed;
-  --color-primary-light: rgba(139, 92, 246, 0.16);
-  --color-primary-lighter: rgba(139, 92, 246, 0.08);
-}
-
-/* 玫红 Rose */
-.accent-rose {
-  --color-primary: #e11d48;
-  --color-primary-hover: #be123c;
-  --color-primary-active: #9f1239;
-  --color-primary-light: rgba(225, 29, 72, 0.10);
-  --color-primary-lighter: rgba(225, 29, 72, 0.05);
-}
-.dark.accent-rose {
-  --color-primary: #f43f5e;
-  --color-primary-hover: #fb7185;
-  --color-primary-active: #e11d48;
-  --color-primary-light: rgba(244, 63, 94, 0.16);
-  --color-primary-lighter: rgba(244, 63, 94, 0.08);
-}
-
-/* 石墨中性 Graphite */
-.accent-graphite {
-  --color-primary: #1d1d1f;
-  --color-primary-hover: #2f2f32;
-  --color-primary-active: #000000;
-  --color-primary-light: rgba(29, 29, 31, 0.08);
-  --color-primary-lighter: rgba(29, 29, 31, 0.04);
-}
-.dark.accent-graphite {
-  --color-primary: #3a3a3c;
-  --color-primary-hover: #4a4a4e;
-  --color-primary-active: #2c2c2e;
-  --color-primary-light: rgba(58, 58, 60, 0.18);
-  --color-primary-lighter: rgba(58, 58, 60, 0.10);
-}
 
 /* ========================================
  * Message Typography — 消息排版增强
@@ -791,14 +730,14 @@ button:active {
   color: var(--text-level-2);
 }
 
-/* 总结/结论 高亮块 */
+/* 总结/结论 高亮块（V2：去渐变，纯色低存在感） */
 .md-summary {
   margin: 14px 0;
   padding: 12px 16px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--color-primary-lighter), var(--color-primary-light));
-  border: 1px solid var(--color-primary);
-  border-left: 4px solid var(--color-primary);
+  background: var(--color-primary-lighter);
+  border: 1px solid var(--border-primary);
+  border-left: 3px solid var(--color-primary);
   color: var(--text-level-1);
 }
 

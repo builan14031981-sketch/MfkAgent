@@ -12,15 +12,15 @@
  */
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Moon, Sun, Monitor, Plus, Trash2, Globe, ChevronDown, ChevronRight, Check, ShieldAlert } from "lucide-react";
-import { PluginPanel } from "./PluginPanel";
+import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check, ShieldAlert } from "lucide-react";
+import { ExtensionPanel } from "./ExtensionPanel";
 import { ModelProvidersBasic } from "./ModelConfigSection";
 import { SwitchButton } from "@/components/SwitchButton";
 import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
 
 /** 设置导航项 id 联合类型（与 SettingsPanel 共享，保证 activeSection 类型安全） */
-export type SettingSectionId = "general" | "model" | "ai" | "security" | "plugins" | "about";
+export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about";
 
 /** 统管状态注入 props（由 SettingsPanel 下发） */
 export interface SettingsViewProps {
@@ -57,6 +57,332 @@ const PROVIDER_NAMES: Record<string, string> = {
 
 /** 预设 Agent 排序优先级 */
 const AGENT_ORDER = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
+
+/**
+ * V2 视觉主题定义（预览色为主题本体字面值，仅供设置页展示，
+ * 运行时配色以 src/styles/tokens.css 为唯一权威源）。
+ */
+const VISUAL_THEMES: Array<{
+  id: "obsidian" | "studio" | "terminal";
+  nameKey: string;
+  descKey: string;
+  preview: { bg: string; surface: string; card: string; accent: string; text: string; border: string };
+}> = [
+  {
+    id: "obsidian",
+    nameKey: "settings.general.visualTheme.obsidian",
+    descKey: "settings.general.visualTheme.obsidianDesc",
+    preview: { bg: "#0f1114", surface: "#15181d", card: "#1b1f26", accent: "#4e8cd9", text: "#e8eaed", border: "#262b34" },
+  },
+  {
+    id: "studio",
+    nameKey: "settings.general.visualTheme.studio",
+    descKey: "settings.general.visualTheme.studioDesc",
+    preview: { bg: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", accent: "#0a6cd6", text: "#1a1b1e", border: "#e4e5e9" },
+  },
+  {
+    id: "terminal",
+    nameKey: "settings.general.visualTheme.terminal",
+    descKey: "settings.general.visualTheme.terminalDesc",
+    preview: { bg: "#1e1e1e", surface: "#252526", card: "#2d2d30", accent: "#3794ff", text: "#e7e7e7", border: "#3c3c40" },
+  },
+];
+
+/** 单个主题预览卡：背景层级展示（侧边栏/主区/卡片）+ Accent 展示 */
+function ThemePreviewCard({
+  theme,
+  selected,
+  disabled,
+  t,
+  onSelect,
+}: {
+  theme: (typeof VISUAL_THEMES)[number];
+  selected: boolean;
+  disabled: boolean;
+  t: (key: string) => string;
+  onSelect: (id: string) => void;
+}) {
+  const p = theme.preview;
+  return (
+    <button
+      onClick={() => onSelect(theme.id)}
+      disabled={disabled}
+      aria-pressed={selected}
+      style={{
+        flex: 1,
+        minWidth: 0,
+        padding: 0,
+        borderRadius: "var(--radius-sm)",
+        border: selected ? "1.5px solid var(--color-primary)" : "1px solid var(--border-primary)",
+        background: "var(--bg-level-2)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.6 : 1,
+        overflow: "hidden",
+        textAlign: "left",
+        transition: "border-color var(--transition-fast)",
+      }}
+    >
+      {/* 预览区：层级结构示意（侧边栏 + 主区卡片 + accent 按钮/文字） */}
+      <div style={{ display: "flex", height: 64, borderBottom: `1px solid ${p.border}` , background: p.bg }}>
+        {/* 侧边栏层 */}
+        <div style={{ width: "30%", background: p.surface, borderRight: `1px solid ${p.border}`, padding: "6px 5px", display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ height: 5, width: "85%", borderRadius: 2, background: p.card }} />
+          <div style={{ height: 5, width: "65%", borderRadius: 2, background: selected ? p.accent : p.card, opacity: selected ? 0.9 : 1 }} />
+          <div style={{ height: 5, width: "75%", borderRadius: 2, background: p.card }} />
+        </div>
+        {/* 主区层：卡片 + 文字行 + accent 按钮 */}
+        <div style={{ flex: 1, padding: "7px 8px", display: "flex", flexDirection: "column", gap: 5 }}>
+          <div style={{ height: 6, width: "55%", borderRadius: 2, background: p.text, opacity: 0.85 }} />
+          <div style={{ flex: 1, borderRadius: 3, background: p.card, border: `1px solid ${p.border}` }} />
+          <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+            <div style={{ height: 8, width: 26, borderRadius: 3, background: p.card, border: `1px solid ${p.border}` }} />
+            <div style={{ height: 8, width: 26, borderRadius: 3, background: p.accent }} />
+          </div>
+        </div>
+      </div>
+      {/* 名称 + 适用场景说明 */}
+      <div style={{ padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 6 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-level-1)", display: "flex", alignItems: "center", gap: 5 }}>
+            {/* Accent 展示点 */}
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.accent, flexShrink: 0 }} />
+            {t(theme.nameKey)}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-level-3)", marginTop: 2, lineHeight: 1.4 }}>
+            {t(theme.descKey)}
+          </div>
+        </div>
+        {selected && (
+          <span style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+            background: "var(--color-primary)", marginTop: 1,
+          }}>
+            <Check style={{ width: 10, height: 10, color: "var(--text-on-primary)" }} strokeWidth={2.5} />
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+/**
+ * 实验主题定义（预览色为主题本体字面值，仅供设置页展示；
+ * 运行时配色以 src/styles/tokens.css 为唯一权威源）。
+ */
+const EXPERIMENTAL_THEMES: Array<{
+  id: string;
+  nameKey: string;
+  descKey: string;
+  preview: {
+    app: string; surface: string; card: string; elevated: string;
+    text: string; textMuted: string; border: string; accent: string; onAccent: string;
+  };
+}> = [
+  {
+    id: "titanium",
+    nameKey: "settings.general.experimentalTheme.titanium",
+    descKey: "settings.general.experimentalTheme.titaniumDesc",
+    preview: { app: "#e1e3e6", surface: "#d6d9dd", card: "#edeff1", elevated: "#f5f6f8", text: "#1f2328", textMuted: "#8b929c", border: "#c9cdd3", accent: "#4d6a8a", onAccent: "#ffffff" },
+  },
+  {
+    id: "paper",
+    nameKey: "settings.general.experimentalTheme.paper",
+    descKey: "settings.general.experimentalTheme.paperDesc",
+    preview: { app: "#f4f1ea", surface: "#ece8de", card: "#faf7f0", elevated: "#f0ebdf", text: "#2a2721", textMuted: "#948d7e", border: "#e0dacc", accent: "#9c422a", onAccent: "#fdf8f4" },
+  },
+  {
+    id: "midnight",
+    nameKey: "settings.general.experimentalTheme.midnight",
+    descKey: "settings.general.experimentalTheme.midnightDesc",
+    preview: { app: "#0b0e14", surface: "#10141d", card: "#161b26", elevated: "#1d2331", text: "#dde3ec", textMuted: "#5c6577", border: "#232a3a", accent: "#6d8fbf", onAccent: "#f0f4fa" },
+  },
+  {
+    id: "mono",
+    nameKey: "settings.general.experimentalTheme.mono",
+    descKey: "settings.general.experimentalTheme.monoDesc",
+    preview: { app: "#111112", surface: "#171718", card: "#1d1d1f", elevated: "#252527", text: "#e5e5e6", textMuted: "#636366", border: "#2a2a2d", accent: "#e5e5e6", onAccent: "#111112" },
+  },
+  {
+    id: "warm-minimal",
+    nameKey: "settings.general.experimentalTheme.warmMinimal",
+    descKey: "settings.general.experimentalTheme.warmMinimalDesc",
+    preview: { app: "#faf8f5", surface: "#f2eee9", card: "#f5f1ec", elevated: "#ede8e1", text: "#2b2825", textMuted: "#9b968f", border: "#e5e0d8", accent: "#a56f45", onAccent: "#fdfaf6" },
+  },
+  {
+    id: "aurora",
+    nameKey: "settings.general.experimentalTheme.aurora",
+    descKey: "settings.general.experimentalTheme.auroraDesc",
+    preview: { app: "#0d1210", surface: "#121815", card: "#18201c", elevated: "#1f2923", text: "#dfe7e2", textMuted: "#5d6961", border: "#24302a", accent: "#5fa893", onAccent: "#0e1412" },
+  },
+];
+
+/**
+ * 微型工作台预览：完整渲染 Sidebar / Chat / Input 三区域整体效果，
+ * 供实验主题选择时展示（色值均为预览专用字面值）。
+ */
+function MiniWorkspacePreview({ p }: { p: (typeof EXPERIMENTAL_THEMES)[number]["preview"] }) {
+  return (
+    <div style={{ display: "flex", height: 116, background: p.app, overflow: "hidden" }}>
+      {/* Sidebar 效果 */}
+      <div style={{ width: "32%", background: p.surface, borderRight: `1px solid ${p.border}`, padding: "7px 6px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
+        <div style={{ height: 9, borderRadius: 3, background: p.card, marginBottom: 3 }} />
+        <div style={{ height: 7, borderRadius: 3, background: p.card }} />
+        {/* 激活会话行：左侧 accent 指示条 */}
+        <div style={{ height: 7, borderRadius: 3, background: p.elevated, position: "relative", overflow: "hidden" }}>
+          <span style={{ position: "absolute", left: 1, top: 1, bottom: 1, width: 2, borderRadius: 1, background: p.accent }} />
+        </div>
+        <div style={{ height: 7, borderRadius: 3, background: p.card }} />
+        <div style={{ flex: 1 }} />
+        <div style={{ height: 7, width: "60%", borderRadius: 3, background: p.card }} />
+      </div>
+      {/* Chat + Input 效果 */}
+      <div style={{ flex: 1, minWidth: 0, padding: "8px 9px 7px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* 用户消息（右对齐 accent 气泡） */}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <div style={{ width: "46%", height: 14, borderRadius: 5, background: p.accent, padding: "3px 5px" }}>
+            <div style={{ height: 3, width: "75%", borderRadius: 1.5, background: p.onAccent, opacity: 0.85 }} />
+            <div style={{ height: 3, width: "45%", borderRadius: 1.5, background: p.onAccent, opacity: 0.85, marginTop: 2 }} />
+          </div>
+        </div>
+        {/* AI 回复（无气泡平铺文字行） */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ height: 3, width: "30%", borderRadius: 1.5, background: p.textMuted }} />
+          <div style={{ height: 3, width: "88%", borderRadius: 1.5, background: p.text, opacity: 0.75 }} />
+          <div style={{ height: 3, width: "72%", borderRadius: 1.5, background: p.text, opacity: 0.75 }} />
+          <div style={{ height: 16, width: "58%", borderRadius: 3, background: p.card, border: `1px solid ${p.border}`, marginTop: 2 }} />
+        </div>
+        <div style={{ flex: 1 }} />
+        {/* Input 输入区 */}
+        <div style={{ height: 22, borderRadius: 5, background: p.card, border: `1px solid ${p.border}`, display: "flex", alignItems: "center", padding: "0 5px", gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", border: `1px solid ${p.textMuted}`, flexShrink: 0 }} />
+          <div style={{ flex: 1, height: 3, width: "40%", borderRadius: 1.5, background: p.textMuted, opacity: 0.7 }} />
+          <span style={{ width: 13, height: 13, borderRadius: 3, background: p.accent, flexShrink: 0 }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 实验主题选择器（字体选择式交互）：
+ * 收起态 = 类 select 字段（展示当前实验主题）；
+ * 点击展开 = 完整工作台预览卡列表，点击即切换。
+ */
+function ExperimentalThemePicker({
+  currentThemeId,
+  saving,
+  t,
+  onSelect,
+}: {
+  currentThemeId: string;
+  saving: boolean;
+  t: (key: string) => string;
+  onSelect: (id: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const current = EXPERIMENTAL_THEMES.find((theme) => theme.id === currentThemeId);
+
+  return (
+    <div>
+      {/* 触发字段：仿字体选择的 select 外观，点击展开/收起 */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        disabled={saving}
+        style={{
+          width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          padding: "8px 12px",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--border-primary)",
+          background: "var(--bg-level-2)",
+          cursor: saving ? "not-allowed" : "pointer",
+          fontSize: "13px",
+          color: current ? "var(--text-level-2)" : "var(--text-level-4)",
+          opacity: saving ? 0.7 : 1,
+          transition: "border-color var(--transition-fast)",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {current && (
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: current.preview.accent, flexShrink: 0, border: "1px solid var(--border-primary)" }} />
+          )}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {current ? t(current.nameKey) : t("settings.general.experimentalTheme.placeholder")}
+          </span>
+        </span>
+        <ChevronDown style={{
+          width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
+          transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+          transition: "transform var(--transition-fast)",
+        }} />
+      </button>
+
+      {/* 展开区：完整预览卡（2 列），点击切换 */}
+      {expanded && (
+        <div style={{
+          display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
+          marginTop: 10, animation: "fadeIn 0.2s ease",
+        }}>
+          {EXPERIMENTAL_THEMES.map((theme) => {
+            const selected = theme.id === currentThemeId;
+            return (
+              <button
+                key={theme.id}
+                onClick={() => onSelect(theme.id)}
+                disabled={saving}
+                aria-pressed={selected}
+                style={{
+                  padding: 0,
+                  borderRadius: "var(--radius-sm)",
+                  border: selected ? "1.5px solid var(--color-primary)" : "1px solid var(--border-primary)",
+                  background: "var(--bg-level-2)",
+                  cursor: saving ? "not-allowed" : "pointer",
+                  opacity: saving ? 0.6 : 1,
+                  overflow: "hidden",
+                  textAlign: "left",
+                  transition: "border-color var(--transition-fast)",
+                }}
+              >
+                <MiniWorkspacePreview p={theme.preview} />
+                <div style={{ padding: "7px 10px", display: "flex", alignItems: "flex-start", gap: 6, borderTop: `1px solid var(--border-secondary)` }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-level-1)" }}>{t(theme.nameKey)}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-level-3)", marginTop: 2, lineHeight: 1.4 }}>{t(theme.descKey)}</div>
+                  </div>
+                  {selected && (
+                    <span style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
+                      background: "var(--color-primary)", marginTop: 1,
+                    }}>
+                      <Check style={{ width: 10, height: 10, color: "var(--text-on-primary)" }} strokeWidth={2.5} />
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 实验主题激活时：提供返回官方主题的快捷入口 */}
+      {current && (
+        <button
+          onClick={() => onSelect("obsidian")}
+          disabled={saving}
+          style={{
+            marginTop: 8, padding: "4px 0", border: "none", background: "transparent",
+            cursor: "pointer", fontSize: 12, color: "var(--text-level-3)",
+            textDecoration: "underline", textUnderlineOffset: 3,
+          }}
+        >
+          {t("settings.general.experimentalTheme.backToOfficial")}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function getSortedActiveAgents(agents: { id: string; name: string; status: string }[]) {
   return [...agents]
@@ -189,40 +515,46 @@ function GeneralBasic(props: SettingsViewProps) {
   const { settings, saving, onUpdate, t } = props;
   return (
     <>
-      {/* 主题 */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
-        <div>
+      {/* 视觉主题（V2：专业主题预览卡，替代 light/dark/system 分段开关） */}
+      <div style={{ marginBottom: "18px" }}>
+        <div style={{ marginBottom: "10px" }}>
           <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
             {t("settings.general.theme.title")}
           </h3>
           <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
-            {t("settings.general.theme.desc")}
+            {t("settings.general.visualTheme.desc")}
           </p>
         </div>
-        <div style={{ display: "flex", padding: "3px", borderRadius: "var(--radius-sm)", background: "var(--bg-level-2)" }}>
-          {[
-            { value: "light", label: t("settings.general.theme.light"), icon: Sun },
-            { value: "dark", label: t("settings.general.theme.dark"), icon: Moon },
-            { value: "system", label: t("settings.general.theme.system"), icon: Monitor },
-          ].map((theme) => (
-            <button
-              key={theme.value}
-              onClick={() => onUpdate("theme", theme.value)}
-              disabled={saving === "theme"}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", flex: 1, gap: "6px",
-                padding: "6px 14px", borderRadius: "var(--radius-xs)", border: "none",
-                background: settings?.theme === theme.value ? "var(--bg-level-1)" : "transparent",
-                cursor: "pointer", fontSize: "13px", whiteSpace: "nowrap",
-                color: settings?.theme === theme.value ? "var(--text-level-1)" : "var(--text-level-3)",
-                opacity: saving === "theme" ? 0.7 : 1,
-              }}
-            >
-              <theme.icon style={{ width: "14px", height: "14px" }} />
-              <span>{theme.label}</span>
-            </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          {VISUAL_THEMES.map((theme) => (
+            <ThemePreviewCard
+              key={theme.id}
+              theme={theme}
+              selected={(settings?.visual_theme || "obsidian") === theme.id}
+              disabled={saving === "visual_theme"}
+              t={t}
+              onSelect={(id) => onUpdate("visual_theme", id)}
+            />
           ))}
         </div>
+      </div>
+
+      {/* 实验主题（探索阶段，完整工作台预览，点击展开切换） */}
+      <div style={{ marginBottom: "18px" }}>
+        <div style={{ marginBottom: "10px" }}>
+          <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+            {t("settings.general.experimentalTheme.title")}
+          </h3>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
+            {t("settings.general.experimentalTheme.desc")}
+          </p>
+        </div>
+        <ExperimentalThemePicker
+          currentThemeId={settings?.visual_theme || "obsidian"}
+          saving={saving === "visual_theme"}
+          t={t}
+          onSelect={(id) => onUpdate("visual_theme", id)}
+        />
       </div>
 
       {/* 语言 */}
@@ -276,30 +608,7 @@ function GeneralBasic(props: SettingsViewProps) {
         </select>
       </div>
 
-      {/* 强调色主题（字段级边界：从高级上移到基础，通用 Tab 全量放出） */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
-        <div>
-          <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-            {t("settings.general.accentTheme.title")}
-          </h3>
-          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
-            {t("settings.general.accentTheme.desc")}
-          </p>
-        </div>
-        <select
-          value={settings?.accent_theme || "default"}
-          onChange={(e) => onUpdate("accent_theme", e.target.value)}
-          disabled={saving === "accent_theme"}
-          style={{ ...inputStyle, opacity: saving === "accent_theme" ? 0.7 : 1, minWidth: "140px", padding: "6px 12px" }}
-        >
-          <option value="default">{t("settings.general.accentTheme.default")}</option>
-          <option value="teal">{t("settings.general.accentTheme.teal")}</option>
-          <option value="amber">{t("settings.general.accentTheme.amber")}</option>
-          <option value="violet">{t("settings.general.accentTheme.violet")}</option>
-          <option value="rose">{t("settings.general.accentTheme.rose")}</option>
-          <option value="graphite">{t("settings.general.accentTheme.graphite")}</option>
-        </select>
-      </div>
+      {/* 强调色多选已于 V2.0 废除：每个视觉主题自带唯一 accent，见上方主题选择。 */}
 
       {/* 首页启动主题（规则控制；主题管理/切换留在首页） */}
       <div style={{ marginBottom: "18px" }}>
@@ -855,6 +1164,9 @@ export function BasicSettingsView(
     activeSection: SettingSectionId;
     agents?: Agent[];
     onManageAgents?: () => void;
+    editingSkillId?: string | null;
+    onSelectSkill?: (id: string) => void;
+    onBackToExtensionList?: () => void;
   }
 ) {
   switch (props.activeSection) {
@@ -868,8 +1180,14 @@ export function BasicSettingsView(
       return <AiBasic {...props} agents={props.agents} onManageAgents={props.onManageAgents!} />;
     case "security":
       return <SecurityBasic {...props} />;
-    case "plugins":
-      return <PluginPanel />;
+    case "extensions":
+      return (
+        <ExtensionPanel
+          editingSkillId={(props.editingSkillId ?? null) as never}
+          onSelectSkill={(id) => props.onSelectSkill?.(id)}
+          onBackToList={() => props.onBackToExtensionList?.()}
+        />
+      );
     case "about":
       return <AboutSection {...props} />;
     default:

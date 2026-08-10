@@ -9,10 +9,13 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useTranslation } from "@/hooks/useTranslation";
 import { API_BASE } from "@/lib/api";
+import { formatDuration } from "@/lib/format";
 
 interface ChatMessageProps {
   message: Message;
   currentAgent?: { id: string; name: string } | null;
+  /** AI 消息本次任务用时（毫秒）：由 MessageList 根据消息时间戳计算，缺省不展示 */
+  durationMs?: number;
   onQuote: (content: string) => void;
   onRegenerate: (messageId: number) => void;
   onEdit: (message: Message) => void;
@@ -453,7 +456,7 @@ function ActionButton({
  * - 用户消息：复制 / 编辑（hover 显示）
  * memo：滚动等高频场景下 MessageList 重渲染时（message/回调引用不变）跳过整条渲染
  */
-export const ChatMessage = memo(function ChatMessage({ message, currentAgent, onQuote, onRegenerate, onEdit }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, currentAgent, durationMs, onQuote, onRegenerate, onEdit }: ChatMessageProps) {
   const { t } = useTranslation();
   // 优先使用独立的 thinking 字段（流式/后端持久化）；老会话 thinking 内嵌在 content
   // 的 think 标签中时回退用 parseThinkBlock 从正文剥离，保证历史消息仍能展示思考块。
@@ -604,8 +607,13 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, on
       {timelineSegments && !timelineSegments.some((s) => s.kind === "text") && body && (
         <MarkdownRenderer content={body} />
       )}
-      {/* AI 消息悬浮操作栏：复制 / 引用 / 重生成 */}
+      {/* AI 消息悬浮操作栏：用时 + 复制 / 引用 / 重生成 */}
       <div style={actionBarStyle(false)}>
+        {durationMs != null && (
+          <span style={{ fontSize: "11px", color: "var(--text-level-3)", opacity: 0.7, marginRight: "8px", alignSelf: "center" }}>
+            用时 {formatDuration(durationMs)}
+          </span>
+        )}
         <CopyButton text={message.content} />
         <ActionButton onClick={() => onQuote(message.content)} title={t("chat.quote")}>
           <Quote style={{ width: "13px", height: "13px" }} />

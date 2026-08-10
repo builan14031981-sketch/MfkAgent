@@ -10,6 +10,11 @@
 let lastBeepTime = 0;
 const BEEP_THROTTLE_MS = 3000;
 
+// Toast 节流：与提示音同级。多任务同时完成/多个审批连续到达时，
+// 防止 Windows 右下角短时间堆叠大量通知；不引入队列，窗口内的重复通知直接丢弃
+let lastToastTime = 0;
+const TOAST_THROTTLE_MS = 3000;
+
 /** 播放短促提示音（Web Audio API 合成，无需音频文件） */
 function playBeep(): void {
   const now = Date.now();
@@ -49,6 +54,15 @@ export async function showDesktopNotification(
 ): Promise<void> {
   const beep = opts?.beep ?? true;
   const silent = opts?.silent ?? true; // 默认让 Electron 通知静默，由 Web Audio 播音
+
+  // Toast 节流：3 秒内已弹过通知则跳过（含提示音，避免音画不同步的割裂感）
+  const now = Date.now();
+  if (now - lastToastTime < TOAST_THROTTLE_MS) {
+    console.log("[notify] 节流中，跳过通知:", title);
+    return;
+  }
+  lastToastTime = now;
+  console.log("[notify] 触发通知:", title);
 
   // Electron 环境：走主进程原生 Notification
   if (typeof window !== "undefined" && window.electronAPI?.showNotification) {

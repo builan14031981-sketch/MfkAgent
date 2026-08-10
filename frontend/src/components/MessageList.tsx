@@ -45,6 +45,24 @@ function isCompressionNode(message: Message): boolean {
 }
 
 /**
+ * AI 消息用时 = 自身 created_at − 前一条用户消息 created_at。
+ * 两端均为本机时钟（后端本地运行），乐观消息与 refetch 后的历史消息都成立；
+ * 找不到前置用户消息或时间非法时返回 undefined（不展示）。
+ */
+function computeAssistantDuration(message: Message, messages: Message[], idx: number): number | undefined {
+  if (message.role !== "assistant" || !message.created_at) return undefined;
+  for (let i = idx - 1; i >= 0; i--) {
+    const prev = messages[i];
+    if (prev.role === "user") {
+      if (!prev.created_at) return undefined;
+      const diff = new Date(message.created_at).getTime() - new Date(prev.created_at).getTime();
+      return Number.isFinite(diff) && diff > 0 ? diff : undefined;
+    }
+  }
+  return undefined;
+}
+
+/**
  * 压缩节点卡片：折叠展示历史记忆摘要。
  * - 默认折叠，点击展开查看完整摘要
  * - 图标 + 提示语："已压缩 XX 轮历史对话"
@@ -351,7 +369,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
           </div>
         ) : (
           <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-            {messages.map((message) => (
+            {messages.map((message, idx) => (
               <div key={message.id} id={`msg-${message.id}`} style={{ marginBottom: "8px" }}>
                 {isCompressionNode(message) ? (
                   <CompressionNodeCard content={message.content} />
@@ -359,6 +377,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                   <ChatMessage
                     message={message}
                     currentAgent={currentAgent}
+                    durationMs={computeAssistantDuration(message, messages, idx)}
                     onQuote={onQuote}
                     onRegenerate={onRegenerate}
                     onEdit={onEdit}

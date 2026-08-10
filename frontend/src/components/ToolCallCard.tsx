@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { resolveToolMeta } from "@/lib/toolMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useProjectPath } from "@/lib/projectPathContext";
+import { CLOSE_FILE_CTX_MENU } from "@/hooks/useFilePathInteraction";
 
 export type ToolStatus = "pending" | "running" | "success" | "failed" | "cancelled";
 
@@ -29,6 +30,8 @@ export interface ToolCall {
   duration_ms?: number;
   error?: string;
   tool_call_id?: string;
+  /** 后端文件类工具返回的绝对路径（tool_result 事件携带） */
+  file_path?: string;
 }
 
 function resultSummary(result: string | undefined, maxLen = 80): string {
@@ -61,8 +64,12 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const projectPath = useProjectPath();
 
-  /** 文件类工具：提取文件路径，供右键菜单打开资源管理器 */
+  /** 文件类工具：提取文件路径，供右键/双击菜单打开资源管理器 */
   const filePath = useMemo(() => {
+    // 优先使用后端返回的结构化 file_path（tool_result 事件）
+    if (normalized.file_path && typeof normalized.file_path === "string") {
+      return normalized.file_path;
+    }
     const fileTools = ["write_file", "read_file", "list_directory", "list_files"];
     if (!fileTools.includes(tool ?? "")) return null;
     const raw = (input as Record<string, unknown> | undefined)?.["relative_path"]
@@ -73,13 +80,15 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
       return projectPath.replace(/[\\/]+$/, "") + "\\" + raw.replace(/^[\\/]+/, "");
     }
     return raw;
-  }, [tool, input, projectPath]);
+  }, [tool, input, projectPath, normalized.file_path]);
 
   /** 右键打开文件 */
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     if (!filePath || typeof window === "undefined" || !window.electronAPI?.openInFolder) return;
     e.preventDefault();
     e.stopPropagation();
+    // 广播关闭信号：关闭其他所有文件右键菜单
+    window.dispatchEvent(new CustomEvent(CLOSE_FILE_CTX_MENU));
     setContextMenu({ x: e.clientX, y: e.clientY });
   }, [filePath]);
 
@@ -98,12 +107,18 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
     }
   }, [filePath, closeContextMenu]);
 
-  // 点击页面其他位置关闭右键菜单
+  // 关闭右键菜单：监听 click + contextmenu + 全局互斥事件
   useEffect(() => {
     if (!contextMenu) return;
-    const handler = () => closeContextMenu();
-    document.addEventListener("click", handler);
-    return () => document.removeEventListener("click", handler);
+    const close = () => closeContextMenu();
+    document.addEventListener("click", close);
+    document.addEventListener("contextmenu", close);
+    window.addEventListener(CLOSE_FILE_CTX_MENU, close);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("contextmenu", close);
+      window.removeEventListener(CLOSE_FILE_CTX_MENU, close);
+    };
   }, [contextMenu, closeContextMenu]);
 
   const { icon: Icon, color, title } = useMemo(
@@ -206,7 +221,8 @@ export function ToolCallCard({ toolCall }: { toolCall: ToolCall }) {
         )}
         <code
           onContextMenu={handleContextMenu}
-          title={filePath ? "右键 → 在文件管理器中打开" : undefined}
+          onDoubleClick={filePath ? handleOpenInFolder : undefined}
+          title={filePath ? "双击打开文件位置 / 右键 → 在文件管理器中打开" : undefined}
           style={{
           fontSize: "12px",
           color: failed ? "var(--color-error)" : "var(--text-level-2)",

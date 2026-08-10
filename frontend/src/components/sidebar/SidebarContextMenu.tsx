@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Edit2, Pin, PinOff, Trash2 } from "lucide-react";
+import { Edit2, Pin, PinOff, Trash2, FolderOpen } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -23,6 +23,7 @@ interface SidebarContextMenuProps {
   onDeleteChat: (chatId: number) => void;
   onPinProject: (projectId: number) => void;
   onDeleteProject: (projectId: number) => void;
+  onOpenProjectFolder: (projectId: number) => void;
   onClose: () => void;
 }
 
@@ -36,6 +37,7 @@ export function SidebarContextMenu({
   onDeleteChat,
   onPinProject,
   onDeleteProject,
+  onOpenProjectFolder,
   onClose,
 }: SidebarContextMenuProps) {
   const { t } = useTranslation();
@@ -141,6 +143,22 @@ export function SidebarContextMenu({
         </>
       ) : (
         <>
+          <button
+            onClick={() => {
+              if (state.projectId != null) onOpenProjectFolder(state.projectId);
+            }}
+            style={menuItemStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <FolderOpen style={{ width: "14px", height: "14px" }} />
+            <span>{t("sidebar.openProjectFolder")}</span>
+          </button>
+          <div style={{
+            height: "1px",
+            background: "var(--border-secondary)",
+            margin: "4px 0",
+          }} />
           <button
             onClick={() => {
               if (state.projectId != null) onPinProject(state.projectId);
