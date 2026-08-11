@@ -26,9 +26,11 @@ import os
 
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Agent, Message, MemoryItem, Setting
+from app.models.persona import PersonaTemplate
 from app.services.model import Message as ModelMessage
 from app.services.personality import get_personality_prompt
 from app.core.capability_profiles import get_capability_prompt
+from app.core.persona_engine import build_persona_context, load_expression_knowledge, PersonaContext
 from app.core.identity_principle import get_identity_principle
 from app.core.agent_base_instruction import get_agent_base_instruction
 from app.core.skill_store import get_enabled_skills_prompt  # Phase 4 T3: Skill Prompt Fragment 加载
@@ -41,11 +43,15 @@ from app.core.tool_runtime.policy import (
     get_project_policy,
 )
 from app.core.tool_runtime.planner import ToolPlanner
+from .expressions import get_expression_prompt
 from app.core.workspace import (
     is_file_operation_request,
     ensure_default_workspace,
     get_default_workspace_context,
+    extract_workspace_path,
+    get_user_path_workspace_context,
 )
+from app.core.tool_runtime.permission import NO_PATH_TOOLS
 from app.core.planner import get_planner, get_runtime_task_context_adapter
 from .context import AgentContext
 from .pruning import prune_thought_history
@@ -176,7 +182,7 @@ class BuiltContext:
 
     context: AgentContext
     messages: list                     # [ModelMessage(system), ...history]
-    system_prompt: str                 # 完整 ①-⑦ 组装后的 system prompt
+    system_prompt: str                 # 完整 ①-⑩ 组装后的 system prompt
     effective_model: str
     temperature: float
     max_tokens: int
@@ -184,6 +190,7 @@ class BuiltContext:
     read_only: bool
     memory_text: str                   # 单独交付（模型层注入，不入 system prompt）
     tool_context: Optional[dict] = None
+    persona_context: Optional[PersonaContext] = None  # Persona 运行时上下文
 
 
 def get_default_model() -> str:
@@ -209,13 +216,14 @@ def get_default_reasoning_effort() -> str:
 
 
 def _resolve_workspace(chat, message: str):
-    """解析本次请求的有效工作目录（Default Workspace 兜底）。
+    """解析本次请求的有效工作目录（用户指定路径 > Default Workspace 兜底）。
 
     规则：
       - 已绑定项目 → 原样返回，无兜底。
-      - 未绑定项目但指令含文件操作 → 启用默认工作目录，返回带 project_path 的
-        SimpleNamespace 视图 + 默认工作目录上下文文本。
-      - 其余 → 返回 project_path=None 视图（不启用文件类工具）。
+      - 未绑定项目但消息含已存在的绝对路径 → 以该路径（文件则取其父目录）
+        作为本次工作目录，返回带 project_path 的视图 + 用户路径上下文文本。
+      - 未绑定项目但指令含文件操作 → 启用默认工作目录兜底。
+      - 其余 → 返回 project_path=None 视图（仅保留无路径工具）。
 
     Returns:
         (effective_chat_view, workspace_context_text)
@@ -229,6 +237,19 @@ def _resolve_workspace(chat, message: str):
                 project_id=chat.project_id,
             ),
             "",
+        )
+
+    # 2026-08-11：用户消息中直接给出存在的绝对路径 → 优先作为本次工作目录
+    user_path = extract_workspace_path(message)
+    if user_path:
+        return (
+            _NS(
+                mode=chat.mode or "build",
+                project_path=user_path,
+                agent_id=chat.agent_id,
+                project_id=chat.project_id,
+            ),
+            get_user_path_workspace_context(user_path),
         )
 
     if is_file_operation_request(message):
@@ -501,8 +522,10 @@ class ChatContextBuilder:
         task_context: Optional[dict] = None,
         attachments: Optional[list] = None,
         tool_guidance: Optional[str] = None,
+        expression_profile: Optional[str] = None,
+        persona_context: Optional[PersonaContext] = None,
     ) -> str:
-        """按 ①-⑩ 层组装完整 system prompt（memory_text 由模型层单独注入）。"""
+        """按 ①-⑩+ 层组装完整 system prompt（memory_text 由模型层单独注入）。"""
         # ⓪ 最高身份准则（强制置顶，锁定桌面端 Agent 身份认知）
         full_prompt = get_identity_principle()
 
@@ -543,6 +566,35 @@ class ChatContextBuilder:
         # ⑥ personality（表达风格）
         if personality_prompt:
             full_prompt += "\n\n" + personality_prompt
+
+        # ⑥b expression_profile（表达风格层 — Expression Profile V1）
+        expression_prompt = get_expression_prompt(expression_profile)
+        if expression_prompt:
+            full_prompt += "\n\n" + expression_prompt
+
+        # ⑥c persona_traits（Persona System V1 — 人格特质层）
+        if persona_context and persona_context.persona_text:
+            full_prompt += "\n\n" + persona_context.persona_text
+
+        # ⑥d persona_expression（Persona System V1 — 表达风格层）
+        if persona_context and persona_context.expression_text:
+            full_prompt += "\n\n" + persona_context.expression_text
+
+        # ⑥e persona_behavior（Persona System V2 — 人类对话规则，全 Agent 默认）
+        if persona_context and persona_context.behavior_text:
+            full_prompt += "\n\n" + persona_context.behavior_text
+
+        # ⑥f persona_budget（Persona System V2 — 表达预算，控制表演密度）
+        if persona_context and persona_context.budget_text:
+            full_prompt += "\n\n" + persona_context.budget_text
+
+        # ⑥g persona_work_mode（Persona System V2 — 工作模式提示，仅调整正式度）
+        if persona_context and persona_context.work_mode_text:
+            full_prompt += "\n\n" + persona_context.work_mode_text
+
+        # ⑥h persona_restrictions（Persona System V2 — 禁止表达层）
+        if persona_context and persona_context.restrictions_text:
+            full_prompt += "\n\n" + persona_context.restrictions_text
 
         # ⑦ intent_hint（意图建议软提示）
         if tool_context and tool_context.get("need_tools"):
@@ -619,10 +671,16 @@ class ChatContextBuilder:
                 if tool_context.get("need_tools"):
                     tools_arg = tool_context["tools"]
                 decision = tool_context.get("decision")
-                # 未绑定项目且未触发默认工作目录兜底时，静默禁用工具，
-                # 避免文件/Git/搜索工具循环报错形成伪死循环
-                if not effective_chat.project_path:
-                    tools_arg = None
+                # 未绑定项目：PermissionFilter 已移除项目专有工具；
+                # 此处按无路径白名单二次过滤，保留 add_memory/web_search 等无需路径的工具，
+                # 不再一棒子打死（2026-08-11：修复普通聊天工具全禁问题）
+                if not effective_chat.project_path and tools_arg:
+                    tools_arg = [
+                        t for t in tools_arg
+                        if t.get("function", {}).get("name") in NO_PATH_TOOLS
+                    ]
+                    if not tools_arg:
+                        tools_arg = None
 
             # ──── System Prompt 组装（①-⑧）────
             chat_mode = chat.mode or "build"
@@ -652,6 +710,27 @@ class ChatContextBuilder:
                 "planner_steps": len(plan.steps) if plan else 0,
             }
 
+            # ──── Persona System V2: 加载人格运行时上下文 ────
+            # 所有 Agent 默认注入 Human Conversation Rules + Expression Budget；
+            # 有 PersonaTemplate 时叠加人格特质层；Pianai 追加 Relationship Layer
+            persona_ctx: Optional[PersonaContext] = None
+            if agent:
+                persona_tmpl = db.query(PersonaTemplate).filter(
+                    PersonaTemplate.agent_id == agent.agent_id
+                ).first()
+                # 交流次数：当前会话的 user 消息数（轻量查询，JOIN 全表 COUNT 性能差）
+                interaction_count = (
+                    db.query(Message)
+                    .filter(Message.chat_id == input.chat_id, Message.role == "user")
+                    .count()
+                )
+                expr_knowledge = load_expression_knowledge(agent.expression_profile, db=db)
+                persona_ctx = build_persona_context(
+                    agent, persona_tmpl, expr_knowledge,
+                    user_message=input.content,
+                    interaction_count=interaction_count,
+                )
+
             full_prompt = self._assemble_prompt(
                 system_prompt=system_prompt,
                 capabilities=capabilities,
@@ -666,6 +745,8 @@ class ChatContextBuilder:
                     project_bound=bool(effective_chat.project_path),
                     message=input.content,
                 ),
+                expression_profile=agent.expression_profile if agent else None,
+                persona_context=persona_ctx,
             )
 
             # ──── Phase 2: image 附件 → vision_context ────
@@ -743,6 +824,7 @@ class ChatContextBuilder:
                 read_only=(chat_mode == "plan"),
                 memory_text=memory_text,
                 tool_context=tool_context,
+                persona_context=persona_ctx,
             )
         finally:
             db.close()

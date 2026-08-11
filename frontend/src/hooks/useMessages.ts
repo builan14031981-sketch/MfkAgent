@@ -39,6 +39,33 @@ export interface Message {
   created_at: string;
 }
 
+// ──── 消息缓存：切换会话秒出，后台静默刷新（stale-while-revalidate） ────
+const MSG_CACHE_TTL_MS = 5 * 60 * 1000; // 5 分钟过期
+interface MsgCacheEntry { messages: Message[]; ts: number }
+const msgCache = new Map<number, MsgCacheEntry>();
+
+function getCachedMessages(chatId: number): Message[] | null {
+  const entry = msgCache.get(chatId);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > MSG_CACHE_TTL_MS) {
+    msgCache.delete(chatId);
+    return null;
+  }
+  return entry.messages;
+}
+
+function setCachedMessages(chatId: number, messages: Message[]) {
+  // 仅缓存已持久化的消息（排除乐观临时消息）
+  const persisted = messages.filter((m) => m.id < 1_000_000_000_000);
+  if (persisted.length > 0) {
+    msgCache.set(chatId, { messages: persisted, ts: Date.now() });
+  }
+}
+
+function invalidateCache(chatId: number) {
+  msgCache.delete(chatId);
+}
+
 export function useMessages(chatId: number | null) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,17 +74,21 @@ export function useMessages(chatId: number | null) {
   /** 乐观临时消息 id 阈值：page 用 Date.now() 生成临时 id（约 1.7e12），DB 自增 id 远小于此 */
   const TEMP_ID_THRESHOLD = 1_000_000_000_000;
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (opts?: { silent?: boolean }) => {
     if (!chatId) return;
+    const silent = opts?.silent ?? false;
+    if (!silent) setLoading(true);
     try {
-      setLoading(true);
       const data = await apiGet<Message[]>(`/api/chat/${chatId}/messages`);
       // 合并语义：服务端返回非空 → 整体覆盖（加载历史 / 流结束 refetch 均如此）。
       // 服务端返回空但本地存在"乐观临时消息"（如首页新建会话时 autoSend 先乐观追加、
       // 而 GET /messages 先于 POST /send/stream 的 db.commit 完成，读到空表）→ 保留本地
       // 乐观消息，避免覆盖导致新建会话首屏一片空白（连用户消息都不显示）。
       setMessages((prev) => {
-        if (data.length > 0) return data;
+        if (data.length > 0) {
+          setCachedMessages(chatId, data); // 更新缓存
+          return data;
+        }
         const optimistic = prev.filter((m) => m.id >= TEMP_ID_THRESHOLD);
         return optimistic.length > 0 ? optimistic : data;
       });
@@ -65,13 +96,21 @@ export function useMessages(chatId: number | null) {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [chatId]);
 
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    if (!chatId) return;
+    // 缓存命中：立即填充消息（无 loading），后台静默刷新
+    const cached = getCachedMessages(chatId);
+    if (cached) {
+      setMessages(cached);
+      fetchMessages({ silent: true });
+    } else {
+      fetchMessages();
+    }
+  }, [chatId, fetchMessages]);
 
   async function sendMessage(content: string, model: string = FALLBACK_MODEL_ID, personalityLevel?: number, reasoningEffort?: "none" | "high" | "max") {
     if (!chatId) throw new Error("No chat selected");
@@ -119,17 +158,48 @@ export function useMessages(chatId: number | null) {
       permission_mode: permissionMode,
       attachments: attachments?.map((a) => ({ name: a.name, path: a.path, mime: a.mime, kind: a.kind, size: a.size })) ?? [],
     };
-    console.log("[sendMessageStream] 请求体 attachments:", JSON.stringify(body.attachments));
-    console.log("[sendMessageStream] 请求体 content 前200字符:", body.content.substring(0, 200));
+
+    // ---- SSE idle timeout：连续 N 秒无 chunk 视为挂起，自动 abort ----
+    const SSE_IDLE_TIMEOUT_MS = 120_000; // 2 分钟（宽松阈值，覆盖复杂推理场景）
+    let idleTimedOut = false;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        idleTimedOut = true;
+        // 触发外部 controller abort（useChatStream 中 catch 会检查 idleTimedOut 标记）
+        // 通过派生 AbortController 组合外部 signal + idle timeout
+        internalController.abort();
+      }, SSE_IDLE_TIMEOUT_MS);
+    };
+
+    const clearIdleTimer = () => {
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+    };
+
+    // 派生 AbortController：组合外部 signal + idle timeout
+    const internalController = new AbortController();
+    if (signal) {
+      if (signal.aborted) {
+        internalController.abort();
+      } else {
+        signal.addEventListener("abort", () => internalController.abort(), { once: true });
+      }
+    }
 
     const response = await fetch(`${API_BASE}/api/chat/${chatId}/send/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal,
+      signal: internalController.signal,
     });
 
     if (!response.ok) {
+      clearIdleTimer();
       let detail = `Failed to send message (HTTP ${response.status})`;
       try {
         const body = await response.text();
@@ -145,7 +215,13 @@ export function useMessages(chatId: number | null) {
     }
 
     const reader = response.body?.getReader();
-    if (!reader) throw new Error("No reader available");
+    if (!reader) {
+      clearIdleTimer();
+      throw new Error("No reader available");
+    }
+
+    // 启动 idle timer：从首个 chunk 开始计时
+    resetIdleTimer();
 
     const decoder = new TextDecoder();
 
@@ -191,6 +267,9 @@ export function useMessages(chatId: number | null) {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
+        // 收到 chunk，重置 idle timer（连续无数据计时器重新开始）
+        resetIdleTimer();
 
         // Phase 1.5：外部信号中断（会话切换/卸载）→ 立即静默退出，不再投递残余 chunk
         if (signal?.aborted) {
@@ -382,7 +461,15 @@ export function useMessages(chatId: number | null) {
       if (signal?.aborted) return;
       onComplete?.(fullContent, Array.from(toolCallMap.values()), fullThinking);
       onFinish();
+    } catch (err) {
+      clearIdleTimer();
+      // idle timeout 触发的 abort：转换为明确的超时错误，区别于用户手动停止
+      if (idleTimedOut) {
+        throw new Error(`SSE 流式请求超时（连续 ${SSE_IDLE_TIMEOUT_MS / 1000} 秒无数据），请检查网络连接或后端状态`);
+      }
+      throw err;
     } finally {
+      clearIdleTimer();
       flushNowAndClear();
     }
   }
@@ -392,7 +479,11 @@ export function useMessages(chatId: number | null) {
     setMessages((prev) => [...prev, message]);
   }, []);
 
-  return { messages, setMessages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages, appendMessage };
+  const invalidateMessagesCache = useCallback(() => {
+    if (chatId) invalidateCache(chatId);
+  }, [chatId]);
+
+  return { messages, setMessages, loading, error, sendMessage, sendMessageStream, deleteMessagesFrom, refetch: fetchMessages, appendMessage, invalidateMessagesCache };
 }
 
 /**

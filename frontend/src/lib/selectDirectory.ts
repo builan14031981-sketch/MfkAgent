@@ -32,12 +32,28 @@ function selectDirectoryBrowserFallback(): Promise<string | null> {
     input.setAttribute("webkitdirectory", "");
     input.setAttribute("directory", "");
     input.style.display = "none";
+
+    const cleanup = () => {
+      if (input.parentNode) {
+        document.body.removeChild(input);
+      }
+    };
+
     input.addEventListener("change", () => {
       const file = input.files?.[0];
+      cleanup();
       resolve(file && file.webkitRelativePath ? file.webkitRelativePath.split("/")[0] : null);
     });
+
+    // 用户取消选择时 resolve null（cancel 事件兼容性：现代浏览器均支持）
+    input.addEventListener("cancel", () => {
+      cleanup();
+      resolve(null);
+    });
+
     document.body.appendChild(input);
     input.click();
-    document.body.removeChild(input);
+    // 注意：不能在 click() 后立即 removeChild，
+    // 否则 input 从 DOM 移除后 change/cancel 事件永远不会触发，Promise 永不 resolve。
   });
 }

@@ -62,7 +62,7 @@ function ChatPageInner() {
   const visibleModels = useVisibleModels(models);
   const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
-  const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
+  const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage, invalidateMessagesCache } = useMessages(chatId);
   const { settings, updateSettings } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
   const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
@@ -414,27 +414,23 @@ function ChatPageInner() {
 
     const userMessage = input.trim();
     setInput("");
+
+    // 快照当前附件与 File 映射（buildContent 是异步的，必须在 clear 前捕获）
+    const sentAttachments = attachments;
+    const sentFileMap = new Map(fileMapRef.current);
+
     // 发送后立即清空附件，避免已发送的附件残留在输入框
     setAttachments([]);
     fileMapRef.current.clear();
 
-    // 【调试】打印发送前的 attachments 状态
-    console.log("[handleSend] attachments count:", attachments.length);
-    if (attachments.length > 0) {
-      console.log("[handleSend] attachments:", attachments.map(a => ({ id: a.id, name: a.name, path: a.path, kind: a.kind, hasFile: fileMapRef.current.has(a.id) })));
-    } else {
-      console.warn("[handleSend] attachments 为空！文件可能未正确添加。");
-    }
-
     // buildContent：读取 text 附件内容，拼接到用户消息前（前端兜底，保障 AI 一定看到文件内容）
     const buildContent = async (content: string): Promise<string> => {
-      if (attachments.length === 0) return content;
+      if (sentAttachments.length === 0) return content;
 
-      const fileMap = fileMapRef.current;
       let prefix = "";
-      for (const att of attachments) {
+      for (const att of sentAttachments) {
         if (att.kind !== "text") continue;
-        const file = fileMap.get(att.id);
+        const file = sentFileMap.get(att.id);
         if (file) {
           try {
             const text = await file.text();
@@ -450,9 +446,7 @@ function ChatPageInner() {
       }
 
       if (prefix) {
-        const finalContent = `${prefix}---\n\n${content}`;
-        console.log("[handleSend] buildContent 拼接完成，前缀长度:", prefix.length);
-        return finalContent;
+        return `${prefix}---\n\n${content}`;
       }
       return content;
     };
@@ -468,9 +462,9 @@ function ChatPageInner() {
       reasoningEffort,
       permissionMode,
       buildContent,
-      attachments,
+      attachments: sentAttachments,
     });
-  }, [input, isSending, sendStream, currentModel?.id, personalityLevel, reasoningEffort, permissionMode, attachments, currentProject]);
+  }, [input, isSending, sendStream, currentModel?.id, personalityLevel, reasoningEffort, permissionMode, attachments]);
 
   // 语音意图无缝衔接：语音小球转写成功后自动拉起 Agent 流程
   // 复用 handleSend 同款参数（模型/人格/推理/权限/附件），语音视为一次"语音版发送"
@@ -549,6 +543,7 @@ function ChatPageInner() {
       const result = await compressMessages(chatId, 4);
       if (result.compressed) {
         setMessages(result.messages as Message[]);
+        invalidateMessagesCache(); // 压缩后缓存已变化，失效旧缓存
         setTokenUsage(null);
       }
     } catch (err) {

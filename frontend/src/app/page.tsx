@@ -172,7 +172,7 @@ export default function Home() {
     setWelcome(pick.text);
     setWelcomeSubtext(pick.subtext || "");
     initialQuotePickedRef.current = true;
-  }, [settings, settings?.greeting_mode, quoteCategories]);
+  }, [settings, quoteCategories]);
 
   // 推理强度初始值：三级回落（localStorage → settings → none），仅首次就绪时应用一次，
   // 避免 settings 异步加载或用户手动切换后重复覆盖。
@@ -297,9 +297,9 @@ export default function Home() {
           margin: "0 auto",
           padding: "0 16px 6px",
         }}>
-          {quickStarts.map((prompt) => (
+          {quickStarts.map((prompt, idx) => (
             <button
-              key={prompt}
+              key={idx}
               onClick={() => {
                 setInput(prompt);
               }}

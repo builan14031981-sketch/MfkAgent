@@ -1,4 +1,5 @@
-export const API_BASE = "http://127.0.0.1:8001";
+/** 后端 API 基址：优先读环境变量，缺省回退本地默认端口（Electron 桌面应用场景） */
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
 
 /** 请求默认超时（ms） */
 export const DEFAULT_TIMEOUT_MS = 30_000;
@@ -148,4 +149,11 @@ export interface CompressResponse {
 
 export async function compressMessages(chatId: number, keepRecent = 4): Promise<CompressResponse> {
   return apiPost<CompressResponse>(`/api/chat/${chatId}/compress`, { keep_recent: keepRecent });
+}
+
+// ──── 附件图片 URL 构造（ChatMessage + ImageLightbox 共用） ────
+
+/** 构造消息附件图片的后端访问 URL */
+export function getAttachmentImageUrl(chatId: number, path: string): string {
+  return `${API_BASE}/api/chat/${chatId}/file?path=${encodeURIComponent(path)}`;
 }

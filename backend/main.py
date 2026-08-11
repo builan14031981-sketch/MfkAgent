@@ -9,6 +9,7 @@ import logging
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
+from app.models.persona import PersonaTemplate, ExpressionKnowledge
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,10 @@ Base.metadata.create_all(bind=engine)
 # 预置插件 seed（需在 create_all 之后，表存在才能写入）
 from app.services.plugin import plugin_manager as _pm
 _pm.seed_default_plugins()
+
+# Persona System V1 seed（ExpressionKnowledge + PersonaTemplate）
+from seed_persona import seed_all as _seed_persona
+_seed_persona()
 
 
 def _ensure_schema():
@@ -75,6 +80,8 @@ def _ensure_schema():
         with engine.begin() as conn:
             if "status" not in cols:
                 conn.execute(sa.text("ALTER TABLE agents ADD COLUMN status VARCHAR(20) DEFAULT 'active'"))
+            if "expression_profile" not in cols:
+                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN expression_profile VARCHAR(50)"))
 
     if "memory_items" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("memory_items")}

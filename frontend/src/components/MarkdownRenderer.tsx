@@ -15,10 +15,34 @@ const COLLAPSE_THRESHOLD = 15;
 /** 总结/结论关键词（用于自动高亮检测） */
 const SUMMARY_KEYWORDS = /^(总结|结论|摘要|关键要点|核心结论|Summary|Conclusion|Key Takeaways|TL;DR)[：:]/i;
 
-/** 行内 Markdown 渲染：粗体 / 行内代码 / 文件路径检测 */
+/** 颜色名 → CSS 颜色值映射（支持中英文） */
+const COLOR_MAP: Record<string, string> = {
+  "红": "var(--color-error, #e53e3e)", "red": "#e53e3e",
+  "橙": "var(--color-warning, #dd6b20)", "orange": "#dd6b20",
+  "黄": "#d69e2e", "yellow": "#d69e2e",
+  "绿": "var(--color-success, #38a169)", "green": "#38a169",
+  "蓝": "var(--color-primary, #3182ce)", "blue": "#3182ce",
+  "紫": "#805ad5", "purple": "#805ad5",
+  "粉": "#d53f8c", "pink": "#d53f8c",
+  "灰": "var(--text-level-3, #a0aec0)", "gray": "#a0aec0", "grey": "#a0aec0",
+  "青": "#00b5d8", "cyan": "#00b5d8",
+};
+
+/**
+ * 行内 Markdown 渲染（Typography 增强版）：
+ * - `行内代码`
+ * - **加粗**
+ * - *斜体*（仅单星号，不支持 _下划线_ 以避免 snake_case 误伤）
+ * - ~~删除线~~
+ * - ==高亮==
+ * - {颜色名}彩色文字{/颜色名}
+ * - 文件路径交互链接
+ */
 function renderInline(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter((t) => t !== "");
+  // 正则 alternation 顺序：代码 > 加粗 > 斜体 > 删除线 > 高亮 > 颜色
+  // 加粗必须在斜体之前匹配，否则 **bold** 会被拆成两个 *italic*
+  const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|==[^=]+==|\{[^}]+\}.*?\{\/[^}]+\})/g).filter((t) => t !== "");
   for (const token of tokens) {
     if (token.startsWith("`") && token.endsWith("`") && token.length > 1) {
       const inner = token.slice(1, -1);
@@ -32,6 +56,27 @@ function renderInline(text: string): React.ReactNode[] {
       }
     } else if (token.startsWith("**") && token.endsWith("**") && token.length > 4) {
       nodes.push(<strong key={nodes.length} className="md-strong">{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith("*") && token.endsWith("*") && !token.startsWith("**") && token.length > 2) {
+      nodes.push(<em key={nodes.length} className="md-em">{token.slice(1, -1)}</em>);
+    } else if (token.startsWith("~~") && token.endsWith("~~") && token.length > 4) {
+      nodes.push(<del key={nodes.length} className="md-del">{token.slice(2, -2)}</del>);
+    } else if (token.startsWith("==") && token.endsWith("==") && token.length > 4) {
+      nodes.push(<mark key={nodes.length} className="md-mark">{token.slice(2, -2)}</mark>);
+    } else if (token.startsWith("{") && token.includes("}{/")) {
+      // 颜色语法：{颜色名}内容{/颜色名}
+      const match = /^\{([^}]+)\}(.*)\{\/\1\}$/.exec(token);
+      if (match) {
+        const colorName = match[1].trim().toLowerCase();
+        const coloredText = match[2];
+        const cssColor = COLOR_MAP[colorName];
+        if (cssColor) {
+          nodes.push(<span key={nodes.length} className="md-color" style={{ color: cssColor }}>{coloredText}</span>);
+        } else {
+          nodes.push(coloredText); // 无效颜色名 → 回退纯文本
+        }
+      } else {
+        nodes.push(token); // 格式不匹配 → 纯文本
+      }
     } else {
       // 纯文本：检测是否包含文件路径
       const pathParts = splitByFilePaths(token);
@@ -417,7 +462,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: Mark
   }, [content, t]);
 
   return (
-    <div style={{ fontSize: "14px", lineHeight: 1.625, color: "var(--text-level-2)", wordBreak: "break-word" }}>
+    <div style={{ fontSize: "14px", lineHeight: 1.5, color: "var(--text-level-2)", wordBreak: "break-word" }}>
       {blocks.length === 0 ? content : blocks}
     </div>
   );

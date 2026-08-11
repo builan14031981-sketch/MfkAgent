@@ -708,6 +708,34 @@ button:active {
   color: var(--text-level-1);
 }
 
+/* 斜体（内心独白 / 轻声细语） */
+.md-em {
+  font-style: italic;
+  font-size: 0.92em;
+  opacity: 0.55;
+  color: var(--text-level-2);
+}
+
+/* 删除线 */
+.md-del {
+  text-decoration: line-through;
+  color: var(--text-level-3);
+}
+
+/* 高亮标记 */
+.md-mark {
+  background: var(--color-warning, #d69e2e);
+  background: color-mix(in srgb, var(--color-warning, #d69e2e) 20%, transparent);
+  color: var(--text-level-1);
+  padding: 1px 4px;
+  border-radius: var(--radius-xs);
+}
+
+/* 彩色文字 */
+.md-color {
+  font-weight: 500;
+}
+
 /* 行内代码 */
 .md-code-inline {
   font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas, monospace;
@@ -774,23 +802,23 @@ button:active {
 .md-list-item {
   display: flex;
   gap: 8px;
-  margin: 0 0 4px 0;
+  margin: 0 0 3px 0;
   font-size: 14px;
-  line-height: var(--line-height-relaxed);
+  line-height: var(--line-height-normal);
 }
 
 /* 有序列表 */
 .md-ordered-item {
   display: flex;
   gap: 8px;
-  margin: 0 0 4px 0;
+  margin: 0 0 3px 0;
   font-size: 14px;
-  line-height: var(--line-height-relaxed);
+  line-height: var(--line-height-normal);
 }
 
 /* 段落 */
 .md-paragraph {
-  margin: 0 0 6px 0;
-  line-height: var(--line-height-relaxed);
+  margin: 0 0 4px 0;
+  line-height: var(--line-height-normal);
 }
 

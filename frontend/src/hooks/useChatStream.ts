@@ -223,7 +223,6 @@ export function useChatStream({
 
       // 乐观更新：先追加用户消息到本地列表（仅当目标会话是当前活跃会话时）
       if (appendUserMessage && activeChatIdRef.current === targetChatId) {
-        console.log("[sendStream] 乐观更新 attachments:", attachments?.length, attachments?.map(a => ({ name: a.name, path: a.path, kind: a.kind })));
         const tempUserMsg: Message = {
           id: Date.now(),
           chat_id: targetChatId,
@@ -232,7 +231,6 @@ export function useChatStream({
           attachments: attachments?.map((a) => ({ name: a.name, path: a.path ?? undefined, mime: a.mime, kind: a.kind, size: a.size })),
           created_at: new Date().toISOString(),
         };
-        console.log("[sendStream] tempUserMsg.attachments:", tempUserMsg.attachments);
         appendMessage(tempUserMsg);
       }
 
@@ -393,8 +391,12 @@ export function useChatStream({
               return { timeline: [...prev.timeline, { id: `text-${Date.now()}-${Math.random()}`, type: "text" as const, content: chunk }] };
             });
           },
-          // onFinish
+          // onFinish: 兜底清理。正常流程中 onComplete(appendAssistant) 已先执行完毕，
+          // 此处仅做防御性重置：若 isSending 仍为 true，说明 onComplete 未正常执行，走完整清理。
+          // 执行顺序契约：sendMessageStream 保证 onComplete → onFinish 顺序调用。
           () => {
+            const session = store.getSession(targetChatId);
+            if (!session.isSending) return; // onComplete 已清理，跳过
             store.updateSession(targetChatId, () => ({
               timeline: [],
               isSending: false,
@@ -413,6 +415,7 @@ export function useChatStream({
               clearTimeout(refs.agentStateTimer);
               refs.agentStateTimer = null;
             }
+            store.setStream(targetChatId, null);
           },
           // onError
           (error) => {

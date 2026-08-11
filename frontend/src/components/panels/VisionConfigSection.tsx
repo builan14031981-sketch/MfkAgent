@@ -173,8 +173,8 @@ export function VisionConfigSection() {
       } else {
         setRemoteVLModels(list);
       }
-    } catch (err: any) {
-      const msg = err?.message || err?.detail || "拉取失败，请检查 API Key 和 API Base";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "拉取失败，请检查 API Key 和 API Base";
       setFetchVLError(typeof msg === "string" ? msg : "拉取失败");
     } finally {
       setFetchingVL(false);

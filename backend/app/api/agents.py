@@ -37,6 +37,7 @@ class AgentInfo(BaseModel):
     capabilities: list[str] = []
     status: str = "active"
     default_personality_level: Optional[int] = None
+    expression_profile: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -63,6 +64,7 @@ async def list_agents():
                 capabilities=a.capabilities or [],
                 status=a.status or "active",
                 default_personality_level=a.default_personality_level,
+                expression_profile=a.expression_profile,
             )
             for a in agents
         ]
@@ -77,6 +79,7 @@ class AgentUpdate(BaseModel):
     identity: Optional[str] = None
     capabilities: Optional[List[str]] = None
     default_personality_level: Optional[int] = None
+    expression_profile: Optional[str] = None
 
 
 @router.get("/capability-tags")
@@ -107,6 +110,8 @@ async def update_agent(agent_id: str, update: AgentUpdate):
             agent.identity = update.identity
         if update.default_personality_level is not None:
             agent.default_personality_level = update.default_personality_level
+        if update.expression_profile is not None:
+            agent.expression_profile = update.expression_profile
         db.commit()
         db.refresh(agent)
         return AgentInfo(
@@ -120,6 +125,7 @@ async def update_agent(agent_id: str, update: AgentUpdate):
             capabilities=agent.capabilities or [],
             status=agent.status or "active",
             default_personality_level=agent.default_personality_level,
+            expression_profile=agent.expression_profile,
         )
     finally:
         db.close()
@@ -143,6 +149,7 @@ async def get_agent(agent_id: str):
             capabilities=agent.capabilities or [],
             status=agent.status or "active",
             default_personality_level=agent.default_personality_level,
+            expression_profile=agent.expression_profile,
         )
     finally:
         db.close()

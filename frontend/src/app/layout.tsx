@@ -63,6 +63,9 @@ export default function RootLayout({
             时机不可靠，脚本晚于首帧执行导致仍闪黑）。body 首位同步执行，
             早于任何 body 内容解析/绘制：读 localStorage 缓存（lib/theme.ts 写入，格式 {t,m}）
             立即应用上次主题；无缓存/解析失败静默回默认 obsidian。缓存格式改动需同步本脚本。 */}
+        {/* ⚠️ dangerouslySetInnerHTML 安全说明：
+            内容为硬编码常量（FOUC 防护脚本），绝不包含用户输入或动态数据。
+            复制此模式时必须遵守同一约束，否则引入 XSS 风险。 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var c=window.localStorage.getItem("mfk-visual-theme");if(!c)return;var p=JSON.parse(c);if(p&&typeof p.t==="string"&&(p.m==="light"||p.m==="dark")){var r=document.documentElement;r.setAttribute("data-theme",p.t);r.classList.remove("light","dark");r.classList.add(p.m);}}catch(e){}})();`,

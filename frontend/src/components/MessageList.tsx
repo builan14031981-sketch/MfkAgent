@@ -4,6 +4,7 @@ import { useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo, useStat
 import { ArrowDown, AlertTriangle, RotateCw, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ChatMessage, ThinkingPanel, StreamingThinkingPanel } from "@/components/ChatMessage";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { AgentIcon } from "@/components/AgentIcon";
 import { AgentOrb } from "@/components/AgentOrb";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
@@ -150,6 +151,13 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
   const lastActiveRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
+
+  // ──── 图片预览 Lightbox 状态（全局唯一实例） ────
+  const [lightboxState, setLightboxState] = useState<{ urls: string[]; index: number } | null>(null);
+  const handleImageClick = useCallback((urls: string[], index: number) => {
+    setLightboxState({ urls, index });
+  }, []);
+  const handleLightboxClose = useCallback(() => setLightboxState(null), []);
 
   // 空状态：渲染期派生，避免 effect 中 setState
   const isEmptyState = messages.length === 0 && timeline.length === 0;
@@ -413,6 +421,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
   }, [focusAnchorId]);
 
   return (
+    <>
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
       <div
         ref={containerRef}
@@ -454,6 +463,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                     onQuote={onQuote}
                     onRegenerate={onRegenerate}
                     onEdit={onEdit}
+                    onImageClick={handleImageClick}
                   />
                 )}
               </div>
@@ -663,5 +673,14 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
         {t("chat.jumpToLatest")}
       </button>
     </div>
+    {/* 图片预览 Lightbox（全局唯一实例） */}
+    {lightboxState && (
+      <ImageLightbox
+        urls={lightboxState.urls}
+        initialIndex={lightboxState.index}
+        onClose={handleLightboxClose}
+      />
+    )}
+  </>
   );
 });

@@ -8,7 +8,7 @@ import type { ToolCall } from "@/components/ToolCallCard";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useTranslation } from "@/hooks/useTranslation";
-import { API_BASE } from "@/lib/api";
+import { getAttachmentImageUrl } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
 
 interface ChatMessageProps {
@@ -19,6 +19,8 @@ interface ChatMessageProps {
   onQuote: (content: string) => void;
   onRegenerate: (messageId: number) => void;
   onEdit: (message: Message) => void;
+  /** 点击图片附件时回调（由 MessageList 提供，触发 Lightbox 预览） */
+  onImageClick?: (urls: string[], index: number) => void;
 }
 
 /** 从消息内容中解析 <think>...</think> 思考块（部分模型会在 content 中输出） */
@@ -451,12 +453,108 @@ function ActionButton({
 }
 
 /**
+ * 图片缩略图：自适应尺寸 + loading 骨架 + 错误态 + 点击预览
+ * - 单图 max-width: 360px，多图 max-width: min(280px, 45%)
+ * - 不裁剪、不拉伸，保持原始比例
+ */
+function ImageThumbnail({ url, alt, isSingle, onClick }: {
+  url: string | null;
+  alt: string;
+  isSingle: boolean;
+  onClick: () => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  if (!url) {
+    // 无路径：显示占位图标
+    return (
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "80px",
+        height: "80px",
+        borderRadius: "6px",
+        background: "color-mix(in srgb, var(--mf-bubble-user-fg) 8%, transparent)",
+        color: "color-mix(in srgb, var(--mf-bubble-user-fg) 40%, transparent)",
+      }}>
+        <Image style={{ width: "20px", height: "20px" }} />
+      </div>
+    );
+  }
+
+  if (error) {
+    // 加载失败：显示错误卡片
+    return (
+      <div
+        title={`${alt} — 图片加载失败`}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "4px",
+          padding: "12px 16px",
+          borderRadius: "6px",
+          background: "color-mix(in srgb, var(--color-error, #e53e3e) 8%, transparent)",
+          border: "1px dashed color-mix(in srgb, var(--color-error, #e53e3e) 30%, transparent)",
+          color: "var(--color-error, #e53e3e)",
+          fontSize: "11px",
+          maxWidth: "200px",
+        }}
+      >
+        <Image style={{ width: "18px", height: "18px", opacity: 0.6 }} />
+        <span>图片加载失败</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        position: "relative",
+        maxWidth: isSingle ? "360px" : "min(280px, 45%)",
+        borderRadius: "6px",
+        overflow: "hidden",
+        cursor: "pointer",
+        background: "color-mix(in srgb, var(--mf-bubble-user-fg) 6%, transparent)",
+        lineHeight: 0,
+      }}
+    >
+      {/* 骨架屏：加载中显示 */}
+      {!loaded && (
+        <div style={{
+          width: "100%",
+          paddingBottom: "56%",
+          background: "color-mix(in srgb, var(--mf-bubble-user-fg) 6%, transparent)",
+          animation: "pulse 1.5s ease-in-out infinite",
+        }} />
+      )}
+      <img
+        src={url}
+        alt={alt}
+        title="点击查看大图"
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+        style={{
+          display: loaded ? "block" : "none",
+          maxWidth: "100%",
+          height: "auto",
+        }}
+      />
+    </div>
+  );
+}
+
+/**
  * 单条消息：
  * - AI 消息：复制 / 引用 / 重生成（仅 AI，hover 显示）
  * - 用户消息：复制 / 编辑（hover 显示）
  * memo：滚动等高频场景下 MessageList 重渲染时（message/回调引用不变）跳过整条渲染
  */
-export const ChatMessage = memo(function ChatMessage({ message, currentAgent, durationMs, onQuote, onRegenerate, onEdit }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message, currentAgent, durationMs, onQuote, onRegenerate, onEdit, onImageClick }: ChatMessageProps) {
   const { t } = useTranslation();
   // 优先使用独立的 thinking 字段（流式/后端持久化）；老会话 thinking 内嵌在 content
   // 的 think 标签中时回退用 parseThinkBlock 从正文剥离，保证历史消息仍能展示思考块。
@@ -489,9 +587,9 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
 
   if (message.role === "user") {
     const imageAtts = message.attachments?.filter((a) => a.kind === "image") ?? [];
-    if (message.attachments?.length) {
-      console.log("[ChatMessage] 渲染用户消息 attachments:", message.id, message.attachments);
-    }
+    // 预计算所有图片 URL（点击预览 + img src 共用）
+    const imageUrls = imageAtts.map((att) => att.path ? getAttachmentImageUrl(message.chat_id, att.path) : null);
+
     return (
       <div>
         {/* 用户消息：轻量气泡 + 悬浮操作栏（复制 + 编辑） */}
@@ -510,42 +608,24 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
             {/* 图片附件 */}
             {imageAtts.length > 0 && (
               <div className="mf-bubble-images" style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px" }}>
-                {imageAtts.map((att, i) => (
-                  <div key={i} style={{
-                    position: "relative",
-                    width: "120px",
-                    height: "120px",
-                    borderRadius: "6px",
-                    overflow: "hidden",
-                    background: "color-mix(in srgb, var(--mf-bubble-user-fg) 10%, transparent)",
-                  }}>
-                    {att.path ? (
-                      <img
-                        src={`${API_BASE}/api/chat/${message.chat_id}/file?path=${encodeURIComponent(att.path)}`}
-                        alt={att.name}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                          (e.target as HTMLImageElement).nextElementSibling?.setAttribute("style", "display:flex");
-                        }}
-                      />
-                    ) : null}
-                    <div style={{
-                      display: att.path ? "none" : "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "100%",
-                      height: "100%",
-                      color: "color-mix(in srgb, var(--mf-bubble-user-fg) 50%, transparent)",
-                    }}>
-                      <Image style={{ width: "24px", height: "24px" }} />
-                    </div>
-                  </div>
-                ))}
+                {imageAtts.map((att, i) => {
+                  const url = imageUrls[i];
+                  const isSingle = imageAtts.length === 1;
+                  return (
+                    <ImageThumbnail
+                      key={i}
+                      url={url}
+                      alt={att.name}
+                      isSingle={isSingle}
+                      onClick={() => {
+                        if (url && onImageClick) {
+                          const validUrls = imageUrls.filter((u): u is string => u !== null);
+                          onImageClick(validUrls, validUrls.indexOf(url));
+                        }
+                      }}
+                    />
+                  );
+                })}
               </div>
             )}
             {/* 文字内容 */}

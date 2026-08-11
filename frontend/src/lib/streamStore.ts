@@ -179,6 +179,10 @@ export const useStreamStore = create<StreamStore>()(
 }),
   {
     name: "mfk-task-store",
+    // ⚠️ 设计意图：partialize 仅序列化 sessions.tasks（任务面板数据），
+    // refsMap（Map 类型，含 AbortController/Timer 等不可序列化对象）不参与持久化。
+    // merge 返回 { ...current, ... } 时 current.refsMap 是内存中的 Map 实例，直接透传。
+    // 修改 partialize 时切勿包含 refsMap，否则 hydration 会将其退化为普通 Object，导致 .get/.set 崩溃。
     partialize: (state) => ({
       sessions: Object.fromEntries(
         Object.entries(state.sessions).map(([chatId, session]) => [

@@ -146,6 +146,8 @@ class Agent(Base):
     status = Column(String(20), default="active")  # active / legacy / inactive
     # 默认人格推荐值：创建 Chat 时的 personality 快照来源。NULL = 该 Agent 默认无人格（不注入 personality prompt）
     default_personality_level = Column(Integer, nullable=True)
+    # Expression Profile V1：表达风格配置（companion / warm / professional / coder / creative）
+    expression_profile = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

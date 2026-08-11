@@ -12,7 +12,7 @@ Phase E3：Context Builder 正式化。
      project policy/personality/intent hint）
   3. memory_text 全量拼接（global + project 记忆）
   4. 无项目 + 文件操作 → Default Workspace 兜底（tools 启用）
-  5. 无项目 + 非文件操作 → 工具禁用（tools=None, project_path=None）
+  5. 无项目 + 非文件操作 → 仅无路径白名单工具（project_path=None）
   6. plan 模式 → read_only=True（build 模式 → False）
   7. use_tools=False → 强制禁用工具 + 无 intent hint
 
@@ -46,6 +46,7 @@ os.environ["QWEN_API_KEY"] = ""
 os.environ["GOOGLE_API_KEY"] = ""
 
 import app.models.agent as _agent_models  # noqa: F401, E402
+import app.models.persona as _persona_models  # noqa: F401, E402 — Persona V2：确保 persona_templates 表创建
 from app.core.database import engine as _engine, Base as _Base, SessionLocal  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 
@@ -56,6 +57,7 @@ from app.core.identity_principle import get_identity_principle  # noqa: E402
 from app.core.tool_runtime.policy import get_execution_policy, get_project_policy  # noqa: E402
 from app.services.personality import get_personality_prompt  # noqa: E402
 from app.core.workspace import get_default_workspace_context  # noqa: E402
+from app.core.tool_runtime.permission import NO_PATH_TOOLS, PermissionFilter  # noqa: E402
 
 
 AGENT_ID = "e3_coder"
@@ -285,7 +287,13 @@ def test_no_project_no_tools(project_dir: Path) -> dict:
     ctx = built.context
 
     assert ctx.project_path is None, "非文件操作不应启用默认工作目录"
-    assert ctx.tools is None, "未绑定项目且非文件操作应禁用工具"
+    # 2026-08-11 策略更新：未绑定项目不再全禁工具，按 NO_PATH_TOOLS 白名单保留无路径工具；
+    # 文件/Git 类项目专有工具必须被移除
+    project_only = set(PermissionFilter.BASE_TOOLS) - set(NO_PATH_TOOLS)
+    if ctx.tools:
+        tool_names = {t["function"]["name"] for t in ctx.tools}
+        assert not (tool_names & project_only), "未绑定项目不应包含项目专有工具"
+        assert tool_names <= NO_PATH_TOOLS, "未绑定项目只允许无路径白名单工具"
     assert "## 项目工作流" not in built.system_prompt, "无项目不应注入项目工作流"
     assert "## 当前工作目录（Default Workspace 兜底）" not in built.system_prompt, "无项目不应注入 workspace 上下文"
 

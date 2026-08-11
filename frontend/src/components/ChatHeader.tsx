@@ -119,7 +119,7 @@ export const ChatHeader = memo(function ChatHeader({
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: "8px 24px",
+      padding: "6px 24px",
       background: "transparent",
       flexShrink: 0,
     }}>
@@ -146,7 +146,7 @@ export const ChatHeader = memo(function ChatHeader({
             }}
             autoFocus
             style={{
-              fontSize: "16px",
+              fontSize: "14px",
               fontWeight: "600",
               color: "var(--text-level-1)",
               background: "transparent",
@@ -155,16 +155,18 @@ export const ChatHeader = memo(function ChatHeader({
               padding: 0,
               margin: 0,
               width: "200px",
+              lineHeight: "1.4",
             }}
           />
         ) : (
           <h1
             onClick={onStartEditTitle}
             style={{
-              fontSize: "16px",
+              fontSize: "14px",
               fontWeight: "600",
               color: "var(--text-level-1)",
               margin: 0,
+              lineHeight: "1.4",
               cursor: "pointer",
             }}
           >{chat?.title || "Chat"}</h1>

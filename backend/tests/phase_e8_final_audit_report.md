@@ -1,7 +1,7 @@
 # MfkAgent Runtime Final Audit — Phase E8 闭环验证报告
 
-- 时间: 2026-08-07 19:01:48
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_auditE8_qcirffws`
+- 时间: 2026-08-11 23:14:50
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_auditE8_itbtcf77`
 
 ## 闭环结论
 
@@ -24,15 +24,15 @@ E6 判定的 P1 已由 E7 全部落地；E8 实测端到端闭环（真实 HTTP 
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | A. Context 闭环（7 支柱契约） | ✅ PASS | 89ms |
-| 2 | B. Runtime 闭环（build 流式端到端 + 回放） | ✅ PASS | 243ms |
-| 3 | C. Permission 闭环（plan write_file 拒绝） | ✅ PASS | 157ms |
+| 1 | A. Context 闭环（7 支柱契约） | ✅ PASS | 162ms |
+| 2 | B. Runtime 闭环（build 流式端到端 + 回放） | ❌ FAIL | 0ms |
+| 3 | C. Permission 闭环（plan write_file 拒绝） | ✅ PASS | 198ms |
 | 4 | D. Permission 矩阵（只读放行/写入拒绝/fail-closed） | ✅ PASS | 0ms |
-| 5 | E. Event 闭环（注册表 + 回放 ASC） | ✅ PASS | 16ms |
+| 5 | E. Event 闭环（注册表 + 回放 ASC） | ✅ PASS | 45ms |
 | 6 | F. Verification 覆盖（策略路由） | ✅ PASS | 0ms |
-| 7 | G. Task Context 通道（Planner 预留） | ✅ PASS | 29ms |
+| 7 | G. Task Context 通道（Planner 预留） | ✅ PASS | 42ms |
 
-**通过率: 7/7**
+**通过率: 6/7**
 
 ## 验证明细
 
@@ -44,34 +44,31 @@ E6 判定的 P1 已由 E7 全部落地；E8 实测端到端闭环（真实 HTTP 
 
 ### 2. B. Runtime 闭环（build 流式端到端 + 回放）
 
-- run_id: 1
-- state_path: ['building_context', 'llm_call', 'tool_execution', 'verifying', 'llm_call', 'completing']
-- verify_strategy: run_command
-- event_count: 14
-- replay_seq: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-- audit_rows: 7
+- 说明: finish 缺失
+
+> 失败: finish 缺失
 
 ### 3. C. Permission 闭环（plan write_file 拒绝）
 
 - tool_result_success: False
 - approval_events: 0
 - file_written: False
-- run_status: completed
+- run_status: failed
 
 ### 4. D. Permission 矩阵（只读放行/写入拒绝/fail-closed）
 
-- read_only_allow: 11
-- write_policy_count: 12
+- read_only_allow: 18
+- write_policy_count: 15
 - undeclared_fail_closed: True
 
 ### 5. E. Event 闭环（注册表 + 回放 ASC）
 
-- registered_types: 16
+- registered_types: 17
 - replay_asc: [1, 2, 3, 4, 5]
 
 ### 6. F. Verification 覆盖（策略路由）
 
-- strategies: ['run_command', 'write_file']
+- strategies: ['apply_patch', 'git_commit', 'replace_in_file', 'run_command', 'write_file']
 
 ### 7. G. Task Context 通道（Planner 预留）
 
@@ -86,4 +83,4 @@ E6 判定的 P1 已由 E7 全部落地；E8 实测端到端闭环（真实 HTTP 
 
 ## 结论
 
-✅ **Runtime Final Audit 通过：闭环成立，可进入 Planner 阶段（补 P2：状态粒度/事件注册/流式路由/验证策略/死代码清理）。**
+❌ **1 项未通过**，详见上方明细。

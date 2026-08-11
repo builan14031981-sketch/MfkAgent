@@ -58,11 +58,9 @@ export async function showDesktopNotification(
   // Toast 节流：3 秒内已弹过通知则跳过（含提示音，避免音画不同步的割裂感）
   const now = Date.now();
   if (now - lastToastTime < TOAST_THROTTLE_MS) {
-    console.log("[notify] 节流中，跳过通知:", title);
     return;
   }
   lastToastTime = now;
-  console.log("[notify] 触发通知:", title);
 
   // Electron 环境：走主进程原生 Notification
   if (typeof window !== "undefined" && window.electronAPI?.showNotification) {

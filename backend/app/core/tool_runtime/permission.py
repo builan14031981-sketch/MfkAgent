@@ -67,3 +67,10 @@ class PermissionFilter:
             tools -= self._project_only_tools
 
         return sorted(tools)
+
+
+# 无需工作目录即可执行的工具全集（无 project_path 时保留，供 context_builder 分级过滤）。
+# 由 BASE_TOOLS - _project_only_tools 派生，单一事实来源，避免两处清单漂移。
+NO_PATH_TOOLS = frozenset(
+    t for t in PermissionFilter.BASE_TOOLS if t not in PermissionFilter._project_only_tools
+)
