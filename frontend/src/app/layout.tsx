@@ -1,50 +1,45 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Noto_Sans_SC, IBM_Plex_Sans, Press_Start_2P, VT323, DotGothic16 } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "../styles/tokens.css";
+/* 字体本地化（2026-08-11）：原 next/font/google 构建期需联网下载字体，
+   离线/网络抖动时构建直接崩。现改为：
+   - 单文件 Latin 字体（Geist/Geist Mono/VT323）→ next/font/local + public/fonts/
+   - unicode-range 分片字体（Noto Sans SC/IBM Plex Sans/像素主题字体）
+     → fontsource CSS 直引（npm 包自带 @font-face + 分片，构建零网络）
+   所有 --font-* CSS 变量名保持不变，主题/组件引用零改动。 */
+import "@fontsource-variable/noto-sans-sc";
+import "@fontsource-variable/ibm-plex-sans";
+import "@fontsource/press-start-2p/latin.css";
+import "@fontsource/dotgothic16";
 import { Providers } from "@/components/providers";
 import { AppLayout } from "@/components/AppLayout";
 
-const geistSans = Geist({
+/* Geist 可变字体（latin 单文件，wght 100-900） */
+const geistSans = localFont({
+  src: "../../public/fonts/geist-latin.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "../../public/fonts/geist-mono-latin.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const notoSansSC = Noto_Sans_SC({
-  variable: "--font-noto-sans-sc",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
-
-/* 像素风主题字体（纯新增，供 hero 像素主题引用） */
-const pressStart2P = Press_Start_2P({
-  variable: "--font-pixel-8bit",
-  weight: "400",
-  subsets: ["latin"],
-});
-
-const vt323 = VT323({
+/* VT323：静态单字重 latin 单文件（family 定义由 next/font/local 输出） */
+const vt323 = localFont({
+  src: "../../public/fonts/vt323-latin.woff2",
   variable: "--font-pixel-vt",
   weight: "400",
-  subsets: ["latin"],
 });
 
-const dotGothic16 = DotGothic16({
-  variable: "--font-pixel-dot",
-  weight: "400",
-  subsets: ["latin"],
-});
+/* fontsource 字体的 CSS 变量定义在 globals.css :root（变量名与原 next/font 一致）：
+   --font-noto-sans-sc → 'Noto Sans SC Variable'
+   --font-ibm-plex-sans → 'IBM Plex Sans Variable'
+   --font-pixel-8bit → 'Press Start 2P'（latin 子集）
+   --font-pixel-dot → 'DotGothic16' */
 
 export const metadata: Metadata = {
   title: "MfkAgent - 智能Agent平台",
@@ -59,7 +54,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-CN"
-      className={`${geistSans.variable} ${geistMono.variable} ${notoSansSC.variable} ${ibmPlexSans.variable} ${pressStart2P.variable} ${vt323.variable} ${dotGothic16.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${vt323.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">

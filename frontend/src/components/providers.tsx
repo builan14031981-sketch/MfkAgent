@@ -51,8 +51,9 @@ interface FontProviderProps {
   children: React.ReactNode;
 }
 
-// 字体映射：source-han-sans / ibm-plex-sans 直接引用 next/font 构建期自托管的
-// CSS 变量（layout.tsx），零网络依赖；霞鹜文楷无本地托管，保留 CDN
+// 字体映射：source-han-sans / ibm-plex-sans 引用本地自托管字体的
+// CSS 变量（globals.css :root，@font-face 来自 fontsource 包），零网络依赖；
+// 霞鹜文楷无本地托管，保留 CDN
 export const FONT_FAMILY_MAP: Record<string, string> = {
   "system": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   "source-han-sans": "var(--font-noto-sans-sc), sans-serif",
@@ -60,19 +61,19 @@ export const FONT_FAMILY_MAP: Record<string, string> = {
   "ibm-plex-sans": "var(--font-ibm-plex-sans), sans-serif",
 };
 
-// 字体 CDN 映射：打包版 next/font 已自托管时不会用到；
-// dev 模式下 next/font 不输出 @font-face，由下方字体可用性检测触发兜底加载
+// 字体 CDN 映射：本地字体可用时不会用到，仅作极端场景兜底
 const fontCDN: Record<string, string> = {
   "source-han-sans": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap",
   "lxgw-wenkai": "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css",
   "ibm-plex-sans": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap",
 };
 
-// 字体可用性检测用的 family 名（与 FONT_FAMILY_MAP 中的 var() 变量展开后的首字体名一致）
+// 字体可用性检测用的 family 名（fontsource 包注册的 @font-face family；
+// 2026-08-11 字体本地化：next/font/google → fontsource，可变字体名带 Variable 后缀）
 const FONT_CHECK_NAME: Record<string, string> = {
-  "source-han-sans": "Noto Sans SC",
+  "source-han-sans": "Noto Sans SC Variable",
   "lxgw-wenkai": "LXGW WenKai",
-  "ibm-plex-sans": "IBM Plex Sans",
+  "ibm-plex-sans": "IBM Plex Sans Variable",
 };
 
 export function FontProvider({ children }: FontProviderProps) {
@@ -96,8 +97,8 @@ export function FontProvider({ children }: FontProviderProps) {
     const key = settings.font_family;
     const cdn = fontCDN[key];
     const checkName = FONT_CHECK_NAME[key];
-    // 本地自托管 @font-face 缺失时（dev 模式 next/font 不输出字体定义）回退 CDN；
-    // 打包版检测通过则纯本地零请求
+    // 本地自托管 @font-face 缺失时回退 CDN（正常情况 fontsource CSS 始终在，检测通过）；
+    // 打包版/dev 均为纯本地零请求
     const missingLocal = checkName ? !document.fonts?.check(`16px "${checkName}"`) : true;
     const existingLink = document.getElementById("font-cdn");
 

@@ -64,6 +64,15 @@
   /* 字体 */
   --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
 
+  /* 字体本地化（2026-08-11）：fontsource 直引字体的 family 变量。
+     Geist/Geist Mono/VT323 由 next/font/local 在 <html> 上输出同名变量；
+     此处为 fontsource CSS 直引的字体补定义（变量名与原 next/font/google 一致，
+     组件/主题引用零改动）。@font-face 由 layout.tsx 引入的 fontsource CSS 提供。 */
+  --font-noto-sans-sc: "Noto Sans SC Variable";
+  --font-ibm-plex-sans: "IBM Plex Sans Variable";
+  --font-pixel-8bit: "Press Start 2P";
+  --font-pixel-dot: "DotGothic16";
+
   /* 动画 */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.2s ease;

@@ -453,7 +453,7 @@ function FontFamilyDropdown({
 
   const current = FONT_OPTIONS.find((o) => o.value === value) ?? FONT_OPTIONS[0];
 
-  // 预载霞鹜文楷 webfont（仅供选项预览；其余字体已由 next/font 本地自托管）
+  // 预载霞鹜文楷 webfont（仅供选项预览；其余字体已本地自托管：fontsource 包 + public/fonts）
   useEffect(() => {
     if (document.getElementById("font-preview-cdn")) return;
     const link = document.createElement("link");
