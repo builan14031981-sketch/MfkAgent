@@ -376,6 +376,9 @@ export function useProviderConfig(): UseProviderConfigResult {
   );
 
   // ── enabled_models 增删改（基于 settings 唯一权威源）──
+  // 2026-08-11：addModel/removeModel/setEnabled 改后也调 triggerModelsRefresh()，
+  // 与 setProviderDisabled 保持一致。虽然 useProviderConfig 内部通过 useSettingsStore
+  // 订阅 settings 变化会自动重派生 enabledMap，但加一层保险保证“已 mount 下拉”可拿到最新列表。
   const addModel = useCallback(
     async (providerId: string, modelId: string) => {
       const id = modelId.trim();
@@ -383,20 +386,22 @@ export function useProviderConfig(): UseProviderConfigResult {
       const cur = enabledMap[providerId] || [];
       if (cur.includes(id)) return; // 幂等
       await persistEnabledMap({ ...enabledMap, [providerId]: [...cur, id] });
+      triggerModelsRefresh();
     },
     [enabledMap, persistEnabledMap]
   );
-
+  
   const removeModel = useCallback(
     async (providerId: string, modelId: string) => {
       const cur = enabledMap[providerId] || [];
-      if (!cur.includes(modelId)) return; // 幂等
+      if (!cur.includes(modelId)) return; // 幂等：已不在列表里则跳过
       const next = cur.filter((m) => m !== modelId);
       await persistEnabledMap({ ...enabledMap, [providerId]: next });
+      triggerModelsRefresh();
     },
     [enabledMap, persistEnabledMap]
   );
-
+  
   const setEnabled = useCallback(
     async (providerId: string, modelIds: string[]) => {
       // 去重 + 去空 + 保序
@@ -409,6 +414,7 @@ export function useProviderConfig(): UseProviderConfigResult {
         clean.push(id);
       }
       await persistEnabledMap({ ...enabledMap, [providerId]: clean });
+      triggerModelsRefresh();
     },
     [enabledMap, persistEnabledMap]
   );

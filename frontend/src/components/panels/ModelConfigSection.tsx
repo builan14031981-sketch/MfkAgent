@@ -68,6 +68,14 @@ const emptyForm: FormState = {
 // 注：2026-08-11 撤销 — 快捷池改为走后端 PROVIDERS 权威源（P1 修复）。
 // 旧版硬编码（含 openai: gpt-4o 等与后端脱钩的条目）见 _trash/20260811_models_drift_fix/ModelConfigSection.tsx.bak
 
+// 2026-08-11 新增：推荐模型白名单（仅展示 3 个新款文本模型，隐藏老款/专用/视觉型号）
+// - qwen3.7-plus：Qwen3.7 系列最新版
+// - qwen-plus-2025-07-28：Qwen Plus 2025-07 时间戳新版
+// - qwen-max：通义千问旗舰
+// 其余后端披露的 9 个模型（qwen-flash/qwen-plus/qwen-math-turbo/qwen-mt-flash/...）及 3 个 VL 视觉模型
+// 均不作为"快捷入口"展示，但用户仍可在区块3 "手动添加"输入 id 加入候选池。
+const RECOMMENDED_TEXT_NEW = new Set(["qwen3.7-plus", "qwen-plus-2025-07-28", "qwen-max"]);
+
 /**
  * @deprecated 字段级边界重构后已拆分为 ModelProvidersBasic + ModelAdvancedFields。
  * 保留此组件仅为向后兼容，新代码请勿引用。
@@ -631,6 +639,8 @@ function ProviderCard({
 }: ProviderCardProps) {
   // 自定义手动添加输入框（每个 provider 独立）
   const [customInput, setCustomInput] = useState("");
+  // 2026-08-11：候选池折叠状态，默认折叠（像字体选择器那样不占空间）
+  const [poolExpanded, setPoolExpanded] = useState(false);
 
   // ── 连通性测试状态（每张卡片独立，临时 UI 状态）──
   const [testLoading, setTestLoading] = useState(false);
@@ -659,11 +669,13 @@ function ProviderCard({
   // 推荐模型：唯一权威源 = ProviderConfig.models（后端 model_providers.py）
   // 历史：之前用 RECOMMENDED_MODELS 硬编码常驻，与后端脱钩导致漂移（百炼新模型漏显示、qwen-turbo 幽灵等）。
   // 2026-08-11 改为单源（见 P1 修复）。百炼一类的聚合 provider 也能露出全部子模型。
+  // 2026-08-11 进一步精简：仅展示 3 个新款文本模型（白名单 RECOMMENDED_TEXT_NEW）
+  // 其余模型走区块3 "手动添加"输入名字加入。
   const recommended = p.models.map((m) => m.id);
   // 已启用集合（O(1) 查找）
   const enabledSet = new Set(enabledModels);
-  // 快捷添加区只展示"尚未启用"的推荐模型
-  const quickAddList = recommended.filter((m) => !enabledSet.has(m));
+  // 快捷添加区只展示"白名单 ∩ 尚未启用"的推荐模型
+  const quickAddList = recommended.filter((m) => !enabledSet.has(m) && RECOMMENDED_TEXT_NEW.has(m));
 
   const handleCustomAdd = () => {
     const id = customInput.trim();
@@ -879,61 +891,139 @@ function ProviderCard({
 
       {/* ── 动态模型 Chip 三区块 ── */}
       <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-        {/* 区块1：已加入候选池的模型 Chip */}
+        {/* 区块1：已加入候选池的模型（可折叠，像字体选择器一样简洁） */}
         <div>
           <div
-            title={t("settings.model.providers.enabledModelsHint")}
-            style={{ fontSize: "11px", color: "var(--text-level-3)", marginBottom: "4px", cursor: "help", textDecoration: "underline dotted var(--text-level-4)" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "2px 0",
+              fontSize: "11px",
+              color: "var(--text-level-3)",
+            }}
           >
-            {t("settings.model.providers.enabledModels")}
-          </div>
-          {enabledModels.length === 0 ? (
-            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
-              {t("settings.model.providers.noEnabled")}
+            <span
+              title={t("settings.model.providers.enabledModelsHint")}
+              style={{ cursor: "help", textDecoration: "underline dotted var(--text-level-4)" }}
+            >
+              {t("settings.model.providers.enabledModels")} ({enabledModels.length})
             </span>
-          ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            <div style={{ flex: 1 }} />
+            {enabledModels.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPoolExpanded((v) => !v)}
+                aria-label={poolExpanded ? "collapse" : "expand"}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "20px",
+                  height: "20px",
+                  padding: 0,
+                  borderRadius: "var(--radius-xs)",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "var(--text-level-3)",
+                  transition: "color var(--transition-fast), background var(--transition-fast)",
+                  outline: "none",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--text-level-1)";
+                  e.currentTarget.style.background = "var(--bg-level-3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-level-3)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <ChevronDown
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    transform: poolExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform var(--transition-fast)",
+                  }}
+                />
+              </button>
+            )}
+          </div>
+
+          {/* 展开后：紧湊列表（28px 行高）+ 每行右侧 X 删除按钮 */}
+          {poolExpanded && enabledModels.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1px", marginTop: "2px" }}>
               {enabledModels.map((mid) => (
-                <span
+                <div
                   key={mid}
                   style={{
-                    display: "inline-flex",
+                    display: "flex",
                     alignItems: "center",
-                    gap: "4px",
-                    padding: "2px 4px 2px 10px",
-                    borderRadius: "999px",
-                    background: "color-mix(in srgb, var(--color-primary) 12%, transparent)",
-                    color: "var(--color-primary)",
-                    fontSize: "12px",
-                    fontFamily: "monospace",
-                    border: "1px solid color-mix(in srgb, var(--color-primary) 30%, transparent)",
+                    gap: "6px",
+                    height: "28px",
+                    padding: "0 6px 0 10px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)",
                   }}
                 >
-                  {mid}
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: "12px",
+                      fontFamily: "monospace",
+                      color: "var(--text-level-1)",
+                    }}
+                  >
+                    {mid}
+                  </span>
                   <button
                     type="button"
                     onClick={() => onRemoveModel(mid)}
                     title={t("settings.model.providers.removeModel")}
+                    aria-label="remove"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      width: "16px",
-                      height: "16px",
+                      width: "18px",
+                      height: "18px",
                       padding: 0,
                       borderRadius: "50%",
                       border: "none",
                       background: "transparent",
                       cursor: "pointer",
-                      color: "var(--color-primary)",
-                      opacity: 0.7,
+                      color: "var(--text-level-3)",
+                      flexShrink: 0,
+                      transition: "color var(--transition-fast), background var(--transition-fast)",
+                      outline: "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--color-error)";
+                      e.currentTarget.style.background = "var(--bg-level-3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--text-level-3)";
+                      e.currentTarget.style.background = "transparent";
                     }}
                   >
                     <X style={{ width: "12px", height: "12px" }} />
                   </button>
-                </span>
+                </div>
               ))}
             </div>
+          )}
+
+          {/* 折叠状态或空状态：仍显示提示（默认折叠时仅一行 header 文字提示） */}
+          {!poolExpanded && enabledModels.length === 0 && (
+            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+              {t("settings.model.providers.noEnabled")}
+            </span>
           )}
         </div>
 

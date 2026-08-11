@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAgents, Agent } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
+import { useVisibleModels } from "@/hooks/useVisibleModels";
 import { useChat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -31,11 +32,14 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const { agents } = useAgents();
   const { models } = useModels();
+  // 2026-08-11 接入 useVisibleModels：与聊天页/弹窗/设置下拉用同一份可见模型
+  const visibleModels = useVisibleModels(models);
   const { createChat } = useChat();
   const { createProject } = useProjects();
   const { settings, updateSetting } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
-  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
+  // 2026-08-11：传 visibleModels，让偏好 modelId 跟下拉可见性一致（移除 qwen-max 后回落为 qwen-flash）
+  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(visibleModels, settings);
   const [welcome, setWelcome] = useState("");
   const [welcomeSubtext, setWelcomeSubtext] = useState("");
   // 全部台词类目（原始数据，builtin 模式从后端拉取）
@@ -181,7 +185,7 @@ export default function Home() {
 
   const activeAgents = agents.filter((a) => a.status === "active");
   const currentAgent = selectedAgent || (settings?.default_agent ? activeAgents.find(a => a.id === settings.default_agent) || null : null) || activeAgents[0] || null;
-  const currentModel = selectedModel || models.find((m) => m.id === prefModelId) || models[0] || null;
+  const currentModel = selectedModel || visibleModels.find((m) => m.id === prefModelId) || visibleModels[0] || null;
 
   const handleAgentChange = useCallback((agentId: string) => {
     const agent = activeAgents.find((a) => a.id === agentId);
@@ -329,10 +333,10 @@ export default function Home() {
         onSend={handleSend}
         isSending={isCreating}
         placeholder={t("home.inputPlaceholder")}
-        models={models}
+        models={visibleModels}
         modelId={currentModel?.id || null}
         onModelChange={(id) => {
-          const model = models.find(m => m.id === id);
+          const model = visibleModels.find(m => m.id === id);
           if (model) {
             setSelectedModel(model);
             setPrefModel(id);

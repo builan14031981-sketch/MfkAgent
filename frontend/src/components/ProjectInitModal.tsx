@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { useAgents, triggerAgentsRefresh } from "@/hooks/useAgents";
 import { useModels, Model, triggerModelsRefresh } from "@/hooks/useModels";
+import { useVisibleModels } from "@/hooks/useVisibleModels";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChatInput } from "@/components/ChatInput";
@@ -38,6 +39,9 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
   const { createChat } = useChat();
   const { agents } = useAgents();
   const { models } = useModels();
+  // 2026-08-11 接入 useVisibleModels：和聊天页/首页/设置默认模型下拉用同一份可见模型，
+  // 避免用户在 ModelConfigSection 移出候选池后，此弹窗下拉仍能选到。
+  const visibleModels = useVisibleModels(models);
   const { settings } = useSettingsStore();
 
   const [input, setInput] = useState("");
@@ -83,13 +87,14 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
   }, [project?.id]);
 
   // ── selectedModel 失效回退 ──
-  // 当 models 列表刷新后，若当前 selectedModel 已不在新列表里（被禁用/删除），
-  // 置空让 (default_model → models[0]) fallback 链兜底。
+  // 当 visibleModels 列表刷新后，若当前 selectedModel 已不在新列表里（被禁用/删除），
+  // 置空让 (default_model → visibleModels[0]) fallback 链兜底。
+  // 2026-08-11：改为监听 visibleModels，与下拉可见性保持一致
   useEffect(() => {
-    if (selectedModel && !models.find((m) => m.id === selectedModel.id)) {
+    if (selectedModel && !visibleModels.find((m) => m.id === selectedModel.id)) {
       setSelectedModel(null);
     }
-  }, [models, selectedModel]);
+  }, [visibleModels, selectedModel]);
 
   // ── agentId 失效回退 ──
   // 同上：当前选中的 agent 若已不在 active 列表里，置空让 fallback 兜底。
@@ -115,7 +120,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         agentId || settings?.default_agent || activeAgents[0]?.id || "general",
         userMessage.slice(0, 50) || "New Chat",
         projectId,
-        (selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null,
+        (selectedModel || (settings?.default_model ? visibleModels.find(m => m.id === settings.default_model) || null : null) || visibleModels[0] || null)?.id || null,
         files,
         mode
       );
@@ -133,7 +138,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
       setInput(userMessage);
       setIsSending(false);
     }
-  }, [input, isSending, agentId, settings, activeAgents, selectedModel, models, projectId, files, mode, createChat, onCreated, onClose, router]);
+  }, [input, isSending, agentId, settings, activeAgents, selectedModel, visibleModels, projectId, files, mode, createChat, onCreated, onClose, router]);
 
   /**
    * 跳过：创建关联当前 project 的空会话（无 ?message 参数，不触发自动发送），
@@ -148,7 +153,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         agentId || settings?.default_agent || activeAgents[0]?.id || "general",
         t("chat.projectInitDefaultTitle", { name: project.name }),
         projectId,
-        (selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null,
+        (selectedModel || (settings?.default_model ? visibleModels.find(m => m.id === settings.default_model) || null : null) || visibleModels[0] || null)?.id || null,
         [],
         mode
       );
@@ -165,7 +170,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
       console.error("Failed to create chat on skip:", err);
       setIsSending(false);
     }
-  }, [isSending, agentId, settings, activeAgents, selectedModel, models, projectId, mode, project, createChat, onCreated, onClose, router, t]);
+  }, [isSending, agentId, settings, activeAgents, selectedModel, visibleModels, projectId, mode, project, createChat, onCreated, onClose, router, t]);
 
   // 防空保护：project 缺失或字段不全时直接不渲染，防止崩溃
   if (!project || typeof project.id !== "number" || !project.name) {
@@ -271,8 +276,8 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             isSending={isSending}
             placeholder={t("chat.projectInitPlaceholder")}
             inputMinHeight={97}
-            models={models}
-            modelId={(selectedModel || (settings?.default_model ? models.find(m => m.id === settings.default_model) || null : null) || models[0] || null)?.id || null}
+            models={visibleModels}
+            modelId={(selectedModel || (settings?.default_model ? visibleModels.find(m => m.id === settings.default_model) || null : null) || visibleModels[0] || null)?.id || null}
             onModelChange={(id) => {
               const model = models.find(m => m.id === id);
               if (model) setSelectedModel(model);
