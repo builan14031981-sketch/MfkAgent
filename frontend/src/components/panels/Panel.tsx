@@ -27,7 +27,11 @@ export function Panel({ isOpen, onClose, title, children, width = "700px", heigh
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      // portal 弹层（自定义下拉等）物理挂在 body 上，视为面板内交互，
+      // 否则会被误判为“点击外部”导致面板关闭、弹层随卸载丢失 click 事件
+      if (target instanceof Element && target.closest("[data-portal-popover]")) return;
+      if (panelRef.current && !panelRef.current.contains(target)) {
         onClose();
       }
     };

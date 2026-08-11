@@ -196,6 +196,16 @@ html, body {
   line-height: 1.5;
 }
 
+/* 表单控件默认不继承 body 字体（浏览器 UA 行为），此处统一跟随全局 --font-family；
+   组件级显式 font-family 内联样式优先级更高，不受影响 */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
 /* 全局点击动效 */
 .clickable {
   transition: all var(--transition-click);

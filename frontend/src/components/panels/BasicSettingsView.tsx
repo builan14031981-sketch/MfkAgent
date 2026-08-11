@@ -17,6 +17,8 @@ import { ExtensionPanel } from "./ExtensionPanel";
 import { ModelProvidersBasic } from "./ModelConfigSection";
 import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { SwitchButton } from "@/components/SwitchButton";
+import { FONT_FAMILY_MAP } from "@/components/providers";
+import { useVisibleModels } from "@/hooks/useVisibleModels";
 import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
 
@@ -403,6 +405,164 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+/** 字体选项：displayFont 用于以本尊字体渲染选项名（原生 <select> 的 option 在 Windows 上无法设字体） */
+const FONT_OPTIONS: Array<{ value: string; labelKey: string }> = [
+  { value: "system", labelKey: "settings.general.font.system" },
+  { value: "source-han-sans", labelKey: "settings.general.font.source-han-sans" },
+  { value: "lxgw-wenkai", labelKey: "settings.general.font.lxgw-wenkai" },
+  { value: "ibm-plex-sans", labelKey: "settings.general.font.ibm-plex-sans" },
+];
+
+/** 字体选择器：自定义下拉，每个选项名用对应字体渲染（所见即所得） */
+function FontFamilyDropdown({
+  value,
+  onSelect,
+  disabled,
+  t,
+}: {
+  value: string;
+  onSelect: (value: string) => void;
+  disabled: boolean;
+  t: (key: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+
+  const current = FONT_OPTIONS.find((o) => o.value === value) ?? FONT_OPTIONS[0];
+
+  // 预载霞鹜文楷 webfont（仅供选项预览；其余字体已由 next/font 本地自托管）
+  useEffect(() => {
+    if (document.getElementById("font-preview-cdn")) return;
+    const link = document.createElement("link");
+    link.id = "font-preview-cdn";
+    link.rel = "stylesheet";
+    link.href = "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css";
+    document.head.appendChild(link);
+  }, []);
+
+  // 计算下拉位置（向下弹出）
+  useEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    setPos({ top: rect.bottom + 4, left: rect.left, width: Math.max(rect.width, 220) });
+  }, [open]);
+
+  // 点击外部关闭
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (popRef.current?.contains(target)) return;
+      if (btnRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Esc 关闭
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          ...inputStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "8px",
+          minWidth: "160px",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.6 : 1,
+        }}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontFamily: FONT_FAMILY_MAP[current.value],
+          }}
+        >
+          {t(current.labelKey)}
+        </span>
+        <ChevronDown style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+      </button>
+
+      {open && createPortal(
+        <div
+          ref={popRef}
+          data-portal-popover
+          style={{
+            position: "fixed",
+            top: pos.top,
+            left: pos.left,
+            width: pos.width,
+            padding: "6px",
+            borderRadius: "var(--radius-xl)",
+            background: "var(--bg-level-2)",
+            border: "1px solid var(--border-secondary)",
+            boxShadow: "var(--shadow-lg)",
+            zIndex: 9999,
+          }}
+        >
+          {FONT_OPTIONS.map((opt) => {
+            const active = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onSelect(opt.value);
+                  setOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  width: "100%",
+                  padding: "7px 10px",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: active ? 600 : 400,
+                  color: active ? "var(--color-primary)" : "var(--text-level-2)",
+                  borderRadius: "var(--radius-sm)",
+                  textAlign: "left",
+                  fontFamily: FONT_FAMILY_MAP[opt.value],
+                }}
+              >
+                <span style={{ width: "14px", flexShrink: 0 }}>
+                  {active && <Check style={{ width: "14px", height: "14px" }} />}
+                </span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {t(opt.labelKey)}
+                </span>
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 /** 自定义台词编辑器：最多 5 条，逐条输入/删除，保存时以 JSON 数组写入设置 */
 function GreetingCustomEditor({
   value,
@@ -590,21 +750,36 @@ function GeneralBasic(props: SettingsViewProps) {
       </div>
 
       {/* 字体风格 */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
         <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
           {t("settings.general.font.title")}
         </h3>
-        <select
+        <FontFamilyDropdown
           value={settings?.font_family || "system"}
-          onChange={(e) => onUpdate("font_family", e.target.value)}
+          onSelect={(v) => onUpdate("font_family", v)}
           disabled={saving === "font_family"}
-          style={{ ...inputStyle, minWidth: "140px", padding: "6px 12px" }}
-        >
-          <option value="system">{t("settings.general.font.system")}</option>
-          <option value="source-han-sans">{t("settings.general.font.source-han-sans")}</option>
-          <option value="lxgw-wenkai">{t("settings.general.font.lxgw-wenkai")}</option>
-          <option value="ibm-plex-sans">{t("settings.general.font.ibm-plex-sans")}</option>
-        </select>
+          t={t}
+        />
+      </div>
+
+      {/* 字体实时预览：以当前所选字体渲染 */}
+      <div
+        style={{
+          marginBottom: "18px",
+          padding: "12px 14px",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--border-primary)",
+          background: "var(--bg-level-2)",
+          fontFamily: FONT_FAMILY_MAP[settings?.font_family || "system"],
+          color: "var(--text-level-2)",
+        }}
+      >
+        <div style={{ fontSize: "15px", lineHeight: 1.6 }}>
+          The quick brown fox jumps over the lazy dog 0123456789
+        </div>
+        <div style={{ fontSize: "14px", lineHeight: 1.6, color: "var(--text-level-3)" }}>
+          你好，世界！字体预览 Font Preview
+        </div>
       </div>
 
       {/* 强调色多选已于 V2.0 废除：每个视觉主题自带唯一 accent，见上方主题选择。 */}
@@ -774,7 +949,11 @@ function GroupedModelDropdown({
     return list;
   }, [models]);
 
-  const currentName = models.find((m) => m.id === selectedId)?.name ?? selectedId ?? "—";
+  // 2026-08-11 增强：当前选中的 model 不在列表中（已从候选池移除）时，
+  // 补一个"未启用"提示，避免用户看到裸 ID 误以为下拉坏了。
+  const currentModel = models.find((m) => m.id === selectedId);
+  const currentName = currentModel?.name
+    ?? (selectedId ? `${selectedId}（未启用）` : "—");
 
   // 计算下拉位置（向下弹出）
   useEffect(() => {
@@ -823,6 +1002,7 @@ function GroupedModelDropdown({
       {open && !loading && createPortal(
         <div
           ref={popRef}
+          data-portal-popover
           style={{
             position: "fixed",
             top: pos.top,
@@ -928,12 +1108,14 @@ function GroupedModelDropdown({
 // ── model 基础区块：默认模型 / 默认推理程度 + Provider 卡片基础配置 ──
 function ModelBasic(props: SettingsViewProps) {
   const { settings, saving, onUpdate, models, modelsLoading, t } = props;
+  // 2026-08-11：默认模型下拉按候选池过滤，与全站下拉保持一致
+  const visibleModels = useVisibleModels(models);
 
-  // 按 provider 分组，保持 provider 原始出现顺序
+  // 按 provider 分组，保持 provider 原始出现顺序（基于可见模型）
   const providerGroups = useMemo(() => {
     const seen = new Set<string>();
     const groups: { providerId: string; providerName: string; models: Model[] }[] = [];
-    for (const m of models) {
+    for (const m of visibleModels) {
       if (!seen.has(m.provider)) {
         seen.add(m.provider);
         groups.push({
@@ -946,7 +1128,7 @@ function ModelBasic(props: SettingsViewProps) {
       if (group) group.models.push(m);
     }
     return groups;
-  }, [models]);
+  }, [visibleModels]);
 
   return (
     <>
@@ -962,10 +1144,13 @@ function ModelBasic(props: SettingsViewProps) {
             </p>
           </div>
           <GroupedModelDropdown
-            models={models}
+            models={visibleModels}
             selectedId={settings?.default_model || FALLBACK_MODEL_ID}
             onSelect={(id) => onUpdate("default_model", id)}
-            disabled={saving === "default_model" || modelsLoading}
+            // 2026-08-11 修复：只有 visibleModels 为空且仍在 loading 时才禁用，
+            // 避免 enabled_models 改后 useModels 重 fetch 期间下拉被锁死（1-2s 窗口）。
+            // loading 态仍然以 "Loading..." 文本提示，不静默。
+            disabled={saving === "default_model" || (modelsLoading && visibleModels.length === 0)}
             loading={modelsLoading}
           />
         </div>

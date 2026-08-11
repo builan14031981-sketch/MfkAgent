@@ -75,19 +75,28 @@ interface FontProviderProps {
   children: React.ReactNode;
 }
 
-// 字体映射
-const fontFamilyMap: Record<string, string> = {
+// 字体映射：source-han-sans / ibm-plex-sans 直接引用 next/font 构建期自托管的
+// CSS 变量（layout.tsx），零网络依赖；霞鹜文楷无本地托管，保留 CDN
+export const FONT_FAMILY_MAP: Record<string, string> = {
   "system": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  "source-han-sans": "'Source Han Sans SC', 'Noto Sans SC', sans-serif",
+  "source-han-sans": "var(--font-noto-sans-sc), sans-serif",
   "lxgw-wenkai": "'LXGW WenKai', cursive",
-  "ibm-plex-sans": "'IBM Plex Sans', sans-serif",
+  "ibm-plex-sans": "var(--font-ibm-plex-sans), sans-serif",
 };
 
-// 字体 CDN 映射
+// 字体 CDN 映射：打包版 next/font 已自托管时不会用到；
+// dev 模式下 next/font 不输出 @font-face，由下方字体可用性检测触发兜底加载
 const fontCDN: Record<string, string> = {
   "source-han-sans": "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap",
   "lxgw-wenkai": "https://cdn.jsdelivr.net/npm/lxgw-wenkai-webfont@1.7.0/style.css",
   "ibm-plex-sans": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&display=swap",
+};
+
+// 字体可用性检测用的 family 名（与 FONT_FAMILY_MAP 中的 var() 变量展开后的首字体名一致）
+const FONT_CHECK_NAME: Record<string, string> = {
+  "source-han-sans": "Noto Sans SC",
+  "lxgw-wenkai": "LXGW WenKai",
+  "ibm-plex-sans": "IBM Plex Sans",
 };
 
 export function FontProvider({ children }: FontProviderProps) {
@@ -101,25 +110,33 @@ export function FontProvider({ children }: FontProviderProps) {
     if (!settings?.font_family) return;
 
     const root = window.document.documentElement;
-    const fontFamily = fontFamilyMap[settings.font_family] || fontFamilyMap["system"];
+    const fontFamily = FONT_FAMILY_MAP[settings.font_family] || FONT_FAMILY_MAP["system"];
 
     // 立即应用字体，不依赖 CDN 加载
     root.style.setProperty("--font-family", fontFamily);
 
-    // 动态加载字体 CDN（如果需要）
-    if (settings.font_family !== "system") {
-      const cdn = fontCDN[settings.font_family];
-      if (cdn) {
-        // 检查是否已加载
-        const existingLink = document.getElementById("font-cdn");
-        if (existingLink) existingLink.remove();
+    if (settings.font_family === "system") return;
 
+    const key = settings.font_family;
+    const cdn = fontCDN[key];
+    const checkName = FONT_CHECK_NAME[key];
+    // 本地自托管 @font-face 缺失时（dev 模式 next/font 不输出字体定义）回退 CDN；
+    // 打包版检测通过则纯本地零请求
+    const missingLocal = checkName ? !document.fonts?.check(`16px "${checkName}"`) : true;
+    const existingLink = document.getElementById("font-cdn");
+
+    if (cdn && missingLocal) {
+      if (existingLink && existingLink.getAttribute("href") !== cdn) existingLink.remove();
+      if (!document.getElementById("font-cdn")) {
         const link = document.createElement("link");
         link.id = "font-cdn";
         link.rel = "stylesheet";
         link.href = cdn;
         document.head.appendChild(link);
       }
+    } else if (existingLink) {
+      // 本地字体可用：清理旧选项残留的 CDN link
+      existingLink.remove();
     }
   }, [settings?.font_family]);
 

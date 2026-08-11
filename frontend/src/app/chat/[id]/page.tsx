@@ -15,7 +15,7 @@ import { useSettingsStore } from "@/lib/store";
 import { useStreamStore } from "@/lib/streamStore";
 import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { usePreferences } from "@/hooks/usePreferences";
-import { useProviderConfig } from "@/hooks/useProviderConfig";
+import { useVisibleModels } from "@/hooks/useVisibleModels";
 import { compressMessages } from "@/lib/api";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 import { FileDropZone } from "@/components/FileDropZone";
@@ -54,22 +54,9 @@ function ChatPageInner() {
   const { agents } = useAgents();
   const { models } = useModels();
   // 三层漏斗过滤：Provider 总开关 → API Key 检查 → 模型白名单（按 provider 独立）
+  // 抽到 useVisibleModels hook 统一 4 个入口行为（2026-08-11）
   // 兜底：过滤后为空时显示全部，避免首屏空白或老用户升级后模型消失
-  const providerConfig = useProviderConfig();
-  const visibleModels = useMemo(() => {
-    const loaded = !providerConfig.loading && providerConfig.settings != null;
-    if (!loaded) return models;
-    const filtered = models.filter((m) => {
-      // 第1层：Provider 总开关（禁用则隐藏该 provider 下所有模型）
-      if (providerConfig.isProviderDisabled(m.provider)) return false;
-      // 第2层：API Key 检查（未配置 Key 则隐藏）
-      if (!providerConfig.hasProviderKey(m.provider)) return false;
-      // 第3层：模型白名单（按 provider 独立判断；空列表=全部可见）
-      const providerEnabled = providerConfig.getEnabled(m.provider);
-      return providerEnabled.length === 0 || providerEnabled.includes(m.id);
-    });
-    return filtered.length > 0 ? filtered : models;
-  }, [models, providerConfig]);
+  const visibleModels = useVisibleModels(models);
   const { projects, createProject } = useProjects();
   const { chats, updateChat } = useChat();
   const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage } = useMessages(chatId);
