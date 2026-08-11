@@ -34,6 +34,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo [2/3] Starting Frontend (port 3000)...
+:: 清理占用 3000 端口的旧前端进程，确保加载最新代码（Electron dev 硬编码加载 3000）
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do (
+  echo Cleaning up stale frontend process PID %%a ...
+  taskkill /pid %%a /f >nul 2>&1
+)
 start "MfkAgent Frontend" cmd /c "cd /d %~dp0frontend && npm run dev"
 
 echo Waiting for frontend at http://localhost:3000 ...

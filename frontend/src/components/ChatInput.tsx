@@ -13,6 +13,7 @@ import { PermissionSelector } from "@/components/chat-input/PermissionSelector";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import { UploadMenu } from "@/components/chat-input/UploadMenu";
 import type { Model } from "@/hooks/useModels";
+import type { Project } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
 import { VoiceOrb2D } from "@/components/VoiceOrb2D";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
@@ -64,6 +65,10 @@ export interface ChatInputProps {
   onSelectDirectory: (path: string) => void;
   onClearContext: () => void;
   hasContext: boolean;
+  /** 已注册项目列表：传入后「关联项目」展开为二级选择面板 */
+  projects?: Project[];
+  /** 从已有项目列表中选择一个 */
+  onSelectExistingProject?: (projectId: number) => void;
 
   files: string[];
   onRemoveFile: (path: string) => void;
@@ -117,6 +122,8 @@ export const ChatInput = memo(function ChatInput({
   onSelectDirectory,
   onClearContext,
   hasContext,
+  projects,
+  onSelectExistingProject,
   files,
   onRemoveFile,
   projectName,
@@ -504,7 +511,11 @@ export const ChatInput = memo(function ChatInput({
         <div style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "4px",
+          // 2026-08-11：窄容器（如项目初始化弹窗）下胶囊自动换行，
+          // 避免 nowrap 内容溢出盒子压住右侧发送键
+          flexWrap: "wrap",
+          rowGap: "4px",
           minWidth: 0,
           opacity: toolbarHovered || activePop !== null ? 1 : 0.55,
           transition: "opacity 0.2s ease-in-out",
@@ -521,6 +532,8 @@ export const ChatInput = memo(function ChatInput({
               onClearContext();
             }}
             hasContext={hasContext}
+            projects={projects}
+            onSelectExistingProject={onSelectExistingProject}
           />
 
           {/* 隐藏的文件选择 input */}

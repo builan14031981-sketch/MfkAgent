@@ -252,7 +252,7 @@ export function TodoPanel() {
       <div
         ref={listRef}
         style={{
-          overflow: "hidden",
+          overflowY: "auto",
           maxHeight: "160px",
           opacity: 1,
           transition: "max-height var(--transition-normal), opacity var(--transition-normal)",

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { apiGet, apiFetch } from "./api";
+import { resolveVisualTheme, writeThemeCache } from "./theme";
 
 interface AppState {
   theme: "light" | "dark" | "system";
@@ -20,7 +21,7 @@ interface SettingsState {
   updateSettings: (updates: Record<string, string>) => Promise<void>;
 }
 
-export const useSettingsStore = create<SettingsState>((set) => ({
+export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: null,
   loading: true,
   fetchSettings: async () => {
@@ -28,6 +29,8 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       set({ loading: true });
       const data = await apiGet<Record<string, string>>("/api/settings");
       set({ settings: data, loading: false });
+      // 2026-08-11：写首帧主题缓存，下次启动内联脚本首帧前应用（修重启闪黑）
+      writeThemeCache(resolveVisualTheme(data));
     } catch (err) {
       set({ loading: false });
       console.error("Failed to fetch settings:", err);
@@ -55,6 +58,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       set((state) => ({
         settings: state.settings ? { ...state.settings, [key]: localValue } : state.settings,
       }));
+      // 2026-08-11：同步首帧主题缓存（主题类 key 变更即时生效于下次启动）
+      const s1 = get().settings;
+      if (s1) writeThemeCache(resolveVisualTheme(s1));
     } catch (err) {
       console.error("Failed to update setting:", err);
     }
@@ -70,6 +76,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       set((state) => ({
         settings: state.settings ? { ...state.settings, ...updates } : state.settings,
       }));
+      // 2026-08-11：同步首帧主题缓存
+      const s2 = get().settings;
+      if (s2) writeThemeCache(resolveVisualTheme(s2));
     } catch (err) {
       console.error("Failed to update settings:", err);
     }

@@ -177,6 +177,7 @@
   "codeCopied": "Copied",
   "codeCollapsedHint": "Content collapsed, click to expand",
   "jumpToLatest": "Latest",
+    "stuckHint": "Double-click to jump back",
   "streamErrorTitle": "Response failed",
   "streamRetry": "Retry",
   "messageOutline": "Outline",
@@ -192,8 +193,15 @@
   "menu": {
    "uploadFile": "Upload File",
    "linkProject": "Link Local Project",
-   "clearContext": "Clear Context"
+   "clearContext": "Clear Context",
+    "selectExistingProject": "Select Existing Project",
+    "selectNewDirectory": "Select New Directory…",
+    "switchProject": "Switch Project",
+    "unbindProject": "Unbind Project",
+    "noProjectsAvailable": "No projects registered"
   },
+  "noProjectHint": "Link a project to enable file read/write tools",
+  "linkProjectNow": "Link Project",
   "projectLinked": "Project linked",
   "projectLinkFailed": "Failed to link project",
   "approvalTitle": "Awaiting your confirmation",
@@ -248,7 +256,13 @@
     "warmMinimal": "Warm Minimal",
     "warmMinimalDesc": "Warm minimal · Soft off-white",
     "aurora": "Aurora",
-    "auroraDesc": "Low-saturation teal · Not neon"
+    "auroraDesc": "Low-saturation teal · Not neon",
+    "studioGraphite": "Studio Graphite",
+    "studioGraphiteDesc": "Graphite ink accent · Notion-style near-black primary, zero hue noise on white",
+    "studioLavender": "Studio Lavender",
+    "studioLavenderDesc": "Lavender blue accent · Linear-style desaturated cool tone, restrained usage",
+    "studioSpectrum": "Studio Spectrum",
+    "studioSpectrumDesc": "Refined deep blue accent · Conservative option, desaturated and tightly scoped"
    },
    "language": {
     "title": "Language",
@@ -350,8 +364,10 @@
     "testConnectionFail": "Failed: {detail}",
     "testConnectionHint": "Verify connectivity with current draft values instantly, no save required",
     "baseUrlInAdvanced": "Base URL is configured in Advanced Settings. Expand to modify.",
-    "baseUrlOverrideTitle": "API Base URL Override",
+    "baseUrlOverrideTitle": "Endpoint Override",
     "baseUrlOverrideDesc": "Override default endpoints per provider. Leave empty to restore default. (Advanced)",
+    "baseUrlCollapsed": "Click to expand",
+    "baseUrlExpanded": "Click to collapse",
     "overrideActive": "Overridden",
     "defaultEndpoint": "Default endpoint",
     "resetBase": "Reset",
@@ -378,8 +394,10 @@
     "maxTokens": "Max Tokens",
     "temperature": "Temperature",
     "noCustom": "No custom models yet",
+    "syncHidden": "Models in the candidate pool are managed by the provider cards above. Use this section only for third-party endpoints.",
     "confirmDelete": "Delete this custom model?",
-    "supportsVision": "Supports Vision (Multimodal)"
+    "supportsVision": "Supports Vision (Multimodal)",
+    "fetchModels": "Fetch Models"
    }
   },
   "ai": {

@@ -1,6 +1,7 @@
 "use client";
 
-import { Folder, FolderSearch } from "lucide-react";
+import { useState } from "react";
+import { Folder, FolderOpen, FolderSearch, Trash2 } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -14,6 +15,9 @@ interface ProjectCreateFormProps {
   onCreateProject: () => void;
   onPickDirectory: () => void;
   onOpenProjectWorkspace: (projectId: number) => void;
+  // 2026-08-11：行主点击 = 在该项目新开会话；移除关联 = 软删进回收站（不碰本地文件夹）
+  onQuickCreateChat: (projectId: number) => void;
+  onRemoveProject: (projectId: number) => void;
 }
 
 /** 打开/新建项目工作区面板内容：已有项目列表 + 新建项目表单 */
@@ -27,8 +31,13 @@ export function ProjectCreateForm({
   onCreateProject,
   onPickDirectory,
   onOpenProjectWorkspace,
+  onQuickCreateChat,
+  onRemoveProject,
 }: ProjectCreateFormProps) {
   const { t } = useTranslation();
+  // 行 hover 态 + 移除两步确认态（确认中即使鼠标离开也保持可见）
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
 
   return (
     <>
@@ -52,23 +61,29 @@ export function ProjectCreateForm({
           <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
             {t("sidebar.noProjects")} · {t("sidebar.noProjectsDesc")}
           </p>
-        ) : projects.map((project) => (
-          <button
+        ) : projects.map((project) => {
+          const hovered = hoveredId === project.id;
+          const confirming = confirmRemoveId === project.id;
+          return (
+          <div
             key={project.id}
-            onClick={() => onOpenProjectWorkspace(project.id)}
+            role="button"
+            onClick={() => onQuickCreateChat(project.id)}
+            title="在该项目中新开会话"
             style={{
               display: "flex",
               alignItems: "center",
               gap: "10px",
               padding: "8px 10px",
               borderRadius: "var(--radius-md)",
-              border: "1px solid var(--border-primary)",
-              background: "var(--bg-level-2)",
+              border: `1px solid ${hovered ? "var(--color-primary)" : "var(--border-primary)"}`,
+              background: hovered ? "var(--color-primary-light)" : "var(--bg-level-2)",
               cursor: "pointer",
               textAlign: "left",
+              transition: "border-color 0.15s, background 0.15s",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.background = "var(--color-primary-light)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.background = "var(--bg-level-2)"; }}
+            onMouseEnter={() => setHoveredId(project.id)}
+            onMouseLeave={() => setHoveredId((h) => (h === project.id ? null : h))}
           >
             <Folder style={{ width: "16px", height: "16px", color: "var(--color-primary)", flexShrink: 0 }} />
             <span style={{ flex: 1, minWidth: 0 }}>
@@ -91,8 +106,66 @@ export function ProjectCreateForm({
                 whiteSpace: "nowrap",
               }}>{project.path}</span>
             </span>
-          </button>
-        ))}
+            {/* hover 操作组：打开文件工作区 / 移除关联（hover 或确认中可见） */}
+            <span style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              flexShrink: 0,
+              opacity: hovered || confirming ? 1 : 0,
+              pointerEvents: hovered || confirming ? "auto" : "none",
+              transition: "opacity 0.15s",
+            }}>
+              <span
+                title="打开文件工作区"
+                onClick={(e) => { e.stopPropagation(); onOpenProjectWorkspace(project.id); }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "22px", height: "22px", borderRadius: "var(--radius-sm)",
+                  color: "var(--text-level-3)", cursor: "pointer",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--text-level-1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
+              >
+                <FolderOpen style={{ width: "13px", height: "13px" }} />
+              </span>
+              {confirming ? (
+                <span
+                  title="再点一次确认移除"
+                  onClick={(e) => { e.stopPropagation(); setConfirmRemoveId(null); onRemoveProject(project.id); }}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    height: "22px", padding: "0 6px", borderRadius: "var(--radius-sm)",
+                    background: "var(--color-error)", color: "#fff",
+                    fontSize: "11px", cursor: "pointer",
+                  }}
+                >确认?</span>
+              ) : (
+                <span
+                  title="移除关联（会话进回收站，本地文件夹不受影响）"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmRemoveId(project.id);
+                    // 2 秒未二次确认自动复位
+                    window.setTimeout(() => {
+                      setConfirmRemoveId((c) => (c === project.id ? null : c));
+                    }, 2000);
+                  }}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    width: "22px", height: "22px", borderRadius: "var(--radius-sm)",
+                    color: "var(--text-level-3)", cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-error)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
+                >
+                  <Trash2 style={{ width: "13px", height: "13px" }} />
+                </span>
+              )}
+            </span>
+          </div>
+          );
+        })}
       </div>
 
       {/* 新建项目 */}

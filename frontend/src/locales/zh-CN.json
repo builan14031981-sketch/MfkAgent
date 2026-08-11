@@ -177,6 +177,7 @@
   "codeCopied": "已复制",
   "codeCollapsedHint": "内容已折叠，点击展开查看",
   "jumpToLatest": "回最新",
+    "stuckHint": "双击回到原位",
   "streamErrorTitle": "响应失败",
   "streamRetry": "重试",
   "messageOutline": "对话大纲",
@@ -192,8 +193,15 @@
   "menu": {
    "uploadFile": "上传文件",
    "linkProject": "关联本地项目",
-   "clearContext": "清除上下文"
+   "clearContext": "清除上下文",
+    "selectExistingProject": "选择已有项目",
+    "selectNewDirectory": "选择新目录…",
+    "switchProject": "更换项目",
+    "unbindProject": "解绑项目",
+    "noProjectsAvailable": "暂无已注册项目"
   },
+  "noProjectHint": "关联项目后可使用文件读写工具",
+  "linkProjectNow": "关联项目",
   "projectLinked": "已关联项目",
   "projectLinkFailed": "关联项目失败",
   "approvalTitle": "等待你的确认",
@@ -248,7 +256,13 @@
     "warmMinimal": "Warm Minimal",
     "warmMinimalDesc": "暖调极简 · 柔和米白",
     "aurora": "Aurora",
-    "auroraDesc": "极光青绿 · 低饱和非霓虹"
+    "auroraDesc": "极光青绿 · 低饱和非霓虹",
+    "studioGraphite": "Studio 石墨",
+    "studioGraphiteDesc": "石墨墨色强调 · Notion 式近黑主按钮，白底零色相噪音",
+    "studioLavender": "Studio 薰衣草",
+    "studioLavenderDesc": "薰衣草蓝强调 · Linear 式低饱和冷调，克制点缀",
+    "studioSpectrum": "Studio 深蓝",
+    "studioSpectrumDesc": "改良深蓝强调 · 保守方案，压饱和收紧使用范围"
    },
    "language": {
     "title": "语言",
@@ -350,8 +364,10 @@
     "testConnectionFail": "连接失败：{detail}",
     "testConnectionHint": "使用输入框中的草稿值即时验证连通性，无需保存",
     "baseUrlInAdvanced": "Base URL 已在高级设置中配置，请展开高级设置修改",
-    "baseUrlOverrideTitle": "API Base URL 覆盖",
+    "baseUrlOverrideTitle": "端点覆盖",
     "baseUrlOverrideDesc": "覆盖各提供商的默认端点地址，留空恢复默认（深水区参数）",
+    "baseUrlCollapsed": "点击展开",
+    "baseUrlExpanded": "点击收起",
     "overrideActive": "已覆盖",
     "defaultEndpoint": "默认端点",
     "resetBase": "恢复默认",
@@ -378,8 +394,10 @@
     "maxTokens": "最大 Token",
     "temperature": "温度",
     "noCustom": "暂无自定义模型",
+    "syncHidden": "候选池内的模型由上方 Provider 卡片统一管理，此处仅接入第三方端点",
     "confirmDelete": "确定删除该自定义模型？",
-    "supportsVision": "支持多模态识图（Vision）"
+    "supportsVision": "支持多模态识图（Vision）",
+    "fetchModels": "拉取模型列表"
    }
   },
   "ai": {

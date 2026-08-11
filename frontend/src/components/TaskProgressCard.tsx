@@ -8,6 +8,11 @@ import { useTranslation } from "@/hooks/useTranslation";
 interface TaskProgressCardProps {
   /** 当前回合的任务列表（按 task_started 到达顺序） */
   tasks: TaskNode[];
+  /** 2026-08-11：会话 id，用于按会话持久化折叠态（不传则不持久化） */
+  chatId?: number | null;
+  /** 2026-08-11：是否处于实时流式中——自动展开仅限流式期间的新任务，
+   * 刷新/历史恢复导致的 tasks 增长不得覆盖用户持久化的折叠态 */
+  live?: boolean;
 }
 
 /**
@@ -58,19 +63,45 @@ function AgentBadge({ agent }: { agent: string }) {
  * - 每个任务带 Agent 角色 Badge（统一中性灰阶，V2 规范）
  * - tasks 为空时不渲染（保持聊天界面干净）
  */
-export const TaskProgressCard = memo(function TaskProgressCard({ tasks }: TaskProgressCardProps) {
+export const TaskProgressCard = memo(function TaskProgressCard({ tasks, chatId = null, live = false }: TaskProgressCardProps) {
   const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const prevTaskCountRef = useRef(tasks.length);
 
-  // 智能行为：新任务到达时自动展开
+  // 2026-08-11：折叠态按会话持久化（key 带 chatId，刷新/切换会话后读回，不再重置为展开）
+  useEffect(() => {
+    // 会话切换时同步任务计数基线，避免误触发下方“新任务自动展开”
+    prevTaskCountRef.current = tasks.length;
+    if (chatId == null) { setCollapsed(false); return; }
+    try {
+      setCollapsed(window.localStorage.getItem(`mfk_task_card_collapsed_${chatId}`) === "1");
+    } catch { /* localStorage 不可用时默认展开 */ setCollapsed(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
+
+  // 智能行为：流式期间新任务到达时自动展开（并同步持久化）。
+  // 注意：live=false（刷新/历史恢复）时 tasks 从 0/缓存增长不是“新任务”，
+  // 绝不能覆盖用户持久化的折叠态（此前无 live 守卫，刷新后自动展开把 "1" 覆写为 "0"，导致收起态失效）。
   useEffect(() => {
     const prevCount = prevTaskCountRef.current;
     prevTaskCountRef.current = tasks.length;
-    if (tasks.length > prevCount) {
+    if (live && tasks.length > prevCount) {
       setCollapsed(false);
+      if (chatId != null) {
+        try { window.localStorage.setItem(`mfk_task_card_collapsed_${chatId}`, "0"); } catch { /* noop */ }
+      }
     }
-  }, [tasks]);
+  }, [tasks, chatId, live]);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      if (chatId != null) {
+        try { window.localStorage.setItem(`mfk_task_card_collapsed_${chatId}`, next ? "1" : "0"); } catch { /* noop */ }
+      }
+      return next;
+    });
+  };
 
   if (tasks.length === 0) return null;
 
@@ -103,7 +134,7 @@ export const TaskProgressCard = memo(function TaskProgressCard({ tasks }: TaskPr
         </span>
         {/* 折叠/展开按钮 */}
         <button
-          onClick={() => setCollapsed((prev) => !prev)}
+          onClick={toggleCollapsed}
           style={{
             display: "flex",
             alignItems: "center",

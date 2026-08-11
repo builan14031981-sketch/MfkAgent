@@ -1,7 +1,7 @@
 "use client";
 
-import { memo } from "react";
-import { Folder } from "lucide-react";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
+import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import type { Agent } from "@/hooks/useAgents";
@@ -10,6 +10,7 @@ import type { TokenUsageEvent } from "@/types/runtime";
 import { AgentIcon } from "@/components/AgentIcon";
 import { AgentOrb } from "@/components/AgentOrb";
 import { ContextDashboard } from "@/components/ContextDashboard";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface ChatHeaderProps {
   chat: Chat | undefined;
@@ -26,6 +27,12 @@ interface ChatHeaderProps {
   onSaveTitle: () => void;
   onCancelEditTitle: () => void;
   onOpenProjectContext: () => void;
+  /** 已注册项目列表（供切换使用） */
+  projects?: Project[];
+  /** 切换到指定项目 */
+  onSwitchProject?: (projectId: number) => void;
+  /** 解绑当前项目 */
+  onUnbindProject?: () => void;
 }
 
 /**
@@ -52,7 +59,8 @@ function formatProjectPath(path: string | undefined, name: string): string {
  * memo：流式期间父级高频更新 state，本组件 props 稳定时跳过重渲染。
  *
  * 项目胶囊合并了「路径显示 + 完整路径 tooltip + 打开项目上下文面板」三重职责，
- * 点击胶囊即打开 ProjectContextPanel（不再保留右侧冗余图标按钮）。
+ * 点击胶囊即打开 ProjectContextPanel。
+ * 胶囊右侧小箭头展开下拉菜单：切换项目 / 解绑项目。
  */
 export const ChatHeader = memo(function ChatHeader({
   chat,
@@ -69,7 +77,43 @@ export const ChatHeader = memo(function ChatHeader({
   onSaveTitle,
   onCancelEditTitle,
   onOpenProjectContext,
+  projects,
+  onSwitchProject,
+  onUnbindProject,
 }: ChatHeaderProps) {
+  const { t } = useTranslation();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // 点击外部关闭下拉
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (dropRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      setDropdownOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
+  const toggleDropdown = useCallback(() => setDropdownOpen((v) => !v), []);
+
+  const handleSwitch = useCallback((projectId: number) => {
+    setDropdownOpen(false);
+    onSwitchProject?.(projectId);
+  }, [onSwitchProject]);
+
+  const handleUnbind = useCallback(() => {
+    setDropdownOpen(false);
+    onUnbindProject?.();
+  }, [onUnbindProject]);
+
+  // 其他项目（排除当前已绑定的）
+  const otherProjects = (projects ?? []).filter((p) => p.id !== project?.id);
+
   return (
     <div style={{
       display: "flex",
@@ -159,6 +203,141 @@ export const ChatHeader = memo(function ChatHeader({
             >
               <Folder style={{ width: "12px", height: "12px", flexShrink: 0 }} />
               {formatProjectPath(project.path, project.name)}
+            </span>
+          )}
+          {/* 项目操作下拉：切换 / 解绑 */}
+          {project && otherProjects.length > 0 && (
+            <div style={{ position: "relative" }}>
+              <button
+                ref={triggerRef}
+                onClick={toggleDropdown}
+                title={t("chat.menu.switchProject")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "20px",
+                  height: "20px",
+                  padding: 0,
+                  borderRadius: "var(--radius-sm)",
+                  border: "none",
+                  background: dropdownOpen ? "var(--bg-level-3)" : "transparent",
+                  cursor: "pointer",
+                  color: "var(--text-level-3)",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                onMouseLeave={(e) => { if (!dropdownOpen) e.currentTarget.style.background = "transparent"; }}
+              >
+                <ChevronDown style={{
+                  width: "14px",
+                  height: "14px",
+                  transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.15s ease",
+                }} />
+              </button>
+              {dropdownOpen && (
+                <div
+                  ref={dropRef}
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: "100%",
+                    marginTop: "4px",
+                    minWidth: "180px",
+                    maxHeight: "240px",
+                    overflowY: "auto",
+                    background: "var(--bg-level-1)",
+                    border: "1px solid var(--border-primary)",
+                    borderRadius: "var(--radius-md)",
+                    boxShadow: "var(--shadow-lg)",
+                    padding: "4px",
+                    zIndex: 1000,
+                  }}
+                >
+                  {/* 切换项目列表 */}
+                  {otherProjects.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleSwitch(p.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        width: "100%",
+                        padding: "6px 10px",
+                        border: "none",
+                        borderRadius: "var(--radius-sm)",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        color: "var(--text-level-2)",
+                        textAlign: "left",
+                        outline: "none",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      title={p.path}
+                    >
+                      <ArrowRightLeft style={{ width: "12px", height: "12px", color: "var(--color-primary)", flexShrink: 0 }} />
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                    </button>
+                  ))}
+                  {/* 分割线 + 解绑 */}
+                  <div style={{ height: "1px", background: "var(--border-secondary)", margin: "4px 0" }} />
+                  <button
+                    onClick={handleUnbind}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      width: "100%",
+                      padding: "6px 10px",
+                      border: "none",
+                      borderRadius: "var(--radius-sm)",
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      color: "var(--color-error)",
+                      textAlign: "left",
+                      outline: "none",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <Unlink style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+                    <span>{t("chat.menu.unbindProject")}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {/* 无项目时显示关联入口胶囊 */}
+          {!project && (
+            <span
+              onClick={() => {
+                const el = document.querySelector("[data-upload-menu-trigger]") as HTMLButtonElement | null;
+                el?.click();
+              }}
+              title={t("chat.noProjectHint")}
+              style={{
+                fontSize: "12px",
+                color: "var(--color-primary)",
+                padding: "4px 8px",
+                borderRadius: "var(--radius-full)",
+                background: "var(--color-primary-lighter)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "background 0.2s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--color-primary) 14%, var(--color-primary-lighter))"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--color-primary-lighter)"; }}
+            >
+              <FolderPlus style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+              {t("chat.linkProjectNow")}
             </span>
           )}
           <span style={{

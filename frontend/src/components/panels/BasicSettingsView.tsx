@@ -178,43 +178,64 @@ const EXPERIMENTAL_THEMES: Array<{
   preview: {
     app: string; surface: string; card: string; elevated: string;
     text: string; textMuted: string; border: string; accent: string; onAccent: string;
+    bubble: string; bubbleBorder: string;
   };
 }> = [
   {
     id: "titanium",
     nameKey: "settings.general.experimentalTheme.titanium",
     descKey: "settings.general.experimentalTheme.titaniumDesc",
-    preview: { app: "#e1e3e6", surface: "#d6d9dd", card: "#edeff1", elevated: "#f5f6f8", text: "#1f2328", textMuted: "#8b929c", border: "#c9cdd3", accent: "#4d6a8a", onAccent: "#ffffff" },
+    preview: { app: "#e1e3e6", surface: "#d6d9dd", card: "#edeff1", elevated: "#f5f6f8", text: "#1f2328", textMuted: "#8b929c", border: "#c9cdd3", accent: "#4d6a8a", onAccent: "#ffffff", bubble: "#dde2e7", bubbleBorder: "rgba(77,106,138,0.22)" },
   },
   {
     id: "paper",
     nameKey: "settings.general.experimentalTheme.paper",
     descKey: "settings.general.experimentalTheme.paperDesc",
-    preview: { app: "#f4f1ea", surface: "#ece8de", card: "#faf7f0", elevated: "#f0ebdf", text: "#2a2721", textMuted: "#948d7e", border: "#e0dacc", accent: "#9c422a", onAccent: "#fdf8f4" },
+    preview: { app: "#f4f1ea", surface: "#ece8de", card: "#faf7f0", elevated: "#f0ebdf", text: "#2a2721", textMuted: "#948d7e", border: "#e0dacc", accent: "#9c422a", onAccent: "#fdf8f4", bubble: "#f2e9e0", bubbleBorder: "rgba(156,66,42,0.22)" },
   },
   {
     id: "midnight",
     nameKey: "settings.general.experimentalTheme.midnight",
     descKey: "settings.general.experimentalTheme.midnightDesc",
-    preview: { app: "#0b0e14", surface: "#10141d", card: "#161b26", elevated: "#1d2331", text: "#dde3ec", textMuted: "#5c6577", border: "#232a3a", accent: "#6d8fbf", onAccent: "#f0f4fa" },
+    preview: { app: "#0b0e14", surface: "#10141d", card: "#161b26", elevated: "#1d2331", text: "#dde3ec", textMuted: "#5c6577", border: "#232a3a", accent: "#6d8fbf", onAccent: "#f0f4fa", bubble: "#222b3b", bubbleBorder: "rgba(109,143,191,0.25)" },
   },
   {
     id: "mono",
     nameKey: "settings.general.experimentalTheme.mono",
     descKey: "settings.general.experimentalTheme.monoDesc",
-    preview: { app: "#111112", surface: "#171718", card: "#1d1d1f", elevated: "#252527", text: "#e5e5e6", textMuted: "#636366", border: "#2a2a2d", accent: "#e5e5e6", onAccent: "#111112" },
+    preview: { app: "#111112", surface: "#171718", card: "#1d1d1f", elevated: "#252527", text: "#e5e5e6", textMuted: "#636366", border: "#2a2a2d", accent: "#e5e5e6", onAccent: "#111112", bubble: "#2d2d2f", bubbleBorder: "rgba(229,229,230,0.25)" },
   },
   {
     id: "warm-minimal",
     nameKey: "settings.general.experimentalTheme.warmMinimal",
     descKey: "settings.general.experimentalTheme.warmMinimalDesc",
-    preview: { app: "#faf8f5", surface: "#f2eee9", card: "#f5f1ec", elevated: "#ede8e1", text: "#2b2825", textMuted: "#9b968f", border: "#e5e0d8", accent: "#a56f45", onAccent: "#fdfaf6" },
+    preview: { app: "#faf8f5", surface: "#f2eee9", card: "#f5f1ec", elevated: "#ede8e1", text: "#2b2825", textMuted: "#9b968f", border: "#e5e0d8", accent: "#a56f45", onAccent: "#fdfaf6", bubble: "#efe7df", bubbleBorder: "rgba(165,111,69,0.22)" },
   },
   {
     id: "aurora",
     nameKey: "settings.general.experimentalTheme.aurora",
     descKey: "settings.general.experimentalTheme.auroraDesc",
-    preview: { app: "#0d1210", surface: "#121815", card: "#18201c", elevated: "#1f2923", text: "#dfe7e2", textMuted: "#5d6961", border: "#24302a", accent: "#5fa893", onAccent: "#0e1412" },
+    preview: { app: "#0d1210", surface: "#121815", card: "#18201c", elevated: "#1f2923", text: "#dfe7e2", textMuted: "#5d6961", border: "#24302a", accent: "#5fa893", onAccent: "#0e1412", bubble: "#21302a", bubbleBorder: "rgba(95,168,147,0.25)" },
+  },
+  // 2026-08-11 Studio Accent 对比样张：共用 Studio Light 中性基底，仅强调色不同，
+  // 供 A/B/C 对比后选定写回官方 studio（见 tokens.css 同名块）。
+  {
+    id: "studio-graphite",
+    nameKey: "settings.general.experimentalTheme.studioGraphite",
+    descKey: "settings.general.experimentalTheme.studioGraphiteDesc",
+    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#26282d", onAccent: "#ffffff", bubble: "#e9e9eb", bubbleBorder: "rgba(38,40,45,0.18)" },
+  },
+  {
+    id: "studio-lavender",
+    nameKey: "settings.general.experimentalTheme.studioLavender",
+    descKey: "settings.general.experimentalTheme.studioLavenderDesc",
+    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#5e6ad2", onAccent: "#ffffff", bubble: "#ededf7", bubbleBorder: "rgba(94,106,210,0.22)" },
+  },
+  {
+    id: "studio-spectrum",
+    nameKey: "settings.general.experimentalTheme.studioSpectrum",
+    descKey: "settings.general.experimentalTheme.studioSpectrumDesc",
+    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#2e5fb8", onAccent: "#ffffff", bubble: "#e9eef6", bubbleBorder: "rgba(46,95,184,0.22)" },
   },
 ];
 
@@ -239,11 +260,11 @@ function MiniWorkspacePreview({ p }: { p: (typeof EXPERIMENTAL_THEMES)[number]["
       </div>
       {/* Chat + Input 效果 */}
       <div style={{ flex: 1, minWidth: 0, padding: "8px 9px 7px", display: "flex", flexDirection: "column", gap: 6 }}>
-        {/* 用户消息（右对齐 accent 气泡） */}
+        {/* 用户消息（右对齐 tint 气泡，与运行时 tokens.css 方案B 一致） */}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <div style={{ width: "46%", height: 14, borderRadius: 5, background: p.accent, padding: "3px 5px" }}>
-            <div style={{ height: 3, width: "75%", borderRadius: 1.5, background: p.onAccent, opacity: 0.85 }} />
-            <div style={{ height: 3, width: "45%", borderRadius: 1.5, background: p.onAccent, opacity: 0.85, marginTop: 2 }} />
+          <div style={{ width: "46%", height: 14, borderRadius: 5, background: p.bubble, border: `1px solid ${p.bubbleBorder}`, padding: "3px 5px" }}>
+            <div style={{ height: 3, width: "75%", borderRadius: 1.5, background: p.text, opacity: 0.75 }} />
+            <div style={{ height: 3, width: "45%", borderRadius: 1.5, background: p.text, opacity: 0.75, marginTop: 2 }} />
           </div>
         </div>
         {/* AI 回复（无气泡平铺文字行） */}

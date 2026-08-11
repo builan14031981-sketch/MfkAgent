@@ -60,14 +60,15 @@ DEFAULT_SETTINGS = {
 
 
 def _sync_custom_models(db, enabled_models_json: str) -> None:
-    """当 enabled_models 更新时，同步创建/禁用 CustomModel 记录。
+    """当 enabled_models 更新时，同步创建/删除 CustomModel 记录。
 
     enabled_models 格式: {"qwen": ["deepseek-v4-flash-0731", ...], ...}
 
-    规则：
-      - 只在 enabled_models 中出现的远程模型（非内置 Provider 模型）→ 创建/更新 CustomModel，enabled=True
-      - 之前由 sync 创建、但已从 enabled_models 移除的远程模型 → enabled=False
-      - 手动创建的 CustomModel（model_id 不在任何 enabled_models 中且非内置）→ 不触碰
+    规则（2026-08-11 治理后，source 字段区分来源）：
+      - 只在 enabled_models 中出现的远程模型（非内置 Provider 模型）→ 创建/更新 CustomModel，enabled=True，source='sync'
+      - source='manual' 的行：绝不触碰（不覆盖、不禁用、不删除）——用户手动创建的第三方接入
+      - source='sync' 且已从 enabled_models 移除 → 直接删除（避免幽灵残留；
+        字段均可从 provider 重新派生，删除零数据损失；再次入池会自动重建）
       - 内置 Provider 模型（model_id 在 PROVIDERS 中）→ 不创建 CustomModel
     """
     from app.models.agent import CustomModel
@@ -117,6 +118,10 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
 
         if model_id in existing:
             cm = existing[model_id]
+            # 存量 Bug 修复：手动创建的行（source='manual'）即使 model_id 撞车也不覆盖，
+            # 避免 sync 把用户自配的 api_key/api_base 等字段洗掉。
+            if getattr(cm, "source", "manual") == "manual":
+                continue
             cm.provider = provider_id
             cm.model_name = model_id
             cm.name = model_id
@@ -132,14 +137,18 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
                 api_base=api_base,
                 api_key=api_key,
                 enabled=True,
+                source="sync",
             ))
 
-    # 禁用：之前由 sync 管理、但已不在 enabled_remote 中的远程模型
+    # 清理：source='sync' 且已移出候选池的行直接删除（替代旧版 enabled=False 幽灵残留）。
+    # source='manual' 的行任何情况下不触碰（修复旧版无差别禁用的存量 Bug）。
     for model_id, cm in existing.items():
         if model_id in builtin_ids:
             continue  # 内置模型不触碰
+        if getattr(cm, "source", "manual") == "manual":
+            continue  # 手动创建的第三方接入绝不触碰
         if (cm.provider, model_id) not in enabled_remote:
-            cm.enabled = False
+            db.delete(cm)
 
     logger.info(
         "_sync_custom_models: enabled_remote=%d, total_custom=%d",

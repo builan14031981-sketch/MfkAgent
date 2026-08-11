@@ -14,6 +14,11 @@ start "MfkAgent Backend" cmd /c "cd /d %~dp0backend && python -m uvicorn main:ap
 timeout /t 3 /nobreak >nul
 
 echo [2/2] Starting Frontend (port 3000)...
+:: 清理占用 3000 端口的旧前端进程，确保加载最新代码
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do (
+  echo Cleaning up stale frontend process PID %%a ...
+  taskkill /pid %%a /f >nul 2>&1
+)
 start "MfkAgent Frontend" cmd /c "cd /d %~dp0frontend && npm run dev"
 
 echo.

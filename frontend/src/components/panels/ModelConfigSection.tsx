@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Pencil, Globe, ExternalLink, X, Zap, Wifi, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Pencil, Globe, ExternalLink, X, Zap, Wifi, ChevronUp, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import {
   useProviderConfig,
@@ -93,6 +93,7 @@ export function ModelConfigSection() {
     updateCustomModel,
     deleteCustomModel,
     fetchRemoteModels,
+    fetchRemoteModelsDirect,
     testConnection,
     getEnabled,
     addModel,
@@ -108,8 +109,16 @@ export function ModelConfigSection() {
   const [editingCustom, setEditingCustom] = useState<CustomModel | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState(false);
+  // ── 自定义模型表单内"拉取模型"状态 ──
+  const [customPickerOpen, setCustomPickerOpen] = useState(false);
+  const [customRemoteModels, setCustomRemoteModels] = useState<RemoteModelInfo[]>([]);
+  const [customRemoteLoading, setCustomRemoteLoading] = useState(false);
+  const [customRemoteError, setCustomRemoteError] = useState<string | null>(null);
   // 记录编辑时的初始 Key（明文），用于保存时区分"未变/修改/清除"三种语义
   const [initialApiKey, setInitialApiKey] = useState("");
+
+  // 2026-08-11：与 ModelAdvancedFields 一致，只展示手动创建的第三方接入（deprecated 组件保持同行为）
+  const manualModels = customModels.filter((cm) => (cm.source ?? "manual") === "manual");
 
   // ── 远程模型拉取状态（按 provider 独立）──
   const [remotePickerOpen, setRemotePickerOpen] = useState<string | null>(null);
@@ -204,6 +213,7 @@ export function ModelConfigSection() {
     setEditingCustom(null);
     setForm(emptyForm);
     setInitialApiKey("");
+    setCustomPickerOpen?.(false);
     setFormOpen(true);
   };
 
@@ -222,6 +232,7 @@ export function ModelConfigSection() {
       temperature: String(cm.temperature),
       supports_vision: cm.supports_vision || false,
     });
+    setCustomPickerOpen?.(false);
     setFormOpen(true);
   };
 
@@ -254,11 +265,46 @@ export function ModelConfigSection() {
         await createCustomModel(payload);
       }
       setFormOpen(false);
+      setCustomPickerOpen?.(false);
     } catch (err) {
       console.error("Failed to save custom model:", err);
     } finally {
       setBusy(false);
     }
+  };
+
+  /** 自定义模型表单：一键拉取上游模型列表 */
+  const handleFetchCustomRemote = async () => {
+    if (!form.api_key.trim() || !form.api_base.trim()) return;
+    setCustomPickerOpen?.(true);
+    setCustomRemoteModels?.([]);
+    setCustomRemoteError?.(null);
+    setCustomRemoteLoading?.(true);
+    try {
+      const list = await fetchRemoteModelsDirect(form.api_key.trim(), form.api_base.trim());
+      setCustomRemoteModels?.(list);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "拉取失败，请检查 API Key 与端点";
+      try {
+        const body = err as unknown as { detail?: string };
+        setCustomRemoteError?.(body?.detail || msg);
+      } catch {
+        setCustomRemoteError?.(msg);
+      }
+    } finally {
+      setCustomRemoteLoading?.(false);
+    }
+  };
+
+  /** 从拉取结果中选择一个模型，自动填充表单 */
+  const handleSelectCustomRemoteModel = (modelId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      model_name: modelId,
+      model_id: prev.model_id || `custom-${modelId}`,
+      name: prev.name || modelId,
+    }));
+    setCustomPickerOpen?.(false);
   };
 
   const handleDeleteCustom = async (cm: CustomModel) => {
@@ -433,6 +479,32 @@ export function ModelConfigSection() {
                 showIcon={false}
               />
             </div>
+            {/* 一键拉取模型列表按钮 */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={handleFetchCustomRemote}
+                disabled={customRemoteLoading || !form.api_key.trim() || !form.api_base.trim()}
+                style={{
+                  ...secondaryBtn,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  opacity: (!form.api_key.trim() || !form.api_base.trim()) ? 0.5 : 1,
+                  cursor: (!form.api_key.trim() || !form.api_base.trim()) ? "not-allowed" : "pointer",
+                }}
+              >
+                {customRemoteLoading ? (
+                  <Loader2 style={{ width: "12px", height: "12px", animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <Zap style={{ width: "12px", height: "12px" }} />
+                )}
+                {t("settings.model.custom.fetchModels")}
+              </button>
+              {customRemoteError && (
+                <span style={{ fontSize: "11px", color: "var(--color-error)" }}>{customRemoteError}</span>
+              )}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.maxTokens")}</label>
@@ -481,13 +553,26 @@ export function ModelConfigSection() {
           </div>
         )}
 
-        {customModels.length === 0 && !formOpen ? (
+        {/* 一键拉取的模型选择器 */}
+        {customPickerOpen && (
+          <RemoteModelPicker
+            providerId="custom"
+            models={customRemoteModels}
+            enabledSet={new Set<string>()}
+            onAdd={handleSelectCustomRemoteModel}
+            onClose={() => setCustomPickerOpen(false)}
+            loading={customRemoteLoading}
+            error={customRemoteError}
+          />
+        )}
+
+        {manualModels.length === 0 && !formOpen ? (
           <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
             {t("settings.model.custom.noCustom")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {customModels.map((cm) => (
+            {manualModels.map((cm) => (
               <div
                 key={cm.id}
                 style={{
@@ -1565,6 +1650,22 @@ function ProviderBaseUrlOverride() {
   const { t } = useTranslation();
   const { configs, saveProviderKey } = useProviderConfig();
 
+  // 默认折叠（99% 用户用不到）；2026-08-11：折叠态持久化（此前纯内存，刷新即丢）
+  const [collapsed, setCollapsed] = useState(true);
+  useEffect(() => {
+    try {
+      // 未写过（null）保持默认折叠；"0" = 用户展开过
+      setCollapsed(localStorage.getItem("mfk_baseurl_collapsed") !== "0");
+    } catch { /* localStorage 不可用时保持折叠 */ }
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_baseurl_collapsed", next ? "1" : "0"); } catch { /* noop */ }
+      return next;
+    });
+  };
+
   // 每个 provider 的 baseInput 草稿（id -> value）
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -1604,14 +1705,43 @@ function ProviderBaseUrlOverride() {
 
   return (
     <div>
-      <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
-        <Globe style={{ width: "14px", height: "14px" }} />
-        {t("settings.model.providers.baseUrlOverrideTitle")}
-      </h3>
-      <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 12px 0" }}>
-        {t("settings.model.providers.baseUrlOverrideDesc")}
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      {/* 可折叠标题 */}
+      <div
+        onClick={toggleCollapsed}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          cursor: "pointer",
+          padding: "4px 0",
+          userSelect: "none",
+        }}
+      >
+        <ChevronRight
+          style={{
+            width: "14px",
+            height: "14px",
+            color: "var(--text-level-3)",
+            transition: "transform 0.2s",
+            transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
+          }}
+        />
+        <Globe style={{ width: "14px", height: "14px", color: "var(--text-level-2)" }} />
+        <h3 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-2)", margin: 0 }}>
+          {t("settings.model.providers.baseUrlOverrideTitle")}
+        </h3>
+        <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+          {collapsed ? t("settings.model.providers.baseUrlCollapsed") : t("settings.model.providers.baseUrlExpanded")}
+        </span>
+      </div>
+
+      {/* 折叠内容 */}
+      {!collapsed && (
+        <>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 12px 20px" }}>
+            {t("settings.model.providers.baseUrlOverrideDesc")}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
         {configs.map((p) => (
           <div
             key={p.id}
@@ -1703,7 +1833,9 @@ function ProviderBaseUrlOverride() {
             )}
           </div>
         ))}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1725,14 +1857,25 @@ export function ModelAdvancedFields() {
     createCustomModel,
     updateCustomModel,
     deleteCustomModel,
+    fetchRemoteModelsDirect,
   } = useProviderConfig();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingCustom, setEditingCustom] = useState<CustomModel | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [busy, setBusy] = useState(false);
+  // ── 自定义模型表单内"拉取模型"状态 ──
+  const [customPickerOpen, setCustomPickerOpen] = useState(false);
+  const [customRemoteModels, setCustomRemoteModels] = useState<RemoteModelInfo[]>([]);
+  const [customRemoteLoading, setCustomRemoteLoading] = useState(false);
+  const [customRemoteError, setCustomRemoteError] = useState<string | null>(null);
   // 记录编辑时的初始 Key（明文），用于保存时区分"未变/修改/清除"三种语义
   const [initialApiKey, setInitialApiKey] = useState("");
+
+  // 2026-08-11 自定义模型治理：此区只展示手动创建的第三方接入（source='manual'）。
+  // 候选池自动同步的记录（source='sync'）完全隐藏，其生命周期由上方 Provider 卡片的候选池接管，
+  // 避免"已配置的 provider 模型重复出现在自定义区"的困惑。旧后端无 source 字段时按 manual 降级。
+  const manualModels = customModels.filter((cm) => (cm.source ?? "manual") === "manual");
 
   if (loading) {
     return (
@@ -1746,6 +1889,7 @@ export function ModelAdvancedFields() {
     setEditingCustom(null);
     setForm(emptyForm);
     setInitialApiKey("");
+    setCustomPickerOpen?.(false);
     setFormOpen(true);
   };
 
@@ -1764,6 +1908,7 @@ export function ModelAdvancedFields() {
       temperature: String(cm.temperature),
       supports_vision: cm.supports_vision || false,
     });
+    setCustomPickerOpen?.(false);
     setFormOpen(true);
   };
 
@@ -1796,11 +1941,46 @@ export function ModelAdvancedFields() {
         await createCustomModel(payload);
       }
       setFormOpen(false);
+      setCustomPickerOpen?.(false);
     } catch (err) {
       console.error("Failed to save custom model:", err);
     } finally {
       setBusy(false);
     }
+  };
+
+  /** 自定义模型表单：一键拉取上游模型列表 */
+  const handleFetchCustomRemote = async () => {
+    if (!form.api_key.trim() || !form.api_base.trim()) return;
+    setCustomPickerOpen?.(true);
+    setCustomRemoteModels?.([]);
+    setCustomRemoteError?.(null);
+    setCustomRemoteLoading?.(true);
+    try {
+      const list = await fetchRemoteModelsDirect(form.api_key.trim(), form.api_base.trim());
+      setCustomRemoteModels?.(list);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "拉取失败，请检查 API Key 与端点";
+      try {
+        const body = err as unknown as { detail?: string };
+        setCustomRemoteError?.(body?.detail || msg);
+      } catch {
+        setCustomRemoteError?.(msg);
+      }
+    } finally {
+      setCustomRemoteLoading?.(false);
+    }
+  };
+
+  /** 从拉取结果中选择一个模型，自动填充表单 */
+  const handleSelectCustomRemoteModel = (modelId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      model_name: modelId,
+      model_id: prev.model_id || `custom-${modelId}`,
+      name: prev.name || modelId,
+    }));
+    setCustomPickerOpen?.(false);
   };
 
   const handleDeleteCustom = async (cm: CustomModel) => {
@@ -1840,6 +2020,10 @@ export function ModelAdvancedFields() {
             </h3>
             <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
               {t("settings.model.custom.desc")}
+            </p>
+            {/* 2026-08-11：向用户解释为什么候选池模型不出现在这里 */}
+            <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "2px 0 0 0" }}>
+              {t("settings.model.custom.syncHidden")}
             </p>
           </div>
           <button
@@ -1937,6 +2121,32 @@ export function ModelAdvancedFields() {
                 showIcon={false}
               />
             </div>
+            {/* 一键拉取模型列表按钮 */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={handleFetchCustomRemote}
+                disabled={customRemoteLoading || !form.api_key.trim() || !form.api_base.trim()}
+                style={{
+                  ...secondaryBtn,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  opacity: (!form.api_key.trim() || !form.api_base.trim()) ? 0.5 : 1,
+                  cursor: (!form.api_key.trim() || !form.api_base.trim()) ? "not-allowed" : "pointer",
+                }}
+              >
+                {customRemoteLoading ? (
+                  <Loader2 style={{ width: "12px", height: "12px", animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <Zap style={{ width: "12px", height: "12px" }} />
+                )}
+                {t("settings.model.custom.fetchModels")}
+              </button>
+              {customRemoteError && (
+                <span style={{ fontSize: "11px", color: "var(--color-error)" }}>{customRemoteError}</span>
+              )}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                 <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.maxTokens")}</label>
@@ -1985,13 +2195,26 @@ export function ModelAdvancedFields() {
           </div>
         )}
 
-        {customModels.length === 0 && !formOpen ? (
+        {/* 一键拉取的模型选择器 */}
+        {customPickerOpen && (
+          <RemoteModelPicker
+            providerId="custom"
+            models={customRemoteModels}
+            enabledSet={new Set<string>()}
+            onAdd={handleSelectCustomRemoteModel}
+            onClose={() => setCustomPickerOpen(false)}
+            loading={customRemoteLoading}
+            error={customRemoteError}
+          />
+        )}
+
+        {manualModels.length === 0 && !formOpen ? (
           <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
             {t("settings.model.custom.noCustom")}
           </p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {customModels.map((cm) => (
+            {manualModels.map((cm) => (
               <div
                 key={cm.id}
                 style={{

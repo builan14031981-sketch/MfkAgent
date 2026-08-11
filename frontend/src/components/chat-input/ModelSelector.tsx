@@ -130,6 +130,8 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           minWidth: 0,
+          // 2026-08-11：限制最长胶囊宽度，避免长模型名撞爆窄容器工具栏
+          maxWidth: "140px",
         }}>{currentModelName}</span>
         <ChevronDown style={{
           ...chevronStyle,

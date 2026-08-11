@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     # 硅基流动配置
     SILICONFLOW_API_KEY: str = ""
 
+    # LongCat 配置
+    LONGCAT_API_KEY: str = ""
+
     # G6-B 会话压缩：摘要模型 ID（留空则使用默认便宜模型）
     COMPRESSION_MODEL: str = ""
 

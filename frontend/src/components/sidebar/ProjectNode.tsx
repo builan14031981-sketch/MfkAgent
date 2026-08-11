@@ -36,7 +36,8 @@ interface ProjectNodeProps {
  * - 行内图标统一 var(--sidebar-icon-size) = 14px
  * - 小标识（Pin/角标）统一 var(--sidebar-icon-size-sm) = 12px
  * - 行内次级按钮统一 22×22，圆角 radius-sm (8px)
- * - 活动态：背景 --sidebar-active-bg + 文字 --sidebar-active-fg + 2px 左侧指示条
+ * - 活动态：背景 --sidebar-active-bg-strong（文件夹级，默认等同会话级，主题可覆盖做层级）+ 文字 --sidebar-active-fg
+ * - 左侧 2px 指示条：仅折叠态渲染（展开时由子级 ChatRow 的指示条承担标记，避免父子双杠；2026-08-11 修复）
  * - hover 才显形的按钮：默认 opacity 0（不用 color: transparent，避免色相不一致）
  */
 export function ProjectNode({
@@ -76,15 +77,15 @@ export function ProjectNode({
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          padding: "var(--sidebar-row-py) var(--sidebar-row-px)",
+          padding: "4px var(--sidebar-row-px)",
           borderRadius: "var(--radius-sm)",
           cursor: "pointer",
-          background: isActive ? "var(--sidebar-active-bg)" : "transparent",
+          background: isActive ? "var(--sidebar-active-bg-strong)" : "transparent",
           transition: "background var(--transition-fast)",
         }}
       >
-        {/* 活动项目：2px 左侧指示条（与 ChatRow 对齐） */}
-        {isActive && (
+        {/* 活动项目：仅折叠态显示 2px 左侧指示条（展开时子级 ChatRow 已有指示条，避免双杠） */}
+        {isActive && isCollapsed && (
           <span
             aria-hidden
             style={{
@@ -257,8 +258,8 @@ export function ProjectNode({
         >
           <MoreHorizontal
             style={{
-              width: "var(--sidebar-icon-size)",
-              height: "var(--sidebar-icon-size)",
+              width: "var(--sidebar-icon-size-sm)",
+              height: "var(--sidebar-icon-size-sm)",
             }}
           />
         </button>

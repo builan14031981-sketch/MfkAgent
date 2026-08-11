@@ -24,10 +24,12 @@ interface AgentSelectorProps {
   selectedId?: string | null;
   onSelect: (agentId: string) => void;
   onClose: () => void;
+  // 2026-08-11：隐藏选项介绍行（弹窗场景只要名称，压缩弹层篇幅）
+  hideDescription?: boolean;
 }
 
 /** Agent 选择胶囊：仅一级入口展示，向上弹出（portal 定位） */
-export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose }: AgentSelectorProps) {
+export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose, hideDescription }: AgentSelectorProps) {
   const { t } = useTranslation();
   const { agents, loading: agentsLoading } = useAgents();
   const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0 });
@@ -136,11 +138,13 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose }:
                       lineHeight: 1.25,
                       color: active ? "var(--color-primary)" : "var(--text-level-1)",
                     }}>{agent.name}</div>
+                    {!hideDescription && (
                     <div style={{
                       fontSize: "10px",
                       lineHeight: 1.25,
                       color: "var(--text-level-4)",
                     }}>{agent.description}</div>
+                    )}
                   </div>
                   {active && (
                     <span style={{

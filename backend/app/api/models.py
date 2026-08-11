@@ -257,29 +257,34 @@ async def update_provider_key(body: ProviderKeyUpdate):
 
 
 def _purge_provider_associated(provider_id: str) -> int:
-    """彻底清除 provider 关联数据：api_base 覆盖 + 自定义模型（enabled_models）。
+    """彻底清除 provider 关联数据：api_base 覆盖 + 候选池同步的自定义模型。
+
+    2026-08-11 收窄：仅删 source='sync' 行（其 Key 从 provider 复制，删除无损）；
+    source='manual' 行持有用户自配 Key，不连坐（旧版无差别删除会误伤手动接入）。
 
     Args:
         provider_id: provider 唯一 ID
 
     Returns:
-        被清理的自定义模型条数
+        被清理的同步自定义模型条数
     """
     # 1. 清除 api_base_<provider> 覆盖（恢复默认端点）
     _set_setting(f"api_base_{provider_id}", "")
 
-    # 2. 清除该 provider 下所有自定义模型（enabled_models 的实际载体）
+    # 2. 清除该 provider 下所有 source='sync' 的自定义模型（enabled_models 的实际载体）
     from app.core.database import SessionLocal
     from app.models.agent import CustomModel
     db = SessionLocal()
     try:
         rows = db.query(CustomModel).filter(CustomModel.provider == provider_id).all()
-        count = len(rows)
+        count = 0
         for r in rows:
-            db.delete(r)
+            if getattr(r, "source", "manual") == "sync":
+                db.delete(r)
+                count += 1
         db.commit()
         if count:
-            logger.info("Purged %d custom models for provider=%s during key clear", count, provider_id)
+            logger.info("Purged %d sync custom models for provider=%s during key clear", count, provider_id)
         return count
     except Exception:
         db.rollback()
@@ -739,7 +744,7 @@ async def test_connection(body: TestConnectionRequest):
 
 @router.get("/custom")
 async def list_custom_models():
-    """获取所有自定义模型"""
+    """获取所有自定义模型（含 source 字段：sync=候选池自动同步 / manual=手动创建）"""
     from app.core.database import SessionLocal
     from app.models.agent import CustomModel
     db = SessionLocal()
@@ -758,6 +763,7 @@ async def list_custom_models():
             "temperature": r.temperature,
             "enabled": r.enabled,
             "supports_vision": bool(r.supports_vision),
+            "source": getattr(r, "source", None) or "manual",
         } for r in rows]
     finally:
         db.close()
@@ -788,6 +794,7 @@ async def create_custom_model(body: CustomModelCreate):
             temperature=body.temperature,
             enabled=body.enabled,
             supports_vision=body.supports_vision,
+            source="manual",  # 2026-08-11：用户手动创建的第三方接入，sync 逻辑绝不触碰
         )
         db.add(row)
         db.commit()

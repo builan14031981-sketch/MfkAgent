@@ -496,19 +496,20 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
       <div>
         {/* 用户消息：轻量气泡 + 悬浮操作栏（复制 + 编辑） */}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: "4px" }}>
-          <div style={{
+          <div className="mf-bubble-body" style={{
             position: "relative",
             maxWidth: "70%",
             borderRadius: "var(--radius-md)",
-            background: "var(--color-primary)",
-            color: "var(--text-on-primary)",
+            background: "var(--mf-bubble-user-bg)",
+            color: "var(--mf-bubble-user-fg)",
+            border: "1px solid var(--mf-bubble-user-border)",
             fontSize: "14px",
             lineHeight: 1.5,
             overflow: "hidden",
           }}>
             {/* 图片附件 */}
             {imageAtts.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px" }}>
+              <div className="mf-bubble-images" style={{ display: "flex", flexWrap: "wrap", gap: "4px", padding: "4px" }}>
                 {imageAtts.map((att, i) => (
                   <div key={i} style={{
                     position: "relative",
@@ -516,7 +517,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
                     height: "120px",
                     borderRadius: "6px",
                     overflow: "hidden",
-                    background: "rgba(255,255,255,0.1)",
+                    background: "color-mix(in srgb, var(--mf-bubble-user-fg) 10%, transparent)",
                   }}>
                     {att.path ? (
                       <img
@@ -539,7 +540,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
                       justifyContent: "center",
                       width: "100%",
                       height: "100%",
-                      color: "rgba(255,255,255,0.5)",
+                      color: "color-mix(in srgb, var(--mf-bubble-user-fg) 50%, transparent)",
                     }}>
                       <Image style={{ width: "24px", height: "24px" }} />
                     </div>
@@ -549,14 +550,14 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
             )}
             {/* 文字内容 */}
             {message.content && (
-              <div style={{ padding: "8px 14px", paddingTop: imageAtts.length > 0 ? "4px" : "8px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              <div className="mf-bubble-text" style={{ padding: "8px 14px", paddingTop: imageAtts.length > 0 ? "4px" : "8px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                 {message.content}
               </div>
             )}
           </div>
         </div>
-        {/* 用户消息悬浮操作栏 */}
-        <div style={actionBarStyle(true)}>
+        {/* 用户消息悬浮操作栏（吸顶态隐藏） */}
+        <div className="mf-bubble-actions" style={actionBarStyle(true)}>
           <CopyButton text={message.content} />
           <ActionButton onClick={() => onEdit(message)} title={t("chat.edit")}>
             <Edit2 style={{ width: "13px", height: "13px" }} />

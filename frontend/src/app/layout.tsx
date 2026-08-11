@@ -63,6 +63,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
+        {/* 2026-08-11 首帧主题守卫 v2（修重启闪黑 FOUC）：
+            原生内联 script（不用 next/script beforeInteractive——dev 下其注入首帧 HTML
+            时机不可靠，脚本晚于首帧执行导致仍闪黑）。body 首位同步执行，
+            早于任何 body 内容解析/绘制：读 localStorage 缓存（lib/theme.ts 写入，格式 {t,m}）
+            立即应用上次主题；无缓存/解析失败静默回默认 obsidian。缓存格式改动需同步本脚本。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var c=window.localStorage.getItem("mfk-visual-theme");if(!c)return;var p=JSON.parse(c);if(p&&typeof p.t==="string"&&(p.m==="light"||p.m==="dark")){var r=document.documentElement;r.setAttribute("data-theme",p.t);r.classList.remove("light","dark");r.classList.add(p.m);}}catch(e){}})();`,
+          }}
+        />
         <Providers>
           <AppLayout>
             {children}

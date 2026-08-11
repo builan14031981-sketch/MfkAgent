@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice
+# 注意：app.api 的 import 已下移到 _ensure_schema() 之后（见下方）。
+# 原因：app.api.models 导入时 model_service 会立即查询 models 表（含新增列），
+# 必须先完成轻量迁移，否则旧库会报 "no such column"。
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
@@ -99,6 +101,8 @@ def _ensure_schema():
         with engine.begin() as conn:
             if "supports_vision" not in cols:
                 conn.execute(sa.text("ALTER TABLE models ADD COLUMN supports_vision BOOLEAN DEFAULT 0"))
+            if "source" not in cols:
+                conn.execute(sa.text("ALTER TABLE models ADD COLUMN source VARCHAR(10) NOT NULL DEFAULT 'manual'"))
 
     if "messages" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("messages")}
@@ -108,6 +112,62 @@ def _ensure_schema():
 
 
 _ensure_schema()
+
+# 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice  # noqa: E402
+
+
+def _backfill_custom_model_source():
+    """一次性回填：models 表 source 字段（sync/manual）。
+
+    2026-08-11 自定义模型治理：历史存量记录无法区分来源，按启发式回填：
+      - (provider, model_id) 在当前 enabled_models 候选池内 → sync；
+      - 不在池内且 enabled=0 → sync 残留幽灵，直接清理（字段均可从 provider 重新派生，零数据损失）；
+      - 不在池内且 enabled=1 → 判为 manual（用户手动创建）。
+    幂等：仅处理 source 为空/默认值且需要改判的行；每行判定均打日志便于审计。
+    """
+    import json as _json
+    from app.core.database import SessionLocal
+    from app.models.agent import CustomModel, Setting
+
+    db = SessionLocal()
+    try:
+        row = db.query(Setting).filter(Setting.key == "enabled_models").first()
+        pool = set()
+        if row and row.value:
+            try:
+                m = _json.loads(row.value)
+                if isinstance(m, dict):
+                    for pid, ids in m.items():
+                        if isinstance(ids, list):
+                            pool.update((pid, i) for i in ids if isinstance(i, str))
+            except (ValueError, TypeError):
+                pass
+        changed = 0
+        for cm in db.query(CustomModel).all():
+            in_pool = (cm.provider, cm.model_id) in pool
+            if in_pool:
+                if cm.source != "sync":
+                    cm.source = "sync"
+                    changed += 1
+                logger.info("source backfill: %s@%s -> sync (in pool)", cm.model_id, cm.provider)
+            elif not cm.enabled:
+                logger.info("source backfill: %s@%s -> ghost, deleting", cm.model_id, cm.provider)
+                db.delete(cm)
+                changed += 1
+            else:
+                logger.info("source backfill: %s@%s -> manual (kept)", cm.model_id, cm.provider)
+        if changed:
+            db.commit()
+            logger.info("_backfill_custom_model_source: %d rows changed", changed)
+    except Exception:
+        db.rollback()
+        logger.exception("_backfill_custom_model_source failed")
+    finally:
+        db.close()
+
+
+_backfill_custom_model_source()
 
 
 def _purge_mimo_key():

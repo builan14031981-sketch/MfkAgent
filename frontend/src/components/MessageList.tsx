@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useMemo, memo, useState } from "react";
+import { useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { ArrowDown, AlertTriangle, RotateCw, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
 import { ChatMessage, ThinkingPanel, StreamingThinkingPanel } from "@/components/ChatMessage";
@@ -158,6 +158,12 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     () => messages.filter((m) => m.role === "user").map((m) => m.id),
     [messages]
   );
+
+  // ---- 用户消息浮动焦点锚（V3 单锚点：全列表零 sticky） ----
+  // 已滚出滚动区顶部视线的用户消息 id 集合；锚点 = 其中位置最深的一条，
+  // 由唯一的浮动焦点条呈现。滚回原位（行重新可见）→ 锚点解除 → 焦点条消失。
+  const stuckUserIdsRef = useRef<Set<number>>(new Set());
+  const [focusAnchorId, setFocusAnchorId] = useState<number | null>(null);
 
   // 滚动位置持久化：提交 active 时写入 localStorage（退出/切换会话时即时 flush）
   const persistPosition = useCallback(() => {
@@ -338,6 +344,73 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     updateJumpButton(false);
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [updateJumpButton]);
+
+  // 锚点观测：判定法只用于"是否已滚出顶部"（!isIntersecting && top < rootTop），
+  // 浮动元素本身不做 sticky，不存在释放边界/多锚交接问题。
+  // 压缩摘要节点不是真实气泡，不参与锚点。
+  const anchorableIds = useMemo(
+    () => messages.filter((m) => m.role === "user" && !isCompressionNode(m)).map((m) => m.id),
+    [messages]
+  );
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root || anchorableIds.length === 0) return;
+    stuckUserIdsRef.current.clear();
+    const io = new IntersectionObserver(
+      (entries) => {
+        const rootTop = root.getBoundingClientRect().top;
+        for (const entry of entries) {
+          const id = Number((entry.target as HTMLElement).id.replace(/^msg-/, ""));
+          if (!Number.isFinite(id)) continue;
+          const stuck = !entry.isIntersecting && entry.boundingClientRect.top < rootTop;
+          if (stuck) stuckUserIdsRef.current.add(id);
+          else stuckUserIdsRef.current.delete(id);
+        }
+        let anchor: number | null = null;
+        for (let i = anchorableIds.length - 1; i >= 0; i--) {
+          if (stuckUserIdsRef.current.has(anchorableIds[i])) {
+            anchor = anchorableIds[i];
+            break;
+          }
+        }
+        setFocusAnchorId((prev) => (prev === anchor ? prev : anchor));
+      },
+      { root, rootMargin: "-1px 0px 0px 0px", threshold: 0 }
+    );
+    anchorableIds.forEach((id) => {
+      const el = document.getElementById(`msg-${id}`);
+      if (el) io.observe(el);
+    });
+    return () => io.disconnect();
+  }, [anchorableIds]);
+
+  const focusAnchorMessage = useMemo(
+    () => (focusAnchorId == null ? null : messages.find((m) => m.id === focusAnchorId) ?? null),
+    [focusAnchorId, messages]
+  );
+
+  // 溢出检测：锚点切换时量一次，超出两行才打 data-overflow（CSS 只对长消息挂底部渐变，
+  // 短消息文字完整无 mask）。滚动期间零开销。
+  const focusChipRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = focusChipRef.current;
+    if (!el) return;
+    if (el.scrollHeight > el.clientHeight) el.dataset.overflow = "true";
+    else delete el.dataset.overflow;
+  }, [focusAnchorMessage]);
+
+  // 双击焦点条回弹：平滑滚回锚点消息原位（reduced-motion 时瞬跳）
+  const handleFocusDoubleClick = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const root = containerRef.current;
+    if (!root || focusAnchorId == null) return;
+    const row = document.getElementById(`msg-${focusAnchorId}`);
+    if (!row) return;
+    const delta = row.getBoundingClientRect().top - root.getBoundingClientRect().top - 6;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    root.scrollBy({ top: delta, behavior: reduce ? "auto" : "smooth" });
+  }, [focusAnchorId]);
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -524,6 +597,35 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
           </div>
         )}
       </div>
+
+      {/* 浮动焦点条：当前锚点用户消息的唯一浮层（V3 单锚点）。
+          外层 absolute 横跨全宽，内层复用 800px 居中列 + 24px 内边距，
+          保证焦点条右缘在任何窗口宽度下都与用户气泡右缘对齐。
+          无锚点时整块不渲染；切换会话瞬间旧锚失效由判空兑底。 */}
+      {focusAnchorMessage && (
+        <div
+          style={{
+            position: "absolute",
+            top: "6px",
+            left: 0,
+            right: 0,
+            zIndex: 60,
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 24px", display: "flex", justifyContent: "flex-end" }}>
+            <div
+              ref={focusChipRef}
+              className="mf-focus-chip"
+              onDoubleClick={handleFocusDoubleClick}
+              title={t("chat.stuckHint")}
+              style={{ pointerEvents: "auto" }}
+            >
+              {focusAnchorMessage.content || "\u00A0"}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 悬浮回最新按钮：常驻 DOM，显隐由 updateJumpButton 直操（初始隐藏）。
           注意：style 中不写动态属性，避免 React 重渲染时覆盖手动设置的 DOM 值 */}

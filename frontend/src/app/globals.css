@@ -105,6 +105,8 @@
   --sidebar-indicator-w: 2px;
   /* active-bg/fg 引用主色变量，深浅主题各自解析，无需镜像 */
   --sidebar-active-bg: var(--color-primary-light);
+  /* 文件夹级选中底色：默认等于会话级；需要层级感的主题可在主题块内覆盖（2026-08-11） */
+  --sidebar-active-bg-strong: var(--sidebar-active-bg);
   --sidebar-active-fg: var(--color-primary);
 }
 
@@ -171,6 +173,7 @@
   --sidebar-icon-size-sm: 12px;
   --sidebar-btn-size: 22px;
   --sidebar-active-bg: var(--color-primary-light);
+  --sidebar-active-bg-strong: var(--sidebar-active-bg);
   --sidebar-active-fg: var(--color-primary);
   --sidebar-indicator-w: 2px;
 }

@@ -499,7 +499,16 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
       }}>
         {/* ===== 项目工作区 ===== */}
         <div style={{ marginBottom: "8px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          {/* section header：sticky 吸顶，列表在外层可滚容器内独立滚动（2026-08-11 父不动子滚原则） */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            background: "var(--bg-level-1)",
+          }}>
             <button
               onClick={toggleProjectWorkspace}
               style={{
@@ -508,7 +517,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 gap: "8px",
                 flex: 1,
                 minWidth: 0,
-                padding: "6px 4px",
+                padding: "2px 4px",
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",
@@ -518,16 +527,16 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
               <ChevronRight style={{
-                width: "13px",
-                height: "13px",
+                width: "var(--sidebar-icon-size-sm)",
+                height: "var(--sidebar-icon-size-sm)",
                 color: "var(--text-level-4)",
                 flexShrink: 0,
                 transform: collapsedProjectWorkspace ? "rotate(0deg)" : "rotate(90deg)",
                 transition: "transform var(--transition-fast)",
               }} />
-              <FolderOpen style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
+              <FolderOpen style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
               <p style={{
-                fontSize: "12px",
+                fontSize: "11px",
                 fontWeight: "600",
                 color: "var(--text-level-4)",
                 letterSpacing: "0.04em",
@@ -543,8 +552,8 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: "22px",
-                height: "22px",
+                width: "20px",
+                height: "20px",
                 borderRadius: "var(--radius-sm)",
                 border: "none",
                 background: "transparent",
@@ -556,7 +565,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-primary)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
             >
-              <FolderPlus style={{ width: "14px", height: "14px" }} />
+              <FolderPlus style={{ width: "12px", height: "12px" }} />
             </button>
           </div>
 
@@ -621,6 +630,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
 
         {/* ===== 通用对话 ===== */}
         <div>
+          {/* section header：sticky 吸顶在项目工作区 header 下方（项目头压后身高约 22px，留一点距为 28），列表独立滚（2026-08-11） */}
           <button
             onClick={toggleGeneralChats}
             style={{
@@ -628,26 +638,29 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               alignItems: "center",
               gap: "8px",
               width: "100%",
-              padding: "6px 4px",
+              padding: "2px 4px",
               border: "none",
-              background: "transparent",
+              background: "var(--bg-level-1)",
               cursor: "pointer",
               outline: "none",
+              position: "sticky",
+              top: 28,
+              zIndex: 1,
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-1)"; }}
           >
             <ChevronRight style={{
-              width: "13px",
-              height: "13px",
+              width: "var(--sidebar-icon-size-sm)",
+              height: "var(--sidebar-icon-size-sm)",
               color: "var(--text-level-4)",
               flexShrink: 0,
               transform: collapsedGeneralChats ? "rotate(0deg)" : "rotate(90deg)",
               transition: "transform var(--transition-fast)",
             }} />
-            <MessageSquare style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
+            <MessageSquare style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
             <p style={{
-              fontSize: "12px",
+              fontSize: "11px",
               fontWeight: "600",
               color: "var(--text-level-4)",
               letterSpacing: "0.04em",
@@ -713,6 +726,12 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           onCreateProject={handleCreateProject}
           onPickDirectory={handlePickDirectory}
           onOpenProjectWorkspace={openProjectWorkspace}
+          // 2026-08-11：行主点击 = 关面板 + 弹“已关联项目”向导新开会话（原行点击跳文件工作区已降为 hover 图标）
+          onQuickCreateChat={(id) => {
+            setProjectModalOpen(false);
+            quickCreateChat(id);
+          }}
+          onRemoveProject={handleDeleteProject}
         />
       </Panel>
 

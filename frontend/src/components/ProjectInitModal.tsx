@@ -11,6 +11,7 @@ import { useVisibleModels } from "@/hooks/useVisibleModels";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChatInput } from "@/components/ChatInput";
+import { AgentSelector } from "@/components/chat-input/AgentSelector";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import type { Project } from "@/hooks/useProjects";
 
@@ -61,6 +62,8 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
   });
   const [mode, setMode] = useState<"build" | "plan">("build");
   const [files, setFiles] = useState<string[]>([]);
+  // 2026-08-11：Agent 选择器上提到标题行（会话创建后不可更改，与工具栏可改参数语义分离）
+  const [agentOpen, setAgentOpen] = useState(false);
 
   const handleAttachFile = useCallback((file: File) => {
     const fileWithPath = file as File & { path?: string };
@@ -217,14 +220,18 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-between",
-          padding: "20px 24px 8px 24px",
+          gap: "8px",
+          padding: "16px 20px 4px 20px",
         }}>
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h2 style={{
               fontSize: "16px",
               fontWeight: "600",
               color: "var(--text-level-1)",
               margin: "0 0 6px 0",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}>📂 {t("chat.projectInitTitle", { name: project.name })}</h2>
             <p style={{
               fontSize: "13px",
@@ -232,34 +239,53 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
               margin: 0,
             }}>{t("chat.projectInitDesc")}</p>
           </div>
-          <button
-            onClick={onClose}
-            title={t("common.close")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "26px",
-              height: "26px",
-              borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              color: "var(--text-level-4)",
-              flexShrink: 0,
-              outline: "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--text-level-1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-4)";
-            }}
-          >
-            <X style={{ width: "15px", height: "15px" }} />
-          </button>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            flexShrink: 0,
+          }}>
+            {/* Agent 选择上提标题行：agent 在会话创建时绑定、之后不可更改，
+                与工具栏里可随时修改的运行参数（模型/模式/权限）语义分离 */}
+            <span title="会话创建后不可更改">
+              <AgentSelector
+                open={agentOpen}
+                onToggle={() => setAgentOpen((o) => !o)}
+                onClose={() => setAgentOpen(false)}
+                selectedId={agentId || settings?.default_agent || activeAgents[0]?.id || "general"}
+                onSelect={(id) => setAgentId(id)}
+                hideDescription
+              />
+            </span>
+            <button
+              onClick={onClose}
+              title={t("common.close")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "26px",
+                height: "26px",
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--text-level-4)",
+                flexShrink: 0,
+                outline: "none",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-3)";
+                e.currentTarget.style.color = "var(--text-level-1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--text-level-4)";
+              }}
+            >
+              <X style={{ width: "15px", height: "15px" }} />
+            </button>
+          </div>
         </div>
 
         {/* 弹窗内容：内置 ChatInput */}
@@ -267,7 +293,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
           flex: 1,
           minHeight: 0,
           overflowY: "auto",
-          padding: "8px 24px 24px 24px",
+          padding: "4px 20px 12px 20px",
         }}>
           <ChatInput
             value={input}
@@ -275,7 +301,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             onSend={handleSend}
             isSending={isSending}
             placeholder={t("chat.projectInitPlaceholder")}
-            inputMinHeight={97}
+            inputMinHeight={64}
             models={visibleModels}
             modelId={(selectedModel || (settings?.default_model ? visibleModels.find(m => m.id === settings.default_model) || null : null) || visibleModels[0] || null)?.id || null}
             onModelChange={(id) => {
@@ -288,7 +314,6 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             onPermissionChange={setPermissionMode}
             mode={mode}
             onModeChange={setMode}
-            allowAgentChange
             agentId={agentId || settings?.default_agent || activeAgents[0]?.id || "general"}
             onAgentChange={(id) => setAgentId(id)}
             onUploadFile={handleAttachFile}
@@ -305,7 +330,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
             style={{
               display: "block",
               width: "100%",
-              padding: "6px 0 2px 0",
+              padding: "2px 0 0 0",
               border: "none",
               background: "transparent",
               cursor: isSending ? "not-allowed" : "pointer",

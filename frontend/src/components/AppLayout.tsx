@@ -15,6 +15,8 @@ const SIDEBAR_MIN = 180;
 const SIDEBAR_MAX = 480;
 const SIDEBAR_DEFAULT = 260;
 const SIDEBAR_STORAGE_KEY = "sidebar_width";
+// 2026-08-11：侧边栏收起/展开态持久化（此前纯内存，刷新即丢）
+const SIDEBAR_COLLAPSED_KEY = "mfk_sidebar_collapsed";
 
 function clampWidth(w: number): number {
   return Math.min(Math.max(w, SIDEBAR_MIN), SIDEBAR_MAX);
@@ -25,8 +27,19 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // 挂载后读回收起态（不放在 useState 初始化器里，避免 SSR hydration mismatch）
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch { /* localStorage 不可用时保持展开 */ }
+  }, []);
+
   const toggleSidebar = useCallback(() => {
-    setSidebarCollapsed((prev) => !prev);
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* noop */ }
+      return next;
+    });
   }, []);
 
   // 从URL解析当前chatId

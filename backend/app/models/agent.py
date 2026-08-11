@@ -328,5 +328,9 @@ class CustomModel(Base):
     temperature = Column(Float, default=0.7)
     enabled = Column(Boolean, default=True)
     supports_vision = Column(Boolean, default=False)  # 模型是否支持多模态图片识别
+    # 2026-08-11 新增：记录来源，区分"候选池自动同步"与"用户手动创建"。
+    # sync：_sync_custom_models 从 enabled_models 自动创建/维护，生命周期由候选池接管；
+    # manual：用户在"自定义模型"表单手动创建，sync 逻辑绝不触碰。
+    source = Column(String(10), default="manual", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

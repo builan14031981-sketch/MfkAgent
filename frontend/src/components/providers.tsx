@@ -2,6 +2,13 @@
 
 import { useEffect } from "react";
 import { useSettingsStore } from "@/lib/store";
+import {
+  resolveVisualTheme,
+  applyThemeToDocument,
+  writeThemeCache,
+  type VisualTheme,
+  OFFICIAL_THEME_IDS,
+} from "@/lib/theme";
 
 /**
  * V2 视觉主题体系：
@@ -13,43 +20,10 @@ import { useSettingsStore } from "@/lib/store";
  *   titanium / paper / midnight / mono / warm-minimal / aurora
  * 应用方式：html[data-theme] 驱动 tokens.css 中的 --mf-* Token，
  * 同时维持 .dark/.light 类兼容存量样式。
+ * 2026-08-11：解析/名单/缓存逻辑抽至 @/lib/theme（修重启闪黑 FOUC），此处重导出保持兼容。
  */
-export type VisualTheme =
-  | "obsidian"
-  | "studio"
-  | "terminal"
-  | "titanium"
-  | "paper"
-  | "midnight"
-  | "mono"
-  | "warm-minimal"
-  | "aurora";
-
-const VALID_THEMES: readonly VisualTheme[] = [
-  "obsidian",
-  "studio",
-  "terminal",
-  "titanium",
-  "paper",
-  "midnight",
-  "mono",
-  "warm-minimal",
-  "aurora",
-];
-
-/** 官方主题 id 集合（非官方即实验主题） */
-export const OFFICIAL_THEME_IDS: ReadonlySet<string> = new Set(["obsidian", "studio", "terminal"]);
-
-/** 浅色基调主题：用于 .dark/.light 兼容类判定 */
-const LIGHT_BASED_THEMES: ReadonlySet<string> = new Set(["studio", "titanium", "paper", "warm-minimal"]);
-
-/** 从设置中解析视觉主题：visual_theme 优先；存量 theme=light 迁移到 studio，其余回落默认 obsidian */
-function resolveVisualTheme(settings: Record<string, string> | null): VisualTheme {
-  const raw = settings?.visual_theme;
-  if (raw && (VALID_THEMES as readonly string[]).includes(raw)) return raw as VisualTheme;
-  if (!raw && settings?.theme === "light") return "studio";
-  return "obsidian";
-}
+export type { VisualTheme };
+export { OFFICIAL_THEME_IDS };
 
 interface ThemeProviderProps {
   children: React.ReactNode;
@@ -60,13 +34,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const theme = resolveVisualTheme(settings);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-
-    // data-theme 驱动 V2 Token；同步维护 .dark/.light 类兼容存量样式
-    root.setAttribute("data-theme", theme);
-    root.classList.remove("light", "dark");
-    root.classList.add(LIGHT_BASED_THEMES.has(theme) ? "light" : "dark");
-  }, [theme]);
+    // 设置未到达前不得应用主题：resolveVisualTheme(null)=obsidian 会把
+    // layout 内联守卫首帧应用的缓存主题（如浅色）覆盖回黑色，造成黑闪。
+    // 首帧主题由守卫脚本负责，Provider 只在设置到达后接管。
+    if (!settings) return;
+    // data-theme 驱动 V2 Token；同步维护 .dark/.light 类兼容存量样式；
+    // 并写首帧缓存，下次启动由 layout 内联脚本首帧前应用
+    applyThemeToDocument(theme);
+    writeThemeCache(theme);
+  }, [theme, settings]);
 
   return <>{children}</>;
 }

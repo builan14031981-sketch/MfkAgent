@@ -7,7 +7,8 @@ export const ghostPillStyle: CSSProperties = {
   justifyContent: "center",
   gap: "6px",
   height: "28px",
-  padding: "0 10px",
+  // 2026-08-11：压紧胶囊内边距，缩小胶囊间视觉空白
+  padding: "0 8px",
   borderRadius: "var(--radius-full)",
   border: "1px solid transparent",
   background: "transparent",

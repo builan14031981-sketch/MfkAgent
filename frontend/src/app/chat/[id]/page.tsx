@@ -30,6 +30,9 @@ import { ChatHeader } from "@/components/ChatHeader";
 import { TaskProgressCard } from "@/components/TaskProgressCard";
 import { ProjectPathContext } from "@/lib/projectPathContext";
 
+// 2026-08-11：项目上下文面板开关态持久化 key（与侧边栏 mfk_sidebar_collapsed 同一模式）
+const PROJECT_CONTEXT_OPEN_KEY = "mfk_project_context_open";
+
 // 静态导出：动态路由需在 [id]/layout.tsx 提供 generateStaticParams（占位参数）。
 export default function ChatPage() {
   return (
@@ -120,7 +123,23 @@ function ChatPageInner() {
   const [permissionInitForChatId, setPermissionInitForChatId] = useState<number | null>(null);
   const [mode, setMode] = useState<ChatMode>("build");
   const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
-  const [projectContextOpen, setProjectContextOpen] = useState(false);
+  const [projectContextOpen, setProjectContextOpenState] = useState(false);
+  // 2026-08-11：项目上下文面板开关态持久化（此前纯内存，刷新即关）
+  useEffect(() => {
+    try {
+      setProjectContextOpenState(window.localStorage.getItem(PROJECT_CONTEXT_OPEN_KEY) === "1");
+    } catch { /* localStorage 不可用时保持关闭 */ }
+  }, []);
+  const setProjectContextOpen = useCallback(
+    (updater: boolean | ((prev: boolean) => boolean)) => {
+      setProjectContextOpenState((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        try { window.localStorage.setItem(PROJECT_CONTEXT_OPEN_KEY, next ? "1" : "0"); } catch { /* noop */ }
+        return next;
+      });
+    },
+    []
+  );
   const [activeUserMessageId, setActiveUserMessageId] = useState<number | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
@@ -239,6 +258,41 @@ function ChatPageInner() {
       console.error("Failed to link project:", err);
     }
   }, [chatId, createProject, updateChat]);
+
+  // 关联已有项目：直接从已注册列表中选择
+  const handleSelectExistingProject = useCallback(async (projectId: number) => {
+    if (!chatId) return;
+    try {
+      await updateChat(chatId, { project_id: projectId });
+    } catch (err) {
+      console.error("Failed to link existing project:", err);
+    }
+  }, [chatId, updateChat]);
+
+  // 切换项目（ChatHeader 下拉）
+  const handleSwitchProject = useCallback(async (projectId: number) => {
+    if (!chatId) return;
+    try {
+      await updateChat(chatId, { project_id: projectId });
+      // 切换后清空附件（旧项目上下文文件不再适用）
+      setAttachments([]);
+      fileMapRef.current.clear();
+    } catch (err) {
+      console.error("Failed to switch project:", err);
+    }
+  }, [chatId, updateChat]);
+
+  // 解绑项目
+  const handleUnbindProject = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      await updateChat(chatId, { unbind_project: true });
+      setAttachments([]);
+      fileMapRef.current.clear();
+    } catch (err) {
+      console.error("Failed to unbind project:", err);
+    }
+  }, [chatId, updateChat]);
 
   const handleClearContext = useCallback(() => {
     setAttachments([]);
@@ -566,6 +620,9 @@ function ChatPageInner() {
         onSaveTitle={handleSaveTitle}
         onCancelEditTitle={() => setIsEditingTitle(false)}
         onOpenProjectContext={() => setProjectContextOpen((v) => !v)}
+        projects={projects}
+        onSwitchProject={handleSwitchProject}
+        onUnbindProject={handleUnbindProject}
       />
 
       {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠）+ 对话大纲悬浮导航 */}
@@ -598,7 +655,7 @@ function ChatPageInner() {
 
       {/* 多 Agent 任务进度面板：输入框上方，与 ChatComposer 等宽对齐 */}
       <div style={{ maxWidth: "768px", margin: "0 auto", padding: "0 16px", width: "100%" }}>
-        <TaskProgressCard tasks={tasks ?? []} />
+        <TaskProgressCard tasks={tasks ?? []} chatId={chatId} live={isSending} />
       </div>
 
       {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮） */}
@@ -634,6 +691,8 @@ function ChatPageInner() {
           onSelectDirectory={handleSelectDirectory}
           onClearContext={handleClearContext}
           hasContext={attachments.length > 0}
+          projects={projects}
+          onSelectExistingProject={handleSelectExistingProject}
           files={[]}
           onRemoveFile={() => {}}
           projectName={currentProject?.name || null}

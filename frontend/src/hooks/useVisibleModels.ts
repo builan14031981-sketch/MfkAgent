@@ -7,16 +7,15 @@ import { useProviderConfig } from "@/hooks/useProviderConfig";
 /**
  * useVisibleModels —— 全站统一的"可见模型" hook
  *
- * 2026-08-11 抽离：之前 chat/[id]/page.tsx 内联了一段三层漏斗（provider_disabled → has_key → enabled_models），
- * 但只 chat 页用，ProjectInitModal / app/page.tsx / BasicSettingsView 都直接拿 useModels() 的原始 models，
- * 导致用户在 ModelConfigSection 把 qwen-max 移出候选池后，3 个入口仍能选到。
+ * 2026-08-11 架构优化：区分内置 provider 与自定义模型 provider。
  *
- * 三层漏斗契约（与之前 chat 页行为完全一致）：
- *  1. provider_disabled：供应商总开关关闭 → 隐藏该 provider 下所有模型
- *  2. hasProviderKey：未配置 API Key → 隐藏该 provider 下所有模型
- *  3. enabled_models（per-provider 白名单）：
- *     - 列表为空 → 该 provider 全部可见（兼容"全启用"语义）
- *     - 列表非空 → 仅列表内模型可见
+ * 后端 /api/models/models 是权威源，已保证返回的模型都有有效 API Key。
+ * 前端只需叠加 UI 层概念：provider 禁用开关 + enabled_models 候选池白名单。
+ *
+ * 过滤规则：
+ *  - 内置 provider 模型：isProviderDisabled + hasProviderKey + enabled_models
+ *  - 自定义模型（provider 不在 configs[]）：仅 enabled_models
+ *    （自带 API Key，后端已验证；前端 hasProviderKey 不认识其 provider，不能拦截）
  *
  * 兜底：
  *  - settings 尚未加载完 → 返回原始 models
@@ -29,8 +28,16 @@ export function useVisibleModels(models: Model[]): Model[] {
     const loaded = !providerConfig.loading && providerConfig.settings != null;
     if (!loaded) return models;
     const filtered = models.filter((m) => {
+      // 1. Provider 总开关禁用 → 隐藏（内置 + 自定义 均适用）
       if (providerConfig.isProviderDisabled(m.provider)) return false;
-      if (!providerConfig.hasProviderKey(m.provider)) return false;
+
+      // 2. API Key 检查：仅对内置 provider 生效
+      //    自定义模型自带 Key，后端已验证，前端不重复检查
+      if (providerConfig.isBuiltinProvider(m.provider)) {
+        if (!providerConfig.hasProviderKey(m.provider)) return false;
+      }
+
+      // 3. enabled_models 候选池白名单（空列表 = 全可见）
       const providerEnabled = providerConfig.getEnabled(m.provider);
       return providerEnabled.length === 0 || providerEnabled.includes(m.id);
     });
@@ -40,6 +47,7 @@ export function useVisibleModels(models: Model[]): Model[] {
     providerConfig.loading,
     providerConfig.settings,
     providerConfig.isProviderDisabled,
+    providerConfig.isBuiltinProvider,
     providerConfig.hasProviderKey,
     providerConfig.getEnabled,
   ]);

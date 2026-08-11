@@ -22,6 +22,10 @@
  * ------------------------------------------------------------ */
 :root,
 html[data-theme="obsidian"] {
+  /* 用户气泡（官方=方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: var(--mf-border-1);
   /* ── V2 语义 Token ── */
   --mf-bg-app: #0f1114;              /* 应用主背景 */
   --mf-bg-surface: #15181d;          /* 侧边栏 / 次级区域 */
@@ -36,13 +40,13 @@ html[data-theme="obsidian"] {
   --mf-border-1: #262b34;            /* 主边框 */
   --mf-border-2: #1e222b;            /* 次边框 */
 
-  --mf-accent: #4e8cd9;              /* 降饱和工具蓝（唯一品牌色） */
-  --mf-accent-hover: #619be3;
-  --mf-accent-active: #3d7bc4;
+  --mf-accent: #5e6ad2;              /* 2026-08-11 调研后微调：Linear 同款降饱和薰衣草蓝（原 #4e8cd9） */
+  --mf-accent-hover: #6f7ada;
+  --mf-accent-active: #4d59b8;
   --mf-on-accent: #f2f5f9;
 
-  --mf-selection: rgba(78, 140, 217, 0.30);
-  --mf-focus-ring: rgba(78, 140, 217, 0.55);
+  --mf-selection: rgba(94, 106, 210, 0.30);
+  --mf-focus-ring: rgba(94, 106, 210, 0.55);
 
   --mf-state-success: #3fb96f;
   --mf-state-warning: #d9a13b;
@@ -98,6 +102,10 @@ html[data-theme="obsidian"] {
  * 卡片靠 1px 边框而非阴影；hover 用灰阶步进。
  * ------------------------------------------------------------ */
 html[data-theme="studio"] {
+  /* 用户气泡（官方=方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #ffffff;
   --mf-bg-surface: #f6f6f8;
   --mf-bg-card: #f7f7f9;
@@ -167,6 +175,10 @@ html[data-theme="studio"] {
  * Theme C：Developer Terminal（VS Code 语言）
  * ------------------------------------------------------------ */
 html[data-theme="terminal"] {
+  /* 用户气泡（官方=方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #1e1e1e;
   --mf-bg-surface: #252526;
   --mf-bg-card: #2d2d30;
@@ -283,6 +295,10 @@ html[data-theme="terminal"] {
 
 /* Exp-1：Titanium —— 钛金属冷灰（浅色） */
 html[data-theme="titanium"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 10%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
   --mf-bg-app: #e1e3e6;
   --mf-bg-surface: #d6d9dd;
   --mf-bg-card: #edeff1;
@@ -322,6 +338,10 @@ html[data-theme="titanium"] {
 
 /* Exp-2：Paper Studio —— 纸面工作室（暖浅色，赭朱 accent） */
 html[data-theme="paper"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
   --mf-bg-app: #f4f1ea;
   --mf-bg-surface: #ece8de;
   --mf-bg-card: #faf7f0;
@@ -361,6 +381,10 @@ html[data-theme="paper"] {
 
 /* Exp-3：Midnight —— 午夜深蓝（深色） */
 html[data-theme="midnight"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 14%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 25%, transparent);
   --mf-bg-app: #0b0e14;
   --mf-bg-surface: #10141d;
   --mf-bg-card: #161b26;
@@ -400,6 +424,10 @@ html[data-theme="midnight"] {
 
 /* Exp-4：Mono —— 纯单色（深色，零彩度，反白 accent） */
 html[data-theme="mono"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 25%, transparent);
   --mf-bg-app: #111112;
   --mf-bg-surface: #171718;
   --mf-bg-card: #1d1d1f;
@@ -439,6 +467,10 @@ html[data-theme="mono"] {
 
 /* Exp-5：Warm Minimal —— 暖调极简（浅色，焦糖 accent） */
 html[data-theme="warm-minimal"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
   --mf-bg-app: #faf8f5;
   --mf-bg-surface: #f2eee9;
   --mf-bg-card: #f5f1ec;
@@ -478,6 +510,10 @@ html[data-theme="warm-minimal"] {
 
 /* Exp-6：Aurora —— 极光青绿（深色，低饱和，非霓虹） */
 html[data-theme="aurora"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 12%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 25%, transparent);
   --mf-bg-app: #0d1210;
   --mf-bg-surface: #121815;
   --mf-bg-card: #18201c;
@@ -513,6 +549,149 @@ html[data-theme="aurora"] {
   --mf-glass-border: rgba(255, 255, 255, 0.08);
   --mf-overlay-modal: rgba(0, 0, 0, 0.58);
   --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.32);
+}
+
+/* ============================================================
+ * Studio Accent 对比样张（2026-08-11 配色调研）
+ * 三套均复用 Studio Light 的中性基底（背景/文字/边框/阴影完全一致），
+ * 仅替换强调色方向，供用户 A/B/C 对比后选定，再写回官方 studio 主题。
+ *   studio-graphite  —— 石墨墨色（Notion 式：主按钮近黑，零色相噪音）
+ *   studio-lavender  —— 薰衣草蓝（Linear 式 #5e6ad2，降饱和冷调）
+ *   studio-spectrum  —— 改良深蓝（保守方案：压饱和收紧使用）
+ * ============================================================ */
+
+/* Preview-1：Studio Graphite —— 石墨墨色（Notion 式） */
+html[data-theme="studio-graphite"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 20%, transparent);
+  --mf-bg-app: #ffffff;
+  --mf-bg-surface: #f6f6f8;
+  --mf-bg-card: #f7f7f9;
+  --mf-bg-elevated: #efeff2;
+
+  --mf-text-1: #1a1b1e;
+  --mf-text-2: #3c4047;
+  --mf-text-3: #5d626c;
+  --mf-text-4: #8a8f98;
+
+  --mf-border-1: #e4e5e9;
+  --mf-border-2: #ededf0;
+
+  --mf-accent: #26282d;              /* 石墨墨色：主按钮近黑，白底只留红黄绿语义色 */
+  --mf-accent-hover: #3a3d43;
+  --mf-accent-active: #17181b;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(38, 40, 45, 0.10);
+  --mf-accent-faint: rgba(38, 40, 45, 0.05);
+
+  --mf-selection: rgba(38, 40, 45, 0.10);
+  --mf-focus-ring: rgba(38, 40, 45, 0.32);
+
+  /* 侧边栏选中态层级（2026-08-11）：文件夹深一档 / 会话浅一档，
+     实色中性灰替代半透明黑蒙层，消除发浑（Notion 手法） */
+  --sidebar-active-bg-strong: #e8e8ec;
+  --sidebar-active-bg: #f0f0f3;
+
+  --mf-state-success: #2e9e5b;
+  --mf-state-warning: #b97f1f;
+  --mf-state-error: #cc4b42;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --mf-glass-bg: rgba(255, 255, 255, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Preview-2：Studio Lavender —— 薰衣草蓝（Linear 式） */
+html[data-theme="studio-lavender"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
+  --mf-bg-app: #ffffff;
+  --mf-bg-surface: #f6f6f8;
+  --mf-bg-card: #f7f7f9;
+  --mf-bg-elevated: #efeff2;
+
+  --mf-text-1: #1a1b1e;
+  --mf-text-2: #3c4047;
+  --mf-text-3: #5d626c;
+  --mf-text-4: #8a8f98;
+
+  --mf-border-1: #e4e5e9;
+  --mf-border-2: #ededf0;
+
+  --mf-accent: #5e6ad2;              /* Linear 同款降饱和薰衣草蓝 */
+  --mf-accent-hover: #6f7ada;
+  --mf-accent-active: #4d59b8;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(94, 106, 210, 0.11);
+  --mf-accent-faint: rgba(94, 106, 210, 0.05);
+
+  --mf-selection: rgba(94, 106, 210, 0.16);
+  --mf-focus-ring: rgba(94, 106, 210, 0.40);
+
+  --mf-state-success: #2e9e5b;
+  --mf-state-warning: #b97f1f;
+  --mf-state-error: #cc4b42;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --mf-glass-bg: rgba(255, 255, 255, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Preview-3：Studio Spectrum —— 改良深蓝（保守方案） */
+html[data-theme="studio-spectrum"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
+  --mf-bg-app: #ffffff;
+  --mf-bg-surface: #f6f6f8;
+  --mf-bg-card: #f7f7f9;
+  --mf-bg-elevated: #efeff2;
+
+  --mf-text-1: #1a1b1e;
+  --mf-text-2: #3c4047;
+  --mf-text-3: #5d626c;
+  --mf-text-4: #8a8f98;
+
+  --mf-border-1: #e4e5e9;
+  --mf-border-2: #ededf0;
+
+  --mf-accent: #2e5fb8;              /* 降饱和深蓝：比原 #0a6cd6 更沉，供保守对比 */
+  --mf-accent-hover: #3c6dc4;
+  --mf-accent-active: #254d96;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(46, 95, 184, 0.10);
+  --mf-accent-faint: rgba(46, 95, 184, 0.05);
+
+  --mf-selection: rgba(46, 95, 184, 0.14);
+  --mf-focus-ring: rgba(46, 95, 184, 0.38);
+
+  --mf-state-success: #2e9e5b;
+  --mf-state-warning: #b97f1f;
+  --mf-state-error: #cc4b42;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --mf-glass-bg: rgba(255, 255, 255, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 /* ============================================================
@@ -573,4 +752,47 @@ svg.lucide {
 @media (prefers-reduced-motion: reduce) {
   .mf-spinner { animation-duration: 1.8s; }
   .mf-voice-ring { animation: none; opacity: 0.35; }
+}
+
+/* ------------------------------------------------------------
+ * 用户消息浮动焦点条（V3 单锚点）
+ * 当前锚点用户消息滚出顶部后，由 MessageList 渲染的唯一浮层；
+ * 全列表零 sticky，不存在释放边界/多锚交接问题。
+ * 样式沿用用户气泡主题 token，文本收敛严格两行高（行边界裁切，不切半行）；
+ * JS 检测溢出后打 data-overflow，仅长消息挂底部渐变（首行实色、次行淡出），
+ * 短消息文字完整无 mask。
+ * 双击回弹原位（JS 驱动，见 MessageList handleFocusDoubleClick）。
+ * ------------------------------------------------------------ */
+.mf-focus-chip {
+  max-width: 70%;
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  background: var(--mf-bubble-user-bg);
+  color: var(--mf-bubble-user-fg);
+  border: 1px solid var(--mf-bubble-user-border);
+  box-shadow: var(--mf-shadow-lg);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  user-select: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 56px;
+  overflow: hidden;
+  animation: mfFocusChipIn 0.2s ease;
+}
+
+/* 仅长消息（JS 判定溢出）挂底部渐变：首行实色可读，次行淡出暗示可回弹看全文 */
+.mf-focus-chip[data-overflow="true"] {
+  -webkit-mask-image: linear-gradient(#000 50%, transparent);
+  mask-image: linear-gradient(#000 50%, transparent);
+}
+
+@keyframes mfFocusChipIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-focus-chip { animation: none; }
 }

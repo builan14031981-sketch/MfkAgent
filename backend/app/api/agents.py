@@ -18,9 +18,11 @@ AGENT_ORDER = {
     "product": 5,
     "analyst": 6,
     "writer": 7,
-    "mentor": 8,
-    "personal": 9,
-    "spark": 10,
+    "writer_narrative": 8,
+    "mentor": 9,
+    "personal": 10,
+    "spark": 11,
+    "pianai": 12,
 }
 
 

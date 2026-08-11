@@ -58,8 +58,8 @@ export function ChatRow({
         justifyContent: "space-between",
         // 缩进：项目内 22px 对齐项目图标起点；通用对话 0
         padding: indented
-          ? "var(--sidebar-row-py) var(--sidebar-row-px) var(--sidebar-row-py) 22px"
-          : "var(--sidebar-row-py) var(--sidebar-row-px)",
+          ? "3px var(--sidebar-row-px) 3px 22px"
+          : "3px var(--sidebar-row-px)",
         borderRadius: "var(--radius-sm)",
         background: isActive ? "var(--sidebar-active-bg)" : "transparent",
         cursor: "pointer",
@@ -206,8 +206,8 @@ export function ChatRow({
       >
         <MoreHorizontal
           style={{
-            width: "var(--sidebar-icon-size)",
-            height: "var(--sidebar-icon-size)",
+            width: "var(--sidebar-icon-size-sm)",
+            height: "var(--sidebar-icon-size-sm)",
           }}
         />
       </button>

@@ -62,6 +62,9 @@ export interface CustomModel {
   temperature: number;
   enabled: boolean;
   supports_vision: boolean;
+  /** 2026-08-11 新增：来源。sync=候选池自动同步（生命周期由候选池接管）；manual=用户手动创建。
+   *  旧后端不返回此字段时为 undefined，前端按 manual 降级处理。 */
+  source?: "sync" | "manual";
 }
 
 export interface CustomModelPayload {
@@ -147,6 +150,8 @@ export interface UseProviderConfigResult {
   // ── 远程模型拉取 ──
   /** 拉取上游官方模型列表（含上下文窗口元数据）。返回 RemoteModelInfo[]。 */
   fetchRemoteModels: (providerId: string) => Promise<RemoteModelInfo[]>;
+  /** 直传 api_key + api_base 拉取模型列表（用于自定义模型表单）。 */
+  fetchRemoteModelsDirect: (apiKey: string, apiBase: string) => Promise<RemoteModelInfo[]>;
 
   // ── 连通性测试（草稿值优先，未传字段后端回退读取存量）──
   /**
@@ -173,6 +178,8 @@ export interface UseProviderConfigResult {
   // ── Key 判定（统一入口，消灭分散的 hasKey 逻辑）──
   /** 判断 provider 是否已配置 Key（明文非空即视为已配置） */
   hasProviderKey: (providerId: string) => boolean;
+  /** 判断 provider 是否为内置 provider（在 configs[] 中注册） */
+  isBuiltinProvider: (providerId: string) => boolean;
   /** 备用识图 Key 是否已配置（vision_api_key 明文非空即视为已配置） */
   hasVisionKey: () => boolean;
   /** settings store 引用（供 VisionConfigSection 等读写 vision_* 字段） */
@@ -342,13 +349,25 @@ export function useProviderConfig(): UseProviderConfigResult {
     [refresh]
   );
 
-  // ── 远程模型拉取 ──
+  // ── 远程模型拉取（按 provider_id）──
   const fetchRemoteModels = useCallback(async (providerId: string): Promise<RemoteModelInfo[]> => {
     const data = await apiPost<{ models: RemoteModelInfo[] }>("/api/models/fetch_remote", {
       provider_id: providerId,
     });
     return data.models || [];
   }, []);
+
+  // ── 远程模型拉取（直传 api_key + api_base，用于自定义模型表单）──
+  const fetchRemoteModelsDirect = useCallback(
+    async (apiKey: string, apiBase: string): Promise<RemoteModelInfo[]> => {
+      const data = await apiPost<{ models: RemoteModelInfo[] }>("/api/models/fetch_remote", {
+        api_key: apiKey,
+        api_base: apiBase,
+      });
+      return data.models || [];
+    },
+    []
+  );
 
   // ── 连通性测试（草稿值优先；不依赖任何持久化状态，纯函数式调用）──
   // 设计要点：
@@ -459,6 +478,12 @@ export function useProviderConfig(): UseProviderConfigResult {
     [configs]
   );
 
+  // ── 内置 provider 判定（用于 useVisibleModels 区分内置/自定义模型）──
+  const isBuiltinProvider = useCallback(
+    (providerId: string) => configs.some((c) => c.id === providerId),
+    [configs]
+  );
+
   const hasVisionKey = useCallback(() => {
     const plainKey = settings?.vision_api_key || "";
     return plainKey !== "";
@@ -478,6 +503,7 @@ export function useProviderConfig(): UseProviderConfigResult {
     updateCustomModel,
     deleteCustomModel,
     fetchRemoteModels,
+    fetchRemoteModelsDirect,
     testConnection,
     getEnabled,
     isEnabled,
@@ -488,6 +514,7 @@ export function useProviderConfig(): UseProviderConfigResult {
     isProviderDisabled,
     setProviderDisabled,
     hasProviderKey,
+    isBuiltinProvider,
     hasVisionKey,
     settings,
     updateSetting,
