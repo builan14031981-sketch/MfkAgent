@@ -44,7 +44,6 @@ os.environ["WENXIN_API_KEY"] = ""
 os.environ["SPARK_API_KEY"] = ""
 os.environ["MOONSHOT_API_KEY"] = ""
 os.environ["MINIMAX_API_KEY"] = ""
-os.environ["BAICHUAN_API_KEY"] = ""
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -99,13 +98,13 @@ def test_providers_registry():
     providers = data["providers"]
     ids = {p["id"] for p in providers}
     expected = {"deepseek", "qwen", "google", "glm", "moonshot",
-                "freellmapi", "mimo", "wenxin", "spark", "minimax", "baichuan"}
+                "freellmapi", "mimo", "wenxin", "spark", "minimax"}
     assert expected <= ids, f"缺少 provider: {expected - ids}"
     by_id = {p["id"]: p for p in providers}
     assert by_id["qwen"]["free"] is True, "qwen 应标记免费"
     assert by_id["deepseek"]["free"] is False, "deepseek 不应标记免费"
     assert by_id["wenxin"]["models"], "文心应带模型清单"
-    assert by_id["spark"]["models"] and by_id["minimax"]["models"] and by_id["baichuan"]["models"]
+    assert by_id["spark"]["models"] and by_id["minimax"]["models"] and by_id["siliconflow"]["models"]
     assert by_id["deepseek"]["has_key"] is True, "deepseek 已配 Key"
     assert by_id["mimo"]["has_key"] is False, "mimo 未配 Key"
 

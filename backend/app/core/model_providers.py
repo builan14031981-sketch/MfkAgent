@@ -179,18 +179,6 @@ PROVIDERS: list[ProviderDef] = [
         ),
     ),
     ProviderDef(
-        id="baichuan",
-        name="百川智能",
-        free=True,
-        default_api_base="https://api.baichuan-ai.com/v1",
-        env_key="BAICHUAN_API_KEY",
-        description="百川大模型（默认值可覆盖）",
-        website="https://www.baichuan-ai.com",
-        models=(
-            ProviderModel("baichuan-4", "Baichuan4"),
-        ),
-    ),
-    ProviderDef(
         id="siliconflow",
         name="硅基流动",
         free=True,

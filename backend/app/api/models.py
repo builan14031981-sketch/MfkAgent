@@ -325,7 +325,6 @@ _CONTEXT_WINDOW_HEURISTICS: list[tuple[list[str], int]] = [
     (["moonshot"], 8_192),
     (["ernie"], 8_192),
     (["minimax"], 256_000),
-    (["baichuan"], 128_000),
     (["spark"], 8_192),
 ]
 

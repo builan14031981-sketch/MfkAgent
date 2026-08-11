@@ -22,7 +22,6 @@ class ModelProvider(str, Enum):
     SPARK = "spark"
     MOONSHOT = "moonshot"
     MINIMAX = "minimax"
-    BAICHUAN = "baichuan"
     SILICONFLOW = "siliconflow"
     FREELLMAPI = "freellmapi"
     GOOGLE = "google"
@@ -675,7 +674,7 @@ class ModelService:
                     provider.value, model_name, reasoning_effort, effort,
                 )
 
-        # ── 其他 Provider（MIMO / MOONSHOT / WENXIN / SPARK / MINIMAX / BAICHUAN / FREELLMAPI / GOOGLE）──
+        # ── 其他 Provider（MIMO / MOONSHOT / WENXIN / SPARK / MINIMAX / FREELLMAPI / GOOGLE）──
         else:
             # 这些 provider 不支持推理参数，reasoning_effort 配置无效
             # 不发送任何推理字段，避免 API 400 错误
