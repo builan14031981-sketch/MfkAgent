@@ -3,10 +3,12 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Model } from "@/hooks/useModels";
 import type { ReasoningEffort } from "@/components/ChatInput";
+import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 
 const PREF_MODEL_KEY = "mfk_pref_model";
 const PREF_REASONING_KEY = "mfk_pref_reasoning_effort";
-const DEFAULT_MODEL = "qwen-flash";
+// 2026-08-11 改为从 modelDefaults.ts 导入，保留同名别名以最小化下方修改
+const DEFAULT_MODEL = FALLBACK_MODEL_ID;
 
 function readLocal(key: string): string | null {
   if (typeof window === "undefined") return null;

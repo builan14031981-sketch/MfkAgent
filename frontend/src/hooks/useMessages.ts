@@ -4,6 +4,7 @@ import { API_BASE, apiGet, apiPost, apiDelete } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { Attachment, AttachmentKind } from "@/components/FileDropZone";
 import { getFileExt } from "@/components/FileDropZone";
+import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
@@ -72,7 +73,7 @@ export function useMessages(chatId: number | null) {
     fetchMessages();
   }, [fetchMessages]);
 
-  async function sendMessage(content: string, model: string = "qwen-flash", personalityLevel?: number, reasoningEffort?: "none" | "high" | "max") {
+  async function sendMessage(content: string, model: string = FALLBACK_MODEL_ID, personalityLevel?: number, reasoningEffort?: "none" | "high" | "max") {
     if (!chatId) throw new Error("No chat selected");
     const data = await apiPost(`/api/chat/${chatId}/send`, { content, model, personality_level: personalityLevel, reasoning_effort: reasoningEffort });
     await fetchMessages();
@@ -88,7 +89,7 @@ export function useMessages(chatId: number | null) {
 
   async function sendMessageStream(
     content: string,
-    model: string = "qwen-flash",
+    model: string = FALLBACK_MODEL_ID,
     onChunk: (chunk: string) => void,
     onFinish: () => void,
     onError: (error: string) => void,

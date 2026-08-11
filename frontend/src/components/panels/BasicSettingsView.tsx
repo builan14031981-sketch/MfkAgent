@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check, ShieldAlert } from "lucide-react";
 import { ExtensionPanel } from "./ExtensionPanel";
 import { ModelProvidersBasic } from "./ModelConfigSection";
+import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { SwitchButton } from "@/components/SwitchButton";
 import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
@@ -50,9 +51,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   wenxin: "百度文心",
   spark: "讯飞星火",
   minimax: "MiniMax",
-  baichuan: "百川智能",
   siliconflow: "硅基流动",
-  openai: "OpenAI",
 };
 
 /** 预设 Agent 排序优先级 */
@@ -964,7 +963,7 @@ function ModelBasic(props: SettingsViewProps) {
           </div>
           <GroupedModelDropdown
             models={models}
-            selectedId={settings?.default_model || "qwen-flash"}
+            selectedId={settings?.default_model || FALLBACK_MODEL_ID}
             onSelect={(id) => onUpdate("default_model", id)}
             disabled={saving === "default_model" || modelsLoading}
             loading={modelsLoading}

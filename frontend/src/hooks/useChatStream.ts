@@ -3,6 +3,7 @@ import type { Message, useMessages, TimelineEvent } from "@/hooks/useMessages";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { ReasoningEffort } from "@/components/ChatInput";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
+import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import type { Attachment } from "@/components/FileDropZone";
 import { apiPost } from "@/lib/api";
 import { showDesktopNotification } from "@/lib/notify";
@@ -362,7 +363,7 @@ export function useChatStream({
         refs.abortController = controller;
         await sendMessageStream(
           finalContent,
-          modelId || "qwen-flash",
+          modelId || FALLBACK_MODEL_ID,
           // onChunk（text）
           (chunk) => {
             if (refs.firstText) {

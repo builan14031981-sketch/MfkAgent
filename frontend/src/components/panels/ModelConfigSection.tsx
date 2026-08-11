@@ -65,14 +65,8 @@ const emptyForm: FormState = {
  * 各 Provider 推荐模型快捷添加预设（常驻 + 按钮）。
  * 未命中预设的 provider，快捷添加区退化为仅展示 ProviderConfig.models 池。
  */
-const RECOMMENDED_MODELS: Record<string, string[]> = {
-  deepseek: ["deepseek-chat", "deepseek-reasoner"],
-  qwen: ["qwen-max", "qwen-plus", "qwen-turbo"],
-  glm: ["glm-4-plus", "glm-4-flash"],
-  siliconflow: ["Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-V3"],
-  moonshot: ["moonshot-v1-8k", "moonshot-v1-32k"],
-  openai: ["gpt-4o", "gpt-4o-mini"],
-};
+// 注：2026-08-11 撤销 — 快捷池改为走后端 PROVIDERS 权威源（P1 修复）。
+// 旧版硬编码（含 openai: gpt-4o 等与后端脱钩的条目）见 _trash/20260811_models_drift_fix/ModelConfigSection.tsx.bak
 
 /**
  * @deprecated 字段级边界重构后已拆分为 ModelProvidersBasic + ModelAdvancedFields。
@@ -662,8 +656,10 @@ function ProviderCard({
   // 用于控制"清除"按钮显隐：仅配置 Base URL 不填 Key 的本地模型也能正常清除
   const isConfigured = p.has_key || p.api_base_override;
 
-  // 推荐模型：优先 RECOMMENDED_MODELS 预设，无预设则用 ProviderConfig.models 池
-  const recommended = RECOMMENDED_MODELS[p.id] || p.models.map((m) => m.id);
+  // 推荐模型：唯一权威源 = ProviderConfig.models（后端 model_providers.py）
+  // 历史：之前用 RECOMMENDED_MODELS 硬编码常驻，与后端脱钩导致漂移（百炼新模型漏显示、qwen-turbo 幽灵等）。
+  // 2026-08-11 改为单源（见 P1 修复）。百炼一类的聚合 provider 也能露出全部子模型。
+  const recommended = p.models.map((m) => m.id);
   // 已启用集合（O(1) 查找）
   const enabledSet = new Set(enabledModels);
   // 快捷添加区只展示"尚未启用"的推荐模型
@@ -883,9 +879,12 @@ function ProviderCard({
 
       {/* ── 动态模型 Chip 三区块 ── */}
       <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
-        {/* 区块1：已启用模型 Chip */}
+        {/* 区块1：已加入候选池的模型 Chip */}
         <div>
-          <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginBottom: "4px" }}>
+          <div
+            title={t("settings.model.providers.enabledModelsHint")}
+            style={{ fontSize: "11px", color: "var(--text-level-3)", marginBottom: "4px", cursor: "help", textDecoration: "underline dotted var(--text-level-4)" }}
+          >
             {t("settings.model.providers.enabledModels")}
           </div>
           {enabledModels.length === 0 ? (

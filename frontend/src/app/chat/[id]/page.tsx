@@ -13,6 +13,7 @@ import { useChatStream } from "@/hooks/useChatStream";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { useStreamStore } from "@/lib/streamStore";
+import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useProviderConfig } from "@/hooks/useProviderConfig";
 import { compressMessages } from "@/lib/api";
@@ -358,7 +359,7 @@ function ChatPageInner() {
 
       // 自动发送消息（复用统一流式管线，携带从 chat.context_files 恢复的 attachments）
       sendStream(userMessage, {
-        modelId: currentModel?.id || "qwen-flash",
+        modelId: currentModel?.id || FALLBACK_MODEL_ID,
         personalityLevel,
         reasoningEffort,
         permissionMode,
@@ -421,7 +422,7 @@ function ChatPageInner() {
     // - binary 类：后端注入元数据说明
     // 前端 buildContent 作为兜底：即使后端未注入，AI 也能从用户消息中看到文件内容
     await sendStream(userMessage, {
-      modelId: currentModel?.id || "qwen-flash",
+      modelId: currentModel?.id || FALLBACK_MODEL_ID,
       personalityLevel,
       reasoningEffort,
       permissionMode,
@@ -465,7 +466,7 @@ function ChatPageInner() {
     };
 
     await sendStream(prompt, {
-      modelId: currentModel?.id || "qwen-flash",
+      modelId: currentModel?.id || FALLBACK_MODEL_ID,
       personalityLevel,
       reasoningEffort,
       permissionMode,

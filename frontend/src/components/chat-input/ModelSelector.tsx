@@ -29,9 +29,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   wenxin: "百度文心",
   spark: "讯飞星火",
   minimax: "MiniMax",
-  baichuan: "百川智能",
   siliconflow: "硅基流动",
-  openai: "OpenAI",
 };
 
 /** 按 provider 分组后的结构 */
