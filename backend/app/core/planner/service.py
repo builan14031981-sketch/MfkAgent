@@ -61,10 +61,10 @@ _STEP_TEMPLATES: Dict[str, List[PlanStep]] = {
         PlanStep("阅读并筛选关键来源", ["fetch_url"]),
         PlanStep("汇总为结论", []),
     ],
+    # 记忆操作降为单步：多步模板会诱导模型逐条重复调用 add_memory，
+    # 且步骤名含“写入”曾触发 rule_write_detected 误判（见 completion/rules.py）
     "memory_operation": [
-        PlanStep("提取关键信息", []),
-        PlanStep("写入记忆", ["add_memory"]),
-        PlanStep("确认保存结果", []),
+        PlanStep("记住用户的重要信息", ["add_memory"]),
     ],
 }
 

@@ -179,7 +179,8 @@ export const useStreamStore = create<StreamStore>()(
 }),
   {
     name: "mfk-task-store",
-    // ⚠️ 设计意图：partialize 仅序列化 sessions.tasks（任务面板数据），
+    // ⚠️ 设计意图：partialize 仅序列化 sessions.tasks（任务面板数据）与 sessions.tokenUsage
+    // （上下文水位快照，2026-08-12 加入：刷新/重启后恢复上下文仪表盘显示），
     // refsMap（Map 类型，含 AbortController/Timer 等不可序列化对象）不参与持久化。
     // merge 返回 { ...current, ... } 时 current.refsMap 是内存中的 Map 实例，直接透传。
     // 修改 partialize 时切勿包含 refsMap，否则 hydration 会将其退化为普通 Object，导致 .get/.set 崩溃。
@@ -187,24 +188,28 @@ export const useStreamStore = create<StreamStore>()(
       sessions: Object.fromEntries(
         Object.entries(state.sessions).map(([chatId, session]) => [
           chatId,
-          { tasks: session.tasks },
+          { tasks: session.tasks, tokenUsage: session.tokenUsage },
         ])
       ),
     }),
     merge: (persisted, current) => {
-      const p = persisted as { sessions?: Record<string, { tasks: TaskNode[] }> };
+      const p = persisted as { sessions?: Record<string, { tasks: TaskNode[]; tokenUsage?: TokenUsageEvent | null }> };
       if (!p.sessions) return current;
       const mergedSessions = { ...current.sessions };
       for (const [chatIdStr, data] of Object.entries(p.sessions)) {
         const chatId = Number(chatIdStr);
-        if (data.tasks && data.tasks.length > 0) {
-          if (!mergedSessions[chatId] || mergedSessions[chatId].tasks.length === 0) {
-            mergedSessions[chatId] = {
-              ...(mergedSessions[chatId] ?? createDefaultSession()),
-              tasks: data.tasks,
-            };
-          }
-        }
+        const hasTasks = data.tasks && data.tasks.length > 0;
+        const hasUsage = data.tokenUsage != null;
+        if (!hasTasks && !hasUsage) continue;
+        const base = mergedSessions[chatId] ?? createDefaultSession();
+        mergedSessions[chatId] = {
+          ...base,
+          // 旧持久化数据无 tasks/tokenUsage 字段时保持内存默认值
+          ...(hasTasks && (!mergedSessions[chatId] || mergedSessions[chatId].tasks.length === 0)
+            ? { tasks: data.tasks }
+            : {}),
+          ...(hasUsage && base.tokenUsage == null ? { tokenUsage: data.tokenUsage } : {}),
+        };
       }
       return { ...current, sessions: mergedSessions };
     },

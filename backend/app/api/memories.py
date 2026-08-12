@@ -29,8 +29,11 @@ class MemoryItemCreate(BaseModel):
     @field_validator("memory_type")
     @classmethod
     def check_memory_type(cls, v):
-        if v not in ("preference", "fact", "workflow", "project"):
-            raise ValueError("memory_type must be one of preference/fact/workflow/project")
+        if v not in (
+            "preference", "fact", "workflow", "project",
+            "user_preference", "interaction_pattern", "relationship_note", "current_context",
+        ):
+            raise ValueError("memory_type 必须是 preference/fact/workflow/project/user_preference/interaction_pattern/relationship_note/current_context 之一")
         return v
 
     @field_validator("confidence")

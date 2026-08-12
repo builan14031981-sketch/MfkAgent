@@ -14,15 +14,35 @@ from app.models.agent import Chat, Message, Agent, Project
 from app.core.pagination import paginate
 from app.core.tokens import count_tokens
 from app.core.tool_runtime.approval import approval_registry
+from app.core.tool_runtime.choice import choice_registry, CUSTOM_TEXT_MAX
 from app.core.tool_runtime.notification import event_bus, NotificationType
 from app.core.tool_runtime.executor import _update_approval_status
 from app.core.agent_runtime import AgentRuntime, get_chat_context_builder, ContextBuildInput
 from app.core.agent_runtime.context_builder import get_default_model as _get_default_model
+from app.core.agent_runtime.action_guard import needs_regeneration, find_action_descriptions, REGEN_INSTRUCTION
 from app.services.memory_extractor import run_memory_extraction
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def _call_regen_model(
+    model_id: str,
+    messages: list,
+    temperature: float = 0.7,
+    max_tokens: int = 4096,
+) -> str:
+    """输出保护：用同一模型重新生成，去掉动作描写。"""
+    from app.services.model import model_service
+    result = await model_service.call_once(
+        model_id=model_id,
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        tools=None,
+    )
+    return result.content or ""
 
 # ── Phase 1.6: Agent 后台任务管理（HTTP 生命周期解耦）──
 # Agent 执行由 chat_id 驱动的独立 asyncio.Task 承载，与 SSE 响应对象解耦。
@@ -598,6 +618,28 @@ async def send_message(chat_id: int, request: SendRequest):
 
             ai_content = agent_result.content
             api_usage = agent_result.usage
+
+            # ──── V14.1 输出保护：零动作状态出现动作描写 → 重新生成一次 ────
+            # 仅非流式路径（流式在 _persist 处处理）。comfort/roleplay/light 不拦截。
+            perf_level = (built.persona_context.performance_level
+                          if built.persona_context else "none")
+            if ai_content and needs_regeneration(perf_level, ai_content):
+                logger.info("[action_guard] regen: perf=%s hits=%s", perf_level,
+                            find_action_descriptions(ai_content))
+                try:
+                    regen_msgs = [m.model_dump() if hasattr(m, "model_dump") else dict(m)
+                                  for m in built.messages]
+                    regen_msgs.append({"role": "user", "content": REGEN_INSTRUCTION})
+                    regen_result = await _call_regen_model(
+                        model_id=built.context.model_id,
+                        messages=regen_msgs,
+                        temperature=built.temperature,
+                        max_tokens=built.max_tokens,
+                    )
+                    if regen_result and regen_result.strip():
+                        ai_content = regen_result
+                except Exception as e:
+                    logger.warning("[action_guard] regen failed: %s", e)
         except Exception as e:
             ai_content = f"[AI回复失败: {str(e)}]"
             api_usage = None
@@ -646,6 +688,7 @@ async def send_message(chat_id: int, request: SendRequest):
                     project_id=chat.project_id,
                     user_message=request.content,
                     ai_content=ai_content,
+                    agent_id=chat.agent_id,
                 )
             )
         except Exception:  # noqa: BLE001
@@ -722,6 +765,15 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         read_only = built.read_only
         mem_project_id = chat.project_id
         mem_user_content = request.content
+        mem_agent_id = chat.agent_id
+        # V14.1: 输出保护所需纯数据快照（生成器在 db.close() 后执行）
+        mem_perf_level = (built.persona_context.performance_level
+                          if built.persona_context else "none")
+        mem_model_id = built.context.model_id
+        mem_model_messages = [
+            m.model_dump() if hasattr(m, "model_dump") else dict(m)
+            for m in built.messages
+        ]
     finally:
         db.close()
 
@@ -807,7 +859,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     pending_text += piece
                 elif etype == "tool_calls":
                     recorded_tool_calls = chunk.get("calls") or recorded_tool_calls
-                elif etype in ("tool_start", "tool_result", "tool_approval"):
+                elif etype in ("tool_start", "tool_result", "tool_approval", "choice_request"):
                     if pending_text:
                         timeline_events.append({"type": "text", "content": pending_text})
                         pending_text = ""
@@ -821,6 +873,25 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     "Phase12 SSE thinking: chat_id=%s chunks=%d total_chars=%d",
                     chat_id, thinking_chunk_count, thinking_total_chars,
                 )
+
+            # V14.1 输出保护：零动作状态出现动作描写 → 重新生成一次（落库前修正）
+            if full_content and needs_regeneration(mem_perf_level, full_content):
+                logger.info("[action_guard] stream regen: chat=%s perf=%s hits=%s",
+                            chat_id, mem_perf_level, find_action_descriptions(full_content))
+                try:
+                    regen_msgs = list(mem_model_messages)
+                    regen_msgs.append({"role": "user", "content": REGEN_INSTRUCTION})
+                    new_content = await _call_regen_model(
+                        model_id=mem_model_id,
+                        messages=regen_msgs,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    )
+                    if new_content.strip():
+                        full_content = new_content
+                        pending_text = ""
+                except Exception as e:
+                    logger.warning("[action_guard] stream regen failed: %s", e)
 
             # DB 持久化（无论客户端是否断连，始终执行）
             _persist()
@@ -842,6 +913,7 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                         project_id=mem_project_id,
                         user_message=mem_user_content,
                         ai_content=full_content,
+                        agent_id=mem_agent_id,
                     )
                 )
             except Exception:  # noqa: BLE001
@@ -868,8 +940,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
             # 通知 SSE 消费者结束
             _put(None)
             run.finished = True
-            # 清理未决审批
+            # 清理未决审批与未决抉择
             approval_registry.cancel_by_chat(chat_id)
+            choice_registry.cancel_by_chat(chat_id)
             # 清理注册表
             _agent_runs.pop(chat_id, None)
 
@@ -1141,6 +1214,35 @@ async def approve_command(chat_id: int, request: ApproveRequest):
         "tool": info.get("tool", ""),
         "command": info.get("command", ""),
     }
+
+
+class ChoiceResolutionRequest(BaseModel):
+    choice_id: str
+    selected: Optional[int] = None      # 选中预设选项下标（与 custom_text 二选一）
+    custom_text: Optional[str] = None   # 用户自定义想法
+
+
+@router.post("/{chat_id}/choice")
+async def resolve_choice(chat_id: int, request: ChoiceResolutionRequest):
+    """用户对 ask_user_choice 抉择卡的反馈（对齐 /approve 契约风格）。
+
+    selected 与 custom_text 至少提供一项；抉择不存在、不属于该会话或已处理时返回错误。
+    """
+    if request.selected is None and not (request.custom_text or "").strip():
+        raise HTTPException(status_code=422, detail="selected 或 custom_text 必须提供其一")
+
+    info = choice_registry.get(request.choice_id)
+    if not info or info.get("chat_id") != chat_id:
+        raise HTTPException(status_code=404, detail="抉择不存在或不属于该会话")
+
+    custom_text = (request.custom_text or "").strip()[:CUSTOM_TEXT_MAX] or None
+    if not choice_registry.resolve(request.choice_id, {
+        "selected": request.selected,
+        "custom_text": custom_text,
+    }):
+        raise HTTPException(status_code=409, detail="抉择已处理或已超时")
+
+    return {"status": "ok", "choice_id": request.choice_id}
 
 
 # ──────────────────────────────────────────────────────────────────────────

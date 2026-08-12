@@ -121,7 +121,7 @@ def _ensure_schema():
 _ensure_schema()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -280,6 +280,8 @@ app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
+app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
+app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 
 @app.get("/")
 async def root():

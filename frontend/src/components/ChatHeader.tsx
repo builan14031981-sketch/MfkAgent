@@ -8,7 +8,6 @@ import type { Agent } from "@/hooks/useAgents";
 import type { OrbStage } from "@/lib/streamStore";
 import type { TokenUsageEvent } from "@/types/runtime";
 import { AgentIcon } from "@/components/AgentIcon";
-import { AgentOrb } from "@/components/AgentOrb";
 import { ContextDashboard } from "@/components/ContextDashboard";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -66,7 +65,6 @@ export const ChatHeader = memo(function ChatHeader({
   chat,
   agent,
   project,
-  streamingStage,
   tokenUsage,
   onCompress,
   isCompressing,
@@ -128,12 +126,10 @@ export const ChatHeader = memo(function ChatHeader({
         alignItems: "center",
         gap: "8px",
       }}>
-        {agent &&
-          (streamingStage ? (
-            <AgentOrb stage={streamingStage} size={20} />
-          ) : (
-            <AgentIcon id={agent.id} size={18} style={{ color: "var(--color-primary)" }} />
-          ))}
+        {/* 2026-08-12：去除流式期间 AgentOrb 动画，思考状态由思考面板 Loader2 唯一表达，避免双动画 */}
+        {agent && (
+          <AgentIcon id={agent.id} size={18} style={{ color: "var(--color-primary)" }} />
+        )}
         {isEditingTitle ? (
           <input
             type="text"

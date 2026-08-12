@@ -423,6 +423,8 @@ READ_ONLY_TOOLS = frozenset({
     "git_status", "git_diff", "git_log", "git_branch_list", "git_remote", "git_fetch",
     "web_search", "fetch_url", "github_search",
     "date_time", "json_format",
+    # 抉择工具：无副作用的交互询问，Plan/Build 均放行
+    "ask_user_choice",
     # Phase 4 T2: GitHub 只读工具（自动 ALLOW，无需审批）
     "github_list_issues", "github_read_issue",
     "github_list_pull_requests", "github_read_pull_request",

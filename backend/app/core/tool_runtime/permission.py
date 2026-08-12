@@ -28,7 +28,7 @@ class PermissionFilter:
         "github_list_pull_requests", "github_read_pull_request",
         "search_files",
         "web_search", "fetch_url", "github_search",
-        "add_memory", "manage_todos", "get_datetime", "format_json",
+        "add_memory", "manage_todos", "ask_user_choice", "get_datetime", "format_json",
     ]
 
     # 写入/有副作用工具（plan 模式移除；派生自 risk_engine，与执行闸保持同步）

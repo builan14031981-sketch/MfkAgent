@@ -381,8 +381,11 @@ class AddMemoryTool(Tool):
             description=(
                 "将用户要求记住的信息持久化保存为记忆。"
                 "当用户说「添加记忆：xxx」「记住xxx」「请牢记xxx」或类似意图时，必须调用本工具保存。"
-                "scope 为 global 表示全局记忆（所有对话可见）；agent 表示只给当前 Agent 记住（跨项目生效）；"
-                "project 表示与当前项目相关的记忆（仅当前项目会话可见）。agent/project 的目标由系统自动注入，无需填写。"
+                "scope 选择指引：默认使用 agent（当前 Agent 专属，跨项目生效），"
+                "适用于用户个人信息、偏好、性格、与 Agent 的关系等；"
+                "仅当内容明确与当前项目相关（代码/路径/项目约定）时用 project；"
+                "仅当用户明确要求所有 Agent 共享时才用 global（全局记忆）。"
+                "agent/project 的目标由系统自动注入，无需填写。"
             ),
             parameters={
                 "type": "object",
@@ -390,7 +393,8 @@ class AddMemoryTool(Tool):
                     "scope": {
                         "type": "string",
                         "enum": ["global", "agent", "project"],
-                        "description": "global=全局记忆，agent=当前 Agent 专属，project=当前项目相关",
+                        "description": "agent=当前 Agent 专属（默认首选，适合用户个人信息/偏好/关系类记忆）；"
+                        "project=当前项目相关；global=全局共享（仅用户明确要求时使用）",
                     },
                     "content": {
                         "type": "string",
@@ -410,6 +414,59 @@ class AddMemoryTool(Tool):
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output="", error=str(e))
+
+
+class AskUserChoiceTool(Tool):
+    """抉择工具：任务存在多种可行方案时向用户征询选择。
+
+    实际执行由 executor 拦截（pending record 模式，对齐审批流），
+    本类仅提供工具 schema 供模型可见；execute 为非拦截路径的兜底。
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="ask_user_choice",
+            description=(
+                "当任务存在多种可行方案、且用户未明确指定时，调用本工具向用户征询选择。"
+                "必须提供 2-4 个候选方案，并给出你的推荐项（recommended 下标）及推荐理由；"
+                "用户也可以不选预设方案而输入自己的想法。"
+                "用户已在指令中明确要求做法时不要调用；简单任务不要调用。"
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": "向用户提出的问题（简洁明确）",
+                    },
+                    "options": {
+                        "type": "array",
+                        "description": "候选方案列表（2-4 项）",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "label": {"type": "string", "description": "方案名称（简短）"},
+                                "description": {"type": "string", "description": "方案说明（利弊/适用场景）"},
+                            },
+                            "required": ["label"],
+                        },
+                    },
+                    "recommended": {
+                        "type": "integer",
+                        "description": "推荐项在 options 中的下标（0 起始）；自主模式下会直接采纳该项",
+                    },
+                    "allow_custom": {
+                        "type": "boolean",
+                        "description": "是否允许用户输入自己的想法（默认 true）",
+                    },
+                },
+                "required": ["question", "options"],
+            },
+        )
+
+    async def execute(self, **kwargs) -> ToolResult:
+        # 正常链路由 executor 拦截，不会走到这里；兜底返回明确提示
+        return ToolResult(success=False, output="", error="错误: ask_user_choice 需经执行器拦截路径调用")
 
 
 class JsonFormatTool(Tool):
@@ -1176,6 +1233,7 @@ tool_registry.register(DateTimeTool())           # 获取当前时间
 tool_registry.register(JsonFormatTool())         # 格式化 JSON
 tool_registry.register(AddMemoryTool())          # 保存记忆
 tool_registry.register(ManageTodosTool())        # 待办事项管理
+tool_registry.register(AskUserChoiceTool())      # 向用户征询方案选择（executor 拦截执行）
 tool_registry.register(GitHubCreatePRTool())     # GitHub PR 创建
 
 # Phase 4 T2: GitHub 只读工具（自动 ALLOW，无需审批）

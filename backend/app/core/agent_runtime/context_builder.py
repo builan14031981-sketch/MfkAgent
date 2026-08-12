@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 from types import SimpleNamespace as _NS
 import os
+import re
 
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Agent, Message, MemoryItem, Setting
@@ -31,6 +32,8 @@ from app.services.model import Message as ModelMessage
 from app.services.personality import get_personality_prompt
 from app.core.capability_profiles import get_capability_prompt
 from app.core.persona_engine import build_persona_context, load_expression_knowledge, PersonaContext
+from app.core.persona_signature import get_agent_signature
+from app.core.persona_quirks import build_conversation_state
 from app.core.identity_principle import get_identity_principle
 from app.core.agent_base_instruction import get_agent_base_instruction
 from app.core.skill_store import get_enabled_skills_prompt  # Phase 4 T3: Skill Prompt Fragment 加载
@@ -156,6 +159,49 @@ def get_default_context_builder() -> ContextBuilder:
 
 
 # ---------------------------------------------------------------------------
+# Round 2 优化：测试基建摘要（防 conftest fixture 重复踩坑）
+# ---------------------------------------------------------------------------
+
+# conftest fixture 解析：名称 + docstring 首行
+_CONFTEST_FIXTURE_RE = re.compile(
+    r"@pytest\.fixture[^\n]*\n\s*def\s+(\w+)\s*\([^)]*\)[^:]*:\s*(?:\n\s*(?:\"\"\"|''')([^\"']+))?",
+)
+
+
+def build_test_infra_summary(project_path: Optional[str], task_goal: str) -> Optional[str]:
+    """任务涉及测试时，解析 tests/conftest.py 的 fixture 摘要供一次性注入。
+
+    背景（Round 2 实证）：Agent 读了 3 次 conftest.py 却未复用其中正确的 db fixture，
+    自己重定义了一个错误版本。提前注入摘要可降低重复 read_file 与 fixture 重写风险。
+
+    返回 None 表示无需注入（非测试任务 / 无 conftest / 解析失败）。
+    """
+    if not project_path or not task_goal:
+        return None
+    goal = task_goal.lower()
+    if not any(k in goal for k in ("测试", "pytest", "test", "全绿")):
+        return None
+    conftest = os.path.join(project_path, "tests", "conftest.py")
+    if not os.path.isfile(conftest):
+        return None
+    try:
+        with open(conftest, encoding="utf-8") as f:
+            src = f.read()
+    except OSError:
+        return None
+    fixtures = _CONFTEST_FIXTURE_RE.findall(src)
+    if not fixtures:
+        return None
+    lines = [
+        "【测试基建】tests/conftest.py 已有以下 fixture，写新测试时请直接复用，不要重复定义：",
+    ]
+    for name, doc in fixtures[:12]:
+        desc = (doc or "").strip().splitlines()[0][:60] if doc else ""
+        lines.append(f"- {name}: {desc}" if desc else f"- {name}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # ChatContextBuilder：顶层上下文组装器（正式实现）
 # ---------------------------------------------------------------------------
 
@@ -275,11 +321,12 @@ def _resolve_workspace(chat, message: str):
     )
 
 
-def _build_memory_text(db, project_id: Optional[int] = None) -> str:
+def _build_memory_text(db, project_id: Optional[int] = None, agent_id: Optional[str] = None) -> str:
     """查询全部记忆并格式化为 XML 文本块（供模型层注入，不入 system prompt）。
 
     记忆来源（废弃 RAG，改为全量拼接）：
       - scope='global'：所有对话可见（无条件）
+      - scope='agent'：当前 Agent 专属（需 agent_id，跨项目共享）
       - scope='project'：当前 Chat 绑定项目下共享（需 project_id）
     """
     sections = []
@@ -294,6 +341,18 @@ def _build_memory_text(db, project_id: Optional[int] = None) -> str:
     if global_items:
         lines = "\n".join(f"- {m.content}" for m in global_items)
         sections.append(f"### 全局记忆 (Global Rules):\n{lines}")
+
+    if agent_id is not None:
+        agent_items = (
+            db.query(MemoryItem)
+            .filter(MemoryItem.scope == "agent", MemoryItem.agent_id == agent_id)
+            .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
+            .limit(40)
+            .all()
+        )
+        if agent_items:
+            lines = "\n".join(f"- {m.content}" for m in agent_items)
+            sections.append(f"### {agent_id} 代理记忆 (Agent Rules):\n{lines}")
 
     if project_id is not None:
         project_items = (
@@ -540,6 +599,22 @@ class ChatContextBuilder:
         if capability_prompt:
             full_prompt += "\n\n" + capability_prompt
 
+        # ③ persona_signature（V15-A — Persona Signature 稳定人格倾向层）
+        # 注入顺序：① Identity ② Capability ③ Signature ③b Human Imperfection
+        #           ④ Personality Level ⑤ Performance State ⑥ Expression Style ⑦ Task/Tool Context
+        # 优先级：Identity > Persona Signature > Performance > Expression，低层不得覆盖高层人格
+        if persona_context and persona_context.signature_text:
+            full_prompt += "\n\n" + persona_context.signature_text
+            full_prompt += (
+                "\n\n层级优先级：Identity（你是谁）> 交流倾向（本段）> Personality Level 调节 > "
+                "表达风格；低层规则只决定怎么说，不得改变你的性格倾向。"
+            )
+
+        # ③b persona_quirks（V16 — Human Imperfection 人味层：交流习惯 + 不完美规则）
+        # 人格倾向必须早于表达；内容为倾向描述，非强制规则
+        if persona_context and persona_context.quirk_text:
+            full_prompt += "\n\n" + persona_context.quirk_text
+
         # ②b Skill Prompt Fragment（Phase 4 T3: 能力增强层，注入位置在 capability 之后、execution_policy 之前）
         # Skill = Prompt Fragment，仅文本，无 Tool/Code/Executor 能力
         # 加载失败/无 Skill 时返回空串，不影响 prompt 结构
@@ -588,9 +663,25 @@ class ChatContextBuilder:
         if persona_context and persona_context.budget_text:
             full_prompt += "\n\n" + persona_context.budget_text
 
+        # ⑥f2 persona_strategy（V15-A — Response Strategy：本轮回应方式）
+        if persona_context and persona_context.strategy_text:
+            full_prompt += "\n\n" + persona_context.strategy_text
+
         # ⑥g persona_work_mode（Persona System V2 — 工作模式提示，仅调整正式度）
         if persona_context and persona_context.work_mode_text:
             full_prompt += "\n\n" + persona_context.work_mode_text
+
+        # ⑥g1b persona_state_hint（V16 — 短期会话节奏提示；工作模式下由引擎留空）
+        if persona_context and persona_context.state_hint_text:
+            full_prompt += "\n\n" + persona_context.state_hint_text
+
+        # ⑥g2 persona_emotional_moment（V14.1 — 当前交流状态，按需表演提示）
+        if persona_context and persona_context.emotional_moment_text:
+            full_prompt += "\n\n" + persona_context.emotional_moment_text
+
+        # ⑥g2b persona_empathy（V14.1 — 共情优先提示，零动作）
+        if persona_context and persona_context.empathy_text:
+            full_prompt += "\n\n" + persona_context.empathy_text
 
         # ⑥h persona_restrictions（Persona System V2 — 禁止表达层）
         if persona_context and persona_context.restrictions_text:
@@ -654,7 +745,7 @@ class ChatContextBuilder:
             effective_chat, workspace_context = _resolve_workspace(chat, input.content)
 
             # ──── 5. Memory（现有逻辑）────
-            memory_text = _build_memory_text(db, chat.project_id)
+            memory_text = _build_memory_text(db, chat.project_id, chat.agent_id)
 
             # ──── 工具目录 + 意图（用有效工作目录）────
             tool_context = None
@@ -725,10 +816,29 @@ class ChatContextBuilder:
                     .count()
                 )
                 expr_knowledge = load_expression_knowledge(agent.expression_profile, db=db)
+
+                # ──── V16: 短期 Conversation State（仅当前 Chat 进程内，不入 Memory）────
+                # 从最近用户消息构建，随聊天节奏微调表达（相对签名基线钳制 ±20）
+                conv_state = None
+                sig_for_state = get_agent_signature(agent.agent_id)
+                if sig_for_state:
+                    recent_user_msgs = (
+                        db.query(Message.content)
+                        .filter(Message.chat_id == input.chat_id, Message.role == "user")
+                        .order_by(Message.created_at.desc())
+                        .limit(5)
+                        .all()
+                    )
+                    recent_turns = [c for (c,) in reversed(recent_user_msgs)]
+                    if input.content:
+                        recent_turns = recent_turns + [input.content]
+                    conv_state = build_conversation_state(sig_for_state, recent_turns)
+
                 persona_ctx = build_persona_context(
                     agent, persona_tmpl, expr_knowledge,
                     user_message=input.content,
                     interaction_count=interaction_count,
+                    conversation_state=conv_state,
                 )
 
             full_prompt = self._assemble_prompt(

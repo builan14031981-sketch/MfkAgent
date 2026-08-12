@@ -65,6 +65,31 @@ class IntentAnalyzer:
                     r"怎么.*解决", r"如何.*修复",
                 ],
             ),
+            (
+                "package_management",
+                [
+                    # 查看已安装的包/依赖
+                    r"装了哪些.*包", r"装了哪些.*依赖", r"安装了哪些.*包",
+                    r"已安装.*包", r"已安装.*依赖", r"当前.*包",
+                    r"有哪些.*包", r"有哪些.*依赖", r"列出.*包",
+                    r"查看.*已安装", r"看看.*包", r"查一下.*包",
+                    # 包版本
+                    r"版本.*信息", r".*包.*版本", r".*依赖.*版本",
+                    r".*version", r".*installed version",
+                    r".*的.*版本", r".*是.*什么版本",
+                    # 检查包是否存在
+                    r"有没有.*包", r"有没有.*依赖", r"是否.*安装",
+                    r".*存在", r".*不存在", r".*在不在",
+                    r".*装了没有", r".*安装了没",
+                    # 依赖关系
+                    r"依赖.*关系", r".*依赖谁", r"谁.*依赖.*我",
+                    r".*被.*依赖", r".*依赖树", r".*依赖图",
+                    # requirements 相关
+                    r"requirements", r"requirements.txt", r".*requirement",
+                    r".*dependencies", r".*pipfile", r".*package.json",
+                    r".*yarn.lock", r".*poetry.lock", r".*Gemfile",
+                ],
+            ),
         ]
 
         # Layer 2: 动作意图模式 — 动词 + 目标对象
@@ -128,6 +153,29 @@ class IntentAnalyzer:
                     r"有没有.*修改", r"有没有.*改动",
                 ],
             ),
+            (
+                "package_management",
+                [
+                    # 安装包
+                    r"安装.*包", r"安装.*依赖", r"装.*包", r"装.*依赖",
+                    r"pip.*install", r"npm.*install", r"yarn.*add",
+                    r"poetry.*add", r"gem.*install", r"conda.*install",
+                    r".*加.*包", r".*加.*依赖",
+                    # 卸载包
+                    r"卸载.*包", r"卸载.*依赖", r"删.*包", r"删.*依赖",
+                    r"pip.*uninstall", r"npm.*uninstall", r"yarn.*remove",
+                    r"poetry.*remove", r"gem.*uninstall",
+                    r".*去掉.*包", r".*去掉.*依赖",
+                    # 升级包
+                    r"升级.*包", r"升级.*依赖", r"更新.*包", r"更新.*依赖",
+                    r"upgrade.*package", r"update.*package", r"bump.*version",
+                    r"pip.*upgrade", r"npm.*update", r"yarn.*upgrade",
+                    r".*升到.*最新", r".*升级到.*最新版",
+                    # 更新依赖
+                    r"同步.*依赖", r"刷新.*依赖", r"重新.*安装.*依赖",
+                    r".*依赖.*同步", r".*lock.*文件",
+                ],
+            ),
         ]
 
         # Layer 3: 自检提示词已并入 execution_policy（policy.py），此处不再注入
@@ -185,7 +233,7 @@ class IntentAnalyzer:
                         "layer": "factual_need",
                         "intent": intent,
                         "confidence": 0.9,
-                        "reason": f"用户问题涉及真实环境状态，需要获取数据才能准确回答（匹配: {pattern}）",
+                        "reason": f"用户问题涉及真实环境状态，需要获取数据才能准确回答（匹配：{pattern}）",
                     }
         return None
 
@@ -200,7 +248,7 @@ class IntentAnalyzer:
                         "layer": "action_intent",
                         "intent": intent,
                         "confidence": 0.85,
-                        "reason": f"用户明确要求执行操作，需要工具配合（匹配: {pattern}）",
+                        "reason": f"用户明确要求执行操作，需要工具配合（匹配：{pattern}）",
                     }
         return None
 

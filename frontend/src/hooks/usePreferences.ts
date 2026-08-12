@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { Model } from "@/hooks/useModels";
 import type { ReasoningEffort } from "@/components/ChatInput";
 import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
@@ -40,6 +40,8 @@ export interface UsePreferencesResult {
   reasoningEffort: ReasoningEffort;
   /** localStorage 中是否已保存推理强度偏好（供页面决定是否等待 settings 加载） */
   hasLocalReasoning: boolean;
+  /** 本地偏好是否已完成读取（挂载后异步）；页面应等此标志或 settings 就绪后再初始化选择器 */
+  prefsLoaded: boolean;
   setModel: (id: string) => void;
   setReasoning: (e: ReasoningEffort) => void;
 }
@@ -53,11 +55,19 @@ export function usePreferences(
   models: Model[],
   settings: Record<string, string> | null
 ): UsePreferencesResult {
-  const [prefModel, setPrefModelState] = useState<string | null>(() => readLocal(PREF_MODEL_KEY));
-  const [prefReasoning, setPrefReasoningState] = useState<ReasoningEffort | null>(() => {
-    const v = readLocal(PREF_REASONING_KEY);
-    return isReasoningEffort(v) ? v : null;
-  });
+  // localStorage 读取延迟到挂载后（useEffect）：SSR/水合首帧统一为 null，
+  // 避免服务端（无 window，渲染默认值）与客户端水合（读到偏好值）HTML 不一致触发 hydration mismatch
+  const [prefModel, setPrefModelState] = useState<string | null>(null);
+  const [prefReasoning, setPrefReasoningState] = useState<ReasoningEffort | null>(null);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    const m = readLocal(PREF_MODEL_KEY);
+    if (m) setPrefModelState(m);
+    const r = readLocal(PREF_REASONING_KEY);
+    if (isReasoningEffort(r)) setPrefReasoningState(r);
+    setPrefsLoaded(true);
+  }, []);
 
   const modelId = useMemo(() => {
     if (prefModel && models.some((m) => m.id === prefModel)) return prefModel;
@@ -83,5 +93,5 @@ export function usePreferences(
     writeLocal(PREF_REASONING_KEY, e);
   }, []);
 
-  return { modelId, reasoningEffort, hasLocalReasoning: prefReasoning != null, setModel, setReasoning };
+  return { modelId, reasoningEffort, hasLocalReasoning: prefReasoning != null, prefsLoaded, setModel, setReasoning };
 }

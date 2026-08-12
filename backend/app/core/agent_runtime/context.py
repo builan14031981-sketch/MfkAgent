@@ -70,6 +70,14 @@ class AgentContext:
     # ──── Phase 11: 工具轮次配置 ────
     max_tool_rounds: Optional[int] = None
 
+    # ──── Completion Loop V1: 完成验证配置 ────
+    # None    = 未显式配置（有 TaskGraph 时参与节点完成验证，无图时不启用）
+    # True    = 显式启用完成验证（含 LLM Judge 层）
+    # False   = 显式禁用
+    completion_verification: Optional[bool] = None
+    # 完成验证失败后最大重试次数（默认 3，超限安全收尾）
+    max_completion_retry: Optional[int] = None
+
     @property
     def identity(self) -> str:
         """结构化别名：identity == agent_identity（来自 Agent.identity）。"""

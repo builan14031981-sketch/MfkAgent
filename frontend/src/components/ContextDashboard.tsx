@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { AlertTriangle, Minimize2, Loader2 } from "lucide-react";
+import { Minimize2, Loader2 } from "lucide-react";
 import type { TokenUsageEvent } from "@/types/runtime";
 import { useTranslation } from "@/hooks/useTranslation";
 
@@ -17,11 +17,11 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-/** 环形进度圈 SVG 参数 */
-const RING_RADIUS = 16;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS; // ≈ 100.5
-const RING_SIZE = 40; // SVG viewBox 尺寸
-const RING_STROKE_WIDTH = 3.5;
+/** 环形进度圈 SVG 参数（2026-08-12 缩小：外径 20px/环宽 3px，中心孔 10px，减少空洞感） */
+const RING_RADIUS = 8;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS; // ≈ 50.3
+const RING_SIZE = 20; // SVG viewBox 尺寸
+const RING_STROKE_WIDTH = 3;
 
 interface RingProgressProps {
   ratio: number; // 0-100
@@ -36,20 +36,21 @@ const RingProgress = memo(function RingProgress({ ratio, color, label }: RingPro
   const cy = RING_SIZE / 2;
 
   return (
-    <div title={label} style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+    <div title={label} style={{ display: "flex", alignItems: "center", flexShrink: 0, cursor: "default" }}>
       <svg
         width={RING_SIZE}
         height={RING_SIZE}
         viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
         style={{ transform: "rotate(-90deg)" }}
       >
-        {/* 背景轨道 */}
+        {/* 背景轨道：必须与承载面（主内容区背景 --bg-level-2）有区分。
+            2026-08-12 修复：原用 --bg-level-2，但 header 背景 transparent、环直接浮在主背景上，同色即隐形（用户报「全透明」）→ 改用 --border-primary */}
         <circle
           cx={cx}
           cy={cy}
           r={RING_RADIUS}
           fill="none"
-          stroke="var(--bg-level-2)"
+          stroke="var(--border-primary)"
           strokeWidth={RING_STROKE_WIDTH}
         />
         {/* 进度弧 */}
@@ -81,9 +82,9 @@ interface ContextDashboardProps {
 
 /**
  * F-Context 上下文仪表盘：展示当前会话 Token 消耗与上下文水位。
- * - SVG 环形进度圈 + 中心百分比数字
+ * - 2026-08-12 极简化：仅一个 20px 环形进度圈，文字仅在 hover tooltip 展示（无感设计）
  * - 颜色随水位变化：< 30% 绿色；30%-40% 橙色；> 40% 红色
- * - 水位 >= 40% 时显示「压缩会话」预警按钮（G6-B 阶段接入真实逻辑）
+ * - 水位 >= 40% 时环右侧出现紧凑「压缩会话」按钮（保留功能可达性）
  */
 export const ContextDashboard = memo(function ContextDashboard({ usage, onCompress, isCompressing = false }: ContextDashboardProps) {
   const { t } = useTranslation();
@@ -113,78 +114,52 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
     <div style={{
       display: "flex",
       alignItems: "center",
-      gap: "8px",
-      padding: "4px 8px",
-      borderRadius: "var(--radius-full)",
-      background: "var(--bg-level-3)",
+      gap: "6px",
     }}>
-      {/* 环形进度圈 + 文案 */}
-      <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-        <RingProgress ratio={ratio} color={color} label={label} />
-        <span style={{
-          fontSize: "11px",
-          lineHeight: 1,
-          color: "var(--text-level-3)",
-          fontVariantNumeric: "tabular-nums",
-          whiteSpace: "nowrap",
-        }}>{label}</span>
-      </div>
+      {/* 环形进度圈：hover 显示完整文案，默认态无文字 */}
+      <RingProgress ratio={ratio} color={color} label={label} />
 
-      {/* 40% 水位预警：仅提示 + 压缩按钮（G6-B 阶段实现真实压缩逻辑） */}
+      {/* 40% 水位预警：紧凑压缩按钮贴身环右侧（G6-B 压缩逻辑） */}
       {showWarning && (
-        <>
-          <span style={{
+        <button
+          onClick={onCompress}
+          disabled={isCompressing}
+          title={label}
+          style={{
             display: "inline-flex",
             alignItems: "center",
             gap: "4px",
+            padding: "3px 8px",
+            borderRadius: "var(--radius-full)",
+            border: "1px solid color-mix(in srgb, var(--color-error) 45%, transparent)",
+            background: isCompressing
+              ? "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))"
+              : "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))",
+            color: "var(--color-error)",
+            cursor: isCompressing ? "not-allowed" : "pointer",
             fontSize: "11px",
             fontWeight: 600,
             lineHeight: 1,
-            color: "var(--color-error)",
             whiteSpace: "nowrap",
-          }}>
-            <AlertTriangle style={{ width: "12px", height: "12px", flexShrink: 0 }} />
-            {t("chat.context.warning", { pct: String(ratio) })}
-          </span>
-          <button
-            onClick={onCompress}
-            disabled={isCompressing}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "3px 10px",
-              borderRadius: "var(--radius-full)",
-              border: "1px solid color-mix(in srgb, var(--color-error) 45%, transparent)",
-              background: isCompressing
-                ? "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))"
-                : "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))",
-              color: "var(--color-error)",
-              cursor: isCompressing ? "not-allowed" : "pointer",
-              fontSize: "11px",
-              fontWeight: 600,
-              lineHeight: 1,
-              whiteSpace: "nowrap",
-              transition: "background 0.2s ease",
-              opacity: isCompressing ? 0.7 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (isCompressing) return;
-              e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))";
-            }}
-            onMouseLeave={(e) => {
-              if (isCompressing) return;
-              e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))";
-            }}
-          >
-            {isCompressing ? (
-              <Loader2 style={{ width: "12px", height: "12px", flexShrink: 0, animation: "spin 1s linear infinite" }} />
-            ) : (
-              <Minimize2 style={{ width: "12px", height: "12px", flexShrink: 0 }} />
-            )}
-            {isCompressing ? t("chat.context.compressing") : t("chat.context.compress")}
-          </button>
-        </>
+            transition: "background 0.2s ease",
+            opacity: isCompressing ? 0.7 : 1,
+          }}
+          onMouseEnter={(e) => {
+            if (isCompressing) return;
+            e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 20%, var(--bg-level-3))";
+          }}
+          onMouseLeave={(e) => {
+            if (isCompressing) return;
+            e.currentTarget.style.background = "color-mix(in srgb, var(--color-error) 10%, var(--bg-level-3))";
+          }}
+        >
+          {isCompressing ? (
+            <Loader2 style={{ width: "12px", height: "12px", flexShrink: 0, animation: "spin 1s linear infinite" }} />
+          ) : (
+            <Minimize2 style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+          )}
+          {isCompressing ? t("chat.context.compressing") : t("chat.context.compress")}
+        </button>
       )}
     </div>
   );

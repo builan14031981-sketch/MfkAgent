@@ -113,7 +113,7 @@ function buildTimelineSegments(timeline: TimelineEvent[], toolCalls?: ToolCall[]
         if (evt.content) segments.push({ kind: "text", content: evt.content });
         break;
       }
-      // tool_approval / 未知事件：历史态不渲染
+      // tool_approval / user_choice / 未知事件：历史态不渲染
       default:
         break;
     }

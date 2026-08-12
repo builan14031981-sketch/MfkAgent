@@ -177,6 +177,79 @@ export function useChatStream({
     [chatId, store]
   );
 
+  /** 用户对 ask_user_choice 抉择卡做反馈。
+   *  - selected：选中的预设选项下标
+   *  - customText：用户输入的自定义想法（与 selected 二选一）
+   *  - skip：true 表示"跳过"，后端按"采纳推荐项"处理（custom_text="(用户跳过)"）
+   *  - timeout：true 表示超时自动采纳，仅前端使用，不发请求（后端自己处理超时）
+   */
+  const resolveChoice = useCallback(
+    async (
+      choiceId: string,
+      options: { selected?: number; customText?: string; skip?: boolean; timeout?: boolean } = {}
+    ) => {
+      if (!chatId) return;
+      const session = store.getSession(chatId);
+      const existing = session.timeline.find(
+        (s) => s.type === "user_choice" && s.choice.choice_id === choiceId
+      );
+      if (existing?.type === "user_choice" && existing.choice.resolvedAction) return;
+
+      // 内部超时：仅前端标记 resolvedAction=true，不发请求（后端会自行采纳推荐项）
+      if (options.timeout) {
+        store.updateSession(chatId, (prev) => ({
+          timeline: prev.timeline.map((s) => {
+            if (s.type === "user_choice" && s.choice.choice_id === choiceId) {
+              return { ...s, choice: { ...s.choice, resolvedAction: { kind: "timeout" as const } } };
+            }
+            return s;
+          }),
+        }));
+        return;
+      }
+
+      // 跳过语义：custom_text="(用户跳过)" 标记
+      const customText = options.skip
+        ? "(用户跳过)"
+        : (options.customText || "").trim() || undefined;
+
+      const resolvedAction: { kind: "selected"; selected: number } | { kind: "skipped" } =
+        options.skip
+          ? { kind: "skipped" as const }
+          : { kind: "selected" as const, selected: options.selected ?? 0 };
+
+      // 乐观 UI：立即将卡片置为只读状态
+      store.updateSession(chatId, (prev) => ({
+        timeline: prev.timeline.map((s) => {
+          if (s.type === "user_choice" && s.choice.choice_id === choiceId) {
+            return { ...s, choice: { ...s.choice, resolvedAction } };
+          }
+          return s;
+        }),
+      }));
+
+      try {
+        await apiPost(`/api/chat/${chatId}/choice`, {
+          choice_id: choiceId,
+          selected: options.skip ? null : options.selected ?? null,
+          custom_text: customText || null,
+        });
+      } catch (err) {
+        console.error("Failed to resolve choice:", err);
+        // 失败回退
+        store.updateSession(chatId, (prev) => ({
+          timeline: prev.timeline.map((s) => {
+            if (s.type === "user_choice" && s.choice.choice_id === choiceId) {
+              return { ...s, choice: { ...s.choice, resolvedAction: undefined } };
+            }
+            return s;
+          }),
+        }));
+      }
+    },
+    [chatId, store]
+  );
+
   const sendStream = useCallback(
     async (content: string, options: SendStreamOptions = {}) => {
       if (!chatId) throw new Error("No chat selected");
@@ -468,6 +541,19 @@ export function useChatStream({
               showDesktopNotification("需要审批", `工具 ${approval.tool || "未知工具"} 请求执行，请确认`);
             }
           },
+          // onUserChoice（ask_user_choice 抉择卡）
+          (choice) => {
+            store.updateSession(targetChatId, (prev) => {
+              if (prev.timeline.some((s) => s.type === "user_choice" && s.choice.choice_id === choice.choice_id)) {
+                return {};
+              }
+              return { timeline: [...prev.timeline, { id: `choice-${choice.choice_id}`, type: "user_choice" as const, choice }] };
+            });
+            // 抉择请求通知：用户在切窗口/后台时弹系统通知（与审批对齐）
+            if (isUserAway()) {
+              showDesktopNotification("AI 询问你", choice.question || "AI 提出了一个选择，请查看");
+            }
+          },
           // onToolOutput
           () => {},
           // onToolResult
@@ -506,7 +592,13 @@ export function useChatStream({
                 },
               };
               const matchApproval = id ?? origId;
-              return { timeline: next.filter((s) => !(s.type === "approval" && matchApproval && s.approval.tool_call_id === matchApproval)) };
+              return {
+                timeline: next.filter(
+                  (s) =>
+                    !(s.type === "approval" && matchApproval && s.approval.tool_call_id === matchApproval) &&
+                    !(s.type === "user_choice" && matchApproval && s.choice.tool_call_id === matchApproval)
+                ),
+              };
             });
           },
           // onToolCallsBatch
@@ -524,7 +616,11 @@ export function useChatStream({
               }
               const resolvedIds = new Set(batch.filter((c) => c.tool_call_id).map((c) => c.tool_call_id));
               if (resolvedIds.size > 0) {
-                next = next.filter((s) => !(s.type === "approval" && resolvedIds.has(s.approval.tool_call_id)));
+                next = next.filter(
+                  (s) =>
+                    !(s.type === "approval" && resolvedIds.has(s.approval.tool_call_id)) &&
+                    !(s.type === "user_choice" && resolvedIds.has(s.choice.tool_call_id))
+                );
               }
               return { timeline: next };
             });
@@ -642,6 +738,7 @@ export function useChatStream({
     streamingError,
     sendStream,
     resolveApproval,
+    resolveChoice,
     stop,
   };
 }

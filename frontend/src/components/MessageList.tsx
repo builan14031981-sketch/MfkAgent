@@ -6,10 +6,10 @@ import type { Message } from "@/hooks/useMessages";
 import { ChatMessage, ThinkingPanel, StreamingThinkingPanel } from "@/components/ChatMessage";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { AgentIcon } from "@/components/AgentIcon";
-import { AgentOrb } from "@/components/AgentOrb";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ToolCallCard } from "@/components/ToolCallCard";
 import { ToolApprovalCard } from "@/components/ToolApprovalCard";
+import { UserChoiceCard } from "@/components/UserChoiceCard";
 import type { RuntimeEvent } from "@/types/runtime";
 import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -31,6 +31,10 @@ interface MessageListProps {
   /** 审批卡片回调（timeline 中的 approval event 使用） */
   onApproveApproval?: (approvalId: string, toolCallId?: string) => void;
   onDenyApproval?: (approvalId: string, toolCallId?: string) => void;
+  /** 抉择卡片回调（timeline 中的 user_choice event 使用） */
+  onSelectChoice?: (choiceId: string, selected: number) => void;
+  onChoiceCustomText?: (choiceId: string, text: string) => void;
+  onSkipChoice?: (choiceId: string) => void;
   /** 当前视口对应的用户消息 id 变化时回调（供对话大纲定位/高亮） */
   onActiveUserMessageChange?: (messageId: number | null) => void;
   /** 滚动位置持久化 key（如 `mfk_chat_scroll_${chatId}`）：存当前活跃用户消息 id，进入会话时恢复 */
@@ -144,7 +148,7 @@ function CompressionNodeCard({ content }: { content: string }) {
  * 若此处每帧重渲染会全量重跑 400 条消息的 Markdown 树导致卡顿，
  * memo 确保父级 re-render 时消息树跳过。
  */
-export const MessageList = memo(function MessageList({ messages, timeline, streamingError, isStreaming, streamingStage, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
+export const MessageList = memo(function MessageList({ messages, timeline, streamingError, isStreaming, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onSelectChoice, onChoiceCustomText, onSkipChoice, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -471,9 +475,8 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
             {timeline.length > 0 && (
               <div style={{ marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-                  {streamingStage ? (
-                    <AgentOrb stage={streamingStage} size={20} />
-                  ) : currentAgent ? (
+                  {/* 2026-08-12：去除流式期间 AgentOrb 动画，思考状态由思考面板 Loader2 唯一表达，避免双动画 */}
+                  {currentAgent ? (
                     <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
                   ) : null}
                   <span style={{ fontSize: "13px", fontWeight: 500, lineHeight: 1.25, color: "var(--text-level-3)" }}>
@@ -499,6 +502,17 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                             approval={seg.approval}
                             onApprove={(id) => onApproveApproval?.(id, seg.approval.tool_call_id)}
                             onDeny={(id) => onDenyApproval?.(id, seg.approval.tool_call_id)}
+                          />
+                        </div>
+                      );
+                    case "user_choice":
+                      return (
+                        <div key={seg.id} style={{ marginTop: "8px" }}>
+                          <UserChoiceCard
+                            choice={seg.choice}
+                            onSelect={onSelectChoice}
+                            onCustomText={onChoiceCustomText}
+                            onSkip={onSkipChoice}
                           />
                         </div>
                       );

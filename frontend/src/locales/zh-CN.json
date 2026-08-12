@@ -210,6 +210,15 @@
   "approvalDeny": "拒绝",
   "approvalApproved": "已批准",
   "approvalRejected": "已拒绝",
+  "choiceTitle": "AI 询问你",
+  "choiceRecommended": "推荐",
+  "choiceCustomPlaceholder": "或者输入你的想法…",
+  "choiceSubmitCustom": "提交我的想法",
+  "choiceSkip": "跳过这题，按推荐项继续",
+  "choiceResolvedSelected": "已选择",
+  "choiceResolvedSkipped": "已跳过",
+  "choiceResolvedTimeout": "已超时（采纳推荐项）",
+  "choiceHint": "按 ESC 或点击空白处跳过",
   "riskLevel": {
    "read_only": "只读",
    "write": "写入",
@@ -436,7 +445,12 @@
     "preference": "偏好",
     "fact": "事实",
     "workflow": "工作流",
-    "project": "项目规则"
+    "project": "项目规则",
+    "userPreference": "交流偏好",
+    "interactionPattern": "交流模式",
+    "relationshipNote": "交流痕迹",
+    "currentContext": "近期关注",
+    "unknown": "其他"
    }
   },
   "security": {
@@ -596,5 +610,10 @@
    "viewCompleted": "查看更多已完成",
    "hideCompleted": "收起已完成",
    "noCompleted": "暂无已完成的待办"
+  },
+  "time": {
+   "justNow": "刚刚",
+   "minutesAgo": "{n} 分钟前",
+   "hoursAgo": "{n} 小时前"
   }
 }

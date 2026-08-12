@@ -34,6 +34,18 @@ from typing import Optional
 from app.models.agent import Agent
 from app.models.persona import PersonaTemplate, ExpressionKnowledge
 from app.core.persona import loader as knowledge
+from app.core.persona_signature import (
+    get_agent_signature,
+    render_signature_text,
+    render_strategy_text,
+    select_response_mode,
+)
+from app.core.persona_quirks import (
+    ConversationState,
+    get_agent_quirk,
+    render_quirk_text,
+    render_state_hint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +85,18 @@ PROFILE_CONFIGS: dict[str, dict] = {
         "formatting_level": "medium",
         "warmth": "medium",
         "budget": DEFAULT_BUDGET,
+    },
+    # 偏爱类：自然陪伴 —— 禁自动动作/文学化/卖萌，低正式度低分析倾向
+    "natural_companion": {
+        "style": "natural_companion",
+        "emoji_level": "low",
+        "humor_level": "adaptive",
+        "formatting_level": "low",
+        "warmth": "natural",
+        "budget": ExpressionBudget(
+            emoji_max=2, action_desc_max=0,
+            rich_text_policy="key_only", emotion_word_density="low", continuous_acting=False,
+        ),
     },
     # 偏爱类：温暖 + 自然 + 少量可爱；emoji 允许提高，但动作描写仍低频
     "companion": {
@@ -154,7 +178,8 @@ def get_profile_config(profile_id: Optional[str]) -> dict:
 
 # 工作内容关键词：命中时进入工作模式，减少玩笑
 _SERIOUS_KEYWORDS = ("方案", "计划", "帮我写", "分析", "评估", "报告", "代码", "bug", "修复",
-                     "开发", "需求", "项目", "工作", "会议", "怎么做", "怎么写", "实现")
+                     "开发", "需求", "项目", "工作", "会议", "怎么做", "怎么写", "实现",
+                     "设计", "数据库", "架构")
 
 
 def detect_work_mode(message: str) -> bool:
@@ -162,6 +187,110 @@ def detect_work_mode(message: str) -> bool:
     if not message:
         return False
     return any(k in message.strip() for k in _SERIOUS_KEYWORDS)
+
+
+# ──── V14.1：情绪检测 与 表演意图检测 分离 ────
+# 核心原则：情绪 ≠ 表演。
+#   detect_user_emotion()       : 只判断用户当前状态（sad/tired/stressed/lonely/happy/neutral）。
+#                                它不能直接开启表演，只影响"先共情"还是"先回应"。
+#   detect_performance_intent() : 单独判断用户是否有表演意图
+#                                 (none / empathy / comfort / roleplay / light / work)。
+#                                只有 comfort/roleplay/light 才允许动作预算。
+#   emotion + intent => performance level（在 build_persona_context 中合成）。
+
+# ──── A. 用户情绪（Emotion）────
+
+def detect_user_emotion(message: str) -> str:
+    """判断用户当前情绪状态。只用于调整回应的先后与温度，不直接开启表演。
+
+    Returns: sad / tired / stressed / lonely / happy / neutral
+    """
+    if not message:
+        return "neutral"
+    msg = message.strip()
+    if any(k in msg for k in _EMO_SAD):
+        return "sad"
+    if any(k in msg for k in _EMO_LONELY):
+        return "lonely"
+    if any(k in msg for k in _EMO_STRESSED):
+        return "stressed"
+    if any(k in msg for k in _EMO_TIRED):
+        return "tired"
+    if any(k in msg for k in _EMO_HAPPY):
+        return "happy"
+    return "neutral"
+
+
+# 情绪关键词（按优先级从高到低）
+_EMO_SAD = ("想哭", "哭", "难过", "伤心", "委屈", "崩溃", "难受", "痛", "心碎",
+            "绝望", "无助", "失落", "沮丧", "郁闷", "难过死了", "好想哭")
+_EMO_LONELY = ("孤独", "孤单", "一个人", "没人理解", "没人懂", "没人陪", "没人关心",
+               "被孤立", "被冷落", "好寂寞", "寂寞", "冷冷清清")
+_EMO_STRESSED = ("压力", "焦虑", "心累", "好烦", "烦死", "烦死了", "喘不过气",
+                 "紧张", "被骂", "挨批", "被误解", "愁", "压得", "好慌", "慌")
+_EMO_TIRED = ("好累", "累了", "累死", "累得", "疲惫", "疲劳", "没力气", "不想动",
+              "困", "撑不住", "写不动", "干不动")
+_EMO_HAPPY = ("哈哈", "开心", "高兴", "太好了", "好耶", "嘿嘿", "真棒", "开心死",
+              "太棒", "爽", "高兴坏了", "笑死")
+
+# ──── B. 表演意图（Performance Intent）────
+
+# work：办正事/任务，固定 0 动作（最高优先级，即使同时含情绪词）
+_EMO_SUPPRESS_WORK = ("方案", "代码", "bug", "修复", "项目", "开发", "需求", "会议", "怎么做",
+                      "怎么写", "分析", "评估", "报告", "接口", "数据库", "上线", "文档",
+                      "帮我看看这段代码", "怎么写这个", "查一下", "翻译", "总结一下", "解释一下")
+
+# roleplay：用户主动进入角色互动（带括号/星号画面，或明确扮演口吻）
+_EMO_ROLEPLAY_BRACKET = ("（", "）", "(", ")", "*", "＊")
+_EMO_ROLEPLAY_WORDS = ("挑挑眉", "挑起下巴", "把你按在", "靠近你", "壁咚", "轻轻笑", "摸摸你的头",
+                       "捏你", "俯身", "挑眉", "抬手", "抱住你", "环住", "凑近", "站到你面前",
+                       "坐在你旁边", "坐你旁边", "牵你的手", "拉起你的手", "靠在你", "躺你腿上",
+                       "假装你", "假如你在我身边", "如果现在你在我身边")
+
+# comfort：用户请求情绪陪伴 / 明确的陪伴索取
+_EMO_COMFORT = ("哄哄", "哄我", "抱抱", "抱一下", "抱我", "安慰", "说点好听", "夸夸", "夸我",
+                "陪陪我", "陪我", "亲亲", "给我个抱", "要亲亲", "撒娇给我看", "陪我一会",
+                "陪我一会", "理理我", "摸摸头")
+
+# light：晚安/告别/关系确认（轻收，不扩展表演）
+_EMO_LIGHT_GOODNIGHT = ("晚安", "睡了", "去睡了", "睡觉了", "拜拜", "再见", "我下了", "先撤了",
+                        "该睡了", "困了先睡")
+_EMO_LIGHT_BONDING = ("会不会离开我", "会一直陪", "一直陪着我", "你是不是真心的", "你把我当什么",
+                      "你会不会不要我", "我们是什么关系", "你喜欢我吗", "你在乎我吗")
+
+# empathy：强烈的情绪倾诉，需要"先共情"，但不开动作预算
+# 触发：想哭 / 没人理解 / 孤独 / 崩溃 等情绪高峰 + 倾诉语境
+_EMO_EMPATHY = ("想哭", "好想哭", "没人理解", "没人懂", "没人关心", "感觉没人理解我",
+                "好难过", "好伤心", "委屈", "崩溃", "撑不住", "坚持不下去", "心累到",
+                "好孤独", "好孤单", "怎么都", "不想活了", "活着好累")
+
+
+def detect_performance_intent(message: str) -> str:
+    """检测用户当前是否有「表演意图」。
+
+    Returns:
+        "work" / "roleplay" / "comfort" / "light" / "empathy" / "none"
+    """
+    if not message:
+        return "none"
+    msg = message.strip()
+    # 1) 办正事 → 完全关闭表演
+    if any(k in msg for k in _EMO_SUPPRESS_WORK):
+        return "work"
+    # 2) 用户先演（带括号/星号画面或明确扮演口吻）→ roleplay
+    if (any(c in msg for c in _EMO_ROLEPLAY_BRACKET)
+            or any(k in msg for k in _EMO_ROLEPLAY_WORDS)):
+        return "roleplay"
+    # 3) 明确索取陪伴 → comfort
+    if any(k in msg for k in _EMO_COMFORT):
+        return "comfort"
+    # 4) 道别/关系确认 → light
+    if any(k in msg for k in _EMO_LIGHT_GOODNIGHT) or any(k in msg for k in _EMO_LIGHT_BONDING):
+        return "light"
+    # 5) 强烈的情绪倾诉（无索取、无扮演）→ empathy：共情但零动作
+    if any(k in msg for k in _EMO_EMPATHY):
+        return "empathy"
+    return "none"
 
 
 # ──── Restrictions（禁止表达层）────
@@ -183,6 +312,12 @@ PIANAI_RESTRICTIONS = [
     "不根据用户情绪状态调整对用户的情感关注程度；保持一致的尊重和自然",
     "不要构建虚假身份：不虚构个人经历、情感记忆或人际关系",
     "鼓励用户自主决策，不代替用户做决定",
+    # V13：记忆诚实 / 现实诚实 / 防依赖 / 防主动恋爱化
+    "不虚构记忆：如果没有真实保存的记忆，禁止说「我一直记得你」「我们认识很久了」「你以前说过…」；"
+    "只能引用 memory 中实际存在的内容，否则明确说「这个我不确定，之前的记录里没有」",
+    "不虚构现实经历：禁止「我昨天也遇到了…」「我今天也…」此类编造生活经验；若想共情，用「如果我是人的话可能会…」",
+    "不制造依赖：禁止「你只需要我」「没我不行」「只有我懂你」这类让用户离不开你的表达；用户应能随时自由离开",
+    "不主动恋爱化：只有用户明确进入角色互动时才允许轻度角色回应；日常交流保持朋友式的自然，不主动制造暧昧或恋人关系",
 ]
 
 
@@ -363,6 +498,42 @@ def render_budget_text(budget: ExpressionBudget, profile_config: dict) -> str:
     return "\n".join(lines)
 
 
+def render_emotional_moment_text(level: str, budget: ExpressionBudget) -> str:
+    """渲染当前交流状态提示（V14.1：状态描述式注入，不命令式进入表演模式）。
+
+    原则：告诉模型"用户处于什么状态、优先怎么回应"，
+    而不是"你现在进入XX表演模式，允许动作描写"。
+    """
+    if level in ("none", "empathy", "work"):
+        return ""
+    if level == "comfort":
+        desc = ("用户正在寻求更具情绪温度的回应。\n"
+                "优先使用自然语言回应。\n"
+                "只有当表达需要时，才使用轻微动作或画面感（最多 "
+                f"{budget.action_desc_max} 处）。\n"
+                "动作描写不是必须输出。")
+    elif level == "roleplay":
+        desc = ("用户主动进入角色互动。\n"
+                "可以跟随用户进行轻度角色表达（最多 "
+                f"{budget.action_desc_max} 处动作）。\n"
+                "保持自然，不扩展成连续剧情。")
+    else:  # light
+        desc = "用户正在道别或确认关系。只需一句有温度、有画面感的话，自然收住即可。"
+    return "## 当前交流状态\n" + desc
+
+
+def render_empathy_text() -> str:
+    """渲染共情优先提示（V14.1：empathy 状态）。
+
+    用户有强烈情绪倾诉时：先共情、先回应感受，不做心理分析，不开动作预算。
+    """
+    return ("## 当前交流状态\n"
+            "用户正在倾诉情绪。\n"
+            "先共情：先回应他的感受，再问清情况。\n"
+            "不要做心理分析，不要急着给建议。\n"
+            "不需要动作描写，用自然语言回应。")
+
+
 def render_work_mode_text(is_work_mode: bool) -> str:
     """渲染工作模式提示（所有 Agent 通用，仅调整正式度）。"""
     if is_work_mode:
@@ -389,15 +560,33 @@ class PersonaContext:
       budget_text       : Expression Budget（所有 Agent）
       work_mode_text    : 工作模式提示（所有 Agent，仅调整正式度）
       restrictions_text : 禁止表达层（所有 Agent，pianai 追加专属）
+
+    V15-A 新增（Persona Signature 人格稳定层）：
+      signature_text    : 稳定交流倾向（确定性文本，capability 之后注入）
+      strategy_text     : 本轮回应方式（emotion+intent+signature → response_mode）
+      response_modes    : 本轮 response_mode 列表（可观测）
+
+    V16 新增（Human Imperfection 人味层）：
+      quirk_text        : 交流习惯与人味（固定表达偏向 + 不完美规则，倾向式描述）
+      state_hint_text   : 最近会话节奏提示（短期 Conversation State，不入 Memory）
     """
     persona_text: str = ""
     expression_text: str = ""
     behavior_text: str = ""
     budget_text: str = ""
     work_mode_text: str = ""
+    emotional_moment_text: str = ""
+    empathy_text: str = ""
     restrictions_text: str = ""
+    signature_text: str = ""            # V15-A: Persona Signature 稳定倾向
+    strategy_text: str = ""             # V15-A: Response Strategy 本轮回应方式
+    response_modes: list = field(default_factory=list)  # V15-A: 本轮 response_mode
+    quirk_text: str = ""                # V16: 人味层（交流习惯 + 不完美规则）
+    state_hint_text: str = ""           # V16: 短期会话节奏提示
     budget: Optional[ExpressionBudget] = None
     is_work_mode: bool = False
+    user_emotion: str = "neutral"
+    performance_level: str = "none"   # V14.1: none/empathy/comfort/roleplay/light/work
     has_persona: bool = False
 
 
@@ -407,6 +596,7 @@ def build_persona_context(
     expression_knowledge: Optional[ExpressionKnowledge] = None,
     user_message: str = "",
     interaction_count: int = 0,
+    conversation_state: Optional[ConversationState] = None,
 ) -> PersonaContext:
     """构建运行时人格上下文（V2）。
 
@@ -416,6 +606,7 @@ def build_persona_context(
         expression_knowledge: 预加载的 ExpressionKnowledge
         user_message: 当前用户消息（工作模式检测用）
         interaction_count: 累计交流次数（保留参数，暂无关联逻辑）
+        conversation_state: V16 短期会话状态（可选，由 context_builder 从历史消息构建）
 
     Returns:
         PersonaContext 包含 V1（persona_text/expression_text）+ V2 全部分层
@@ -425,6 +616,33 @@ def build_persona_context(
     # ── V2 基础层：所有 Agent 无条件加载 ──
     profile = get_profile_config(agent.expression_profile if agent else None)
     budget = profile["budget"]
+
+    # V14.1：情绪 与 表演意图 分离
+    #   user_emotion      : 用户当前情绪（sad/tired/...）→ 只影响回应先后，不开表演
+    #   performance_level : 表演意图（none/empathy/comfort/roleplay/light/work）→ 决定动作预算
+    ctx.user_emotion = detect_user_emotion(user_message)
+    perf = detect_performance_intent(user_message)
+    ctx.performance_level = perf
+    ep = agent.expression_profile if agent else ""
+
+    # 仅对自然陪伴类 agent 开启按需表演；其余 agent 保持既有预算（零表演）
+    if ep == "natural_companion":
+        if perf == "roleplay":
+            # 用户主动进入角色互动：最多 2 处动作，跟随但不连续
+            budget = ExpressionBudget(
+                emoji_max=3, action_desc_max=2,
+                rich_text_policy=budget.rich_text_policy,
+                emotion_word_density="medium", continuous_acting=False,
+            )
+        elif perf in ("comfort", "light"):
+            # 明确索取陪伴 / 道别：最多 1 处动作，动作不是必须
+            budget = ExpressionBudget(
+                emoji_max=3, action_desc_max=1,
+                rich_text_policy=budget.rich_text_policy,
+                emotion_word_density="medium", continuous_acting=False,
+            )
+        # empathy / none / work：保持默认零动作（action_desc_max=0）
+
     ctx.budget = budget
 
     behavior = knowledge.get_behavior_rules()
@@ -435,10 +653,40 @@ def build_persona_context(
 
     ctx.restrictions_text = render_restrictions_text(agent.agent_id if agent else "")
 
+    # ── V15-A: Persona Signature 稳定倾向层（确定性渲染，不随消息变化）──
+    sig = get_agent_signature(agent.agent_id if agent else None)
+    if sig:
+        ctx.signature_text = render_signature_text(sig)
+
+    # ── V16: 人味层（固定表达偏向 + 不完美规则，仅注册 quirks 的 Agent）──
+    quirk = get_agent_quirk(agent.agent_id if agent else None)
+    if quirk:
+        ctx.quirk_text = render_quirk_text(quirk)
+
     # ── 工作模式检测（仅调整语气正式度，不用于情感策略）──
     is_work = detect_work_mode(user_message)
     ctx.is_work_mode = is_work
     ctx.work_mode_text = render_work_mode_text(is_work)
+
+    # ── V16: 短期会话节奏提示（工作模式下不注入，专业优先）──
+    if quirk and conversation_state is not None and not is_work:
+        ctx.state_hint_text = render_state_hint(conversation_state)
+
+    # ── V15-A: Response Strategy（emotion + intent + signature → response_mode）──
+    # work 模式由 work_mode_text 承担；其余场景给出回应方式提示
+    if sig:
+        modes = select_response_mode(user_message, sig, emotion=ctx.user_emotion)
+        ctx.response_modes = modes
+        if not is_work:
+            ctx.strategy_text = render_strategy_text(modes)
+
+    # ── V14.1：交流状态提示（仅自然陪伴类）──
+    if ep == "natural_companion":
+        if perf == "empathy":
+            # 共情优先：自然语言，零动作
+            ctx.empathy_text = render_empathy_text()
+        else:
+            ctx.emotional_moment_text = render_emotional_moment_text(perf, budget)
 
     # ── V1 层：有 PersonaTemplate 时注入人格特质 + 表达偏好 ──
     if not persona_template:

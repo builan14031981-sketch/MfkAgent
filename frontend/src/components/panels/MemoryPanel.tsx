@@ -27,22 +27,33 @@ const SCOPE_OPTIONS: { value: MemoryScope; key: "scopeGlobal" | "scopeAgent" | "
   { value: "project", key: "scopeProject" },
 ];
 
-/** 记忆分类筛选 Tabs：all = 不过滤；i18n key 统一挂 settings.memory.types.* */
+/** 记忆分类筛选 Tabs：all = 不过滤；i18n key 统一挂 settings.memory.types.*；与后端 8 种 memory_type 对齐 */
 const TYPE_FILTER_OPTIONS: { value: MemoryType | "all"; key: string }[] = [
   { value: "all", key: "settings.memory.types.all" },
   { value: "preference", key: "settings.memory.types.preference" },
   { value: "fact", key: "settings.memory.types.fact" },
   { value: "workflow", key: "settings.memory.types.workflow" },
   { value: "project", key: "settings.memory.types.project" },
+  { value: "user_preference", key: "settings.memory.types.userPreference" },
+  { value: "interaction_pattern", key: "settings.memory.types.interactionPattern" },
+  { value: "relationship_note", key: "settings.memory.types.relationshipNote" },
+  { value: "current_context", key: "settings.memory.types.currentContext" },
 ];
 
-/** 记忆类型 → 彩色 Badge 元信息（语义色变量，适配深色模式与强调色主题） */
+/** 记忆类型 → 彩色 Badge 元信息（语义色变量，适配深色模式与强调色主题）；覆盖后端全部 8 种类型 */
 const TYPE_BADGE_META: Record<MemoryType, { color: string; key: string }> = {
   preference: { color: "var(--color-warning)", key: "settings.memory.types.preference" },
   fact: { color: "var(--color-info)", key: "settings.memory.types.fact" },
   workflow: { color: "var(--color-success)", key: "settings.memory.types.workflow" },
   project: { color: "var(--color-primary)", key: "settings.memory.types.project" },
+  user_preference: { color: "var(--color-warning)", key: "settings.memory.types.userPreference" },
+  interaction_pattern: { color: "var(--color-info)", key: "settings.memory.types.interactionPattern" },
+  relationship_note: { color: "var(--color-error)", key: "settings.memory.types.relationshipNote" },
+  current_context: { color: "var(--color-success)", key: "settings.memory.types.currentContext" },
 };
+
+/** 未知/脏数据类型的兜底 Badge，避免 typeMeta 为 undefined 导致渲染崩溃 */
+const UNKNOWN_TYPE_META = { color: "var(--text-level-3)", key: "settings.memory.types.unknown" };
 
 export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelProps) {
   const { agents } = useAgents();
@@ -357,9 +368,9 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
             {filteredMemories.map((memory) => {
               const isConfirming = confirmingDeleteId === memory.id;
               const createdTime = formatTime(memory.created_at);
-              // 向下兼容：旧数据无 memory_type，统一兜底为 fact
+              // 向下兼容：旧数据无 memory_type，统一兜底为 fact；未知类型再兜底 UNKNOWN_TYPE_META 防崩溃
               const memType: MemoryType = memory.memory_type || "fact";
-              const typeMeta = TYPE_BADGE_META[memType];
+              const typeMeta = TYPE_BADGE_META[memType] ?? UNKNOWN_TYPE_META;
               return (
                 <div
                   key={memory.id}

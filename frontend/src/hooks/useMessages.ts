@@ -14,7 +14,7 @@ import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from
  * text 目前由后端合并为单个事件追加在末尾（见 backend/app/api/chat.py）。
  */
 export interface TimelineEvent {
-  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | string;
+  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | "user_choice" | string;
   content?: string;
   tool_call_id?: string;
   tool?: string;
@@ -137,6 +137,7 @@ export function useMessages(chatId: number | null) {
     onThinking?: (thinking: string) => void,
     onToolStart?: (evt: { tool_call_id: string; tool: string; input: Record<string, unknown> }) => void,
     onToolApproval?: (evt: { approval_id: string; tool_call_id: string; tool: string; command: string; risk_level: string; risk_reason: string; chat_id?: number }) => void,
+    onUserChoice?: (evt: { choice_id: string; tool_call_id: string; question: string; options: Array<{ label: string; description: string }>; recommended: number | null; allow_custom: boolean; chat_id?: number; created_at?: string }) => void,
     onToolOutput?: (evt: { tool_call_id: string; delta: string }) => void,
     onToolResult?: (evt: { tool_call_id?: string; tool?: string; success?: boolean; result?: string; duration_ms?: number; error?: string; file_path?: string }) => void,
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
@@ -325,6 +326,10 @@ export function useMessages(chatId: number | null) {
                   }
                   case "tool_approval": {
                     onToolApproval?.(parsed);
+                    break;
+                  }
+                  case "choice_request": {
+                    onUserChoice?.(parsed);
                     break;
                   }
                   case "tool_output": {

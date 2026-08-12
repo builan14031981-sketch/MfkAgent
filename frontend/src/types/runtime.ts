@@ -12,6 +12,7 @@ export type RuntimeEventType =
   | "thinking_indicator"
   | "tool"
   | "approval"
+  | "user_choice"
   | "text"
   | "task_started"
   | "task_completed"
@@ -35,6 +36,26 @@ export interface ApprovalRequest {
   chat_id?: number;
   /** Phase 1.5：用户审批后标记只读状态（undefined=待审批 / approved / rejected） */
   resolvedAction?: "approved" | "rejected";
+}
+
+/** 待抉择（choice_request 事件载荷，对齐后端 make_choice_request）。
+ *  - choice_id：后端 choice_registry 生成的唯一 id
+ *  - options：2-4 项，每项 {label, description}
+ *  - recommended：后端推荐项下标（前端高亮）
+ *  - allow_custom：是否允许用户输入自定义想法
+ *  - resolvedAction：用户已选择/跳过后的只读状态（undefined=待抉择）
+ */
+export interface UserChoiceRequest {
+  choice_id: string;
+  tool_call_id: string;
+  question: string;
+  options: Array<{ label: string; description: string }>;
+  recommended: number | null;
+  allow_custom: boolean;
+  chat_id?: number;
+  created_at?: string;
+  /** 用户操作后的状态：selected=N | skipped=true | timeout=true */
+  resolvedAction?: { kind: "selected"; selected: number } | { kind: "skipped" } | { kind: "timeout" };
 }
 
 /** G6-A：LLM 每轮思考结束后的 Token 消耗与上下文水位事件（不进入 timeline 渲染） */
@@ -104,6 +125,12 @@ export interface ToolEvent extends RuntimeEventBase {
 export interface ApprovalEvent extends RuntimeEventBase {
   type: "approval";
   approval: ApprovalRequest;
+}
+
+/** 待抉择：choice_request 新建，tool_result 时按 tool_call_id 移除 */
+export interface UserChoiceEvent extends RuntimeEventBase {
+  type: "user_choice";
+  choice: UserChoiceRequest;
 }
 
 /** 文本段：连续文本 chunk 合并到同一事件 */
@@ -192,6 +219,7 @@ export type RuntimeEvent =
   | ThinkingIndicatorEvent
   | ToolEvent
   | ApprovalEvent
+  | UserChoiceEvent
   | TextEvent
   | TaskStartedEvent
   | TaskCompletedEvent

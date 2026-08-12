@@ -22,13 +22,14 @@ from app.core.git_tools import GIT_TOOLS, execute_git_tool
 from app.core.search_tools import SEARCH_TOOLS, execute_search_tool
 from app.core.command_tools import COMMAND_TOOLS, execute_command_tool
 from app.services.tools import tool_registry
-from app.core.tool_runtime.events import make_tool_start, make_tool_result, make_tool_approval
+from app.core.tool_runtime.events import make_tool_start, make_tool_result, make_tool_approval, make_choice_request
 from app.core.tool_runtime.risk_engine import (
     command_risk_engine, evaluate_tool, Verdict,
     ExecutionDecision, ExecutionAction,
 )
 from app.core.tool_runtime.approval import approval_registry
-from app.core.tool_runtime.approval_policy import get_approval_policy
+from app.core.tool_runtime.choice import choice_registry, CUSTOM_TEXT_MAX
+from app.core.tool_runtime.approval_policy import get_approval_policy, ApprovalMode
 from app.core.tool_runtime.notification import event_bus
 
 
@@ -116,6 +117,15 @@ async def execute_tool(
             )
         else:
             # EXECUTE: 直接执行
+            if func_name == "ask_user_choice":
+                # 抉择工具拦截：自主模式直接采纳推荐项；其他模式登记 pending 等待用户抉择
+                return await _dispatch_user_choice(
+                    tool_call_id=tool_call_id,
+                    func_args=func_args,
+                    ctx=ctx,
+                    emit=emit,
+                    start_time=_start_time,
+                )
             result_text = await _run_tool(func_name, func_args, project_path, ctx)
     except Exception as e:  # noqa: BLE001
         result_text = f"错误: 工具执行异常: {e}"
@@ -188,6 +198,155 @@ async def _run_tool(
 
     r = await tool_registry.execute(func_name, **{**ctx, **func_args})
     return r.output if r.success else f"Error: {r.error}"
+
+
+# ──── ask_user_choice：抉择工具（pending record 模式，对齐 approval）────
+
+_CHOICE_TOOL = "ask_user_choice"
+
+
+def _normalize_choice_options(raw) -> list:
+    """整理 options 参数：2-4 项，每项 {label, description}；不足 2 项时补齐占位项。"""
+    opts = []
+    if isinstance(raw, list):
+        for item in raw[:4]:
+            if isinstance(item, dict):
+                label = str(item.get("label", "") or "").strip()
+                if not label:
+                    continue
+                opts.append({
+                    "label": label[:120],
+                    "description": str(item.get("description", "") or "").strip()[:300],
+                })
+            elif isinstance(item, str) and item.strip():
+                opts.append({"label": item.strip()[:120], "description": ""})
+    while len(opts) < 2:
+        opts.append({"label": f"方案 {len(opts) + 1}", "description": ""})
+    return opts[:4]
+
+
+def _choice_recommended_text(options: list, recommended) -> str:
+    idx = recommended if isinstance(recommended, int) and 0 <= recommended < len(options) else 0
+    return options[idx]["label"]
+
+
+def _format_choice_result(options: list, recommended, selected, custom_text, note: str = "") -> str:
+    """拼装回喂模型的抉择结果文本。"""
+    parts = []
+    if isinstance(selected, int) and 0 <= selected < len(options):
+        parts.append(f"用户选择了：{options[selected]['label']}")
+    if custom_text:
+        parts.append(f"用户想法：{custom_text}")
+    if not parts:
+        parts.append(f"用户未明确选择，采纳推荐项：{_choice_recommended_text(options, recommended)}")
+    if note:
+        parts.append(note)
+    return "\n".join(parts)
+
+
+async def _dispatch_user_choice(
+    tool_call_id: str,
+    func_args: Dict[str, Any],
+    ctx: Dict[str, Any],
+    emit: Optional[Callable[[Dict], None]],
+    start_time: float,
+) -> Dict:
+    """抉择工具分发：AUTONOMOUS 直接采纳推荐项；其他模式登记 pending + 发 choice_request 事件。"""
+    question = str(func_args.get("question", "") or "").strip() or "这个任务你希望怎么处理？"
+    options = _normalize_choice_options(func_args.get("options"))
+    raw_rec = func_args.get("recommended")
+    recommended = raw_rec if isinstance(raw_rec, int) and 0 <= raw_rec < len(options) else None
+    allow_custom = bool(func_args.get("allow_custom", True))
+    chat_id = ctx.get("chat_id")
+
+    # 自主模式：不挂起不弹卡，直接采纳推荐项
+    if get_approval_policy().mode == ApprovalMode.AUTONOMOUS:
+        result_text = _format_choice_result(
+            options, recommended, None, None,
+            note="（自主模式：由 Agent 自行决定，已采纳推荐项）",
+        )
+        duration_ms = round((time.monotonic() - start_time) * 1000)
+        if emit:
+            emit(make_tool_result(
+                tool_call_id=tool_call_id, tool=_CHOICE_TOOL,
+                success=True, result=result_text, duration_ms=duration_ms,
+            ))
+        return {
+            "name": _CHOICE_TOOL, "tool": _CHOICE_TOOL, "path": "",
+            "success": True, "status": "success",
+            "arguments": func_args, "result": result_text,
+            "duration_ms": duration_ms, "tool_call_id": tool_call_id,
+        }
+
+    # 其他模式：登记 pending 抉择，发射 choice_request 事件（前端渲染抉择卡）
+    choice_id, info = choice_registry.register(
+        tool_call_id=tool_call_id, chat_id=chat_id,
+        question=question, options=options, recommended=recommended,
+    )
+    if emit:
+        emit(make_choice_request(
+            choice_id=choice_id, tool_call_id=tool_call_id, question=question,
+            options=options, recommended=recommended,
+            allow_custom=allow_custom, chat_id=chat_id,
+        ))
+    return {
+        "name": _CHOICE_TOOL, "tool": _CHOICE_TOOL, "path": "",
+        "success": False, "status": "awaiting_choice",
+        "arguments": func_args, "result": "",
+        "duration_ms": 0, "tool_call_id": tool_call_id,
+        "choice_id": choice_id,
+        "choice_future": info["future"],
+        "choice_timeout": info["timeout"],
+        "choice_options": options,
+        "choice_recommended": recommended,
+        "chat_id": chat_id,
+    }
+
+
+async def complete_choice(record: Dict, emit: Optional[Callable[[Dict], None]] = None) -> Dict:
+    """完成 pending 抉择闭环：等待用户选择（超时→采纳推荐项），发射 tool_result 并返回最终 record。
+
+    调用方约定：与 complete_approval 一致，在 choice_request 事件已 yield 给前端后调用。
+    """
+    options = record.get("choice_options") or []
+    recommended = record.get("choice_recommended")
+    try:
+        action = await asyncio.wait_for(record["choice_future"], timeout=record["choice_timeout"])
+    except asyncio.TimeoutError:
+        action = {"selected": None, "custom_text": None, "timeout": True}
+    choice_registry.remove(record.get("choice_id", ""))
+
+    if action.get("cancelled"):
+        success, status = False, "cancelled"
+        result_text = "抉择已取消（会话流已结束），请基于已有信息自行决定并继续。"
+    elif action.get("timeout"):
+        success, status = True, "success"
+        result_text = _format_choice_result(
+            options, recommended, None, None,
+            note=f"（抉择超时 >{record['choice_timeout']:.0f}s，已自动采纳推荐项）",
+        )
+    else:
+        success, status = True, "success"
+        custom_text = (action.get("custom_text") or "")[:CUSTOM_TEXT_MAX] or None
+        result_text = _format_choice_result(
+            options, recommended, action.get("selected"), custom_text,
+            note=str(action.get("note", "") or ""),
+        )
+
+    if emit:
+        emit(make_tool_result(
+            tool_call_id=record.get("tool_call_id", ""),
+            tool=_CHOICE_TOOL, success=success, result=result_text,
+            duration_ms=round(record.get("duration_ms", 0)),
+        ))
+
+    final = dict(record)
+    final.pop("choice_future", None)
+    final.pop("choice_timeout", None)
+    final.pop("choice_options", None)
+    final.pop("choice_recommended", None)
+    final.update({"success": success, "status": status, "result": result_text})
+    return final
 
 
 def _describe_tool_command(func_name: str, func_args: Dict[str, Any]) -> str:

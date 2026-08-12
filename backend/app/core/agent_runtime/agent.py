@@ -19,7 +19,7 @@ import os
 
 from .router import TaskRouter
 from .context import AgentContext, AgentResult
-from .context_builder import ContextBuilder, get_default_context_builder
+from .context_builder import ContextBuilder, get_default_context_builder, build_test_infra_summary
 from .recorder import runtime_event_recorder
 from .states import RuntimePhase
 from .task_graph_state import TaskGraphState
@@ -29,11 +29,19 @@ from .model_context_config import get_model_max_tokens, compute_watermark
 from app.core.verification import verifier as default_verifier
 from app.services.model import ModelNotFoundError, ModelConfigError
 from app.core.tool_runtime.strategy import get_strategy_engine, StrategyStatus
+from app.core.agent_runtime.completion import (
+    CompletionContext,
+    CompletionPipeline,
+)
+from app.core.agent_runtime.completion.base import CompletionVerifier
 
 # ──── 执行循环最大轮次 ────
 MAX_ROUNDS = 10
 MAX_STREAM_ROUNDS = 10
 DEFAULT_MAX_TOOL_ROUNDS = 10
+
+# ──── Phase 12: Completion Loop V1 配置 ────
+DEFAULT_MAX_COMPLETION_RETRY = 3
 
 # ──── Phase 11: 写操作工具集合（用于强制自查判定）────
 WRITE_TOOLS = {"write_file", "replace_in_file", "apply_patch", "delete_file", "run_command"}
@@ -98,12 +106,22 @@ class AgentRuntime:
     Phase E4：Action → Verification → Decision；验证失败注入反馈驱动下一轮重试。
     """
 
-    def __init__(self, context_builder: ContextBuilder = None, verifier=None):
+    def __init__(self, context_builder: ContextBuilder = None, verifier=None, completion_verifier: CompletionVerifier = None):
         self.router = TaskRouter()
         self.context_builder = context_builder or get_default_context_builder()
         self.verifier = verifier or default_verifier
+        # Phase 12: Completion Loop V1 — 完成验证器（None → 按 context 开关惰性构建；
+        # 显式传入时使用自定义实现；默认三层管道，LLM Judge 仅在 context.completion_verification=True 时启用）
+        self.completion_verifier = completion_verifier
         # G4-A: TaskGraph 状态机（初始为空，由 init_task_graph 注入）
         self.task_graph_state: Optional[TaskGraphState] = None
+
+    def _resolve_completion_verifier(self, context: AgentContext) -> CompletionVerifier:
+        """解析完成验证器：显式注入优先；否则构建三层管道（Judge 按 context 开关启用）。"""
+        if self.completion_verifier is not None:
+            return self.completion_verifier
+        use_judge = getattr(context, "completion_verification", None) is True
+        return CompletionPipeline(use_llm_judge=use_judge)
 
     # ──── G6-A: Token 水位监控 ────
 
@@ -609,9 +627,10 @@ class AgentRuntime:
         - 追加 role=tool 结果消息
         yield 工具事件（tool_start/tool_approval/tool_result）供上层透传 SSE。
         """
-        from app.core.tool_runtime.executor import execute_tool, complete_approval
+        from app.core.tool_runtime.executor import execute_tool, complete_approval, complete_choice
         from app.core.tool_runtime.events import ToolEventSource
         from app.core.tool_runtime.approval import approval_registry
+        from app.core.tool_runtime.choice import choice_registry
         import json
 
         assistant_msg = {"role": "assistant", "content": None, "tool_calls": ordered}
@@ -709,6 +728,21 @@ class AgentRuntime:
                         "status": "failed",
                         "result": "错误: 该操作需要用户审批，但非流式接口不支持审批，已拒绝执行。请改用流式接口重试。",
                     })
+
+            # 抉择工具：等待用户抉择后完成执行闭环（同审批架构；choice_request 事件已随 drain 到达前端）
+            if record.get("status") == "awaiting_choice":
+                if support_approval:
+                    record = await complete_choice(record, emit=event_source.emit)
+                    for event in event_source.drain():
+                        yield event
+                else:
+                    # 非流式路径不支持交互抉择 → 自动采纳推荐项，禁止空 result 回喂
+                    choice_registry.resolve(record["choice_id"], {
+                        "selected": None,
+                        "custom_text": None,
+                        "note": "（非流式接口不支持交互抉择，已自动采纳推荐项）",
+                    })
+                    record = await complete_choice(record)
 
             # Strategy Layer V1: 执行后策略检查
             if strategy_engine:
@@ -849,6 +883,162 @@ class AgentRuntime:
         lines.append("3. 如果问题无法解决，请向用户说明情况")
         return "\n".join(lines)
 
+    # ──── Phase 12: Completion Loop V1 — 完成验证辅助 ────
+
+    @staticmethod
+    def _completion_enabled(context: AgentContext, has_task_graph: bool) -> bool:
+        """判断完成验证是否启用。
+
+        优先级：显式开关 > 默认（有 TaskGraph 时参与节点完成判断，无图时仅显式开启）。
+        """
+        flag = getattr(context, "completion_verification", None)
+        if flag is True:
+            return True
+        if flag is False:
+            return False
+        return has_task_graph
+
+    @staticmethod
+    def _extract_task_goal(messages: list) -> str:
+        """从 messages 提取任务目标（首个 user 消息内容，供完成判定使用）。"""
+        for m in messages:
+            if isinstance(m, dict) and m.get("role") == "user":
+                content = m.get("content") or ""
+                return content[:500] if isinstance(content, str) else str(content)[:500]
+            if hasattr(m, "role") and getattr(m, "role") == "user":
+                return str(getattr(m, "content", ""))[:500]
+        return ""
+
+    async def _verify_completion(
+        self,
+        context: AgentContext,
+        task_goal: str,
+        final_content: str,
+        current_task,
+        all_tool_calls: list,
+        loop_messages: list,
+    ) -> object:
+        """运行完成验证管道并返回 CompletionVerificationResult。"""
+        ctx = CompletionContext(
+            task_goal=task_goal,
+            final_content=final_content,
+            tool_records=all_tool_calls,
+            execution_history=loop_messages,
+            project_path=context.project_path,
+            current_task=current_task,
+            model_id=context.model_id,
+        )
+        verifier = self._resolve_completion_verifier(context)
+        return await verifier.verify(ctx)
+
+    @staticmethod
+    def _build_completion_feedback(result: object, retry_count: int = 0) -> str:
+        """构造完成验证失败反馈文本（注入下一轮 LLM 消息，驱动继续执行）。
+
+        Round 2 优化：反馈按 next_action 分级；连续失败时追加防逃逸强制约束。
+        """
+        lines = [
+            "任务尚未完成。",
+        ]
+        if getattr(result, "reason", ""):
+            lines.append(f"原因：{result.reason}")
+        missing = list(getattr(result, "missing_items", None) or [])
+        if missing:
+            lines.append("需要：")
+            lines.extend(f"- {m}" for m in missing)
+        next_action = getattr(result, "next_action", "") or ""
+        if next_action == "fix_tool_actions":
+            lines.append("要求：修正上述失败的工具动作后重新执行，并确认结果。")
+        elif next_action == "continue_execution":
+            lines.append("要求：继续执行，直至上述缺失项全部消除。")
+        elif next_action:
+            lines.append(f"建议：{next_action}")
+        if retry_count >= 2:
+            # 防验证逃逸定向压制（Round 2 实证：连续失败后模型倾向只跑必过子集）
+            lines.append(
+                "【强制约束】禁止只运行测试子集制造绿色假象；必须全量执行 pytest tests "
+                "复跑所有测试，曾失败的测试文件不得跳过。"
+            )
+        lines.append("请继续处理！")
+        return "\n".join(lines)
+
+    # ──── Round 2 优化：完成验证失败的分级处置辅助 ────
+
+    # 硬性缺失关键词：命中则任务标记 failed（测试未绿/逃逸/工具失败）；
+    # 其余为软性缺失（如未产出最终回答）→ completed_unverified，不级联中断后续任务。
+    _HARD_MISSING_KEYWORDS = (
+        "未全绿", "验证范围缩水", "pytest", "执行失败", "验证失败", "写入文件",
+    )
+
+    @classmethod
+    def _is_hard_completion_failure(cls, result: object) -> bool:
+        """判定完成验证失败是否属于硬性缺失（决定任务 failed 还是 completed_unverified）。"""
+        if result is None:
+            return False
+        missing = list(getattr(result, "missing_items", None) or [])
+        if not missing:
+            return False
+        return any(
+            any(k in item for k in cls._HARD_MISSING_KEYWORDS)
+            for item in missing
+        )
+
+    @staticmethod
+    def _build_completion_failure_report(result: object) -> str:
+        """结构化失败汇报（验证耗尽且无最终内容时的兜底回复，杜绝空回复静默结束）。"""
+        lines = ["【任务未完全完成】完成验证未通过，如实汇报如下："]
+        missing = list(getattr(result, "missing_items", None) or [])
+        if missing:
+            lines.append("未完成项：")
+            lines.extend(f"- {m}" for m in missing)
+        if getattr(result, "reason", ""):
+            lines.append(f"判定原因：{result.reason}")
+        lines.append("建议下一步：针对上述未完成项继续处理，或告知我调整任务范围。")
+        return "\n".join(lines)
+
+    # 探索型任务关键词（预算收紧，防探索任务吃光轮次，Round 2 P6）
+    _EXPLORE_TASK_KEYWORDS = ("确认", "查看", "了解", "探索", "定位", "检查", "分析", "阅读")
+
+    @classmethod
+    def _task_round_budget(cls, action: str, base: int) -> int:
+        """按任务类型差异化轮次预算：探索类收紧到 6，执行类保持默认。"""
+        if action and any(k in action for k in cls._EXPLORE_TASK_KEYWORDS):
+            return max(3, min(6, base))
+        return base
+
+    @staticmethod
+    def _completion_event_suffix(completion_enabled: bool, completion_exhausted: object) -> dict:
+        """Task 事件附加完成验证结果字段（用于 task_completed / task_failed 事件）。"""
+        suffix = {"completion_verified": None}
+        if not completion_enabled:
+            return suffix
+        if completion_exhausted is None:
+            return {"completion_verified": True}
+        return {
+            "completion_verified": False,
+            "completion_reason": (getattr(completion_exhausted, "reason", "") or "")[:200],
+        }
+
+    @staticmethod
+    def _completion_metadata(completion_enabled: bool, completion_exhausted: object, retry_count: int) -> Optional[dict]:
+        """AgentResult.metadata 透出的完成验证汇总信息。"""
+        if not completion_enabled:
+            return None
+        if completion_exhausted is None:
+            return {
+                "enabled": True,
+                "verified": True,
+                "retry_count": retry_count,
+            }
+        return {
+            "enabled": True,
+            "verified": False,
+            "retry_count": retry_count,
+            "reason": getattr(completion_exhausted, "reason", "") or "",
+            "missing_items": list(getattr(completion_exhausted, "missing_items", None) or []),
+            "next_action": getattr(completion_exhausted, "next_action", "") or "",
+        }
+
     @staticmethod
     def _normalizer_feedback(issues: list) -> str:
         """构造归一化失败回馈模型的结构化错误文本（不静默）。"""
@@ -870,7 +1060,11 @@ class AgentRuntime:
             elif hasattr(m, "dict"):
                 out.append(m.dict())
             else:
-                out.append({"role": getattr(m, "role", "user"), "content": str(m)})
+                # 对象消息：优先取 content 属性（而非整体 repr，避免 repr 中的模块/路径文本污染语义判定）
+                out.append({
+                    "role": getattr(m, "role", "user"),
+                    "content": str(getattr(m, "content", m)),
+                })
         return out
 
     @staticmethod
@@ -994,6 +1188,25 @@ class AgentRuntime:
             final_usage = None
             final_finish_reason = "stop"
 
+            # ──── Phase 12: Completion Loop V1 配置 ────
+            completion_enabled = self._completion_enabled(context, has_task_graph)
+            max_completion_retry = getattr(context, "max_completion_retry", None) or DEFAULT_MAX_COMPLETION_RETRY
+            completion_retry_count = 0
+            completion_exhausted = None
+            # Round 2 优化：run 级失败标记与最后一次验证失败（用于兜底失败汇报）
+            any_completion_failed = False
+            run_completion_exhausted = None
+
+            # Round 2 优化：测试基建（conftest fixture）摘要一次性注入，避免重复 read_file
+            _test_infra = build_test_infra_summary(
+                context.project_path, self._extract_task_goal(loop_messages)
+            )
+            if _test_infra:
+                loop_messages.append({
+                    "role": "system",
+                    "content": _wrap_runtime_context(_test_infra, source="MfkAgent TestInfra"),
+                })
+
             # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
             while True:
                 current_task = None
@@ -1005,6 +1218,10 @@ class AgentRuntime:
                             self._skip_remaining_and_emit(run_id)
                         break
                     self.update_task_status(current_task.id, "running")
+                    # Round 2 优化：任务间隔离完成验证状态 + 轮次预算差异化（P6）
+                    completion_retry_count = 0
+                    completion_exhausted = None
+                    task_rounds = self._task_round_budget(current_task.action, resolved_max_rounds)
                     runtime_event_recorder.emit(run_id, "task_started",
                         self._task_event_payload(current_task, "running"))
                     # 战略4: Agent 状态可视化 — 任务启动
@@ -1034,15 +1251,17 @@ class AgentRuntime:
 
                 round_no = 0
                 task_content = ""
+                if not has_task_graph:
+                    task_rounds = resolved_max_rounds
 
                 # G4-C: 单任务异常边界 — 任务失败不使整个 AgentRun failed，
                 # 而是 failed + 级联 skip 依赖 + task_failed/task_skipped 事件后收尾
                 try:
-                    while round_no < resolved_max_rounds:
-                        round_tools = context.tools if round_no < resolved_max_rounds - 1 else None
+                    while round_no < task_rounds:
+                        round_tools = context.tools if round_no < task_rounds - 1 else None
 
-                        # ──── Phase 11: 倒数预警（第 max_tool_rounds - 1 轮，即最后一轮有工具时）────
-                        if round_no == resolved_max_rounds - 2:
+                        # ──── Phase 11: 倒数预警（第 task_rounds - 1 轮，即最后一轮有工具时）────
+                        if round_no == task_rounds - 2:
                             loop_messages.append({
                                 "role": "system",
                                 "content": COUNTDOWN_WARNING,
@@ -1068,14 +1287,53 @@ class AgentRuntime:
 
                         if not result.tool_calls or not round_tools:
                             # ──── Phase 11: 强制自查插队拦截 ────
-                            if has_modified_code and not self_check_done and round_no < resolved_max_rounds:
+                            if has_modified_code and not self_check_done and round_no < task_rounds:
                                 loop_messages.append({
                                     "role": "system",
                                     "content": SELF_CHECK_PROMPT,
                                 })
                                 self_check_done = True
                                 continue
+
                             task_content = result.content
+
+                            # ──── Phase 12: Completion Loop V1 — 完成候选验证 ────
+                            if completion_enabled:
+                                # 规则层语义判定（write/test 意图）以用户真实目标为准；
+                                # 模板任务名（如“执行文件读取或修改”）不作判定依据，避免误伤只读任务
+                                task_goal = self._extract_task_goal(loop_messages)
+                                runtime_event_recorder.emit(
+                                    run_id, "completion_verify_started",
+                                    {"task_goal": task_goal, "round_no": round_no},
+                                )
+                                completion_result = await self._verify_completion(
+                                    context, task_goal, task_content, current_task,
+                                    all_tool_calls, loop_messages,
+                                )
+                                if completion_result.success:
+                                    runtime_event_recorder.emit(
+                                        run_id, "completion_verify_passed",
+                                        completion_result.to_dict(),
+                                    )
+                                    break
+
+                                # 验证失败 → 生成反馈上下文，重新进入 Agent Loop
+                                runtime_event_recorder.emit(run_id, "completion_verify_failed", {
+                                    **completion_result.to_dict(),
+                                    "retry_count": completion_retry_count,
+                                    "max_retry": max_completion_retry,
+                                })
+                                if completion_retry_count < max_completion_retry:
+                                    completion_retry_count += 1
+                                    loop_messages.append({
+                                        "role": "user",
+                                        "content": self._build_completion_feedback(completion_result, completion_retry_count),
+                                    })
+                                    continue
+                                # 超过重试上限 → 安全收尾（保留已完成内容 + 未完成原因 + 最后失败点）
+                                completion_exhausted = completion_result
+                                run_completion_exhausted = completion_result
+                                final_finish_reason = "completion_exhausted"
                             break
 
                         round_no += 1
@@ -1144,25 +1402,89 @@ class AgentRuntime:
                         final_usage = result.usage
                         final_finish_reason = "max_rounds"
 
+                        # Phase 12: 轮次耗尽的兜底完成候选同样过验证（失败不再重试，安全收尾）
+                        if completion_enabled:
+                            task_goal = self._extract_task_goal(loop_messages)
+                            runtime_event_recorder.emit(
+                                run_id, "completion_verify_started",
+                                {"task_goal": task_goal, "round_no": round_no, "fallback": True},
+                            )
+                            completion_result = await self._verify_completion(
+                                context, task_goal, task_content, current_task,
+                                all_tool_calls, loop_messages,
+                            )
+                            if completion_result.success:
+                                runtime_event_recorder.emit(
+                                    run_id, "completion_verify_passed",
+                                    completion_result.to_dict(),
+                                )
+                            else:
+                                runtime_event_recorder.emit(run_id, "completion_verify_failed", {
+                                    **completion_result.to_dict(),
+                                    "retry_count": completion_retry_count,
+                                    "max_retry": max_completion_retry,
+                                })
+                                completion_exhausted = completion_result
+                                run_completion_exhausted = completion_result
+
                     final_content = task_content
 
                     # G4-B: 任务完成 → emit + 继续下一个
                     if has_task_graph and current_task:
+                        if self._is_hard_completion_failure(completion_exhausted):
+                            # Round 2 优化：硬性缺失 → failed + 级联 skip（此前为强制 completed 短路）
+                            skipped = self.task_graph_state.mark_failed(
+                                current_task.id,
+                                "; ".join(getattr(completion_exhausted, "missing_items", None) or [])[:200],
+                            )
+                            runtime_event_recorder.emit(run_id, "agent_state_update",
+                                self._build_agent_state_event(
+                                    agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                    status="error",
+                                    action_detail=f"任务失败（完成验证未通过）: {current_task.action}",
+                                    current_task_id=current_task.id,
+                                    task_progress=self._build_task_progress(current_task.id),
+                                ))
+                            runtime_event_recorder.emit(run_id, "task_failed", {
+                                **self._task_event_payload(
+                                    current_task, "failed",
+                                    error=getattr(completion_exhausted, "reason", "")[:200],
+                                ),
+                                **self._completion_event_suffix(completion_enabled, completion_exhausted),
+                            })
+                            for skip_id in skipped:
+                                skip_node = self.task_graph_state.get_task(skip_id)
+                                if skip_node is not None:
+                                    runtime_event_recorder.emit(run_id, "task_skipped",
+                                        self._task_event_payload(skip_node, "skipped"))
+                            any_completion_failed = True
+                            continue
                         self.update_task_status(current_task.id, "completed")
+                        if completion_exhausted is not None:
+                            # 软性缺失 → completed_unverified：不级联中断，但计入 run 级失败标记
+                            any_completion_failed = True
                         # 战略4: Agent 状态可视化 — 任务完成
                         runtime_event_recorder.emit(run_id, "agent_state_update",
                             self._build_agent_state_event(
                                 agent_role=self._agent_role_display_name(current_task.assigned_agent),
                                 status="completed",
-                                action_detail=f"任务完成: {current_task.action}",
+                                action_detail=(
+                                    f"任务完成（未通过完成验证）: {current_task.action}"
+                                    if completion_exhausted is not None
+                                    else f"任务完成: {current_task.action}"
+                                ),
                                 current_task_id=current_task.id,
                                 task_progress=self._build_task_progress(current_task.id),
                             ))
                         runtime_event_recorder.emit(run_id, "task_completed",
-                            self._task_event_payload(current_task, "completed"))
+                            {
+                                **self._task_event_payload(current_task, "completed"),
+                                **self._completion_event_suffix(completion_enabled, completion_exhausted),
+                            })
                         continue
 
-                    break  # 无 Plan → 结束
+                    # 无 Plan → 结束
+                    break
                 except ModelNotFoundError as e:
                     # 模型不存在 → 直接熔断，不尝试反思（反思用同一模型也会失败）
                     if has_task_graph and current_task:
@@ -1214,6 +1536,12 @@ class AgentRuntime:
             # Phase E2: 收尾（completed）
             runtime_event_recorder.finish_run(run_id, "completed")
 
+            # Round 2 优化：完成验证失败时覆写 finish_reason；无内容时生成结构化失败汇报（杜绝空回复）
+            if any_completion_failed or run_completion_exhausted is not None:
+                final_finish_reason = "completion_failed"
+                if not (final_content or "").strip() and run_completion_exhausted is not None:
+                    final_content = self._build_completion_failure_report(run_completion_exhausted)
+
             return AgentResult(
                 content=final_content,
                 usage=final_usage,
@@ -1233,6 +1561,8 @@ class AgentRuntime:
                     "token_watermark": self._build_token_usage_event(final_usage, context.model_id) if final_usage else None,
                     # G4-C: TaskGraph 进度摘要（含 completed/failed/skipped/current_step）
                     "task_graph": self._task_graph_summary(),
+                    # Phase 12: Completion Loop V1 结果信息
+                    "completion": self._completion_metadata(completion_enabled, completion_exhausted, completion_retry_count),
                 },
             )
         except asyncio.CancelledError:
@@ -1361,6 +1691,23 @@ class AgentRuntime:
         has_modified_code = False
         self_check_done = False
 
+        # ──── Phase 12: Completion Loop V1 配置 ────
+        completion_enabled = self._completion_enabled(context, has_task_graph)
+        max_completion_retry = getattr(context, "max_completion_retry", None) or DEFAULT_MAX_COMPLETION_RETRY
+        # Round 2 优化：run 级失败标记与最后一次验证失败（用于兜底失败汇报）
+        any_completion_failed = False
+        run_completion_exhausted = None
+
+        # Round 2 优化：测试基建（conftest fixture）摘要一次性注入，避免重复 read_file
+        _test_infra = build_test_infra_summary(
+            context.project_path, self._extract_task_goal(current_messages)
+        )
+        if _test_infra:
+            current_messages.append({
+                "role": "system",
+                "content": _wrap_runtime_context(_test_infra, source="MfkAgent TestInfra"),
+            })
+
         # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
         while True:
             current_task = None
@@ -1406,14 +1753,21 @@ class AgentRuntime:
                         "role": "system",
                         "content": _wrap_runtime_context(persona_prompt, source="MfkAgent AgentRouter"),
                     })
+                # Round 2 优化：轮次预算差异化（P6：探索类任务收紧）
+                task_budget = self._task_round_budget(current_task.action, max_tool_rounds)
 
             task_done = False
+            if not has_task_graph:
+                task_budget = max_tool_rounds
+            # Phase 12: 每个任务独立的完成验证重试计数
+            completion_retry_count = 0
+            completion_exhausted = None
             try:
-                for round_no in range(max_tool_rounds + 1):
-                    round_tools = context.tools if round_no < max_tool_rounds else None
+                for round_no in range(task_budget + 1):
+                    round_tools = context.tools if round_no < task_budget else None
 
-                    # ──── Phase 11: 倒数预警（第 max_tool_rounds - 1 轮，即最后一轮有工具时）────
-                    if round_no == max_tool_rounds - 2:
+                    # ──── Phase 11: 倒数预警（第 task_budget - 1 轮，即最后一轮有工具时）────
+                    if round_no == task_budget - 2:
                         current_messages.append({
                             "role": "system",
                             "content": COUNTDOWN_WARNING,
@@ -1531,24 +1885,91 @@ class AgentRuntime:
 
                     # 正常结束：任务完成或整体完成
                     if has_task_graph and current_task:
+                        # Phase 12: Completion Loop V1 — TaskGraph 节点完成候选验证
+                        if completion_enabled:
+                            # 规则层语义判定以用户真实目标为准（模板任务名不作依据）
+                            task_goal = self._extract_task_goal(current_messages)
+                            yield {"type": "completion_verify_started", "task_goal": task_goal, "round_no": round_no}
+                            completion_result = await self._verify_completion(
+                                context, task_goal, round_text, current_task,
+                                all_tool_calls, current_messages,
+                            )
+                            if completion_result.success:
+                                yield {"type": "completion_verify_passed", **completion_result.to_dict()}
+                            else:
+                                yield {"type": "completion_verify_failed", **completion_result.to_dict(),
+                                       "retry_count": completion_retry_count, "max_retry": max_completion_retry}
+                                if completion_retry_count < max_completion_retry:
+                                    completion_retry_count += 1
+                                    current_messages.append({"role": "assistant", "content": round_text or None})
+                                    current_messages.append({
+                                        "role": "user",
+                                        "content": self._build_completion_feedback(completion_result, completion_retry_count),
+                                    })
+                                    continue
+                                completion_exhausted = completion_result
+                                run_completion_exhausted = completion_result
+
+                        if self._is_hard_completion_failure(completion_exhausted):
+                            # Round 2 优化：硬性缺失 → failed + 级联 skip（此前为强制 completed 短路）
+                            skipped = self.task_graph_state.mark_failed(
+                                current_task.id,
+                                "; ".join(getattr(completion_exhausted, "missing_items", None) or [])[:200],
+                            )
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="error",
+                                action_detail=f"任务失败（完成验证未通过）: {current_task.action}",
+                                current_task_id=current_task.id,
+                                task_progress=self._build_task_progress(current_task.id),
+                            )}
+                            yield {
+                                "type": "task_failed",
+                                **self._task_event_payload(
+                                    current_task, "failed",
+                                    error=getattr(completion_exhausted, "reason", "")[:200],
+                                ),
+                                **self._completion_event_suffix(completion_enabled, completion_exhausted),
+                            }
+                            for skip_id in skipped:
+                                skip_node = self.task_graph_state.get_task(skip_id)
+                                if skip_node is not None:
+                                    yield {
+                                        "type": "task_skipped",
+                                        **self._task_event_payload(skip_node, "skipped"),
+                                    }
+                            any_completion_failed = True
+                            task_done = True
+                            break  # 跳出内层 for，回到外层 while（依赖任务已级联 skip）
+
                         self.update_task_status(current_task.id, "completed")
+                        if completion_exhausted is not None:
+                            # 软性缺失 → completed_unverified：不级联中断，但计入 run 级失败标记
+                            any_completion_failed = True
+                        else:
+                            run_completion_exhausted = None  # 后续任务验证通过 → 清除旧失败快照
                         # 战略4: Agent 状态可视化 — 任务完成
                         yield {"type": "agent_state_update", **self._build_agent_state_event(
                             agent_role=self._agent_role_display_name(current_task.assigned_agent),
                             status="completed",
-                            action_detail=f"任务完成: {current_task.action}",
+                            action_detail=(
+                                f"任务完成（未通过完成验证）: {current_task.action}"
+                                if completion_exhausted is not None
+                                else f"任务完成: {current_task.action}"
+                            ),
                             current_task_id=current_task.id,
                             task_progress=self._build_task_progress(current_task.id),
                         )}
                         yield {
                             "type": "task_completed",
                             **self._task_event_payload(current_task, "completed"),
+                            **self._completion_event_suffix(completion_enabled, completion_exhausted),
                         }
                         task_done = True
                         break  # 跳出内层 for，回到外层 while 取下一个任务
                     else:
                         # ──── Phase 11: 强制自查插队拦截（流式非 TaskGraph 路径）────
-                        if has_modified_code and not self_check_done and round_no < max_tool_rounds:
+                        if has_modified_code and not self_check_done and round_no < task_budget:
                             current_messages.append({
                                 "role": "system",
                                 "content": SELF_CHECK_PROMPT,
@@ -1556,9 +1977,39 @@ class AgentRuntime:
                             self_check_done = True
                             continue
 
+                        # ──── Phase 12: Completion Loop V1 — 无图路径完成候选验证 ────
+                        if completion_enabled:
+                            task_goal = self._extract_task_goal(current_messages)
+                            yield {"type": "completion_verify_started", "task_goal": task_goal, "round_no": round_no}
+                            completion_result = await self._verify_completion(
+                                context, task_goal, round_text, None,
+                                all_tool_calls, current_messages,
+                            )
+                            if completion_result.success:
+                                yield {"type": "completion_verify_passed", **completion_result.to_dict()}
+                            else:
+                                yield {"type": "completion_verify_failed", **completion_result.to_dict(),
+                                       "retry_count": completion_retry_count, "max_retry": max_completion_retry}
+                                if completion_retry_count < max_completion_retry:
+                                    completion_retry_count += 1
+                                    current_messages.append({"role": "assistant", "content": round_text or None})
+                                    current_messages.append({
+                                        "role": "user",
+                                        "content": self._build_completion_feedback(completion_result, completion_retry_count),
+                                    })
+                                    continue
+                                completion_exhausted = completion_result
+                                run_completion_exhausted = completion_result
+
                         # 原始路径（无 Plan）：透传 finish + 工具调用汇总
                         yield {"type": "state_change", "state": RuntimePhase.COMPLETING.value, "reason": "finishing"}
-                        yield {"type": "finish", "finish_reason": final_finish}
+                        # Round 2 优化：完成验证失败时以 completion_failed 收尾 + 兜底结构化失败汇报
+                        if completion_exhausted is not None:
+                            any_completion_failed = True
+                            yield {"type": "text", "content": self._build_completion_failure_report(completion_exhausted)}
+                            yield {"type": "finish", "finish_reason": "completion_failed"}
+                        else:
+                            yield {"type": "finish", "finish_reason": final_finish}
                         if all_tool_calls:
                             yield {"type": "tool_calls", "calls": all_tool_calls}
                         # Phase 1.6: 结束事件附带 TaskGraph 汇总（供消费端落库/切页重放）
@@ -1568,19 +2019,72 @@ class AgentRuntime:
                 # 内层 for 耗尽（rounds exhausted）
                 if has_task_graph and current_task:
                     if not task_done:
-                        # 标记为 completed（尽力而为，LLM 已有输出）
+                        # Round 2 优化：轮次耗尽的兜底候选同样过验证（与非流式路径对齐，此前为直接强制 completed）
+                        if completion_enabled:
+                            task_goal = self._extract_task_goal(current_messages)
+                            yield {"type": "completion_verify_started",
+                                   "task_goal": task_goal, "round_no": round_no, "fallback": True}
+                            completion_result = await self._verify_completion(
+                                context, task_goal, round_text, current_task,
+                                all_tool_calls, current_messages,
+                            )
+                            if completion_result.success:
+                                yield {"type": "completion_verify_passed", **completion_result.to_dict()}
+                            else:
+                                yield {"type": "completion_verify_failed", **completion_result.to_dict(),
+                                       "retry_count": completion_retry_count, "max_retry": max_completion_retry}
+                                completion_exhausted = completion_result
+                                run_completion_exhausted = completion_result
+                        if self._is_hard_completion_failure(completion_exhausted):
+                            # 硬性缺失 → failed + 级联 skip
+                            skipped = self.task_graph_state.mark_failed(
+                                current_task.id,
+                                "; ".join(getattr(completion_exhausted, "missing_items", None) or [])[:200],
+                            )
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
+                                status="error",
+                                action_detail=f"任务失败（轮次耗尽且完成验证未通过）: {current_task.action}",
+                                current_task_id=current_task.id,
+                                task_progress=self._build_task_progress(current_task.id),
+                            )}
+                            yield {
+                                "type": "task_failed",
+                                **self._task_event_payload(
+                                    current_task, "failed",
+                                    error=getattr(completion_exhausted, "reason", "")[:200],
+                                ),
+                                **self._completion_event_suffix(completion_enabled, completion_exhausted),
+                            }
+                            for skip_id in skipped:
+                                skip_node = self.task_graph_state.get_task(skip_id)
+                                if skip_node is not None:
+                                    yield {
+                                        "type": "task_skipped",
+                                        **self._task_event_payload(skip_node, "skipped"),
+                                    }
+                            any_completion_failed = True
+                            continue
+                        # 软性缺失 / 验证通过 → completed（尽力而为），未过验证时标记 unverified
                         self.update_task_status(current_task.id, "completed")
+                        if completion_exhausted is not None:
+                            any_completion_failed = True
                         # 战略4: Agent 状态可视化 — 任务完成（轮次耗尽）
                         yield {"type": "agent_state_update", **self._build_agent_state_event(
                             agent_role=self._agent_role_display_name(current_task.assigned_agent),
                             status="completed",
-                            action_detail=f"任务完成（轮次耗尽）: {current_task.action}",
+                            action_detail=(
+                                f"任务完成（轮次耗尽，未通过验证）: {current_task.action}"
+                                if completion_exhausted is not None
+                                else f"任务完成（轮次耗尽）: {current_task.action}"
+                            ),
                             current_task_id=current_task.id,
                             task_progress=self._build_task_progress(current_task.id),
                         )}
                         yield {
                             "type": "task_completed",
                             **self._task_event_payload(current_task, "completed"),
+                            **self._completion_event_suffix(completion_enabled, completion_exhausted),
                         }
                     continue  # 回到外层 while 取下一个任务
 
@@ -1725,7 +2229,13 @@ class AgentRuntime:
 
         # G4-B: 全部任务完成
         yield {"type": "state_change", "state": RuntimePhase.COMPLETING.value, "reason": "all tasks done"}
-        yield {"type": "finish", "finish_reason": "stop"}
+        # Round 2 优化：存在完成验证失败时以 completion_failed 收尾 + 结构化失败汇报（杜绝空回复静默结束）
+        if any_completion_failed:
+            if run_completion_exhausted is not None:
+                yield {"type": "text", "content": self._build_completion_failure_report(run_completion_exhausted)}
+            yield {"type": "finish", "finish_reason": "completion_failed"}
+        else:
+            yield {"type": "finish", "finish_reason": "stop"}
         if all_tool_calls:
             yield {"type": "tool_calls", "calls": all_tool_calls}
         # Phase 1.6: 结束事件附带 TaskGraph 汇总（供消费端落库/切页重放）

@@ -33,10 +33,16 @@ _SHORT_CONFIRMATIONS = {
 }
 
 # 允许的 memory_type（与 MemoryItem.memory_type 对齐）
-VALID_MEMORY_TYPES = ("preference", "fact", "workflow", "project")
+VALID_MEMORY_TYPES = (
+    "preference", "fact", "workflow", "project",
+    "user_preference", "interaction_pattern", "relationship_note", "current_context",
+)
 
-# 提取用轻量模型（与 agent.py REFLECTION_MODEL / planner 保持一致）
-EXTRACTOR_MODEL = "qwen-flash"
+# 提取用轻量模型（优先 flash 低成本模型；配额耗尽时回退 flash 备选）
+# 原则：不用 DeepSeek / 高级模型（GLM-5.2 / LongCat 等），能 flash 就 flash
+EXTRACTOR_MODEL = "qwen-mt-flash"
+# 回退模型链：依次尝试直到成功（全部是 flash / 低成本，绝不浪费高级模型配额）
+EXTRACTOR_FALLBACK_MODELS = ("siliconflow-glm-z1-9b", "glm-5.2-fast-preview")
 
 # 触发提取的最小用户输入长度（低于则视为寒暄，直接跳过）
 MIN_USER_INPUT_LEN = 5
@@ -93,11 +99,16 @@ class MemoryExtractor:
             "- preference: 用户的稳定偏好 / 习惯（如「喜欢简洁的回答」）\n"
             "- fact: 长期稳定事实（如「项目使用 Python 3.14」）\n"
             "- workflow: 用户惯用的工作流程 / 步骤约定\n"
-            "- project: 项目规则 / 约定（仅当对话明显涉及某个项目的固定规则）\n\n"
+            "- project: 项目规则 / 约定（仅当对话明显涉及某个项目的固定规则）\n"
+            "- user_preference: 用户喜欢的交流方式、表达风格（如「不喜欢被分析」「喜欢直接给答案」）\n"
+            "- interaction_pattern: 用户的交流模式（如「喜欢深入讨论」「喜欢先被倾听再给建议」）\n"
+            "- relationship_note: 用户和 AI 之间真实发生过的交流痕迹（如「讨论过换工作的事」）\n"
+            "- current_context: 用户最近关注的问题（如「最近在纠结是否离职」）\n\n"
             "## 严禁保存（不要提取）\n"
             "- 临时性、一次性内容：如「今天遇到一个 Bug」「报错信息是 404」\n"
             "- 寒暄、确认语、情绪化的即时表达\n"
-            "- 无法跨会话复用的零散细节\n\n"
+            "- 无法跨会话复用的零散细节\n"
+            "- 虚假关系声明：禁止生成「我们关系很好」「用户很依赖我」这类 AI 对关系的自我断言\n\n"
             "## 已有记忆（用于去重，判定 add / update）\n"
             f"{existing_block}\n\n"
             "## 输出要求\n"
@@ -206,8 +217,32 @@ class MemoryExtractor:
                 max_tokens=2048,
             )
         except Exception:  # noqa: BLE001
-            logger.warning("[memory_extractor] LLM 调用失败，跳过本次提取", exc_info=True)
-            return []
+            # 主力提取模型不可用（如配额耗尽）时，依次回退备用模型
+            logger.warning("[memory_extractor] 提取模型 %s 调用失败，尝试回退模型", model_id, exc_info=True)
+            fallback_chain = list(EXTRACTOR_FALLBACK_MODELS)
+            from app.core.agent_runtime.context_builder import get_default_model
+            default_id = get_default_model()
+            if default_id and default_id not in fallback_chain:
+                fallback_chain.append(default_id)
+
+            result = None
+            for fb_id in fallback_chain:
+                if fb_id == model_id or fb_id not in model_service.models:
+                    continue
+                try:
+                    result = await model_service.call_once(
+                        model_id=fb_id,
+                        messages=messages,
+                        temperature=0.2,
+                        max_tokens=2048,
+                    )
+                    break
+                except Exception:  # noqa: BLE001
+                    logger.warning("[memory_extractor] 回退模型 %s 也失败", fb_id, exc_info=True)
+                    continue
+            if result is None:
+                logger.warning("[memory_extractor] 全部备选模型均不可用，跳过本次提取")
+                return []
 
         raw = (result.content or "").strip()
         if not raw:
@@ -226,12 +261,15 @@ async def run_memory_extraction(
     project_id: Any,
     user_message: str,
     ai_content: str,
+    agent_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """后台记忆自动提取任务（独立 Session 落库，Fail-safe）。
 
     Scope 自动分配：
       - Chat 绑定 project_id → 记忆归入 project 作用域
       - 否则 → 归入 global 作用域
+      - 若传入 relationship agent_id（如 pianai）→ 归入 agent 作用域（自隔离）
+        （Relationship Agent 的记忆按 Agent 隔离，不与其他 Agent 共用）
 
     任何异常都被捕获并记录日志，绝不影响用户聊天响应。
     """
@@ -239,11 +277,16 @@ async def run_memory_extraction(
         extractor = MemoryExtractor()
 
         async with AsyncSessionLocal() as session:
-            # 读取当前作用域已有记忆（用于去重判定）
-            scope = "project" if project_id is not None else "global"
+            # 关系型 Agent（当前仅 pianai）→ agent 作用域自隔离记忆
+            if agent_id and agent_id in ("pianai",):
+                scope = "agent"
+            else:
+                scope = "project" if project_id is not None else "global"
             query = session.query(MemoryItem).filter(MemoryItem.scope == scope)
             if scope == "project":
                 query = query.filter(MemoryItem.project_id == project_id)
+            elif scope == "agent":
+                query = query.filter(MemoryItem.agent_id == agent_id)
             existing = [
                 {
                     "id": m.id,
@@ -262,6 +305,7 @@ async def run_memory_extraction(
                     session.add(
                         MemoryItem(
                             scope=scope,
+                            agent_id=agent_id if scope == "agent" else None,
                             project_id=project_id if scope == "project" else None,
                             content=action["content"],
                             memory_type=action["memory_type"],

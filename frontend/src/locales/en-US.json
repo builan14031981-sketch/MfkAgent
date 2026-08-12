@@ -210,6 +210,15 @@
   "approvalDeny": "Deny",
   "approvalApproved": "Approved",
   "approvalRejected": "Rejected",
+  "choiceTitle": "AI is asking you",
+  "choiceRecommended": "Recommended",
+  "choiceCustomPlaceholder": "Or type your own idea…",
+  "choiceSubmitCustom": "Submit my idea",
+  "choiceSkip": "Skip — use the recommended option",
+  "choiceResolvedSelected": "Selected",
+  "choiceResolvedSkipped": "Skipped",
+  "choiceResolvedTimeout": "Timed out (recommended applied)",
+  "choiceHint": "Press ESC or click outside to skip",
   "riskLevel": {
    "read_only": "Read-only",
    "write": "Write",
@@ -436,7 +445,12 @@
     "preference": "Preference",
     "fact": "Fact",
     "workflow": "Workflow",
-    "project": "Project Rule"
+    "project": "Project Rule",
+    "userPreference": "Comm. Preference",
+    "interactionPattern": "Interaction Pattern",
+    "relationshipNote": "Interaction Trace",
+    "currentContext": "Recent Focus",
+    "unknown": "Other"
    }
   },
   "security": {
@@ -596,5 +610,10 @@
    "viewCompleted": "View completed",
    "hideCompleted": "Hide completed",
    "noCompleted": "No completed todos"
+  },
+  "time": {
+   "justNow": "Just now",
+   "minutesAgo": "{n} min ago",
+   "hoursAgo": "{n} h ago"
   }
 }

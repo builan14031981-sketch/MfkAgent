@@ -2,6 +2,9 @@
 chcp 65001 >nul
 echo Starting MfkAgent...
 
+:: 后端 Python 解释器（3.14，已装 fastapi/sqlalchemy；PATH 中的 python 可能被其它运行时劫持）
+set "PYTHON=C:\Users\Asus\AppData\Local\Programs\Python\Python314\python.exe"
+
 echo.
 echo [1/2] Starting Backend (port 8001)...
 :: 清理占用 8001 端口的旧后端进程,确保加载最新代码
@@ -9,7 +12,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001 ^| findstr LISTENING') 
     echo Cleaning up stale backend process PID %%a ...
     taskkill /pid %%a /f >nul 2>&1
 )
-start "MfkAgent Backend" cmd /c "cd /d %~dp0backend && python -m uvicorn main:app --host 127.0.0.1 --port 8001"
+start "MfkAgent Backend" cmd /c "cd /d %~dp0backend && %PYTHON% -m uvicorn main:app --host 127.0.0.1 --port 8001"
 
 timeout /t 3 /nobreak >nul
 

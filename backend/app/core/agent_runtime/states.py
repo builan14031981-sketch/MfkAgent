@@ -103,6 +103,10 @@ class RuntimeEventType(str, Enum):
     TOKEN_USAGE = "token_usage"
     # 战略4: Agent 状态可视化 — 细粒度 Agent 状态更新事件
     AGENT_STATE_UPDATE = "agent_state_update"
+    # Completion Loop V1: 完成验证生命周期事件
+    COMPLETION_VERIFY_STARTED = "completion_verify_started"
+    COMPLETION_VERIFY_PASSED = "completion_verify_passed"
+    COMPLETION_VERIFY_FAILED = "completion_verify_failed"
     FINISH = "finish"
     ERROR = "error"
 

@@ -39,7 +39,7 @@ export default function Home() {
   const { settings, updateSetting } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
   // 2026-08-11：传 visibleModels，让偏好 modelId 跟下拉可见性一致（移除 qwen-max 后回落为 qwen-flash）
-  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(visibleModels, settings);
+  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, prefsLoaded, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(visibleModels, settings);
   const [welcome, setWelcome] = useState("");
   const [welcomeSubtext, setWelcomeSubtext] = useState("");
   // 全部台词类目（原始数据，builtin 模式从后端拉取）
@@ -47,7 +47,8 @@ export default function Home() {
   const [greetingFavorites, setGreetingFavorites] = useState<string[]>([]);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
-  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">(() => prefReasoningEffort);
+  // 初始值固定为 none（SSR/水合安全）；挂载后由下方初始化块按三级回落赋值
+  const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
   const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => {
     const def = settings?.agent_permission_mode;
     return def === "safe" || def === "standard" || def === "autonomous" ? def : "standard";
@@ -178,7 +179,7 @@ export default function Home() {
   // 避免 settings 异步加载或用户手动切换后重复覆盖。
   // 采用 render 阶段"调整 state"模式（与 chat 页 reasoningInitForChatId 一致），规避 ref 读取告警。
   const [reasoningInitApplied, setReasoningInitApplied] = useState(false);
-  if (!reasoningInitApplied && (hasLocalReasoning || settings)) {
+  if (!reasoningInitApplied && (prefsLoaded || hasLocalReasoning || settings)) {
     setReasoningInitApplied(true);
     setReasoningEffort(prefReasoningEffort);
   }

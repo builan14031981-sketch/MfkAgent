@@ -103,6 +103,7 @@ HIDDEN_IMPORTS = [
     "app.core.pagination",
     "app.core.errors",
     "app.core.port_manager",
+    "app.core.skill_catalog",
     "app.core.task_graph",
     "app.core.task_graph.models",
     "app.services",

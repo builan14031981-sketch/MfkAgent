@@ -65,7 +65,7 @@ function ChatPageInner() {
   const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage, invalidateMessagesCache } = useMessages(chatId);
   const { settings, updateSettings } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
-  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
+  const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, prefsLoaded, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
 
   const {
     isSending,
@@ -149,8 +149,8 @@ function ChatPageInner() {
   const fileMapRef = useRef<Map<string, File>>(new Map());
 
   // 推理强度初始值：三级回落（localStorage → settings.default_reasoning_effort → none），
-  // 会话切换时重置；localStorage 已有偏好或 settings 就绪后再初始化，避免 settings 未加载时过早置 none
-  if (reasoningInitForChatId !== chatId && (hasLocalReasoning || settings)) {
+  // 会话切换时重置；本地偏好读取完成（prefsLoaded）或 settings 就绪后再初始化，避免 settings 未加载时过早置 none
+  if (reasoningInitForChatId !== chatId && (prefsLoaded || hasLocalReasoning || settings)) {
     setReasoningInitForChatId(chatId);
     setReasoningEffort(prefReasoningEffort);
   }

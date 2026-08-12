@@ -119,3 +119,33 @@ def make_tool_approval(
     if chat_id is not None:
         event["chat_id"] = chat_id
     return event
+
+
+def make_choice_request(
+    choice_id: str,
+    tool_call_id: str,
+    question: str,
+    options: list,
+    recommended: "int | None",
+    allow_custom: bool = True,
+    chat_id: "int | None" = None,
+) -> Dict:
+    """构造 choice_request 事件（ask_user_choice 工具，additive）。
+
+    前端渲染抉择卡：选项列表（recommended 下标高亮）+ 自定义输入。
+    """
+    from datetime import datetime, timezone
+
+    event: Dict = {
+        "type": "choice_request",
+        "choice_id": choice_id,
+        "tool_call_id": tool_call_id,
+        "question": question,
+        "options": options,
+        "recommended": recommended,
+        "allow_custom": allow_custom,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if chat_id is not None:
+        event["chat_id"] = chat_id
+    return event

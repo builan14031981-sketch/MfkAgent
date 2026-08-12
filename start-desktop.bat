@@ -2,6 +2,9 @@
 chcp 65001 >nul
 echo Starting MfkAgent Desktop...
 
+:: 后端 Python 解释器（3.14，已装 fastapi/sqlalchemy；PATH 中的 python 可能被其它运行时劫持）
+set "PYTHON=C:\Users\Asus\AppData\Local\Programs\Python\Python314\python.exe"
+
 echo.
 echo [1/3] Starting Backend (auto-detecting port)...
 :: 清理占用 8001 端口的旧后端进程,确保加载最新代码
@@ -9,7 +12,9 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001 ^| findstr LISTENING') 
     echo Cleaning up stale backend process PID %%a ...
     taskkill /pid %%a /f >nul 2>&1
 )
-start "MfkAgent Backend" cmd /c "cd /d %~dp0backend && python main.py"
+:: 清理上次强杀后端残留的端口文件，避免读到旧端口
+if exist "%~dp0backend\.mfkagent_port" del "%~dp0backend\.mfkagent_port"
+start "MfkAgent Backend" cmd /c "cd /d %~dp0backend && %PYTHON% main.py"
 
 echo Waiting for backend port file...
 set BACKEND_PORT=8001
@@ -51,6 +56,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo [3/3] Starting Electron...
 set ELECTRON_DEV=true
+set MFK_BACKEND_PORT=%BACKEND_PORT%
 start "MfkAgent Electron" cmd /c "cd /d %~dp0frontend && npx electron ."
 
 echo.

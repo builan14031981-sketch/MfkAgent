@@ -630,7 +630,9 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
 
         {/* ===== 通用对话 ===== */}
         <div>
-          {/* section header：sticky 吸顶在项目工作区 header 下方（项目头压后身高约 22px，留一点距为 28），列表独立滚（2026-08-11） */}
+          {/* section header：sticky 吸顶于自己 section 顶部（父带子原则，2026-08-12）。
+              旧设计 top:28 硬编码了与兄弟标题（项目工作区）的叠放关系，但项目标题随自己 section 滚走后会被释放，
+              导致本标题孤悬在 28px 处头顶留白（用户报「悬浮」）。兄弟不互相定位，各自只管自己的孩子 → top:0 */}
           <button
             onClick={toggleGeneralChats}
             style={{
@@ -644,7 +646,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               cursor: "pointer",
               outline: "none",
               position: "sticky",
-              top: 28,
+              top: 0,
               zIndex: 1,
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}

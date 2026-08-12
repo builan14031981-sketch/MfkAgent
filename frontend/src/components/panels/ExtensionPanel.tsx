@@ -7,14 +7,13 @@
  *
  * 页面结构（双区块 + 三级导航）：
  * - main_extensions（默认）
- *   - 区块 1: Skills（紧凑卡片，5 个内置 Skill）
+ *   - 区块 1: Skills（紧凑卡片，对接后端 /api/skills/builtin 的 15 个内置 Skill）
  *   - 区块 2: Plugins（从 /api/plugins 拉取，紧凑卡片）
  * - skill_detail（点击 Skill 卡片后进入）
  *   - 头部卡 + 能力说明 + 适用场景 + 操作
  *
- * V1 原则：
- * - Skill：用户可启用/关闭
- * - Plugin：V1 只读显示（不暴露 CRUD），符合企划书 V4.0 红线
+ * Skill：用户可安装 / 卸载（后端持久化，卸载仅停用、可随时重装）
+ * Plugin：V1 只读显示（不暴露 CRUD），符合企划书 V4.0 红线
  *
  * 视觉规范：
  * - 紧凑卡片严格对齐 AgentListPanel 的 10×12 padding、单行布局
@@ -22,54 +21,34 @@
  * - 三级导航复用 SettingsPanel 的 AnimatePresence 模式
  */
 
-import { useState, useEffect, useMemo, type CSSProperties } from "react";
-import { ChevronLeft, Sparkles, Presentation, Code2, Search, Palette, ShieldCheck, Globe, Terminal, FileText, Check } from "lucide-react";
+import { useMemo, type CSSProperties } from "react";
+import {
+  ChevronLeft,
+  Sparkles,
+  Code2,
+  Globe,
+  Terminal,
+  FileText,
+  Check,
+  Database,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePlugins, type PluginInfo } from "@/hooks/usePlugins";
+import { useSkills } from "@/hooks/useSkills";
 
-// ── Skill 元数据（V1 静态） ──
+// ── Skill 图标映射（按后端 category 字段） ──
 
-export type SkillId = "ppt" | "python" | "research" | "ui" | "security";
+const SKILL_CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
+  代码: Code2,
+  文档: FileText,
+  数据: Database,
+  效率: Zap,
+  通用: Sparkles,
+};
 
-interface SkillMeta {
-  id: SkillId;
-  icon: typeof Sparkles;
-  i18nKey: SkillId;
-}
-
-const SKILL_META: SkillMeta[] = [
-  { id: "ppt", icon: Presentation, i18nKey: "ppt" },
-  { id: "python", icon: Code2, i18nKey: "python" },
-  { id: "research", icon: Search, i18nKey: "research" },
-  { id: "ui", icon: Palette, i18nKey: "ui" },
-  { id: "security", icon: ShieldCheck, i18nKey: "security" },
-];
-
-const SKILL_STORAGE_KEY = "mfk_installed_skills";
-
-/** 读取已安装 Skill 列表（SSR 安全） */
-function readInstalledSkills(): Set<SkillId> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = localStorage.getItem(SKILL_STORAGE_KEY);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return new Set();
-    return new Set(arr.filter((x): x is SkillId =>
-      x === "ppt" || x === "python" || x === "research" || x === "ui" || x === "security"
-    ));
-  } catch {
-    return new Set();
-  }
-}
-
-function writeInstalledSkills(set: Set<SkillId>): void {
-  try {
-    localStorage.setItem(SKILL_STORAGE_KEY, JSON.stringify([...set]));
-  } catch {
-    /* 静默 */
-  }
-}
+const SKILL_CATEGORY_FALLBACK_ICON = Sparkles;
 
 // ── Plugin 图标映射（与 usePlugins 后端数据 plugin_id 对应） ──
 
@@ -121,8 +100,8 @@ const SOFT_NOTE_STYLE: CSSProperties = {
 
 interface ExtensionPanelProps {
   /** 当前查看的 Skill id；null 表示扩展主页 */
-  editingSkillId: SkillId | null;
-  onSelectSkill: (id: SkillId) => void;
+  editingSkillId: string | null;
+  onSelectSkill: (id: string) => void;
   onBackToList: () => void;
 }
 
@@ -130,7 +109,7 @@ export function ExtensionPanel({ editingSkillId, onSelectSkill, onBackToList }: 
   const { t } = useTranslation();
 
   // 详情页渲染优先级最高
-  // 使用 key={editingSkillId} 强制 Remount：导航切换 Skill 时自然重新读取 localStorage，
+  // 使用 key={editingSkillId} 强制 Remount：导航切换 Skill 时重新拉取后端状态，
   // 避免 useEffect+setState 同步触发带来的级联渲染风险。
   if (editingSkillId != null) {
     return (
@@ -154,27 +133,21 @@ function ExtensionList({
   onSelectSkill,
   t,
 }: {
-  onSelectSkill: (id: SkillId) => void;
+  onSelectSkill: (id: string) => void;
   t: Translator;
 }) {
-  const [installed, setInstalled] = useState<Set<SkillId>>(() => readInstalledSkills());
+  const { skills, loading, error, installSkill, uninstallSkill } = useSkills();
 
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === SKILL_STORAGE_KEY) setInstalled(readInstalledSkills());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  const installedCount = useMemo(
+    () => skills.filter((s) => s.installed).length,
+    [skills]
+  );
 
-  const toggleSkill = (id: SkillId) => {
-    setInstalled((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      writeInstalledSkills(next);
-      return next;
-    });
+  const toggleSkill = async (id: string) => {
+    const skill = skills.find((s) => s.id === id);
+    if (!skill) return;
+    if (skill.installed) await uninstallSkill(id);
+    else await installSkill(id);
   };
 
   return (
@@ -184,31 +157,39 @@ function ExtensionList({
         title={t("settings.extensions.skills.sectionTitle")}
         subtitle={t("settings.extensions.skills.sectionDesc")}
         counter={t("settings.extensions.skills.installedCount", {
-          count: String(installed.size),
-          total: String(SKILL_META.length),
+          count: String(installedCount),
+          total: String(skills.length),
         })}
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "22px" }}>
-        {SKILL_META.map(({ id, icon: Icon }) => {
-          const isInstalled = installed.has(id);
-          return (
-            <SkillCompactCard
-              key={id}
-              id={id}
-              icon={<Icon style={{ width: "18px", height: "18px", color: "var(--color-primary)" }} />}
-              name={t(`settings.extensions.skillList.${id}.name`)}
-              summary={t(`settings.extensions.skillList.${id}.summary`)}
-              isInstalled={isInstalled}
-              t={t}
-              onClick={() => onSelectSkill(id)}
-              onToggle={(e) => {
-                e.stopPropagation();
-                toggleSkill(id);
-              }}
-            />
-          );
-        })}
+        {loading ? (
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>{t("common.loading")}</p>
+        ) : error ? (
+          <p style={{ fontSize: "12px", color: "var(--color-error)", margin: 0 }}>{error}</p>
+        ) : skills.length === 0 ? (
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>{t("common.noData")}</p>
+        ) : (
+          skills.map((skill) => {
+            const Icon = SKILL_CATEGORY_ICON_MAP[skill.category] ?? SKILL_CATEGORY_FALLBACK_ICON;
+            return (
+              <SkillCompactCard
+                key={skill.id}
+                id={skill.id}
+                icon={<Icon style={{ width: "18px", height: "18px", color: "var(--color-primary)" }} />}
+                name={skill.name}
+                summary={skill.description}
+                isInstalled={skill.installed}
+                t={t}
+                onClick={() => onSelectSkill(skill.id)}
+                onToggle={(e) => {
+                  e.stopPropagation();
+                  toggleSkill(skill.id);
+                }}
+              />
+            );
+          })
+        )}
       </div>
 
       {/* ── 区块 2: Plugins ── */}
@@ -228,7 +209,7 @@ function SkillCompactCard({
   onClick,
   onToggle,
 }: {
-  id: SkillId;
+  id: string;
   icon: React.ReactNode;
   name: string;
   summary: string;
@@ -471,16 +452,22 @@ function SkillDetail({
   onBack,
   t,
 }: {
-  skillId: SkillId;
+  skillId: string;
   onBack: () => void;
   t: Translator;
 }) {
-  const meta = SKILL_META.find((s) => s.id === skillId);
-  // 初始值懒加载即可：父组件已用 key={skillId} 强制 Remount，
-  // 每次进入都是全新实例，state 重新初始化天然反映最新 localStorage。
-  const [installed, setInstalled] = useState<Set<SkillId>>(() => readInstalledSkills());
+  const { skills, loading, installSkill, uninstallSkill } = useSkills();
+  const skill = skills.find((s) => s.id === skillId);
 
-  if (!meta) {
+  if (loading && !skill) {
+    return (
+      <p style={{ fontSize: "13px", color: "var(--text-level-3)" }}>
+        {t("common.loading")}
+      </p>
+    );
+  }
+
+  if (!skill) {
     return (
       <p style={{ fontSize: "13px", color: "var(--text-level-3)" }}>
         {t("settings.extensions.skillDetail.notFound")}
@@ -488,18 +475,12 @@ function SkillDetail({
     );
   }
 
-  const Icon = meta.icon;
-  const isInstalled = installed.has(skillId);
-  const baseKey = `settings.extensions.skillList.${skillId}`;
+  const Icon = SKILL_CATEGORY_ICON_MAP[skill.category] ?? SKILL_CATEGORY_FALLBACK_ICON;
+  const isInstalled = skill.installed;
 
-  const toggle = () => {
-    setInstalled((prev) => {
-      const next = new Set(prev);
-      if (next.has(skillId)) next.delete(skillId);
-      else next.add(skillId);
-      writeInstalledSkills(next);
-      return next;
-    });
+  const toggle = async () => {
+    if (skill.installed) await uninstallSkill(skill.id);
+    else await installSkill(skill.id);
   };
 
   return (
@@ -549,7 +530,7 @@ function SkillDetail({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <p style={{ fontSize: "14px", fontWeight: "600", color: "var(--text-level-1)", margin: 0 }}>
-                {t(`${baseKey}.name`)}
+                {skill.name}
               </p>
               {isInstalled && (
                 <span style={{
@@ -569,7 +550,7 @@ function SkillDetail({
               )}
             </div>
             <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
-              {t(`${baseKey}.summary`)}
+              {skill.description}
             </p>
           </div>
         </div>
@@ -589,7 +570,7 @@ function SkillDetail({
           color: "var(--text-level-2)",
           lineHeight: 1.6,
         }}>
-          {t(`${baseKey}.capabilities`)}
+          {skill.description}
         </div>
       </div>
 
@@ -607,7 +588,7 @@ function SkillDetail({
           color: "var(--text-level-2)",
           lineHeight: 1.6,
         }}>
-          {t(`${baseKey}.scenarios`)}
+          {skill.tags.length > 0 ? skill.tags.join("、") : "-"}
         </div>
       </div>
 
