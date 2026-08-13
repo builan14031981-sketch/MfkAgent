@@ -70,6 +70,29 @@ class MemoryItemResponse(BaseModel):
         from_attributes = True
 
 
+class MemoryItemUpdate(BaseModel):
+    content: Optional[str] = None
+    memory_type: Optional[str] = None
+    confidence: Optional[float] = None
+
+    @field_validator("memory_type")
+    @classmethod
+    def check_memory_type(cls, v):
+        if v is not None and v not in (
+            "preference", "fact", "workflow", "project",
+            "user_preference", "interaction_pattern", "relationship_note", "current_context",
+        ):
+            raise ValueError("memory_type 必须是 preference/fact/workflow/project/user_preference/interaction_pattern/relationship_note/current_context 之一")
+        return v
+
+    @field_validator("confidence")
+    @classmethod
+    def check_confidence(cls, v):
+        if v is not None and not 0.0 <= v <= 1.0:
+            raise ValueError("confidence must be in [0.0, 1.0]")
+        return v
+
+
 @router.post("", response_model=MemoryItemResponse)
 async def create_memory_item(memory: MemoryItemCreate):
     content = (memory.content or "").strip()
@@ -99,6 +122,7 @@ async def list_memory_items(
     scope: Optional[str] = None,
     agent_id: Optional[str] = None,
     project_id: Optional[int] = None,
+    q: Optional[str] = None,
 ):
     if scope is not None and scope not in SCOPES:
         raise HTTPException(status_code=400, detail="scope must be one of global/agent/project")
@@ -111,7 +135,59 @@ async def list_memory_items(
             query = query.filter(MemoryItem.agent_id == agent_id)
         if project_id is not None:
             query = query.filter(MemoryItem.project_id == project_id)
+        if q:
+            like = f"%{q}%"
+            query = query.filter(MemoryItem.content.like(like))
         return query.order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc()).all()
+    finally:
+        db.close()
+
+
+@router.get("/count")
+async def count_memory_items(
+    scope: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    project_id: Optional[int] = None,
+    q: Optional[str] = None,
+):
+    if scope is not None and scope not in SCOPES:
+        raise HTTPException(status_code=400, detail="scope must be one of global/agent/project")
+    db = SessionLocal()
+    try:
+        query = db.query(MemoryItem)
+        if scope is not None:
+            query = query.filter(MemoryItem.scope == scope)
+        if agent_id is not None:
+            query = query.filter(MemoryItem.agent_id == agent_id)
+        if project_id is not None:
+            query = query.filter(MemoryItem.project_id == project_id)
+        if q:
+            like = f"%{q}%"
+            query = query.filter(MemoryItem.content.like(like))
+        return {"count": query.count()}
+    finally:
+        db.close()
+
+
+@router.put("/{memory_id}", response_model=MemoryItemResponse)
+async def update_memory_item(memory_id: int, update: MemoryItemUpdate):
+    db = SessionLocal()
+    try:
+        item = db.query(MemoryItem).filter(MemoryItem.id == memory_id).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        if update.content is not None:
+            content = (update.content or "").strip()
+            if not content:
+                raise HTTPException(status_code=400, detail="content 不能为空")
+            item.content = content
+        if update.memory_type is not None:
+            item.memory_type = update.memory_type
+        if update.confidence is not None:
+            item.confidence = update.confidence
+        db.commit()
+        db.refresh(item)
+        return item
     finally:
         db.close()
 

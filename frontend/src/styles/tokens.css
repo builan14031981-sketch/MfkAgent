@@ -4,25 +4,83 @@
  * 视觉关键词：Quiet / Professional / Structured / Calm
  * 参考：Adobe 专业软件 · macOS · Codex · VS Code
  *
- * 三套视觉主题（html[data-theme] 驱动）：
- *   obsidian —— Obsidian Dark，专业 AI 工作站（默认）
- *   studio   —— Apple Studio Light，简洁明亮日间
- *   terminal —— Developer Terminal，开发者高密度
+ * 视觉主题（html[data-theme] 驱动），2026-08-13 整理：
+ * 官方   studio-graphite —— Studio 石墨（Notion 式近黑强调，默认）
+ *        terminal        —— Developer Terminal，开发者高密度
+ * 实验   obsidian（原默认深色）/ studio（Apple 明亮）/ titanium /
+ *        paper / midnight / mono / warm-minimal / aurora
+ * 移除   studio-lavender / studio-spectrum（已归档 _backup/theme-regroup-20260813）
  *
  * 兼容策略：
  *   1) 新语义 Token 前缀 --mf-*（V2 组件使用）
  *   2) 旧名 --bg-level-* / --text-level-* / --color-primary 等
- *      在每个主题块中做别名映射，存量组件零改动可用。
- *   3) :root 默认即 obsidian，保证首屏与默认主题一致。
+ *      单独主题块中做别名映射，存量组件零改动可用。
+ *   3) :root 默认即 studio-graphite，保证首屏与默认主题一致。
  * ============================================================ */
 
 /* ------------------------------------------------------------
- * Theme A：Obsidian Dark（默认）
- * 带蓝相石墨层阶，层级靠亮度阶步进，不用纯黑。
+ * Theme A：Studio Graphite（默认，官方）
+ * 石墨墨色：Notion 式近黑主按钮，白底只留红黄绿语义色。
  * ------------------------------------------------------------ */
 :root,
+html[data-theme="studio-graphite"] {
+  /* 用户气泡（官方=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 20%, transparent);
+  /* ── V2 语义 Token ── */
+  --mf-bg-app: #ffffff;
+  --mf-bg-surface: #f6f6f8;
+  --mf-bg-card: #f7f7f9;
+  --mf-bg-elevated: #efeff2;
+
+  --mf-text-1: #1a1b1e;
+  --mf-text-2: #3c4047;
+  --mf-text-3: #5d626c;
+  --mf-text-4: #8a8f98;
+
+  --mf-border-1: #e4e5e9;
+  --mf-border-2: #ededf0;
+
+  --mf-accent: #26282d;              /* 石墨墨色：主按钮近黑，白底只留红黄绿语义色 */
+  --mf-accent-hover: #3a3d43;
+  --mf-accent-active: #17181b;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(38, 40, 45, 0.10);
+  --mf-accent-faint: rgba(38, 40, 45, 0.05);
+
+  --mf-selection: rgba(38, 40, 45, 0.10);
+  --mf-focus-ring: rgba(38, 40, 45, 0.32);
+
+  /* 侧边栏选中态层级（2026-08-11）：文件夹深一档 / 会话浅一档，
+     实色中性灰替代半透明黑蒙层，消除发浑（Notion 手法） */
+  --sidebar-active-bg-strong: #e8e8ec;
+  --sidebar-active-bg: #f0f0f3;
+
+  --mf-state-success: #2e9e5b;
+  --mf-state-warning: #b97f1f;
+  --mf-state-error: #cc4b42;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --mf-motion-fast: 0.12s ease;      /* 微交互 */
+  --mf-motion-base: 0.2s ease;       /* 面板 */
+  --mf-motion-slow: 0.3s ease;       /* 页面级 */
+
+  --mf-glass-bg: rgba(255, 255, 255, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* ------------------------------------------------------------
+ * Theme Obsidian Dark（原默认深色，2026-08-13 降级实验区）
+ * 带蓝相石墨层阶，层级靠亮度阶步进，不用纯黑。
+ * ------------------------------------------------------------ */
 html[data-theme="obsidian"] {
-  /* 用户气泡（官方=方案A：中性面，零色相噪音） */
+  /* 用户气泡（方案A：中性面，零色相噪音） */
   --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
   --mf-bubble-user-border: var(--mf-border-1);
@@ -95,6 +153,11 @@ html[data-theme="obsidian"] {
 
   --overlay-modal: rgba(0, 0, 0, 0.55);
   --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  /* 侧栏选中态：中性抬升灰 + 浅色文字，避免蓝/白突兀（2026-08-13） */
+  --sidebar-active-bg: #20242c;
+  --sidebar-active-bg-strong: #262b34;
+  --sidebar-active-fg: var(--mf-text-1);
 }
 
 /* ------------------------------------------------------------
@@ -126,6 +189,10 @@ html[data-theme="studio"] {
 
   --mf-selection: rgba(10, 108, 214, 0.22);
   --mf-focus-ring: rgba(10, 108, 214, 0.45);
+  /* 侧栏选中态：本主题实色中性步进（文件夹加深一档），文字用主文字色，避免 tint 发浑 */
+  --sidebar-active-bg: #ececf0;
+  --sidebar-active-bg-strong: #e0e1e7;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #2e9e5b;
   --mf-state-warning: #b97f1f;
@@ -242,13 +309,18 @@ html[data-theme="terminal"] {
 
   --overlay-modal: rgba(0, 0, 0, 0.5);
   --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.28);
+
+  /* 侧栏选中态：中性抬升灰 + 浅色文字，避免蓝/白突兀（2026-08-13） */
+  --sidebar-active-bg: #2f3136;
+  --sidebar-active-bg-strong: #3a3d44;
+  --sidebar-active-fg: var(--mf-text-1);
 }
 
 /* ------------------------------------------------------------
  * V2 旧名共享别名层
- * 实验主题只需定义 --mf-* Token（含 accent-soft/faint、
- * glass、shadow、状态色全套），旧名在此统一解析。
- * 三套官方主题自带更高特异性的别名块，不受影响。
+ * 实验主题或依赖共享层的官方主题（如 studio-graphite）只需定义 --mf-*
+ * Token（含 accent-soft/faint、glass、shadow、状态色全套），旧名在此统一解析。
+ * obsidian / studio / terminal 自带更高特异性的别名块，不受影响。
  * ------------------------------------------------------------ */
 :root {
   --bg-level-1: var(--mf-bg-surface);
@@ -321,6 +393,10 @@ html[data-theme="titanium"] {
 
   --mf-selection: rgba(77, 106, 138, 0.22);
   --mf-focus-ring: rgba(77, 106, 138, 0.45);
+  /* 侧栏选中态：钛金属实色钢灰步进 */
+  --sidebar-active-bg: #c9cdd4;
+  --sidebar-active-bg-strong: #bcc1c9;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #2e9e5b;
   --mf-state-warning: #b97f1f;
@@ -364,6 +440,10 @@ html[data-theme="paper"] {
 
   --mf-selection: rgba(156, 66, 42, 0.20);
   --mf-focus-ring: rgba(156, 66, 42, 0.42);
+  /* 侧栏选中态：纸面暖褐中性步进 */
+  --sidebar-active-bg: #e3dfd0;
+  --sidebar-active-bg-strong: #d7d2c0;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #5b7f4a;
   --mf-state-warning: #a97b24;
@@ -407,6 +487,10 @@ html[data-theme="midnight"] {
 
   --mf-selection: rgba(109, 143, 191, 0.30);
   --mf-focus-ring: rgba(109, 143, 191, 0.55);
+  /* 侧栏选中态：午夜藏蓝中性步进 */
+  --sidebar-active-bg: #1a2131;
+  --sidebar-active-bg-strong: #242d41;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #3fb96f;
   --mf-state-warning: #d9a13b;
@@ -450,6 +534,10 @@ html[data-theme="mono"] {
 
   --mf-selection: rgba(229, 229, 230, 0.24);
   --mf-focus-ring: rgba(229, 229, 230, 0.50);
+  /* 侧栏选中态：纯单色中性步进（零彩度） */
+  --sidebar-active-bg: #252528;
+  --sidebar-active-bg-strong: #303034;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #3fb96f;
   --mf-state-warning: #d9a13b;
@@ -493,6 +581,10 @@ html[data-theme="warm-minimal"] {
 
   --mf-selection: rgba(165, 111, 69, 0.20);
   --mf-focus-ring: rgba(165, 111, 69, 0.42);
+  /* 侧栏选中态：暖调极简焦糖中性步进 */
+  --sidebar-active-bg: #eae4dc;
+  --sidebar-active-bg-strong: #ddd5c9;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #5b7f4a;
   --mf-state-warning: #a97b24;
@@ -536,6 +628,10 @@ html[data-theme="aurora"] {
 
   --mf-selection: rgba(95, 168, 147, 0.28);
   --mf-focus-ring: rgba(95, 168, 147, 0.50);
+  /* 侧栏选中态：极光青绿中性步进 */
+  --sidebar-active-bg: #1c2621;
+  --sidebar-active-bg-strong: #27332c;
+  --sidebar-active-fg: var(--mf-text-1);
 
   --mf-state-success: #3fb96f;
   --mf-state-warning: #d9a13b;
@@ -551,148 +647,153 @@ html[data-theme="aurora"] {
   --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.32);
 }
 
+/* Exp：Clay —— Studio 陶土（2026-08-13 第三方候选，Claude/Anthropic 式）
+ * 暖白纸感浅色，陶土橙强调，反技术冷蓝。 */
+html[data-theme="clay"] {
+  /* 用户气泡（实验=方案B：低饱和 tint） */
+  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 10%, var(--mf-bg-card));
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 24%, transparent);
+  --mf-bg-app: #f5f4ed;                 /* 暖纸底（parchment） */
+  --mf-bg-surface: #ece9df;             /* 侧边栏温暖 */
+  --mf-bg-card: #faf9f5;                /* 象牙卡片 */
+  --mf-bg-elevated: #e8e5da;
+
+  --mf-text-1: #1a191b;
+  --mf-text-2: #3d3d3a;
+  --mf-text-3: #5e5d59;
+  --mf-text-4: #87867f;
+
+  --mf-border-1: #ddd9cc;
+  --mf-border-2: #e8e5da;
+
+  --mf-accent: #c96442;                 /* 陶土橙（深，AA 达标） */
+  --mf-accent-hover: #d97757;
+  --mf-accent-active: #a94d2f;
+  --mf-on-accent: #fdfcf9;
+  --mf-accent-soft: rgba(201, 100, 66, 0.12);
+  --mf-accent-faint: rgba(201, 100, 66, 0.06);
+
+  --mf-selection: rgba(201, 100, 66, 0.14);
+  --mf-focus-ring: rgba(201, 100, 66, 0.38);
+
+  --sidebar-active-bg-strong: #e7e2d4;
+  --sidebar-active-bg: #efe9dc;
+
+  --mf-state-success: #2f7d4f;
+  --mf-state-warning: #a86a1f;
+  --mf-state-error: #b53333;            /* Anthropic 绯红 */
+
+  --mf-shadow-sm: 0 1px 2px rgba(82, 61, 38, 0.05);
+  --mf-shadow-md: 0 4px 12px rgba(82, 61, 38, 0.08);
+  --mf-shadow-lg: 0 8px 24px rgba(82, 61, 38, 0.12);
+
+  --mf-glass-bg: rgba(250, 249, 245, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.5);
+  --mf-overlay-modal: rgba(52, 41, 30, 0.32);
+  --mf-shadow-composer: 0 1px 2px rgba(82, 61, 38, 0.04), 0 2px 8px rgba(82, 61, 38, 0.05);
+}
+
+/* Exp：Indigo —— 暗夜靛（2026-08-13 第三方候选，Linear 式）
+ * 近黑工程暗色，薰衣草靛单一强调，细亮发丝线。 */
+html[data-theme="indigo"] {
+  /* 用户气泡（实验=方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: var(--mf-border-1);
+  --mf-bg-app: #08090a;
+  --mf-bg-surface: #101113;
+  --mf-bg-card: #141516;
+  --mf-bg-elevated: #1b1c1d;
+
+  --mf-text-1: #f7f8f8;
+  --mf-text-2: #c9ccd1;
+  --mf-text-3: #aeb1b6;
+  --mf-text-4: #6d7076;
+
+  --mf-border-1: #26272b;
+  --mf-border-2: #1e1f22;
+
+  --mf-accent: #5e6ad2;
+  --mf-accent-hover: #7884de;
+  --mf-accent-active: #4e5ab8;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(94, 106, 210, 0.13);
+  --mf-accent-faint: rgba(94, 106, 210, 0.06);
+
+  --mf-selection: rgba(94, 106, 210, 0.28);
+  --mf-focus-ring: rgba(94, 106, 210, 0.50);
+
+  --sidebar-active-bg-strong: #212329;
+  --sidebar-active-bg: #191a1c;
+
+  --mf-state-success: #27a644;
+  --mf-state-warning: #d78c1c;
+  --mf-state-error: #e04f4f;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.42);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.52);
+
+  --mf-glass-bg: rgba(14, 15, 18, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.06);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.60);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.30), 0 2px 8px rgba(0, 0, 0, 0.40);
+}
+
+/* Exp：Graphite Dark —— 石墨暗夜（2026-08-13 第三方候选）
+ * 与默认石墨（studio-graphite）成日/夜配对，纯中性暗色。 */
+html[data-theme="graphite-dark"] {
+  /* 用户气泡（实验=方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
+  --mf-bubble-user-fg: var(--mf-text-1);
+  --mf-bubble-user-border: var(--mf-border-1);
+  --mf-bg-app: #0e0f10;
+  --mf-bg-surface: #131416;
+  --mf-bg-card: #18191b;
+  --mf-bg-elevated: #1f2023;
+
+  --mf-text-1: #e7e7e8;
+  --mf-text-2: #c2c3c6;
+  --mf-text-3: #96989c;
+  --mf-text-4: #6a6c70;
+
+  --mf-border-1: #26272a;
+  --mf-border-2: #1e1f22;
+
+  --mf-accent: #3a3d43;                 /* 暗底提亮的石墨 */
+  --mf-accent-hover: #4a4e55;
+  --mf-accent-active: #2c2e33;
+  --mf-on-accent: #ffffff;
+  --mf-accent-soft: rgba(255, 255, 255, 0.08);
+  --mf-accent-faint: rgba(255, 255, 255, 0.05);
+
+  --mf-selection: rgba(255, 255, 255, 0.10);
+  --mf-focus-ring: rgba(255, 255, 255, 0.28);
+
+  --sidebar-active-bg-strong: #2a2b2f;
+  --sidebar-active-bg: #1f2023;
+
+  --mf-state-success: #3fb96f;
+  --mf-state-warning: #d9a13b;
+  --mf-state-error: #e05b52;
+
+  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.42);
+  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.52);
+
+  --mf-glass-bg: rgba(22, 23, 25, 0.72);
+  --mf-glass-border: rgba(255, 255, 255, 0.07);
+  --mf-overlay-modal: rgba(0, 0, 0, 0.62);
+  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.40);
+}
+
 /* ============================================================
- * Studio Accent 对比样张（2026-08-11 配色调研）
- * 三套均复用 Studio Light 的中性基底（背景/文字/边框/阴影完全一致），
- * 仅替换强调色方向，供用户 A/B/C 对比后选定，再写回官方 studio 主题。
- *   studio-graphite  —— 石墨墨色（Notion 式：主按钮近黑，零色相噪音）
- *   studio-lavender  —— 薰衣草蓝（Linear 式 #5e6ad2，降饱和冷调）
- *   studio-spectrum  —— 改良深蓝（保守方案：压饱和收紧使用）
+ * 2026-08-13 主题整理：Studio Accent 三个对比样张（graphite/lavender/spectrum）
+ * 验收完毕。石墨（studio-graphite）已转正为官方默认主题（见文件顶部 Theme A），
+ * 薰衣草（studio-lavender）与深蓝（studio-spectrum）淘汰移除。
+ * 完整版本保留于 _backup/theme-regroup-20260813/tokens.css。
  * ============================================================ */
-
-/* Preview-1：Studio Graphite —— 石墨墨色（Notion 式） */
-html[data-theme="studio-graphite"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
-  --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 20%, transparent);
-  --mf-bg-app: #ffffff;
-  --mf-bg-surface: #f6f6f8;
-  --mf-bg-card: #f7f7f9;
-  --mf-bg-elevated: #efeff2;
-
-  --mf-text-1: #1a1b1e;
-  --mf-text-2: #3c4047;
-  --mf-text-3: #5d626c;
-  --mf-text-4: #8a8f98;
-
-  --mf-border-1: #e4e5e9;
-  --mf-border-2: #ededf0;
-
-  --mf-accent: #26282d;              /* 石墨墨色：主按钮近黑，白底只留红黄绿语义色 */
-  --mf-accent-hover: #3a3d43;
-  --mf-accent-active: #17181b;
-  --mf-on-accent: #ffffff;
-  --mf-accent-soft: rgba(38, 40, 45, 0.10);
-  --mf-accent-faint: rgba(38, 40, 45, 0.05);
-
-  --mf-selection: rgba(38, 40, 45, 0.10);
-  --mf-focus-ring: rgba(38, 40, 45, 0.32);
-
-  /* 侧边栏选中态层级（2026-08-11）：文件夹深一档 / 会话浅一档，
-     实色中性灰替代半透明黑蒙层，消除发浑（Notion 手法） */
-  --sidebar-active-bg-strong: #e8e8ec;
-  --sidebar-active-bg: #f0f0f3;
-
-  --mf-state-success: #2e9e5b;
-  --mf-state-warning: #b97f1f;
-  --mf-state-error: #cc4b42;
-
-  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-
-  --mf-glass-bg: rgba(255, 255, 255, 0.72);
-  --mf-glass-border: rgba(255, 255, 255, 0.5);
-  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
-  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-/* Preview-2：Studio Lavender —— 薰衣草蓝（Linear 式） */
-html[data-theme="studio-lavender"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
-  --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
-  --mf-bg-app: #ffffff;
-  --mf-bg-surface: #f6f6f8;
-  --mf-bg-card: #f7f7f9;
-  --mf-bg-elevated: #efeff2;
-
-  --mf-text-1: #1a1b1e;
-  --mf-text-2: #3c4047;
-  --mf-text-3: #5d626c;
-  --mf-text-4: #8a8f98;
-
-  --mf-border-1: #e4e5e9;
-  --mf-border-2: #ededf0;
-
-  --mf-accent: #5e6ad2;              /* Linear 同款降饱和薰衣草蓝 */
-  --mf-accent-hover: #6f7ada;
-  --mf-accent-active: #4d59b8;
-  --mf-on-accent: #ffffff;
-  --mf-accent-soft: rgba(94, 106, 210, 0.11);
-  --mf-accent-faint: rgba(94, 106, 210, 0.05);
-
-  --mf-selection: rgba(94, 106, 210, 0.16);
-  --mf-focus-ring: rgba(94, 106, 210, 0.40);
-
-  --mf-state-success: #2e9e5b;
-  --mf-state-warning: #b97f1f;
-  --mf-state-error: #cc4b42;
-
-  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-
-  --mf-glass-bg: rgba(255, 255, 255, 0.72);
-  --mf-glass-border: rgba(255, 255, 255, 0.5);
-  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
-  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-/* Preview-3：Studio Spectrum —— 改良深蓝（保守方案） */
-html[data-theme="studio-spectrum"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
-  --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
-  --mf-bg-app: #ffffff;
-  --mf-bg-surface: #f6f6f8;
-  --mf-bg-card: #f7f7f9;
-  --mf-bg-elevated: #efeff2;
-
-  --mf-text-1: #1a1b1e;
-  --mf-text-2: #3c4047;
-  --mf-text-3: #5d626c;
-  --mf-text-4: #8a8f98;
-
-  --mf-border-1: #e4e5e9;
-  --mf-border-2: #ededf0;
-
-  --mf-accent: #2e5fb8;              /* 降饱和深蓝：比原 #0a6cd6 更沉，供保守对比 */
-  --mf-accent-hover: #3c6dc4;
-  --mf-accent-active: #254d96;
-  --mf-on-accent: #ffffff;
-  --mf-accent-soft: rgba(46, 95, 184, 0.10);
-  --mf-accent-faint: rgba(46, 95, 184, 0.05);
-
-  --mf-selection: rgba(46, 95, 184, 0.14);
-  --mf-focus-ring: rgba(46, 95, 184, 0.38);
-
-  --mf-state-success: #2e9e5b;
-  --mf-state-warning: #b97f1f;
-  --mf-state-error: #cc4b42;
-
-  --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
-
-  --mf-glass-bg: rgba(255, 255, 255, 0.72);
-  --mf-glass-border: rgba(255, 255, 255, 0.5);
-  --mf-overlay-modal: rgba(0, 0, 0, 0.32);
-  --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
-}
 
 /* ============================================================
  * 全局规范：选区 / 焦点环 / 图标描边

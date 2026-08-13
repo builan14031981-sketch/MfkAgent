@@ -413,10 +413,22 @@ function registerIpcHandlers() {
         title: opts.title || "MfkAgent",
         body: opts.body || "",
         silent: opts.silent === true, // 渲染进程自行播放音效时设 true 避免双重音
+        // Windows: persistent=true（需用户交互：审批/抉择/错误）时不自动消失，
+        // 保持显示直到用户点击/关闭；短显信息类（完成）用默认时长
+        timeoutType: opts.persistent === true ? "never" : "default",
       });
-      // 点击通知聚焦主窗口
+      // 点击通知聚焦主窗口；带 chatId 时跳转到对应会话
       notif.on("click", () => {
         showWindow();
+        if (opts && Number.isFinite(opts.chatId)) {
+          try {
+            const url = new URL(mainWindow.webContents.getURL());
+            url.pathname = `/chat/${Number(opts.chatId)}`;
+            mainWindow.loadURL(url.toString());
+          } catch (err) {
+            console.warn("[Electron] navigate on notification click failed:", err.message);
+          }
+        }
       });
       notif.show();
       return true;

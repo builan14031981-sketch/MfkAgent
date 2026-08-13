@@ -68,8 +68,8 @@ function sortChats(chats: Chat[]): Chat[] {
 export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSidebar }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
-  const { chats, deleteChat, updateChat, pinChat, refetch: refetchChats } = useChat();
-  const { projects, createProject, deleteProject, pinProject, refetch: refetchProjects } = useProjects(1, 100);
+  const { chats, deleteChat, updateChat, pinChat, archiveChat, refetch: refetchChats } = useChat();
+  const { projects, createProject, deleteProject, pinProject, archiveProject, refetch: refetchProjects } = useProjects(1, 100);
   const { agents } = useAgents();
   const { settings } = useSettingsStore();
   const streams = useStreamStore((s) => s.streams);
@@ -251,6 +251,40 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
       await deleteProject(id);
     } catch (err) {
       console.error("Failed to delete project:", err);
+    }
+    closeContextMenu();
+  };
+
+  // 归档会话：进行中（SSE 流活跃）的会话不可归档
+  const handleArchiveChat = async (id: number) => {
+    if (streams[id] != null) {
+      closeContextMenu();
+      alert(t("chat.cannotArchiveRunning"));
+      return;
+    }
+    try {
+      await archiveChat(id);
+    } catch (err) {
+      console.error("Failed to archive chat:", err);
+    }
+    closeContextMenu();
+  };
+
+  // 归档项目：级联归档其下会话（后端处理）；仅提示一次确认
+  const handleArchiveProject = async (id: number) => {
+    const project = projects.find((p) => p.id === id);
+    if (!project) {
+      closeContextMenu();
+      return;
+    }
+    if (!window.confirm(t("chat.archiveProjectConfirm", { name: project.name }))) {
+      closeContextMenu();
+      return;
+    }
+    try {
+      await archiveProject(id);
+    } catch (err) {
+      console.error("Failed to archive project:", err);
     }
     closeContextMenu();
   };
@@ -704,8 +738,10 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         projects={projects}
         onRenameChat={startRename}
         onPinChat={handlePin}
+        onArchiveChat={handleArchiveChat}
         onDeleteChat={handleDeleteChat}
         onPinProject={(id) => handlePinProject(id, !projects.find((p) => p.id === id)?.is_pinned)}
+        onArchiveProject={handleArchiveProject}
         onDeleteProject={handleDeleteProject}
         onOpenProjectFolder={handleOpenProjectFolder}
         onClose={closeContextMenu}

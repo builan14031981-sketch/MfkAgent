@@ -9,9 +9,13 @@ import logging
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
+from app.core.log_config import init_logging
 from app.models.persona import PersonaTemplate, ExpressionKnowledge
 
 logger = logging.getLogger(__name__)
+
+# 日志文件初始化（必须在所有操作之前）
+init_logging()
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
@@ -54,6 +58,10 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN thinking_mode VARCHAR(20) DEFAULT 'none'"))
             if "mode" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN mode VARCHAR(10) DEFAULT 'build'"))
+            if "is_archived" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
+            if "archived_at" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN archived_at DATETIME"))
 
     if "projects" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("projects")}
@@ -64,6 +72,10 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE projects ADD COLUMN deleted_at DATETIME"))
             if "is_pinned" not in cols:
                 conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_pinned BOOLEAN DEFAULT 0"))
+            if "is_archived" not in cols:
+                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
+            if "archived_at" not in cols:
+                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN archived_at DATETIME"))
 
     if "messages" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("messages")}
@@ -82,6 +94,13 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE agents ADD COLUMN status VARCHAR(20) DEFAULT 'active'"))
             if "expression_profile" not in cols:
                 conn.execute(sa.text("ALTER TABLE agents ADD COLUMN expression_profile VARCHAR(50)"))
+            # Phase SubAgent：子代理字段
+            if "is_sub_agent" not in cols:
+                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN is_sub_agent BOOLEAN DEFAULT 0"))
+            if "allowed_tools" not in cols:
+                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN allowed_tools JSON"))
+            if "parent_agent_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN parent_agent_id VARCHAR(50)"))
 
     if "memory_items" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("memory_items")}
@@ -120,8 +139,35 @@ def _ensure_schema():
 
 _ensure_schema()
 
+
+def _seed_sub_agents():
+    """幂等补种子：仅插入缺失的内置子代理（不触碰已有 Agent 数据，不覆盖用户修改）。"""
+    from app.core.database import SessionLocal
+    from app.models.agent import Agent
+    from seed_agents import PRESET_AGENTS
+
+    db = SessionLocal()
+    try:
+        for agent_data in PRESET_AGENTS:
+            if not agent_data.get("is_sub_agent"):
+                continue
+            existing = db.query(Agent).filter(Agent.agent_id == agent_data["agent_id"]).first()
+            if existing:
+                continue
+            db.add(Agent(**agent_data))
+            print(f"[seed] Created sub-agent: {agent_data['name']}")
+        db.commit()
+    except Exception:
+        db.rollback()
+        print("[seed] _seed_sub_agents failed (non-fatal)")
+    finally:
+        db.close()
+
+
+_seed_sub_agents()
+
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -264,6 +310,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 # 注册路由
 app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
+app.include_router(sub_agents.router, prefix="/api/sub-agents", tags=["sub-agents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
 app.include_router(memories.router, prefix="/api/memories", tags=["memories"])
@@ -275,6 +322,8 @@ app.include_router(fonts.router, prefix="/api/fonts", tags=["fonts"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
 app.include_router(plugins.router, prefix="/api/plugins", tags=["plugins"])
 app.include_router(trash.router, prefix="/api/trash", tags=["trash"])
+app.include_router(archive.router, prefix="/api/archive", tags=["archive"])
+app.include_router(security_api.router, prefix="/api/security", tags=["security"])
 app.include_router(greetings.router, prefix="/api/system", tags=["system"])
 app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 app.include_router(runs.router, prefix="/api/runs", tags=["runs"])

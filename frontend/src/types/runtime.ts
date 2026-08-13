@@ -22,6 +22,7 @@ export type RuntimeEventType =
   | "sub_agent"
   | "vision"
   | "memory"
+  | "memory_saved"
   | "token_usage"
   | "agent_state_update";
 
@@ -127,7 +128,7 @@ export interface ApprovalEvent extends RuntimeEventBase {
   approval: ApprovalRequest;
 }
 
-/** 待抉择：choice_request 新建，tool_result 时按 tool_call_id 移除 */
+/** 待抉择：choice_request 新建，tool_result 时保留为只读记录（V3 起不随 tool_result 移除） */
 export interface UserChoiceEvent extends RuntimeEventBase {
   type: "user_choice";
   choice: UserChoiceRequest;
@@ -137,6 +138,18 @@ export interface UserChoiceEvent extends RuntimeEventBase {
 export interface TextEvent extends RuntimeEventBase {
   type: "text";
   content: string;
+}
+
+/** 自动提取并保存记忆后的可见通知（memory_saved 事件）。
+ * 由后端在对话流推送：告知"已保存 N 条记忆"，非确认卡、不阻塞对话。
+ * 同时持久化进 Message.timeline，刷新后随消息展示。 */
+export interface MemorySavedEvent extends RuntimeEventBase {
+  type: "memory_saved";
+  /** 本次提取落库的记忆条数 */
+  count: number;
+  /** 每条记忆摘要（边栏提示展开项） */
+  items: Array<{ memory_type: string; content: string }>;
+  chat_id?: number;
 }
 
 // ============================================================================
@@ -221,6 +234,7 @@ export type RuntimeEvent =
   | ApprovalEvent
   | UserChoiceEvent
   | TextEvent
+  | MemorySavedEvent
   | TaskStartedEvent
   | TaskCompletedEvent
   | TaskFailedEvent

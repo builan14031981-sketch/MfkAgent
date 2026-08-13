@@ -53,6 +53,15 @@ export function formatFullTime(isoUtc: string | null | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** 仅时间 HH:mm（消息旁时间展示，不带日期） */
+export function formatTimeOnly(isoUtc: string | null | undefined): string {
+  const ts = parseUtc(isoUtc);
+  if (ts == null) return "";
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // ──── 共享分钟级时钟：全应用单一 interval，订阅者归零自动停表 ────
 
 let snapshot = Date.now();

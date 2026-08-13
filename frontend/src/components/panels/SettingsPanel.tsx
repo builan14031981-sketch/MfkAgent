@@ -11,23 +11,26 @@
  */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert } from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Archive as ArchiveIcon } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
 import { useAgents } from "@/hooks/useAgents";
 import { Panel } from "./Panel";
 import { AgentListPanel } from "./AgentListPanel";
+import { SubAgentPanel } from "./SubAgentPanel";
+import { ArchivePanel } from "./ArchivePanel";
 import { BasicSettingsView, type SettingSectionId } from "./BasicSettingsView";
 import { AdvancedSettingsView } from "./AdvancedSettingsView";
+import { getSubAgents, type SubAgent } from "@/lib/api";
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-/** 设置面板内部视图状态机：主设置 / Agent 列表 / Agent 编辑 */
-type ViewState = "main_settings" | "agent_list" | "agent_edit";
+/** 设置面板内部视图状态机：主设置 / Agent 列表 / Agent 编辑 / 子代理列表 / 子代理编辑 / 子代理新建 */
+type ViewState = "main_settings" | "agent_list" | "agent_edit" | "sub_agent_list" | "sub_agent_edit" | "sub_agent_create";
 
 /** 含深水区参数的 section（model/ai）：基础区下方直接追加高级区，无折叠 */
 const SECTIONS_WITH_ADVANCED: SettingSectionId[] = ["model", "ai"];
@@ -50,6 +53,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   });
   const [currentView, setCurrentView] = useState<ViewState>("main_settings");
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  // 子代理三级导航：子代理列表 / 编辑 / 新建（"__create__" = 新建）
+  const [editingSubAgentId, setEditingSubAgentId] = useState<string | null>(null);
+  // 子代理列表快照（用于编辑视图标题显示名称）
+  const [subAgentsList, setSubAgentsList] = useState<SubAgent[]>([]);
   // 三级导航：Skill 详情（在扩展区点击 Skill 卡片后进入）
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [direction, setDirection] = useState<1 | -1>(1);
@@ -58,9 +65,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     if (!settings) fetchSettings();
   }, [settings, fetchSettings]);
 
+  // 进入子代理视图时拉取列表快照（标题需要名称）
+  useEffect(() => {
+    if (currentView.startsWith("sub_agent")) {
+      getSubAgents().then(setSubAgentsList).catch(() => {});
+    }
+  }, [currentView]);
+
   const handleClose = () => {
     setCurrentView("main_settings");
     setEditingAgentId(null);
+    setEditingSubAgentId(null);
     setEditingSkillId(null);
     onClose();
   };
@@ -90,6 +105,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
     { id: "security", label: t("settings.security.title"), icon: ShieldAlert },
     { id: "extensions", label: t("settings.extensions.title"), icon: Blocks },
+    { id: "archive", label: t("settings.archive.title"), icon: ArchiveIcon },
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
 
@@ -98,17 +114,29 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       ? t("settings.title")
       : currentView === "agent_list"
         ? t("settings.ai.agents.title")
-        : (agents.find((a) => a.id === editingAgentId)?.name ?? t("settings.ai.agents.title"));
+        : currentView === "sub_agent_list"
+          ? t("settings.ai.subAgents.title")
+          : currentView === "sub_agent_create"
+            ? t("settings.ai.subAgents.create")
+            : currentView === "sub_agent_edit"
+              ? (subAgentsList.find((s) => s.id === editingSubAgentId)?.name ?? t("settings.ai.subAgents.title"))
+              : (agents.find((a) => a.id === editingAgentId)?.name ?? t("settings.ai.agents.title"));
 
   const goToMainSettings = () => {
     setDirection(-1);
     setEditingAgentId(null);
+    setEditingSubAgentId(null);
     setCurrentView("main_settings");
   };
   const goToAgentList = () => {
     setDirection(-1);
     setEditingAgentId(null);
     setCurrentView("agent_list");
+  };
+  const goToSubAgentList = () => {
+    setDirection(-1);
+    setEditingSubAgentId(null);
+    setCurrentView("sub_agent_list");
   };
 
   const viewVariants = {
@@ -185,24 +213,13 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   height: "100%", paddingRight: "4px",
                   scrollbarGutter: "stable",
                 }}>
-                  {/* 基础区块（默认展示） */}
-                  <BasicSettingsView
-                    {...viewProps}
-                    activeSection={activeSection}
-                    agents={agents}
-                    onManageAgents={() => {
-                      setDirection(1);
-                      setCurrentView("agent_list");
-                    }}
-                    editingSkillId={editingSkillId}
-                    onSelectSkill={(id) => setEditingSkillId(id)}
-                    onBackToExtensionList={() => setEditingSkillId(null)}
-                  />
-
-                  {/* 高级区块（model/ai 深水区参数，全量直接展示，无折叠） */}
-                  {hasAdvanced && (
-                    <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid var(--border-primary)" }}>
-                      <AdvancedSettingsView
+                  {/* 归档 Tab：独立面板（归档列表 + 归档目录配置） */}
+                  {activeSection === "archive" ? (
+                    <ArchivePanel />
+                  ) : (
+                    <>
+                      {/* 基础区块（默认展示） */}
+                      <BasicSettingsView
                         {...viewProps}
                         activeSection={activeSection}
                         agents={agents}
@@ -210,11 +227,60 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                           setDirection(1);
                           setCurrentView("agent_list");
                         }}
+                        onManageSubAgents={() => {
+                          setDirection(1);
+                          setCurrentView("sub_agent_list");
+                        }}
+                        editingSkillId={editingSkillId}
+                        onSelectSkill={(id) => setEditingSkillId(id)}
+                        onBackToExtensionList={() => setEditingSkillId(null)}
                       />
-                    </div>
+
+                      {/* 高级区块（model/ai 深水区参数，全量直接展示，无折叠） */}
+                      {hasAdvanced && (
+                        <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid var(--border-primary)" }}>
+                          <AdvancedSettingsView
+                            {...viewProps}
+                            activeSection={activeSection}
+                            agents={agents}
+                            onManageAgents={() => {
+                              setDirection(1);
+                              setCurrentView("agent_list");
+                            }}
+                            onManageSubAgents={() => {
+                              setDirection(1);
+                              setCurrentView("sub_agent_list");
+                            }}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
+            </motion.div>
+          ) : currentView.startsWith("sub_agent") ? (
+            <motion.div
+              key={currentView}
+              custom={direction}
+              variants={viewVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={viewTransition}
+              style={{ height: "100%", overflowY: "auto", overflowX: "hidden" }}
+            >
+              <SubAgentPanel
+                editingId={editingSubAgentId}
+                onSelect={(id) => {
+                  setDirection(1);
+                  setEditingSubAgentId(id);
+                  setCurrentView(id === "__create__" ? "sub_agent_create" : "sub_agent_edit");
+                }}
+                onBackToSettings={goToMainSettings}
+                onBackToList={goToSubAgentList}
+                onRefresh={() => getSubAgents().then(setSubAgentsList).catch(() => {})}
+              />
             </motion.div>
           ) : (
             <motion.div

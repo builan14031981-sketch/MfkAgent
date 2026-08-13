@@ -429,8 +429,14 @@ class AskUserChoiceTool(Tool):
             description=(
                 "当任务存在多种可行方案、且用户未明确指定时，调用本工具向用户征询选择。"
                 "必须提供 2-4 个候选方案，并给出你的推荐项（recommended 下标）及推荐理由；"
-                "用户也可以不选预设方案而输入自己的想法。"
-                "用户已在指令中明确要求做法时不要调用；简单任务不要调用。"
+                "用户也可以不选预设方案而输入自己的想法；"
+                "用户也可以点 modal 的「跳过」按钮让系统按推荐项继续。"
+                "简单任务不要调用。"
+                "强制使用场景：用户要求把文件/目录写入到当前项目路径（project_path）之外的位置时——"
+                "由于沙箱禁止越界写入（write_file / replace_in_file / run_command 都会被工具层拒绝），"
+                "即使用户给的路径看起来很明确，也必须用本工具征询："
+                "A. 改写到项目内 / B. 用户自行切换项目到目标路径 / C. 用户自定义处理方式。"
+                "不要在文本回复里反复让用户改路径——直接调用本工具即可。"
             ),
             parameters={
                 "type": "object",
@@ -1241,6 +1247,10 @@ tool_registry.register(GitHubListIssuesTool())
 tool_registry.register(GitHubReadIssueTool())
 tool_registry.register(GitHubListPullRequestsTool())
 tool_registry.register(GitHubReadPullRequestTool())
+
+# Phase SubAgent: 子代理委派工具（主 Agent 委派子任务给专门化子代理）
+from app.services.sub_agent_tool import DelegateSubAgentTool as _DelegateSubAgentTool
+tool_registry.register(_DelegateSubAgentTool())
 
 # 注意：文件操作工具（read_file/write_file/list_files）已在 core/tools.py 中实现
 # 带有沙箱保护，只在有 project_path 时通过 FILE_TOOLS_DEFINITIONS 提供

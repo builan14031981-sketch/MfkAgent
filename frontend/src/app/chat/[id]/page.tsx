@@ -22,6 +22,7 @@ import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile, Attachment } from "@/components/FileDropZone";
 import { fileToAttachment, droppedFileToAttachment, mergeAttachments, toProjectRelative } from "@/components/FileDropZone";
 import { ChatComposer } from "@/components/ChatComposer";
+import { UserChoiceComposer } from "@/components/UserChoiceComposer";
 import type { ChatMode } from "@/components/ChatInput";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import { MessageList } from "@/components/MessageList";
@@ -144,6 +145,19 @@ function ChatPageInner() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [contextInitForChatId, setContextInitForChatId] = useState<number | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+
+  // 当前需要抉择的请求（最新一条未解决的 user_choice），用于"无感替换输入框"
+  const activeChoice = useMemo(() => {
+    const session = chatId != null ? useStreamStore.getState().sessions[chatId] : undefined;
+    if (!session) return null;
+    for (let i = session.timeline.length - 1; i >= 0; i--) {
+      const seg = session.timeline[i];
+      if (seg.type === "user_choice" && seg.choice.resolvedAction == null) {
+        return seg.choice;
+      }
+    }
+    return null;
+  }, [chatId, timeline]);
 
   // 存储 File 对象的映射（attachment.id → File），供发送时读取文件内容拼接 Content 前缀
   const fileMapRef = useRef<Map<string, File>>(new Map());
@@ -653,48 +667,53 @@ function ChatPageInner() {
         <TaskProgressCard tasks={tasks ?? []} chatId={chatId} live={isSending} />
       </div>
 
-      {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮） */}
+      {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮）
+          有看待抉择请求时，输入框整体被选择框替换（无感，不打断） */}
       <div style={{
         flexShrink: 0,
         background: "transparent",
       }}>
-        <ChatComposer
-          value={input}
-          onChange={setInput}
-          onSend={handleSend}
-          onStop={stop}
-          isSending={isSending}
-          placeholder={t("chat.inputPlaceholder")}
-          textareaRef={chatInputRef}
-          draftKey={chatId ? `mfk_draft_${chatId}` : undefined}
-          models={visibleModels}
-          modelId={currentModel?.id || null}
-          onModelChange={handleModelChange}
-          reasoningEffort={reasoningEffort}
-          onReasoningChange={(e) => {
-            setReasoningEffort(e);
-            setPrefReasoning(e);
-          }}
-          permissionMode={permissionMode}
-          onPermissionChange={(mode) => {
-            setPermissionMode(mode);
-            updateSettings({ agent_permission_mode: mode });
-          }}
-          mode={mode}
-          onModeChange={handleModeChange}
-          onUploadFile={handleUploadFile}
-          onSelectDirectory={handleSelectDirectory}
-          onClearContext={handleClearContext}
-          hasContext={attachments.length > 0}
-          projects={projects}
-          onSelectExistingProject={handleSelectExistingProject}
-          files={[]}
-          onRemoveFile={() => {}}
-          projectName={currentProject?.name || null}
-          attachments={attachments}
-          onRemoveAttachment={removeAttachment}
-          onVoicePrompt={handleVoicePrompt}
-        />
+        {activeChoice && chatId != null ? (
+          <UserChoiceComposer choice={activeChoice} chatId={chatId} />
+        ) : (
+          <ChatComposer
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            onStop={stop}
+            isSending={isSending}
+            placeholder={t("chat.inputPlaceholder")}
+            textareaRef={chatInputRef}
+            draftKey={chatId ? `mfk_draft_${chatId}` : undefined}
+            models={visibleModels}
+            modelId={currentModel?.id || null}
+            onModelChange={handleModelChange}
+            reasoningEffort={reasoningEffort}
+            onReasoningChange={(e) => {
+              setReasoningEffort(e);
+              setPrefReasoning(e);
+            }}
+            permissionMode={permissionMode}
+            onPermissionChange={(mode) => {
+              setPermissionMode(mode);
+              updateSettings({ agent_permission_mode: mode });
+            }}
+            mode={mode}
+            onModeChange={handleModeChange}
+            onUploadFile={handleUploadFile}
+            onSelectDirectory={handleSelectDirectory}
+            onClearContext={handleClearContext}
+            hasContext={attachments.length > 0}
+            projects={projects}
+            onSelectExistingProject={handleSelectExistingProject}
+            files={[]}
+            onRemoveFile={() => {}}
+            projectName={currentProject?.name || null}
+            attachments={attachments}
+            onRemoveAttachment={removeAttachment}
+            onVoicePrompt={handleVoicePrompt}
+          />
+        )}
       </div>
 
       {/* 全屏文件拖拽感知 */}

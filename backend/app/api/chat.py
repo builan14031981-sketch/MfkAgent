@@ -44,6 +44,30 @@ async def _call_regen_model(
     )
     return result.content or ""
 
+
+def _get_memory_settings() -> dict:
+    """读取记忆三开关（读闸/写闸/提示）与权限模式。缺省或读取失败按开启处理（fail-open）。"""
+    from app.models.agent import Setting
+    db = SessionLocal()
+    try:
+        kv = {}
+        for row in db.query(Setting).filter(
+            Setting.key.in_(["memory_read_enabled", "memory_write_enabled", "memory_alert", "agent_permission_mode"])
+        ).all():
+            kv[row.key] = row.value
+        def _on(key: str) -> bool:
+            v = kv.get(key)
+            return v is None or v.lower() != "false"
+        return {
+            "read": _on("memory_read_enabled"),
+            "write": _on("memory_write_enabled"),
+            "alert": _on("memory_alert"),
+            # autonomous（权限全放开）：不弹卡、不提示，自动保存（与 ask_user_choice 同策略）
+            "autonomous": (kv.get("agent_permission_mode") or "standard") == "autonomous",
+        }
+    finally:
+        db.close()
+
 # ── Phase 1.6: Agent 后台任务管理（HTTP 生命周期解耦）──
 # Agent 执行由 chat_id 驱动的独立 asyncio.Task 承载，与 SSE 响应对象解耦。
 # 前端切页/断连（未显式 cancel）只断开响应流，后台 Task 继续跑完并落库；
@@ -163,7 +187,7 @@ def _chat_to_response(chat) -> ChatResponse:
 async def list_chats(project_id: Optional[int] = None, page: int = 1, limit: int = 50):
     db = SessionLocal()
     try:
-        query = db.query(Chat).filter(Chat.is_deleted == False)
+        query = db.query(Chat).filter(Chat.is_deleted == False, Chat.is_archived == False)
         if project_id is not None:
             query = query.filter(Chat.project_id == project_id)
         query = query.order_by(Chat.is_pinned.desc(), Chat.updated_at.desc())
@@ -187,6 +211,8 @@ async def create_chat(chat: ChatCreate):
             project = db.query(Project).filter(Project.id == project_id).first()
             if not project:
                 raise HTTPException(status_code=404, detail="Project not found")
+            if project.is_archived:
+                raise HTTPException(status_code=400, detail="Project is archived")
             project_path = project.path
 
         if project_path is None and chat.project_path:
@@ -246,6 +272,9 @@ async def delete_chat(chat_id: int):
         chat.is_deleted = True
         chat.deleted_at = datetime.utcnow()
         chat.updated_at = datetime.utcnow()
+        # 已归档会话进回收站：清除归档标记
+        chat.is_archived = False
+        chat.archived_at = None
         db.commit()
         return {"status": "trashed"}
     finally:
@@ -680,19 +709,52 @@ async def send_message(chat_id: int, request: SendRequest):
         db.refresh(user_msg)
         db.refresh(ai_msg)
 
-        # Phase 10: 后台无感记忆提取（非阻塞，独立 Session 落库，Fail-safe）
-        try:
-            asyncio.create_task(
-                run_memory_extraction(
-                    chat_id=chat_id,
-                    project_id=chat.project_id,
-                    user_message=request.content,
-                    ai_content=ai_content,
-                    agent_id=chat.agent_id,
-                )
-            )
-        except Exception:  # noqa: BLE001
-            pass
+        # Phase 10: 记忆提取（写闸 = memory_write_enabled，关闭时不提取不落库）
+        mem_settings = _get_memory_settings()
+        mem_actions = []
+        if mem_settings["write"]:
+            if mem_settings["alert"] and not mem_settings["autonomous"]:
+                # 提示开启且非自治：内联完成提取，把"已保存记忆"通知随本消息落库
+                try:
+                    mem_actions = await run_memory_extraction(
+                        chat_id=chat_id,
+                        project_id=chat.project_id,
+                        user_message=request.content,
+                        ai_content=ai_content,
+                        agent_id=chat.agent_id,
+                    )
+                except Exception:  # noqa: BLE001
+                    mem_actions = []
+            else:
+                # 提示关闭或自治：后台无感提取（非阻塞，独立 Session 落库，Fail-safe）
+                try:
+                    asyncio.create_task(
+                        run_memory_extraction(
+                            chat_id=chat_id,
+                            project_id=chat.project_id,
+                            user_message=request.content,
+                            ai_content=ai_content,
+                            agent_id=chat.agent_id,
+                        )
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+        if mem_actions:
+            timeline.append({
+                "type": "memory_saved",
+                "chat_id": chat_id,
+                "count": len(mem_actions),
+                "items": [
+                    {
+                        "memory_type": (a.get("memory_type") or "fact"),
+                        "content": (a.get("content") or ""),
+                    }
+                    for a in mem_actions
+                ],
+            })
+            ai_msg.timeline = timeline
+            db.commit()
+            db.refresh(ai_msg)
 
         if api_usage and isinstance(api_usage, dict) and api_usage.get("total_tokens", 0) > 0:
             token_usage = api_usage
@@ -799,6 +861,8 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         # 待落盘的 text 缓冲段：遇到工具事件时先 flush，
         # 使 timeline 保留“文本→工具→文本”的真实交错时序（而非全部文本合并到末尾）
         pending_text = ""
+        # 记忆三开关快照（读闸/写闸/提示/自治），生成器内 db 已关闭，必须自行查询
+        mem_settings = _get_memory_settings()
 
         def _put(event):
             """非阻塞写入队列；客户端断连或队列满时跳过（不影响后台执行）。"""
@@ -806,6 +870,21 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 run.queue.put_nowait(event)
             except asyncio.QueueFull:
                 pass
+
+        def _memory_saved_event(actions: list) -> dict:
+            """将提取动作列表压缩为前端紧凑通知事件（正文预览不截断，前端 ellipsis 收尾）。"""
+            return {
+                "type": "memory_saved",
+                "chat_id": chat_id,
+                "count": len(actions),
+                "items": [
+                    {
+                        "memory_type": (a.get("memory_type") or "fact"),
+                        "content": (a.get("content") or ""),
+                    }
+                    for a in actions
+                ],
+            }
 
         def _persist():
             """将 assistant 消息落库（正常完成/取消/异常均调用）。"""
@@ -893,9 +972,47 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 except Exception as e:
                     logger.warning("[action_guard] stream regen failed: %s", e)
 
+            # ── Phase 10: 记忆提取（写闸 = memory_write_enabled）──
+            # 写闸关闭 → 完全不提取（记忆落库不做）。写闸开启但提示关闭或自治模式 → 后台无感提取。
+            # 写闸开启且提示开启且非自治 → 内联完成，通知随消息落库并推入流。
+            memory_saved_notice = None
+            if mem_settings["write"]:
+                if mem_settings["alert"] and not mem_settings["autonomous"]:
+                    try:
+                        mem_actions = await run_memory_extraction(
+                            chat_id=chat_id,
+                            project_id=mem_project_id,
+                            user_message=mem_user_content,
+                            ai_content=full_content,
+                            agent_id=mem_agent_id,
+                        )
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning("memory extraction failed: %s", e, exc_info=True)
+                        mem_actions = []
+                    if mem_actions:
+                        memory_saved_notice = _memory_saved_event(mem_actions)
+                        timeline_events.append(memory_saved_notice)
+                else:
+                    try:
+                        asyncio.create_task(
+                            run_memory_extraction(
+                                chat_id=chat_id,
+                                project_id=mem_project_id,
+                                user_message=mem_user_content,
+                                ai_content=full_content,
+                                agent_id=mem_agent_id,
+                            )
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+
             # DB 持久化（无论客户端是否断连，始终执行）
             _persist()
             run.db_persisted = True
+
+            # 记忆保存通知推入流（在哨兵之前，保证 SSE 客户端可达）
+            if memory_saved_notice is not None:
+                _put(memory_saved_notice)
 
             # Phase 3 T3/T8: 发布任务完成通知
             event_bus.task_completed(
@@ -904,20 +1021,6 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 success=True,
                 result_summary=full_content[:200] if full_content else "",
             )
-
-            # Phase 10: 后台无感记忆提取
-            try:
-                asyncio.create_task(
-                    run_memory_extraction(
-                        chat_id=chat_id,
-                        project_id=mem_project_id,
-                        user_message=mem_user_content,
-                        ai_content=full_content,
-                        agent_id=mem_agent_id,
-                    )
-                )
-            except Exception:  # noqa: BLE001
-                pass
 
         except asyncio.CancelledError:
             logger.info("Agent background task cancelled: chat_id=%s", chat_id)

@@ -12,8 +12,9 @@
  */
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { ExtensionPanel } from "./ExtensionPanel";
+import { SecurityView } from "./security/SecurityView";
 import { ModelProvidersBasic } from "./ModelConfigSection";
 import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { SwitchButton } from "@/components/SwitchButton";
@@ -23,7 +24,7 @@ import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
 
 /** 设置导航项 id 联合类型（与 SettingsPanel 共享，保证 activeSection 类型安全） */
-export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about";
+export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about" | "archive";
 
 /** 统管状态注入 props（由 SettingsPanel 下发） */
 export interface SettingsViewProps {
@@ -39,6 +40,7 @@ export interface SettingsViewProps {
 export interface AdvancedSettingsViewProps extends SettingsViewProps {
   agents: Agent[];
   onManageAgents: () => void;
+  onManageSubAgents?: () => void;
 }
 
 /** Provider ID → 中文展示名映射（与 ModelSelector 保持一致） */
@@ -64,28 +66,28 @@ const AGENT_ORDER = ["coder", "frontend_ui", "backend", "general", "analyst", "w
  * 运行时配色以 src/styles/tokens.css 为唯一权威源）。
  */
 const VISUAL_THEMES: Array<{
-  id: "obsidian" | "studio" | "terminal";
+  id: "studio-graphite" | "terminal" | "warm-minimal";
   nameKey: string;
   descKey: string;
   preview: { bg: string; surface: string; card: string; accent: string; text: string; border: string };
 }> = [
   {
-    id: "obsidian",
-    nameKey: "settings.general.visualTheme.obsidian",
-    descKey: "settings.general.visualTheme.obsidianDesc",
-    preview: { bg: "#0f1114", surface: "#15181d", card: "#1b1f26", accent: "#4e8cd9", text: "#e8eaed", border: "#262b34" },
-  },
-  {
-    id: "studio",
-    nameKey: "settings.general.visualTheme.studio",
-    descKey: "settings.general.visualTheme.studioDesc",
-    preview: { bg: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", accent: "#0a6cd6", text: "#1a1b1e", border: "#e4e5e9" },
+    id: "studio-graphite",
+    nameKey: "settings.general.visualTheme.studioGraphite",
+    descKey: "settings.general.visualTheme.studioGraphiteDesc",
+    preview: { bg: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", accent: "#26282d", text: "#1a1b1e", border: "#e4e5e9" },
   },
   {
     id: "terminal",
     nameKey: "settings.general.visualTheme.terminal",
     descKey: "settings.general.visualTheme.terminalDesc",
     preview: { bg: "#1e1e1e", surface: "#252526", card: "#2d2d30", accent: "#3794ff", text: "#e7e7e7", border: "#3c3c40" },
+  },
+  {
+    id: "warm-minimal",
+    nameKey: "settings.general.visualTheme.warmMinimal",
+    descKey: "settings.general.visualTheme.warmMinimalDesc",
+    preview: { bg: "#faf8f5", surface: "#f2eee9", card: "#f5f1ec", accent: "#a56f45", text: "#2b2825", border: "#e5e0d8" },
   },
 ];
 
@@ -206,36 +208,43 @@ const EXPERIMENTAL_THEMES: Array<{
     preview: { app: "#111112", surface: "#171718", card: "#1d1d1f", elevated: "#252527", text: "#e5e5e6", textMuted: "#636366", border: "#2a2a2d", accent: "#e5e5e6", onAccent: "#111112", bubble: "#2d2d2f", bubbleBorder: "rgba(229,229,230,0.25)" },
   },
   {
-    id: "warm-minimal",
-    nameKey: "settings.general.experimentalTheme.warmMinimal",
-    descKey: "settings.general.experimentalTheme.warmMinimalDesc",
-    preview: { app: "#faf8f5", surface: "#f2eee9", card: "#f5f1ec", elevated: "#ede8e1", text: "#2b2825", textMuted: "#9b968f", border: "#e5e0d8", accent: "#a56f45", onAccent: "#fdfaf6", bubble: "#efe7df", bubbleBorder: "rgba(165,111,69,0.22)" },
-  },
-  {
     id: "aurora",
     nameKey: "settings.general.experimentalTheme.aurora",
     descKey: "settings.general.experimentalTheme.auroraDesc",
     preview: { app: "#0d1210", surface: "#121815", card: "#18201c", elevated: "#1f2923", text: "#dfe7e2", textMuted: "#5d6961", border: "#24302a", accent: "#5fa893", onAccent: "#0e1412", bubble: "#21302a", bubbleBorder: "rgba(95,168,147,0.25)" },
   },
-  // 2026-08-11 Studio Accent 对比样张：共用 Studio Light 中性基底，仅强调色不同，
-  // 供 A/B/C 对比后选定写回官方 studio（见 tokens.css 同名块）。
+  // 2026-08-13 主题整理：原官方 obsidian / studio 降级至实验区；
+  // Studio Accent 对比样张验收完毕，石墨（studio-graphite）转正，薰衣草/深蓝移除。
   {
-    id: "studio-graphite",
-    nameKey: "settings.general.experimentalTheme.studioGraphite",
-    descKey: "settings.general.experimentalTheme.studioGraphiteDesc",
-    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#26282d", onAccent: "#ffffff", bubble: "#e9e9eb", bubbleBorder: "rgba(38,40,45,0.18)" },
+    id: "obsidian",
+    nameKey: "settings.general.visualTheme.obsidian",
+    descKey: "settings.general.visualTheme.obsidianDesc",
+    preview: { app: "#0f1114", surface: "#15181d", card: "#1b1f26", elevated: "#222732", text: "#e8eaed", textMuted: "#6a7180", border: "#262b34", accent: "#5e6ad2", onAccent: "#f2f5f9", bubble: "#222732", bubbleBorder: "rgba(94,106,210,0.35)" },
   },
   {
-    id: "studio-lavender",
-    nameKey: "settings.general.experimentalTheme.studioLavender",
-    descKey: "settings.general.experimentalTheme.studioLavenderDesc",
-    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#5e6ad2", onAccent: "#ffffff", bubble: "#ededf7", bubbleBorder: "rgba(94,106,210,0.22)" },
+    id: "studio",
+    nameKey: "settings.general.visualTheme.studio",
+    descKey: "settings.general.visualTheme.studioDesc",
+    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#0a6cd6", onAccent: "#ffffff", bubble: "#ededef", bubbleBorder: "rgba(10,108,214,0.18)" },
+  },
+  // 2026-08-13 第三方候选（对比预览，验收后筛选转正）：Clay / Indigo / Graphite Dark
+  {
+    id: "clay",
+    nameKey: "settings.general.experimentalTheme.clay",
+    descKey: "settings.general.experimentalTheme.clayDesc",
+    preview: { app: "#f5f4ed", surface: "#ece9df", card: "#faf9f5", elevated: "#e8e5da", text: "#1a191b", textMuted: "#87867f", border: "#ddd9cc", accent: "#c96442", onAccent: "#fdfcf9", bubble: "#e9e2d4", bubbleBorder: "rgba(201,100,66,0.22)" },
   },
   {
-    id: "studio-spectrum",
-    nameKey: "settings.general.experimentalTheme.studioSpectrum",
-    descKey: "settings.general.experimentalTheme.studioSpectrumDesc",
-    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#2e5fb8", onAccent: "#ffffff", bubble: "#e9eef6", bubbleBorder: "rgba(46,95,184,0.22)" },
+    id: "indigo",
+    nameKey: "settings.general.experimentalTheme.indigo",
+    descKey: "settings.general.experimentalTheme.indigoDesc",
+    preview: { app: "#08090a", surface: "#101113", card: "#141516", elevated: "#1b1c1d", text: "#f7f8f8", textMuted: "#6d7076", border: "#26272b", accent: "#5e6ad2", onAccent: "#ffffff", bubble: "#22262b", bubbleBorder: "rgba(94,106,210,0.30)" },
+  },
+  {
+    id: "graphite-dark",
+    nameKey: "settings.general.experimentalTheme.graphiteDark",
+    descKey: "settings.general.experimentalTheme.graphiteDarkDesc",
+    preview: { app: "#0e0f10", surface: "#131416", card: "#18191b", elevated: "#1f2023", text: "#e7e7e8", textMuted: "#6a6c70", border: "#26272a", accent: "#3a3d43", onAccent: "#ffffff", bubble: "#222327", bubbleBorder: "rgba(255,255,255,0.12)" },
   },
 ];
 
@@ -391,7 +400,7 @@ function ExperimentalThemePicker({
       {/* 实验主题激活时：提供返回官方主题的快捷入口 */}
       {current && (
         <button
-          onClick={() => onSelect("obsidian")}
+          onClick={() => onSelect("studio-graphite")}
           disabled={saving}
           style={{
             marginTop: 8, padding: "4px 0", border: "none", background: "transparent",
@@ -710,7 +719,7 @@ function GeneralBasic(props: SettingsViewProps) {
             <ThemePreviewCard
               key={theme.id}
               theme={theme}
-              selected={(settings?.visual_theme || "obsidian") === theme.id}
+              selected={(settings?.visual_theme || "studio-graphite") === theme.id}
               disabled={saving === "visual_theme"}
               t={t}
               onSelect={(id) => onUpdate("visual_theme", id)}
@@ -730,7 +739,7 @@ function GeneralBasic(props: SettingsViewProps) {
           </p>
         </div>
         <ExperimentalThemePicker
-          currentThemeId={settings?.visual_theme || "obsidian"}
+          currentThemeId={settings?.visual_theme || "studio-graphite"}
           saving={saving === "visual_theme"}
           t={t}
           onSelect={(id) => onUpdate("visual_theme", id)}
@@ -1214,6 +1223,9 @@ function ModelBasic(props: SettingsViewProps) {
 // ── ai 基础区块：默认 Agent / 默认人格 ──
 function AiBasic(props: AdvancedSettingsViewProps) {
   const { settings, saving, onUpdate, agents, t } = props;
+  // 人格档位：底层 0..100（25 步进）→ 展示 -2..+2，平衡点 0
+  const personalityNum = Number(settings?.default_personality ?? 50);
+  const personalityDisplay = Math.round((personalityNum - 50) / 25);
   return (
     <>
       {/* 默认 Agent */}
@@ -1238,9 +1250,9 @@ function AiBasic(props: AdvancedSettingsViewProps) {
         </select>
       </div>
 
-      {/* 默认人格 */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-        <div>
+      {/* 默认人格：短滑块 + 数值，与标题同行；条色固定低饱和蓝，不随主题 */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "10px" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
             {t("settings.ai.defaultPersonality.title")}
           </h3>
@@ -1248,102 +1260,79 @@ function AiBasic(props: AdvancedSettingsViewProps) {
             {t("settings.ai.defaultPersonality.desc")}
           </p>
         </div>
-        <span style={{ fontSize: "13px", color: "var(--text-level-2)" }}>
-          {settings?.default_personality || "50"}
-        </span>
-      </div>
-      <input
-        type="range" min="0" max="100" step="25"
-        value={settings?.default_personality || "50"}
-        onChange={(e) => onUpdate("default_personality", e.target.value)}
-        style={{ width: "100%" }}
-      />
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-level-4)", marginTop: "4px" }}>
-        <span>{t("settings.ai.defaultPersonality.veryEmotional")}</span>
-        <span>{t("settings.ai.defaultPersonality.balanced")}</span>
-        <span>{t("settings.ai.defaultPersonality.veryRational")}</span>
-      </div>
-    </>
-  );
-}
-
-// ── security 区块：Agent 权限模式 ──
-function SecurityBasic(props: SettingsViewProps) {
-  const { settings, saving, onUpdate, t } = props;
-  const currentMode = settings?.agent_permission_mode || "standard";
-
-  const modes = [
-    { value: "safe", label: t("settings.security.permission.safe"), desc: t("settings.security.permission.safeDesc") },
-    { value: "standard", label: t("settings.security.permission.standard"), desc: t("settings.security.permission.standardDesc") },
-    { value: "autonomous", label: t("settings.security.permission.autonomous"), desc: t("settings.security.permission.autonomousDesc") },
-  ];
-
-  return (
-    <>
-      <div style={{ marginBottom: "18px" }}>
-        <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-          {t("settings.security.title")}
-        </h3>
-        <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 12px 0" }}>
-          {t("settings.security.desc")}
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {modes.map((mode) => {
-            const active = currentMode === mode.value;
-            return (
-              <button
-                key={mode.value}
-                onClick={() => onUpdate("agent_permission_mode", mode.value)}
-                disabled={saving === "agent_permission_mode"}
-                style={{
-                  display: "flex", alignItems: "flex-start", gap: "12px",
-                  width: "100%", padding: "14px 16px",
-                  borderRadius: "var(--radius-md)",
-                  border: active ? "2px solid var(--color-primary)" : "1px solid var(--border-primary)",
-                  background: active ? "var(--bg-level-2)" : "transparent",
-                  cursor: "pointer", textAlign: "left",
-                  opacity: saving === "agent_permission_mode" ? 0.7 : 1,
-                }}
-              >
-                <div style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: "32px", height: "32px", borderRadius: "50%",
-                  background: active ? "var(--color-primary)" : "var(--bg-level-3)",
-                  flexShrink: 0, marginTop: "2px",
-                }}>
-                  <ShieldAlert style={{
-                    width: "16px", height: "16px",
-                    color: active ? "#fff" : "var(--text-level-3)",
-                  }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-level-1)", marginBottom: "4px" }}>
-                    {mode.label}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "var(--text-level-3)", lineHeight: 1.5 }}>
-                    {mode.desc}
-                  </div>
-                </div>
-                {active && (
-                  <div style={{
-                    marginLeft: "auto", alignSelf: "center",
-                    width: "20px", height: "20px", borderRadius: "50%",
-                    background: "var(--color-primary)", display: "flex",
-                    alignItems: "center", justifyContent: "center",
-                    flexShrink: 0,
-                  }}>
-                    <Check style={{ width: "12px", height: "12px", color: "#fff" }} />
-                  </div>
-                )}
-              </button>
-            );
-          })}
+        <div style={{ flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              type="range" min="0" max="100" step="25"
+              value={settings?.default_personality || "50"}
+              onChange={(e) => onUpdate("default_personality", e.target.value)}
+              style={{ width: "150px", accentColor: "#8494a9", cursor: "pointer" }}
+            />
+            <span style={{ fontSize: "13px", color: "var(--text-level-2)", minWidth: "2ch", textAlign: "right" }}>
+              {personalityDisplay > 0 ? `+${personalityDisplay}` : `${personalityDisplay}`}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "var(--text-level-4)", width: "150px", marginTop: "2px" }}>
+            <span>{t("settings.ai.defaultPersonality.veryEmotional")}</span>
+            <span>{t("settings.ai.defaultPersonality.balanced")}</span>
+            <span>{t("settings.ai.defaultPersonality.veryRational")}</span>
+          </div>
         </div>
       </div>
+
+      {/* 记忆治理三开关：读闸 / 写闸 / 保存提示（memory_* 键与后端 DEFAULT_SETTINGS 对齐） */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+        <div>
+          <h3 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+            {t("settings.ai.memoryRead.title")}
+          </h3>
+          <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
+            {t("settings.ai.memoryRead.desc")}
+          </p>
+        </div>
+        <SwitchButton
+          checked={settings?.memory_read_enabled !== "false"}
+          disabled={saving === "memory_read_enabled"}
+          onChange={(v) => onUpdate("memory_read_enabled", v ? "true" : "false")}
+        />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+        <div>
+          <h3 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+            {t("settings.ai.memoryWrite.title")}
+          </h3>
+          <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
+            {t("settings.ai.memoryWrite.desc")}
+          </p>
+        </div>
+        <SwitchButton
+          checked={settings?.memory_write_enabled !== "false"}
+          disabled={saving === "memory_write_enabled"}
+          onChange={(v) => onUpdate("memory_write_enabled", v ? "true" : "false")}
+        />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h3 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+            {t("settings.ai.memoryAlert.title")}
+          </h3>
+          <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>
+            {t("settings.ai.memoryAlert.desc")}
+          </p>
+        </div>
+        <SwitchButton
+          checked={settings?.memory_alert !== "false"}
+          disabled={saving === "memory_alert"}
+          onChange={(v) => onUpdate("memory_alert", v ? "true" : "false")}
+        />
+      </div>
     </>
   );
 }
+
+// ── security 区块：移入 security/SecurityView.tsx（紧凑安全中心）
 
 // ── about 区块 ──
 function AboutSection(props: SettingsViewProps) {
@@ -1369,6 +1358,7 @@ export function BasicSettingsView(
     activeSection: SettingSectionId;
     agents?: Agent[];
     onManageAgents?: () => void;
+    onManageSubAgents?: () => void;
     editingSkillId?: string | null;
     onSelectSkill?: (id: string) => void;
     onBackToExtensionList?: () => void;
@@ -1382,9 +1372,9 @@ export function BasicSettingsView(
     case "ai":
       // ai 基础区块需要 agents；未传入时安全降级为 null
       if (!props.agents) return null;
-      return <AiBasic {...props} agents={props.agents} onManageAgents={props.onManageAgents!} />;
+      return <AiBasic {...props} agents={props.agents} onManageAgents={props.onManageAgents!} onManageSubAgents={props.onManageSubAgents} />;
     case "security":
-      return <SecurityBasic {...props} />;
+      return <SecurityView {...props} />;
     case "extensions":
       return (
         <ExtensionPanel

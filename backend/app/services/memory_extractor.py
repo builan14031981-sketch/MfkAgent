@@ -42,7 +42,9 @@ VALID_MEMORY_TYPES = (
 # 原则：不用 DeepSeek / 高级模型（GLM-5.2 / LongCat 等），能 flash 就 flash
 EXTRACTOR_MODEL = "qwen-mt-flash"
 # 回退模型链：依次尝试直到成功（全部是 flash / 低成本，绝不浪费高级模型配额）
-EXTRACTOR_FALLBACK_MODELS = ("siliconflow-glm-z1-9b", "glm-5.2-fast-preview")
+# 注意：必须使用实际可用且支持当前 user-role-only 消息格式的模型，
+# 被禁用的 provider（siliconflow 等）其模型会因 ModelConfigError 被跳过。
+EXTRACTOR_FALLBACK_MODELS = ("qwen3.6-flash-2026-04-16", "glm-5.1")
 
 # 触发提取的最小用户输入长度（低于则视为寒暄，直接跳过）
 MIN_USER_INPUT_LEN = 5
@@ -204,8 +206,10 @@ class MemoryExtractor:
 
         model_id = self._pick_model()
         prompt = self._build_prompt(user_message, ai_text, existing_memories)
+        # 将 system 指令并入 user 消息首行：部分供应商（qwen / siliconflow）强约束
+        # role ∈ [user, assistant]，不接受 system role（否则 400）。合并后兼容全供应商。
+        prompt = "你只输出 JSON，不输出任何解释或围栏以外的文字。\n\n" + prompt
         messages = [
-            {"role": "system", "content": "你只输出 JSON，不输出任何解释或围栏以外的文字。"},
             {"role": "user", "content": prompt},
         ]
 

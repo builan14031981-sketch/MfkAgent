@@ -11,13 +11,13 @@ import {
 } from "@/lib/theme";
 
 /**
- * V2 视觉主题体系：
- *   官方三主题：
- *   obsidian —— Obsidian Dark，专业 AI 工作站（默认）
- *   studio   —— Apple Studio Light，简洁明亮日间
- *   terminal —— Developer Terminal，开发者高密度
- *   实验主题（探索阶段，待验收筛选）：
- *   titanium / paper / midnight / mono / warm-minimal / aurora
+ * V2 视觉主题体系（2026-08-13 整理）：
+ *   官方主题：
+ *   studio-graphite —— Studio 石墨（Notion 式近黑强调，默认）
+ *   terminal        —— Developer Terminal，开发者高密度
+ *   实验主题（原官方降级 + 探索）：
+ *   obsidian / studio / titanium / paper / midnight / mono / warm-minimal / aurora
+ *   已移除：studio-lavender / studio-spectrum（归档 _backup/theme-regroup-20260813）
  * 应用方式：html[data-theme] 驱动 tokens.css 中的 --mf-* Token，
  * 同时维持 .dark/.light 类兼容存量样式。
  * 2026-08-11：解析/名单/缓存逻辑抽至 @/lib/theme（修重启闪黑 FOUC），此处重导出保持兼容。
@@ -34,7 +34,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const theme = resolveVisualTheme(settings);
 
   useEffect(() => {
-    // 设置未到达前不得应用主题：resolveVisualTheme(null)=obsidian 会把
+    // 设置未到达前不得应用主题：resolveVisualTheme(null)=studio-graphite 会把
     // layout 内联守卫首帧应用的缓存主题（如浅色）覆盖回黑色，造成黑闪。
     // 首帧主题由守卫脚本负责，Provider 只在设置到达后接管。
     if (!settings) return;

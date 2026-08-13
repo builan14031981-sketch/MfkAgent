@@ -122,6 +122,10 @@ export function useChatStream({
       clearTimeout(refs.agentStateTimer);
       refs.agentStateTimer = null;
     }
+    if (refs.choiceWarnTimers) {
+      refs.choiceWarnTimers.forEach((t) => clearTimeout(t));
+      refs.choiceWarnTimers = null;
+    }
     store.resetSession(targetChatId);
     // 同步清除侧边栏加载指示器（后台会话出错时页面 effect 不会触发）
     store.setStream(targetChatId, null);
@@ -217,6 +221,16 @@ export function useChatStream({
         options.skip
           ? { kind: "skipped" as const }
           : { kind: "selected" as const, selected: options.selected ?? 0 };
+
+      // 抉择已解决 → 取消超时预警定时器
+      const refs = store.getRefs(chatId);
+      if (refs.choiceWarnTimers) {
+        const t = refs.choiceWarnTimers.get(choiceId);
+        if (t) {
+          clearTimeout(t);
+          refs.choiceWarnTimers.delete(choiceId);
+        }
+      }
 
       // 乐观 UI：立即将卡片置为只读状态
       store.updateSession(chatId, (prev) => ({
@@ -374,6 +388,12 @@ export function useChatStream({
             }
             case "text":
               return [{ type: "text", content: seg.content }];
+            case "memory_saved":
+              return [{
+                type: "memory_saved",
+                count: seg.count ?? 0,
+                items: seg.items ?? [],
+              }];
             default:
               return [];
           }
@@ -425,7 +445,7 @@ export function useChatStream({
         if (isUserAway()) {
           const preview = final.slice(0, 80) + (final.length > 80 ? "..." : "");
           const elapsed = formatDuration(Date.now() - startedAt);
-          showDesktopNotification("任务完成", `${preview || "AI 回复已完成"} · 用时 ${elapsed}`);
+          showDesktopNotification("任务完成", `${preview || "AI 回复已完成"} · 用时 ${elapsed}`, { beep: "success", silent: true, persistent: false });
         }
       };
 
@@ -538,7 +558,7 @@ export function useChatStream({
             // 审批请求通知（仅新审批时触发，去重逻辑已在上方保证）；
             // 与任务完成通知一致：用户正在查看该会话时界面已有审批卡片，不重复弹系统通知
             if (isUserAway()) {
-              showDesktopNotification("需要审批", `工具 ${approval.tool || "未知工具"} 请求执行，请确认`);
+              showDesktopNotification("需要审批", `工具 ${approval.tool || "未知工具"} 请求执行，请确认`, { beep: "attention", silent: true, persistent: true, chatId: targetChatId });
             }
           },
           // onUserChoice（ask_user_choice 抉择卡）
@@ -551,8 +571,24 @@ export function useChatStream({
             });
             // 抉择请求通知：用户在切窗口/后台时弹系统通知（与审批对齐）
             if (isUserAway()) {
-              showDesktopNotification("AI 询问你", choice.question || "AI 提出了一个选择，请查看");
+              showDesktopNotification("AI 询问你", choice.question || "AI 提出了一个选择，请查看", { beep: "attention", silent: true, persistent: true, chatId: targetChatId });
             }
+            // 抉择超时预警：后端 CHOICE_TIMEOUT=300s 超时后自动采纳推荐项，
+            // 用户离开时在超时前 30s 提醒（审批超时=自动拒绝属安全方向，不预警）
+            const timer = setTimeout(() => {
+              if (refs.choiceWarnTimers) refs.choiceWarnTimers.delete(choice.choice_id);
+              const sessionNow = store.getSession(targetChatId);
+              const stillPending = sessionNow.timeline.some(
+                (s) => s.type === "user_choice" && s.choice.choice_id === choice.choice_id && s.choice.resolvedAction == null
+              );
+              if (stillPending && isUserAway()) {
+                showDesktopNotification("即将自动采纳", `AI 询问你：「${(choice.question || "请选择").slice(0, 60)}」将在 30 秒后自动采纳推荐项，请及时处理`, { beep: "attention", silent: true, persistent: true, chatId: targetChatId });
+              }
+            }, Math.max(0, 300 * 1000 - 30 * 1000));
+            if (!refs.choiceWarnTimers) refs.choiceWarnTimers = new Map();
+            refs.choiceWarnTimers.set(choice.choice_id, timer);
+            // 预警定时器生命周期：用户在场/已解决时无需清理（触发后自动删除自身）；
+            // 流结束清理由 resetStreaming 统一执行
           },
           // onToolOutput
           () => {},
@@ -593,10 +629,10 @@ export function useChatStream({
               };
               const matchApproval = id ?? origId;
               return {
+                // 仅移除已解决的审批卡；user_choice 保留为只读记录（无感替换输入框后，此处即对话历史）
                 timeline: next.filter(
                   (s) =>
-                    !(s.type === "approval" && matchApproval && s.approval.tool_call_id === matchApproval) &&
-                    !(s.type === "user_choice" && matchApproval && s.choice.tool_call_id === matchApproval)
+                    !(s.type === "approval" && matchApproval && s.approval.tool_call_id === matchApproval)
                 ),
               };
             });
@@ -616,10 +652,9 @@ export function useChatStream({
               }
               const resolvedIds = new Set(batch.filter((c) => c.tool_call_id).map((c) => c.tool_call_id));
               if (resolvedIds.size > 0) {
+                // 仅移除审批卡；user_choice 保留为只读记录
                 next = next.filter(
-                  (s) =>
-                    !(s.type === "approval" && resolvedIds.has(s.approval.tool_call_id)) &&
-                    !(s.type === "user_choice" && resolvedIds.has(s.choice.tool_call_id))
+                  (s) => !(s.type === "approval" && resolvedIds.has(s.approval.tool_call_id))
                 );
               }
               return { timeline: next };
@@ -667,9 +702,9 @@ export function useChatStream({
               // Phase 3 T3/T8: 任务完成/失败通知（仅用户离开时触发）
               if (isUserAway()) {
                 if (evt.type === "task_completed") {
-                  showDesktopNotification("任务完成", node.action || "子任务已完成");
+                  showDesktopNotification("任务完成", node.action || "子任务已完成", { beep: "success", silent: true, persistent: false });
                 } else if (evt.type === "task_failed") {
-                  showDesktopNotification("任务失败", node.error || node.action || "子任务执行失败");
+                  showDesktopNotification("任务失败", node.error || node.action || "子任务执行失败", { beep: "error", silent: true, persistent: true, chatId: targetChatId });
                 }
               }
             }
@@ -691,6 +726,18 @@ export function useChatStream({
                 store.updateSession(targetChatId, () => ({ currentAgentState: null }));
               }, 1500);
             }
+          },
+          // onMemorySaved：自动提取落库后的可见通知（非确认卡，紧凑行内渲染）
+          (mem) => {
+            store.updateSession(targetChatId, (prev) => ({
+              timeline: [...prev.timeline, {
+                id: `memory-saved-${mem.chat_id ?? ""}-${Date.now()}`,
+                type: "memory_saved" as const,
+                count: mem.count,
+                items: mem.items,
+                chat_id: mem.chat_id,
+              }],
+            }));
           },
           // onComplete
           appendAssistant,
@@ -717,7 +764,7 @@ export function useChatStream({
         }));
         // 流式错误通知：与任务完成通知一致，仅用户离开时弹（在场时界面已有错误卡片）
         if (isUserAway()) {
-          showDesktopNotification("任务出错", msg.slice(0, 100));
+          showDesktopNotification("任务出错", msg.slice(0, 100), { beep: "error", silent: true, persistent: true, chatId: targetChatId });
         }
       }
     },

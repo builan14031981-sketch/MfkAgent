@@ -18,6 +18,7 @@ from app.core.agent_runtime.completion.models import (
     CompletionVerificationResult,
 )
 from app.core.agent_runtime.completion.test_history import (
+    baseline_failed_files,
     build_test_history,
     uncovered_new_failures,
 )
@@ -67,7 +68,13 @@ def rule_write_detected(ctx: CompletionContext) -> Optional[List[str]]:
 _TEST_INTENT_KEYWORDS = ("pytest", "测试", "全绿", "unittest")
 
 # 任务目标明确要求全部测试通过时的关键词（不适用基线排除）
-_ALL_GREEN_KEYWORDS = ("全绿", "全部通过", "所有测试", "确保全部", "保证测试")
+_ALL_GREEN_KEYWORDS = (
+    "全绿", "全部通过", "所有测试", "确保全部", "保证测试",
+    "修复", "修复后", "通过验证", "运行测试并确认",
+)
+
+# 任务目标明确否定测试要求（“不要运行测试”）→ 测试不是本任务交付物，跳过测试守卫
+_TEST_NEGATION_KEYWORDS = ("不要运行测试", "无需运行测试", "不运行测试", "不用测试", "不需要测试", "不用跑测试")
 
 
 def rule_test_scope_guard(ctx: CompletionContext) -> Optional[List[str]]:
@@ -88,12 +95,24 @@ def rule_test_scope_guard(ctx: CompletionContext) -> Optional[List[str]]:
             return ["任务要求测试验证，但未执行任何 pytest 命令"]
         return None
 
+    # 任务明确否定测试要求（如“不要运行测试”）→ 测试非本任务交付物，跳过守卫
+    if any(k in goal for k in _TEST_NEGATION_KEYWORDS):
+        return None
+
     missing: List[str] = []
     last = history[-1]
-    if last.get("exit_code") != 0:
-        missing.append("最后一次测试执行未全绿，需修复后重跑验证")
-
     require_all_green = any(k in goal for k in _ALL_GREEN_KEYWORDS)
+
+    # 非全绿判定：任务未要求全绿时应用基线排除，防基线红的工程被永久卡死；
+    # 但失败集合中出现非基线新文件，或任务含 "修复/必须通过" 意图时仍需拦截
+    if last.get("exit_code") != 0:
+        if require_all_green:
+            missing.append("最后一次测试执行未全绿，需修复后重跑验证")
+        elif last.get("failed_files") and last["failed_files"] <= baseline_failed_files(history) and len(history) >= 2:
+            pass  # 既有基线失败且未引入新失败 → 豁免（防基线卡死）
+        else:
+            missing.append("最后一次测试执行未全绿，需修复后重跑验证")
+
     uncovered = uncovered_new_failures(history, require_all_green=require_all_green)
     if uncovered:
         missing.append(

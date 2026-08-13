@@ -3,13 +3,14 @@
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain, Loader2, Image } from "lucide-react";
 import type { Message, TimelineEvent } from "@/hooks/useMessages";
-import { ToolCallCard, ToolCallCardList } from "@/components/ToolCallCard";
+import { ToolCallGroup, groupToolCalls } from "@/components/ToolCallGroup";
 import type { ToolCall } from "@/components/ToolCallCard";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getAttachmentImageUrl } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
+import { formatTimeOnly } from "@/lib/timeFormat";
 
 interface ChatMessageProps {
   message: Message;
@@ -43,7 +44,8 @@ function normalizeThinking(text: string): string {
 type TimelineSegment =
   | { kind: "thinking"; content: string }
   | { kind: "tool"; toolCall: ToolCall }
-  | { kind: "text"; content: string };
+  | { kind: "text"; content: string }
+  | { kind: "memory"; count: number; items: Array<{ memory_type: string; content: string }> };
 
 /**
  * 将后端持久化的 timeline 事件流转换为渲染片段（保留真实时序）：
@@ -113,6 +115,11 @@ function buildTimelineSegments(timeline: TimelineEvent[], toolCalls?: ToolCall[]
         if (evt.content) segments.push({ kind: "text", content: evt.content });
         break;
       }
+      case "memory_saved": {
+        flushThinking();
+        segments.push({ kind: "memory", count: evt.count ?? 0, items: evt.items ?? [] });
+        break;
+      }
       // tool_approval / user_choice / 未知事件：历史态不渲染
       default:
         break;
@@ -160,13 +167,7 @@ export function ThinkingPanel({ thinking, persistKey }: { thinking: string; pers
   const normalized = useMemo(() => normalizeThinking(thinking), [thinking]);
 
   return (
-    <div style={{
-      margin: "0 0 8px 0",
-      borderRadius: "var(--radius-sm)",
-      background: "var(--bg-level-3)",
-      borderLeft: "2px solid var(--text-level-4)",
-      padding: "6px 10px",
-    }}>
+    <div style={{ margin: "0 0 4px 0" }}>
       <button
         onClick={handleToggle}
         style={{
@@ -194,6 +195,8 @@ export function ThinkingPanel({ thinking, persistKey }: { thinking: string; pers
       <div
         style={{
           marginTop: "6px",
+          paddingLeft: "10px",
+          borderLeft: "2px solid var(--border-primary)",
           fontSize: "12px",
           lineHeight: 1.6,
           color: "var(--text-level-3)",
@@ -265,14 +268,7 @@ export function StreamingThinkingPanel({ content, isActive }: { content: string;
   const hasContent = content.length > 0;
 
   return (
-    <div style={{
-      margin: "0 0 8px 0",
-      borderRadius: "var(--radius-sm)",
-      background: "var(--bg-level-3)",
-      borderLeft: "2px solid var(--text-level-4)",
-      padding: "6px 10px",
-      transition: "border-color 0.3s ease",
-    }}>
+    <div style={{ margin: "0 0 4px 0" }}>
       <button
         onClick={() => setOpen((v) => !v)}
         style={{
@@ -344,35 +340,94 @@ export function StreamingThinkingPanel({ content, isActive }: { content: string;
   );
 }
 
+/**
+ * 记忆保存通知（紧凑行内卡片）：
+ * - 默认收起：一行"已保存 N 条记忆"，可展开查看每条摘要
+ * - 非确认卡，不阻塞对话；自动提取落库后由后端 memory_saved 事件驱动
+ */
+export function MemorySavedNotice({ count, items }: { count: number; items: Array<{ memory_type: string; content: string }> }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ margin: "0 0 4px 0" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: "12px",
+          fontWeight: 500,
+          color: "var(--text-level-3)",
+          outline: "none",
+          width: "100%",
+        }}
+      >
+        <Check style={{ width: "13px", height: "13px", color: "var(--color-success)", flexShrink: 0 }} />
+        <span style={{ flex: 1, textAlign: "left" }}>
+          {t("chat.memorySaved", { count: String(count) })}
+        </span>
+        {items.length > 0 && (open ? (
+          <ChevronUp style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
+        ) : (
+          <ChevronDown style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
+        ))}
+      </button>
+      {open && items.length > 0 && (
+        <ul style={{
+          margin: "6px 0 0 0",
+          padding: "0 0 0 18px",
+          fontSize: "12px",
+          lineHeight: 1.6,
+          color: "var(--text-level-3)",
+        }}>
+          {items.map((it, i) => (
+            <li key={i} style={{ margin: "2px 0" }}>
+              <span style={{
+                display: "inline-block",
+                marginRight: "6px",
+                padding: "0 5px",
+                borderRadius: "var(--radius-xs)",
+                fontSize: "10px",
+                fontWeight: 600,
+                lineHeight: "15px",
+                background: "color-mix(in srgb, var(--bg-level-2) 60%, transparent)",
+                border: "1px solid var(--border-primary)",
+                color: "var(--text-level-3)",
+                verticalAlign: "1px",
+              }}>
+                {it.memory_type}
+              </span>
+              {it.content}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** 复制按钮：真实 clipboard + 勾选反馈。
- * hover 常驻：鼠标在按钮上就一直显示勾；移开才启动 1.2s 复位计时，
- * 短暂移回则取消计时继续显示勾，避免"去粘贴/读内容再回来已复位"的丢失感。 */
-function CopyButton({ text }: { text: string }) {
+ * 点击后固定 300ms 显示勾选态即复位（不随 hover 续期），保持轻快反馈。 */
+function CopyButton({ text, iconSize = 13 }: { text: string; iconSize?: number }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const resetSoon = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setCopied(false), 1200);
-  }, []);
-
-  const cancelReset = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
 
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      cancelReset();
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 300);
     } catch (err) {
       console.error("Copy failed:", err);
     }
-  }, [text, cancelReset]);
+  }, [text]);
 
   useEffect(() => () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -381,21 +436,15 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      onMouseEnter={(e) => {
-        cancelReset();
-        e.currentTarget.style.opacity = "1";
-      }}
-      onMouseLeave={(e) => {
-        resetSoon();
-        e.currentTarget.style.opacity = copied ? "1" : "0.4";
-      }}
+      onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = copied ? "1" : "0.4"; }}
       title={copied ? t("common.copied") : t("common.copy")}
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: "28px",
-        height: "28px",
+        width: "24px",
+        height: "24px",
         borderRadius: "var(--radius-sm)",
         border: "none",
         background: copied ? "var(--color-copied)" : "transparent",
@@ -407,9 +456,9 @@ function CopyButton({ text }: { text: string }) {
       }}
     >
       {copied ? (
-        <Check style={{ width: "13px", height: "13px" }} />
+        <Check style={{ width: iconSize, height: iconSize }} />
       ) : (
-        <Copy style={{ width: "13px", height: "13px" }} />
+        <Copy style={{ width: iconSize, height: iconSize }} />
       )}
     </button>
   );
@@ -435,8 +484,8 @@ function ActionButton({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: "28px",
-        height: "28px",
+        width: "24px",
+        height: "24px",
         borderRadius: "var(--radius-sm)",
         border: "none",
         background: "transparent",
@@ -576,14 +625,26 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
     [message.timeline, message.tool_calls]
   );
 
+  // 时序片段：连续工具段合并为组（中间无 thinking/text/memory 则归一组），渲染层计算
+  const segBlocks = useMemo(
+    () =>
+      timelineSegments
+        ? groupToolCalls(timelineSegments, (s) => (s.kind === "tool" ? s.toolCall : undefined))
+        : null,
+    [timelineSegments]
+  );
+
   // 静态操作栏布局（Zero CLS）：固定 marginTop、无 maxHeight/overflow/高度动画。
-  // 低调常驻：默认低对比度由按钮自身 opacity:0.4 承担，hover 按钮恢复 1，容器始终可见。
+  // hover 显隐：容器默认隐藏（CSS .mf-msg-row:hover 唤醒），按钮 hover 恢复 1。
   const actionBarStyle = (alignEnd: boolean): React.CSSProperties => ({
     display: "flex",
-    gap: "4px",
+    gap: "2px",
     justifyContent: alignEnd ? "flex-end" : "flex-start",
     marginTop: "4px",
   });
+
+  // 消息操作栏时间样式：与"用时"、"仅时间"共用
+  const timeSpanStyle = { fontSize: "11px", color: "var(--text-level-4)", alignSelf: "center" };
 
   if (message.role === "user") {
     const imageAtts = message.attachments?.filter((a) => a.kind === "image") ?? [];
@@ -591,7 +652,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
     const imageUrls = imageAtts.map((att) => att.path ? getAttachmentImageUrl(message.chat_id, att.path) : null);
 
     return (
-      <div>
+      <div className="mf-msg-row">
         {/* 用户消息：轻量气泡 + 悬浮操作栏（复制 + 编辑） */}
         <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", gap: "4px" }}>
           <div className="mf-bubble-body" style={{
@@ -601,6 +662,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
             background: "var(--mf-bubble-user-bg)",
             color: "var(--mf-bubble-user-fg)",
             border: "1px solid var(--mf-bubble-user-border)",
+            boxShadow: "var(--shadow-md)",
             fontSize: "14px",
             lineHeight: 1.5,
             overflow: "hidden",
@@ -638,17 +700,20 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
         </div>
         {/* 用户消息悬浮操作栏（吸顶态隐藏） */}
         <div className="mf-bubble-actions" style={actionBarStyle(true)}>
-          <CopyButton text={message.content} />
+          <CopyButton text={message.content} iconSize={11} />
           <ActionButton onClick={() => onEdit(message)} title={t("chat.edit")}>
-            <Edit2 style={{ width: "13px", height: "13px" }} />
+            <Edit2 style={{ width: "11px", height: "11px" }} />
           </ActionButton>
+          {message.created_at && (
+            <span style={{ ...timeSpanStyle, marginLeft: "4px" }}>{formatTimeOnly(message.created_at)}</span>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="mf-msg-row">
       {/* AI 标识 */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
         {currentAgent && <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />}
@@ -657,26 +722,39 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
         </span>
       </div>
       {/* 时序渲染：thinking/tool/text 按 SSE 真实到达顺序交错展示 */}
-      {timelineSegments ? (
-        timelineSegments.map((seg, i) => {
+      {segBlocks ? (
+        segBlocks.map((block, i) => {
+          // 工具段：按组渲染（流式中单行头 / 完成后摘要组头，可展开）
+          if (block.kind === "tool") {
+            return (
+              <ToolCallGroup
+                key={`toolgroup-${block.tools[0]?.tool_call_id ?? i}`}
+                tools={block.tools}
+                streaming={block.streaming}
+              />
+            );
+          }
+          const seg = block.seg;
           switch (seg.kind) {
             case "thinking":
               return <ThinkingPanel key={`think-${i}`} thinking={seg.content} persistKey={`mfk_think_${message.id}_${i}`} />;
-            case "tool":
-              return (
-                <div key={`tool-${seg.toolCall.tool_call_id ?? i}`} style={{ marginBottom: "8px" }}>
-                  <ToolCallCard toolCall={seg.toolCall} />
-                </div>
-              );
             case "text":
               return <MarkdownRenderer key={`text-${i}`} content={seg.content} />;
+            case "memory":
+              return (
+                <MemorySavedNotice
+                  key={`memory-${i}`}
+                  count={seg.count}
+                  items={seg.items}
+                />
+              );
           }
         })
       ) : (
         <>
-          {/* 回退：无 timeline 的旧消息保持固定顺序（tool_calls → thinking → 正文） */}
+          {/* 回退：无 timeline 的旧消息保持固定顺序（tool_calls → thinking → 正文），工具合并为一组 */}
           {message.tool_calls && message.tool_calls.length > 0 && (
-            <ToolCallCardList toolCalls={message.tool_calls} />
+            <ToolCallGroup tools={message.tool_calls} streaming={false} />
           )}
           {/* 思考过程（<think> 标签内容）折叠面板 */}
           {thinking && <ThinkingPanel thinking={thinking} persistKey={"mfk_think_" + message.id} />}
@@ -688,10 +766,13 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
       {timelineSegments && !timelineSegments.some((s) => s.kind === "text") && body && (
         <MarkdownRenderer content={body} />
       )}
-      {/* AI 消息悬浮操作栏：用时 + 复制 / 引用 / 重生成 */}
-      <div style={actionBarStyle(false)}>
+      {/* AI 消息悬浮操作栏：时间 + 用时 + 复制 / 引用 / 重生成 */}
+      <div className="mf-bubble-actions" style={actionBarStyle(false)}>
+        {message.created_at && (
+          <span style={timeSpanStyle}>{formatTimeOnly(message.created_at)}</span>
+        )}
         {durationMs != null && (
-          <span style={{ fontSize: "11px", color: "var(--text-level-3)", opacity: 0.7, marginRight: "8px", alignSelf: "center" }}>
+          <span style={{ fontSize: "11px", color: "var(--text-level-3)", opacity: 0.7, margin: "0 8px", alignSelf: "center" }}>
             用时 {formatDuration(durationMs)}
           </span>
         )}

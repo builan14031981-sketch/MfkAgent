@@ -128,7 +128,7 @@ export const ChatHeader = memo(function ChatHeader({
       }}>
         {/* 2026-08-12：去除流式期间 AgentOrb 动画，思考状态由思考面板 Loader2 唯一表达，避免双动画 */}
         {agent && (
-          <AgentIcon id={agent.id} size={18} style={{ color: "var(--color-primary)" }} />
+          <AgentIcon id={agent.id} size={18} style={{ color: "var(--text-level-3)" }} />
         )}
         {isEditingTitle ? (
           <input
@@ -182,10 +182,10 @@ export const ChatHeader = memo(function ChatHeader({
               title={project.path || project.name}
               style={{
                 fontSize: "12px",
-                color: "var(--color-primary)",
+                color: "var(--text-level-3)",
                 padding: "4px 8px",
                 borderRadius: "var(--radius-full)",
-                background: "var(--color-primary-lighter)",
+                background: "var(--bg-level-3)",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "4px",
@@ -196,8 +196,8 @@ export const ChatHeader = memo(function ChatHeader({
                 textOverflow: "ellipsis",
                 transition: "background 0.2s ease",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--color-primary) 14%, var(--color-primary-lighter))"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--color-primary-lighter)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-4)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
             >
               <Folder style={{ width: "12px", height: "12px", flexShrink: 0 }} />
               {formatProjectPath(project.path, project.name)}
@@ -320,10 +320,10 @@ export const ChatHeader = memo(function ChatHeader({
               title={t("chat.noProjectHint")}
               style={{
                 fontSize: "12px",
-                color: "var(--color-primary)",
+                color: "var(--text-level-3)",
                 padding: "4px 8px",
                 borderRadius: "var(--radius-full)",
-                background: "var(--color-primary-lighter)",
+                background: "var(--bg-level-3)",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "4px",
@@ -331,8 +331,8 @@ export const ChatHeader = memo(function ChatHeader({
                 whiteSpace: "nowrap",
                 transition: "background 0.2s ease",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in srgb, var(--color-primary) 14%, var(--color-primary-lighter))"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--color-primary-lighter)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-4)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
             >
               <FolderPlus style={{ width: "12px", height: "12px", flexShrink: 0 }} />
               {t("chat.linkProjectNow")}

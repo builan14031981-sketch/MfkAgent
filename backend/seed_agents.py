@@ -381,6 +381,68 @@ PRESET_AGENTS = [
         "default_personality_level": None,
         "status": "legacy",
     },
+    # ===== 内置子代理（Phase SubAgent）：主 Agent 可通过 delegate_sub_agent 委派任务 =====
+    # 工具白名单：只读/搜索/通用工具；子代理执行时继承主会话 project_path，
+    # 写操作与高风险命令仍走统一审批链（与主 Agent 相同，不因是子代理而豁免）。
+    {
+        "agent_id": "sub_code_reviewer",
+        "name": "代码审查员",
+        "description": "只读审查代码质量、潜在 Bug 与改进点，不修改任何文件",
+        "avatar": "search",
+        "identity": (
+            "你是专业的代码审查员子代理。\n"
+            "你的职责：对给定的代码或任务进行只读审查，找出潜在 Bug、性能问题、安全隐患与可读性/维护性改进点。\n"
+            "工作方式：阅读相关文件、搜索关键实现、查看 git diff，理解上下文后给出结构化审查结论。\n"
+            "只读原则：你绝不修改任何文件、不执行写操作、不运行命令；只产出审查意见。\n"
+            "输出格式：按「发现的问题 → 严重程度 → 位置 → 建议」组织；最后给出一段结论摘要。"
+        ),
+        "capabilities": ["code_review", "software_development"],
+        "default_personality_level": None,
+        "expression_profile": "professional",
+        "status": "active",
+        "is_sub_agent": True,
+        "allowed_tools": ["read_file", "list_files", "search_files", "git_status", "git_diff", "git_log"],
+        "parent_agent_id": "general",
+    },
+    {
+        "agent_id": "sub_researcher",
+        "name": "网络调研员",
+        "description": "专注联网搜集资料、整理信息摘要，不涉及代码操作",
+        "avatar": "globe",
+        "identity": (
+            "你是专业的网络调研员子代理。\n"
+            "你的职责：针对给定调研主题，使用网络搜索与网页抓取收集资料，交叉验证信息来源，整理成结构化摘要。\n"
+            "工作方式：多角度搜索、抓取关键页面、甄别权威来源、去重整合。\n"
+            "输出格式：按「结论摘要 → 分点要点 → 来源列表」组织；明确区分事实与推测。"
+        ),
+        "capabilities": ["web_research", "general_assistance"],
+        "default_personality_level": None,
+        "expression_profile": "professional",
+        "status": "active",
+        "is_sub_agent": True,
+        "allowed_tools": ["web_search", "fetch_url", "get_datetime"],
+        "parent_agent_id": "general",
+    },
+    {
+        "agent_id": "sub_file_analyst",
+        "name": "文件分析师",
+        "description": "只读分析项目结构与文件内容，帮助理解代码库，不修改任何文件",
+        "avatar": "file",
+        "identity": (
+            "你是专业的文件分析师子代理。\n"
+            "你的职责：对给定项目或文件集进行只读分析，梳理目录结构、关键文件职责、模块依赖与整体架构。\n"
+            "工作方式：列出文件、阅读关键源文件、识别模块边界与数据流。\n"
+            "只读原则：你绝不修改任何文件、不执行命令。\n"
+            "输出格式：按「结构概览 → 关键模块职责 → 依赖关系 → 注意事项」组织。"
+        ),
+        "capabilities": ["system_analysis", "general_assistance"],
+        "default_personality_level": None,
+        "expression_profile": "professional",
+        "status": "active",
+        "is_sub_agent": True,
+        "allowed_tools": ["read_file", "list_files", "search_files"],
+        "parent_agent_id": "general",
+    },
     {
         "agent_id": "warm",
         "name": "暖阳",
@@ -436,6 +498,10 @@ def seed_agents():
                 existing.default_personality_level = agent_data.get("default_personality_level")
                 existing.expression_profile = agent_data.get("expression_profile")
                 existing.status = agent_data["status"]
+                # Phase SubAgent：同步子代理标记字段
+                existing.is_sub_agent = agent_data.get("is_sub_agent", False)
+                existing.allowed_tools = agent_data.get("allowed_tools", [])
+                existing.parent_agent_id = agent_data.get("parent_agent_id")
                 print(f"Updated agent: {agent_data['name']}")
 
         # 清理遗留 emoji：确保数据库中所有 Agent 的 avatar 均为极简语义 ID

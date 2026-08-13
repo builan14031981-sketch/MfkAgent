@@ -22,12 +22,63 @@ from app.core.verification import get_verifier
 
 
 class ToolVerification(CompletionVerifier):
-    """工具层完成验证：复用 Phase E4 程序化验证复核工具执行结果。"""
+    """工具层完成验证：复用 Phase E4 程序化验证复核工具执行结果。
+
+    P1 修复（2026-08-13）：只校验每个工具「最后一次出现」的记录。
+    早先的失败/拦截记录被后续成功覆盖时自动豁免（重试成功语义）——
+    命令被策略拦截→重试→最终成功 = 最终状态健康，不构成未完成项。
+    规则层 test_scope_guard 仍保留最后一次 pytest exit_code + 防逃逸判定。
+    """
 
     name = "tool"
 
     def __init__(self, verifier=None):
         self._verifier = verifier or get_verifier()
+
+    # run_command / execute_command 同属命令执行族，聚合时按族取最后一次
+    _COMMAND_FAMILY = "command"
+    _COMMAND_TOOLS = ("run_command", "execute_command")
+    # risk_engine / Strategy Layer 拦截文本前缀（命令从未真正运行，无副作用）
+    _CMD_INTERCEPT_PREFIXES = ("错误:", "策略阻止:")
+
+    @classmethod
+    def _family_key(cls, tool_name: str) -> str:
+        return cls._COMMAND_FAMILY if tool_name in cls._COMMAND_TOOLS else tool_name
+
+    @classmethod
+    def _is_intercepted(cls, record: dict) -> bool:
+        """判断命令记录是否「被策略拦截而未真正运行」（非执行失败）。
+
+        被拦截不产生副作用，不构成未完成项；是否真的跑过 pytest 由规则层把关。
+        """
+        if record.get("status") == "blocked":
+            return True
+        if record.get("status") == "success":
+            return False
+        tool_name = record.get("tool") or record.get("name") or ""
+        if tool_name not in cls._COMMAND_TOOLS:
+            return False
+        result = str(record.get("result") or "")
+        return any(result.startswith(p) for p in cls._CMD_INTERCEPT_PREFIXES)
+
+    @staticmethod
+    def _build_last_healthy_records(records: list) -> list:
+        """按工具族聚合：仅保留每个族最后一次出现的记录（维持首次出现顺序）。
+
+        重试语义：同一族的早期失败/拦截记录被后续记录覆盖，最终状态为准。
+        run_command 与 execute_command 归一为一族，避免同命令双名互相打断豁免。
+        """
+        order: list = []
+        last_by_name: dict = {}
+        for record in records or []:
+            name = record.get("tool") or record.get("name") or "?"
+            key = ToolVerification._family_key(name)
+            if key not in last_by_name:
+                last_by_name[key] = record
+                order.append(key)
+            else:
+                last_by_name[key] = record
+        return [last_by_name[key] for key in order]
 
     async def verify(self, ctx: CompletionContext) -> CompletionVerificationResult:
         records = ctx.tool_records or []
@@ -40,10 +91,13 @@ class ToolVerification(CompletionVerifier):
 
         missing_items = []
         detail = []
-        for record in records:
+        for record in self._build_last_healthy_records(records):
             tool_name = record.get("tool") or record.get("name") or "?"
-            # 执行失败的动作 → 直接判定缺失
             if record.get("status") != "success":
+                if self._is_intercepted(record):
+                    # 被策略拦截且从未运行 → 不构成未完成项（降级为 evidence）
+                    detail.append({"tool": tool_name, "verdict": "intercepted_blocked"})
+                    continue
                 missing_items.append(f"{tool_name}: 执行失败")
                 detail.append({"tool": tool_name, "verdict": "exec_failed"})
                 continue

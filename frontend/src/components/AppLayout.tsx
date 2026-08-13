@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { SettingsPanel } from "./panels/SettingsPanel";
-import { UserChoiceModal } from "./UserChoiceModal";
 
 interface AppLayoutProps {
   children: React.ReactNode;

@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
     electron: process.versions.electron,
   },
   selectDirectory: () => ipcRenderer.invoke("select-directory"),
-  showNotification: (opts) => ipcRenderer.invoke("show-notification", opts),
-  openInFolder: (filePath) => ipcRenderer.invoke("open-in-folder", filePath),
+  showNotification: (opts) => ipcRenderer.invoke("show-notification", opts),  openInFolder: (filePath) => ipcRenderer.invoke("open-in-folder", filePath),
   openPath: (dirPath) => ipcRenderer.invoke("open-path", dirPath),
 });

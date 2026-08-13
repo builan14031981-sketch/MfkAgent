@@ -10,7 +10,7 @@ declare global {
         electron?: string;
       };
       selectDirectory?: () => Promise<string | null>;
-      showNotification?: (opts: { title?: string; body?: string; silent?: boolean }) => Promise<boolean>;
+      showNotification?: (opts: { title?: string; body?: string; silent?: boolean; persistent?: boolean; chatId?: number }) => Promise<boolean>;
       openInFolder?: (filePath: string) => Promise<boolean>;
       openPath?: (dirPath: string) => Promise<boolean>;
     };

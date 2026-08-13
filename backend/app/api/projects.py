@@ -50,7 +50,7 @@ def _validate_project_path(raw_path: str) -> str:
 async def list_projects(page: int = 1, limit: int = 20):
     db = SessionLocal()
     try:
-        query = db.query(Project).filter(Project.is_deleted == False).order_by(Project.is_pinned.desc(), Project.updated_at.desc())
+        query = db.query(Project).filter(Project.is_deleted == False, Project.is_archived == False).order_by(Project.is_pinned.desc(), Project.updated_at.desc())
         result = paginate(query, page, limit)
         result["items"] = [ProjectResponse.model_validate(p) for p in result["items"]]
         return result
@@ -89,7 +89,7 @@ async def create_project(project: ProjectCreate):
 async def get_project(project_id: int):
     db = SessionLocal()
     try:
-        project = db.query(Project).filter(Project.id == project_id, Project.is_deleted == False).first()
+        project = db.query(Project).filter(Project.id == project_id, Project.is_deleted == False, Project.is_archived == False).first()
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         return project
@@ -131,9 +131,12 @@ async def delete_project(project_id: int):
         now = datetime.utcnow()
         project.is_deleted = True
         project.deleted_at = now
-        # 级联软删其下所有 Chat
+        # 已归档项目进回收站：清除归档标记
+        project.is_archived = False
+        project.archived_at = None
+        # 级联软删其下所有 Chat（归档态会话一并进回收站）
         db.query(Chat).filter(Chat.project_id == project_id, Chat.is_deleted == False).update(
-            {"is_deleted": True, "deleted_at": now}
+            {"is_deleted": True, "deleted_at": now, "is_archived": False, "archived_at": None}
         )
         db.commit()
         return {"status": "deleted"}

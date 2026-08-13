@@ -55,6 +55,7 @@ from app.core.workspace import (
     get_user_path_workspace_context,
 )
 from app.core.tool_runtime.permission import NO_PATH_TOOLS
+from app.core.tool_runtime.risk_engine import READ_ONLY_TOOLS  # P2: 只读意图工具过滤
 from app.core.planner import get_planner, get_runtime_task_context_adapter
 from .context import AgentContext
 from .pruning import prune_thought_history
@@ -121,6 +122,27 @@ def _is_casual_chat(message: str) -> bool:
             return True
 
     return False
+
+
+# ──── P2 只读意图检测（2026-08-13）────
+# 只读请求触发词：命中任一即视为只读任务，注入工具目录时过滤到 READ_ONLY_TOOLS，
+# 并同步 read_only=True（executor 按 plan 模式拒绝任何写/副作用工具，纵深二层防御）。
+# 仅匹配第一条用户消息原文；含"可以修改/可以改"等许可时豁免（可修改意图优先）。
+_READ_ONLY_PATTERNS = [
+    r"只读", r"只查看", r"只看", r"仅阅读", r"仅分析", r"仅检查",
+    r"禁止修改", r"不要修改", r"不许修改", r"不允许修改", r"禁止改动",
+    r"不要改文件", r"别改.*文件", r"不要改代码", r"别改.*代码",
+    r"只分析不", r"只读分析", r"不要写",
+]
+_READ_ONLY_RE = re.compile("|".join(_READ_ONLY_PATTERNS))
+# 修改许可词：命中则视为用户允许修改（只读意图豁免）
+_READ_WRITE_ALLOW_RE = re.compile(r"可以修改|可以改|允许修改|允许改|可以写")
+
+def _is_read_only_request(message: str) -> bool:
+    """轻量判断用户消息是否声明只读意图（只读优先，修改许可豁免）。"""
+    if not message:
+        return False
+    return bool(_READ_ONLY_RE.search(message)) and not _READ_WRITE_ALLOW_RE.search(message)
 
 
 def _msg_role_content(m):
@@ -329,6 +351,17 @@ def _build_memory_text(db, project_id: Optional[int] = None, agent_id: Optional[
       - scope='agent'：当前 Agent 专属（需 agent_id，跨项目共享）
       - scope='project'：当前 Chat 绑定项目下共享（需 project_id）
     """
+    # 读闸（memory_read_enabled）：关闭时 AI 完全不读已存记忆（记忆保留在库，仅禁止注入）。
+    # 读取失败或缺省按开启处理（fail-open），保持既有行为不回归。
+    try:
+        _mem_read = (
+            db.query(Setting).filter(Setting.key == "memory_read_enabled").first()
+        )
+        if _mem_read and _mem_read.value and _mem_read.value.lower() == "false":
+            return ""
+    except Exception:  # noqa: BLE001
+        pass
+
     sections = []
 
     global_items = (
@@ -753,6 +786,8 @@ class ChatContextBuilder:
             tools_arg = None
             # Task 3: 普通聊天检测 —— 闲聊消息跳过工具加载，避免误触发工具调用
             is_chat = _is_casual_chat(input.content)
+            # P2: 只读意图检测 —— 命中则工具目录过滤到只读集 + 后续 read_only 传导
+            read_only_request = _is_read_only_request(input.content)
             if input.use_tools and not is_chat:
                 tool_context = tool_runtime.process(
                     message=input.content,
@@ -762,6 +797,15 @@ class ChatContextBuilder:
                 if tool_context.get("need_tools"):
                     tools_arg = tool_context["tools"]
                 decision = tool_context.get("decision")
+                # P2: 只读意图 → 过滤到只读工具集（复用 READ_ONLY_TOOLS 单一事实来源，
+                # 不新建清单；让 LLM 无法发起写调用，executor 层 read_only 再兜底二次拦截）
+                if read_only_request and tools_arg:
+                    tools_arg = [
+                        t for t in tools_arg
+                        if t.get("function", {}).get("name") in READ_ONLY_TOOLS
+                    ]
+                    if not tools_arg:
+                        tools_arg = None
                 # 未绑定项目：PermissionFilter 已移除项目专有工具；
                 # 此处按无路径白名单二次过滤，保留 add_memory/web_search 等无需路径的工具，
                 # 不再一棒子打死（2026-08-11：修复普通聊天工具全禁问题）
@@ -931,7 +975,7 @@ class ChatContextBuilder:
                 temperature=input.temperature,
                 max_tokens=input.max_tokens,
                 reasoning_effort=reasoning_effort,
-                read_only=(chat_mode == "plan"),
+                read_only=(chat_mode == "plan" or read_only_request),
                 memory_text=memory_text,
                 tool_context=tool_context,
                 persona_context=persona_ctx,

@@ -122,19 +122,8 @@ export function ChatRow({
             }}
           />
         )}
-        {streamingStage ? (
+        {streamingStage && (
           <ThinkingOrb state={streamingStage} size={20} theme="auto" />
-        ) : (
-          <MessageSquare
-            style={{
-              width: "var(--sidebar-icon-size)",
-              height: "var(--sidebar-icon-size)",
-              flexShrink: 0,
-              color: isActive
-                ? "var(--sidebar-active-fg)"
-                : "var(--text-level-3)",
-            }}
-          />
         )}
         {isRenaming ? (
           <input

@@ -32,7 +32,14 @@ DEFAULT_SETTINGS = {
     "default_agent": "general",
     "default_personality": "50",
     "default_reasoning_effort": "none",
+    # 记忆三开关（2026-08-13 记忆可见化治理）：
+    # - memory_read_enabled：读闸，false 时 AI 完全不读已存记忆（记忆保留在库，前端仍可管理）
+    # - memory_write_enabled：写闸，false 时完全不自动提取/沉淀新记忆
+    # - memory_alert：保存后提示，true 时在对话流推送"已保存记忆"通知
     "memory_enabled": "true",
+    "memory_read_enabled": "true",
+    "memory_write_enabled": "true",
+    "memory_alert": "true",
     "font_size": "14",
     "font_family": "system",
     "hero_entry": "1",
@@ -56,6 +63,8 @@ DEFAULT_SETTINGS = {
     "provider_disabled": "{}",
     # Phase 3 T3/T8: Agent 权限模式 — safe / standard / autonomous
     "agent_permission_mode": "standard",
+    # 归档：磁盘导出文件夹（空 = 默认 backend/Archive/）
+    "archive_dir": "",
 }
 
 
@@ -188,6 +197,24 @@ def _mask_key(key: str) -> str:
     return key[:3] + "****" + key[-4:]
 
 
+def _sync_approval_mode(value: str) -> None:
+    """同步 agent_permission_mode 到 ApprovalPolicy 内存单例。
+
+    get_approval_policy() 仅在首次调用时从数据库读取一次，之后永久缓存；
+    若写入设置后不刷新，内存单例会锁死旧权限模式（切换 safe/standard/autonomous 失效）。
+    非法值回退到默认模式并告警，绝不抛 500。
+    """
+    from app.core.tool_runtime.approval_policy import ApprovalMode, set_approval_mode
+    try:
+        set_approval_mode(ApprovalMode(value))
+        logger.info("agent_permission_mode hot-reloaded: %s", value)
+    except (ValueError, KeyError):
+        from app.core.tool_runtime.approval_policy import DEFAULT_APPROVAL_MODE
+        set_approval_mode(DEFAULT_APPROVAL_MODE)
+        logger.warning("invalid agent_permission_mode=%r, fallback to default", value)
+
+
+
 @router.get("", response_model=Dict[str, str])
 async def get_all_settings():
     """返回全部设置（本地化工具，明文下发，知情权归用户）"""
@@ -246,6 +273,10 @@ async def update_setting(key: str, request: SettingUpdate):
         if key == "provider_disabled":
             model_service.reload_models()
 
+        # agent_permission_mode 更新 → 同步内存单例（get_approval_policy 只读一次，不刷新会锁死旧值）
+        if key == "agent_permission_mode":
+            _sync_approval_mode(request.value)
+
         return SettingResponse(key=setting.key, value=setting.value)
     finally:
         db.close()
@@ -284,6 +315,11 @@ async def update_settings(request: SettingsBulkUpdate):
 
         if any(k.startswith("api_key_") or k.startswith("api_base_") or k == "provider_disabled" for k in request.settings):
             model_service.reload_models()
+
+        # agent_permission_mode 更新 → 同步内存单例（与单条接口同套路）
+        if "agent_permission_mode" in request.settings:
+            _sync_approval_mode(request.settings["agent_permission_mode"])
+
         return result
     finally:
         db.close()

@@ -40,7 +40,7 @@ export function AppleMinimalTheme({ title, welcome, subtext, animated }: HeroThe
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.7 }}
           style={{
-            margin: "14px 0 0 0",
+            margin: "8px 0 0 0",
             fontSize: 17,
             color: "var(--text-level-3)",
             letterSpacing: "0.01em",

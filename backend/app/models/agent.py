@@ -12,6 +12,8 @@ class Project(Base):
     path = Column(String(500), nullable=False)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime)
+    is_archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime)
     is_pinned = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -35,6 +37,8 @@ class Chat(Base):
     context_files = Column(JSON, default=list)
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime)
+    is_archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
@@ -148,6 +152,13 @@ class Agent(Base):
     default_personality_level = Column(Integer, nullable=True)
     # Expression Profile V1：表达风格配置（companion / warm / professional / coder / creative）
     expression_profile = Column(String(50), nullable=True)
+    # ──── 子代理标记（Phase SubAgent）────
+    # 是否为子代理：主 Agent 可通过 delegate_sub_agent 工具委派任务给它
+    is_sub_agent = Column(Boolean, default=False)
+    # 子代理允许的工具白名单（JSON 字符串数组）；NULL/空 = 不限制
+    allowed_tools = Column(JSON, default=list)
+    # 所属主代理 agent_id（可空，仅子代理有意义）
+    parent_agent_id = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

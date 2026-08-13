@@ -11,7 +11,7 @@
  * - plugins / about：无高级区块，返回 null。
  * - 本组件不持有业务状态，所有数据通过 props 注入（统管 props 单向数据流不变）。
  */
-import { Bot } from "lucide-react";
+import { Bot, Workflow } from "lucide-react";
 import { ModelAdvancedFields } from "./ModelConfigSection";
 import { MemoryPanel } from "./MemoryPanel";
 import type { AdvancedSettingsViewProps, SettingSectionId } from "./BasicSettingsView";
@@ -21,9 +21,9 @@ function ModelAdvanced() {
   return <ModelAdvancedFields />;
 }
 
-// ── ai 高级区块：Agent 管理 + AI 长期记忆 ──
+// ── ai 高级区块：Agent 管理 + 子代理 + AI 长期记忆 ──
 function AiAdvanced(props: AdvancedSettingsViewProps) {
-  const { onManageAgents, t } = props;
+  const { onManageAgents, onManageSubAgents, t } = props;
   return (
     <>
       {/* 预设 Agent：统一入口（列表在独立二级面板） */}
@@ -51,6 +51,34 @@ function AiAdvanced(props: AdvancedSettingsViewProps) {
           }}
         >
           {t("settings.ai.agents.manage")} ›
+        </button>
+      </div>
+
+      {/* 子代理：委派专用子任务给专门化子代理（独立二级面板） */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginTop: "14px", paddingTop: "14px", borderTop: "1px solid var(--border-primary)" }}>
+        <div>
+          <h3 style={{
+            fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0,
+            display: "flex", alignItems: "center", gap: "8px",
+          }}>
+            <Workflow style={{ width: "16px", height: "16px" }} />
+            {t("settings.ai.subAgents.title")}
+          </h3>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "4px 0 0 0" }}>
+            {t("settings.ai.subAgents.desc")}
+          </p>
+        </div>
+        <button
+          onClick={onManageSubAgents}
+          style={{
+            display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px",
+            borderRadius: "var(--radius-md)", border: "1px solid var(--color-primary)",
+            background: "var(--color-primary-lighter)", cursor: "pointer",
+            fontSize: "13px", fontWeight: "500", color: "var(--color-primary)",
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}
+        >
+          {t("settings.ai.subAgents.manage")} ›
         </button>
       </div>
 

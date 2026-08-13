@@ -123,6 +123,7 @@ function splitByFilePaths(text: string): Array<{ type: "text" | "path"; value: s
 
 /** 可交互的文件路径链接组件 */
 function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean }) {
+  const { t } = useTranslation();
   const { resolvedPath, isFile, onDoubleClick, openInFolder, copyPath } = useFilePathInteraction(path);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -179,7 +180,7 @@ function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean
           gap: "2px",
           fontFamily: isCode ? "var(--font-geist-mono), var(--font-family)" : undefined,
           fontSize: isCode ? undefined : "0.95em",
-          color: "var(--color-primary)",
+          color: "var(--text-level-3)",
           cursor: isFile ? "pointer" : "inherit",
           textDecoration: isFile ? "underline dotted" : undefined,
           textUnderlineOffset: "3px",
@@ -227,7 +228,7 @@ function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean
             onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
-            在文件管理器中打开
+            {t("chat.openInFileManager")}
           </button>
           <button
             onClick={handleCopyPath}

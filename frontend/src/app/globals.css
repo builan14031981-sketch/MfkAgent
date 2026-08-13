@@ -2,7 +2,7 @@
  * MfkAgent 全局基础样式（V2.0）
  *
  * 视觉 Token 与主题配色已迁移至 src/styles/tokens.css
- * （--mf-* 语义 Token + obsidian/studio/terminal 三主题）。
+ * （--mf-* 语义 Token；官方 studio-graphite/terminal，实验 obsidian 等）。
  * 本文件保留：全局 reset、滚动条、动画、按钮基础、
  * Markdown 排版，以及旧 Token 名的 SSR 兜底值。
  * ======================================== */
@@ -820,5 +820,18 @@ button:active {
 .md-paragraph {
   margin: 0 0 4px 0;
   line-height: var(--line-height-normal);
+}
+
+/* 消息操作栏 hover 显隐：默认隐藏（含时间/用时），鼠标悬停消息行才显示。
+   布局空间常驻（Zero CLS），仅切换 opacity/pointer-events，不产生位移。 */
+.mf-msg-row .mf-bubble-actions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.mf-msg-row:hover .mf-bubble-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 

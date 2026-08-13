@@ -29,6 +29,7 @@
   "rename": "Rename",
   "pin": "Pin",
   "unpin": "Unpin",
+  "archive": "Archive",
   "delete": "Delete",
   "projectWorkspace": "Workspace",
   "generalChats": "General Chats",
@@ -95,8 +96,11 @@
  },
  "chat": {
   "title": "Chat",
-  "startConversation": "Start Conversation",
-  "startConversationDesc": "Type a message to start talking with {name}",
+   "startConversation": "Start Conversation",
+   "startConversationDesc": "Type a message to start talking with {name}",
+   "memorySaved": "{count} memories saved",
+   "archiveProjectConfirm": "Archive project \"{name}\"? All its chats will be archived together and exported to the archive folder. You can restore from Settings → Archive.",
+   "cannotArchiveRunning": "This chat is currently generating and cannot be archived. Stop it first or wait for it to finish.",
   "inputPlaceholder": "Type a message...",
    "sending": "Sending...",
    "stop": "Stop generating",
@@ -119,6 +123,9 @@
   "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
   "noProjectHint": "No local project linked.\nFile operations will be saved to the app data directory by default.",
   "logTruncated": "… Log truncated ({count} chars, showing head & tail) …",
+  "openInFileManager": "Open in File Manager",
+  "toolCallsCount": "{count} calls",
+  "toolRunning": "Executing {current}/{total}: {name}",
   "invalidId": "Invalid chat ID",
   "backToHome": "Back to Home",
   "projectContext": "Project Context",
@@ -214,11 +221,14 @@
   "choiceRecommended": "Recommended",
   "choiceCustomPlaceholder": "Or type your own idea…",
   "choiceSubmitCustom": "Submit my idea",
+  "choiceConfirm": "Confirm",
   "choiceSkip": "Skip — use the recommended option",
   "choiceResolvedSelected": "Selected",
   "choiceResolvedSkipped": "Skipped",
   "choiceResolvedTimeout": "Timed out (recommended applied)",
-  "choiceHint": "Press ESC or click outside to skip",
+  "choiceHint": "Pick an option, or type your own idea above",
+  "choiceWaiting": "AI is waiting for your choice…",
+  "choiceResolvedLine": "{question} · {action}",
   "riskLevel": {
    "read_only": "Read-only",
    "write": "Write",
@@ -227,6 +237,20 @@
  },
  "settings": {
   "title": "Settings",
+  "archive": {
+   "title": "Archive",
+   "dirTitle": "Archive Folder",
+   "dirHint": "Archived project/chat records are exported to this folder. Leave empty to use the default (Archive/ under the app data directory). Archiving never touches your project's local code directory.",
+   "dirDefaultHint": "Enter an absolute path, or pick a folder with the button",
+   "pickDir": "Choose folder",
+   "listTitle": "Archived Items",
+   "empty": "No archived projects or chats",
+   "typeProject": "Project",
+   "typeChat": "Chat",
+   "restore": "Restore",
+   "purge": "Delete permanently",
+   "purgeConfirm": "Permanently delete \"{name}\"? This removes the archived files on disk and erases the records forever. This cannot be undone."
+  },
   "advanced": {
    "show": "⚙️ Show Advanced",
    "hide": "Hide Advanced"
@@ -243,17 +267,21 @@
    "visualTheme": {
     "desc": "Choose the visual theme; each ships a full palette and layer system",
     "obsidian": "Obsidian Dark",
-    "obsidianDesc": "Professional AI workspace · Default",
+    "obsidianDesc": "Professional AI workspace · Dark",
     "studio": "Apple Studio Light",
     "studioDesc": "Clean & bright · Daily use",
     "terminal": "Developer Terminal",
-    "terminalDesc": "Developer terminal · High density"
+    "terminalDesc": "Developer terminal · High density",
+    "studioGraphite": "Studio Graphite",
+    "studioGraphiteDesc": "Graphite ink accent · Notion-style near-black primary, zero hue noise on white · Default",
+    "warmMinimal": "Warm Minimal",
+    "warmMinimalDesc": "Warm minimal · Soft off-white"
    },
    "experimentalTheme": {
     "title": "Experimental Themes",
     "desc": "Themes in exploration. Preview and pick; may be adjusted or removed in future releases",
     "placeholder": "Select an experimental theme",
-    "backToOfficial": "Back to official theme (Obsidian Dark)",
+    "backToOfficial": "Back to official theme (Studio Graphite)",
     "titanium": "Titanium",
     "titaniumDesc": "Cool titanium gray · Metallic light",
     "paper": "Paper Studio",
@@ -266,12 +294,12 @@
     "warmMinimalDesc": "Warm minimal · Soft off-white",
     "aurora": "Aurora",
     "auroraDesc": "Low-saturation teal · Not neon",
-    "studioGraphite": "Studio Graphite",
-    "studioGraphiteDesc": "Graphite ink accent · Notion-style near-black primary, zero hue noise on white",
-    "studioLavender": "Studio Lavender",
-    "studioLavenderDesc": "Lavender blue accent · Linear-style desaturated cool tone, restrained usage",
-    "studioSpectrum": "Studio Spectrum",
-    "studioSpectrumDesc": "Refined deep blue accent · Conservative option, desaturated and tightly scoped"
+    "clay": "Studio Clay",
+    "clayDesc": "Warm paper ivory · Claude-style terracotta, human warmth",
+    "indigo": "Indigo Night",
+    "indigoDesc": "Linear-style near-black · Lavender indigo, precise restraint",
+    "graphiteDark": "Graphite Night",
+    "graphiteDarkDesc": "Neutral dark companion to Graphite · Day/night pairing"
    },
    "language": {
     "title": "Language",
@@ -422,6 +450,18 @@
     "balanced": "Balanced",
     "veryRational": "Very Rational"
    },
+   "memoryRead": {
+    "title": "Read Memory",
+    "desc": "When off, the AI no longer reads saved memories (memories are kept in storage)"
+   },
+   "memoryWrite": {
+    "title": "Auto-save Memory",
+    "desc": "When off, the AI no longer auto-extracts and saves new memories from conversations"
+   },
+   "memoryAlert": {
+    "title": "Memory Save Notice",
+    "desc": "Show \"N memories saved\" in the conversation after auto-saving"
+   },
    "agents": {
     "title": "Preset Agents",
     "desc": "System provided AI work partners",
@@ -435,6 +475,12 @@
     "modelGlobal": "Model is selected per chat; agents are not bound to a default model.",
     "capabilities": "Capabilities",
     "capabilitiesHint": "Capability tags influence behavior tendencies, not tool permissions."
+   },
+   "subAgents": {
+    "title": "Sub-Agents",
+    "desc": "Main agent delegates sub-tasks to specialized sub-agents, executed in isolated context",
+    "manage": "Manage Sub-Agents",
+    "create": "New Sub-Agent"
    }
   },
   "memory": {
@@ -463,7 +509,48 @@
     "standardDesc": "Auto-execute normal ops, high-risk needs approval",
     "autonomous": "Autonomous",
     "autonomousDesc": "Only extremely high-risk ops need approval"
-   }
+   },
+   "troubleshoot": "Troubleshooting",
+   "matrix": "Approval Matrix",
+   "audit": "Audit Log",
+   "status": "Runtime Status",
+   "appLogs": "App Logs",
+   "log": {
+    "title": "App Logs",
+    "level": "Level",
+    "levelAll": "All",
+    "levelError": "Error",
+    "levelWarning": "Warning",
+    "levelInfo": "Info",
+    "levelDebug": "Debug",
+    "search": "Search logs...",
+    "refresh": "Refresh",
+    "download": "Download",
+    "noLogs": "No logs",
+    "loadFailed": "Failed to load",
+    "total": "{total} entries",
+    "pagePrev": "Previous",
+    "pageNext": "Next",
+    "files": "Log files",
+    "currentLog": "Today's log"
+   },
+   "guardSection": "Security Guardrails",
+   "approvals": "Approval Records",
+   "commandRisk": "Command Risk",
+   "guardrails": "Guardrails",
+   "noApprovals": "No approval records",
+   "colTime": "Time",
+   "colTool": "Tool",
+   "colCommand": "Command",
+   "colRisk": "Risk",
+   "colStatus": "Status",
+   "commandPlaceholder": "Enter a command to preview its risk...",
+   "preview": "Preview",
+   "anyArgs": "any args",
+   "forbiddenDirs": "Forbidden directories",
+   "allowedCommands": "Read-only command allowlist",
+   "readOnlyTools": "Read-only tools",
+   "writeTools": "Write tool rules"
   },
   "plugins": {
    "title": "Plugins",
@@ -487,6 +574,9 @@
   "extensions": {
    "title": "Extensions",
    "desc": "Manage AI augmentation capabilities",
+   "subtitle": "Manage AI augmentation capabilities",
+   "manage": "Manage",
+   "manageBackHome": "Back to extensions",
    "futureNote": "Plugins and Connections are coming in a future release. Only Skills are available in V1.",
    "skills": {
     "sectionTitle": "Skills",
@@ -498,6 +588,7 @@
     "enabled": "Enabled",
     "disable": "Disable",
     "installedCount": "{{count}} of {{total}} enabled",
+    "categoryCount": "{{count}}",
     "moreInfo": "Click a card for details"
    },
    "plugins": {
@@ -572,7 +663,24 @@
   "delete": "Delete",
   "deleteConfirm": "Confirm delete?",
   "scopeLabel": "Scope",
-  "createdAt": "Created"
+  "createdAt": "Created",
+  "manage": "Manage",
+  "manageTitle": "Memory Manager",
+  "manageDesc": "Manage all memories: search, edit, batch cleanup",
+  "searchPlaceholder": "Search memories...",
+  "back": "Back",
+  "totalCount": "{count} total",
+  "selectedCount": "{count} selected",
+  "batchDelete": "Batch delete",
+  "confirmBatchDelete": "Delete {count} selected memories?",
+  "edit": "Edit",
+  "save": "Save",
+  "cancel": "Cancel",
+  "editContent": "Edit memory content",
+  "confirm": "Confidence",
+  "type": "Type",
+  "noSearchResults": "No matching memories",
+  "noSearchResultsDesc": "Try a different keyword"
  },
  "project": {
   "title": "Project",

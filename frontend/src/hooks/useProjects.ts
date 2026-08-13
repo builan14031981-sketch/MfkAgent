@@ -9,6 +9,8 @@ export interface Project {
   is_pinned: boolean;
   created_at: string;
   updated_at: string;
+  is_archived?: boolean;
+  archived_at?: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -78,5 +80,10 @@ export function useProjects(page: number = 1, limit: number = 50) {
     await refreshAndBroadcast();
   }
 
-  return { projects, total, loading, error, createProject, deleteProject, pinProject, refetch: fetchProjects };
+  async function archiveProject(id: number) {
+    await apiPost(`/api/archive/projects/${id}`, {});
+    await refreshAndBroadcast();
+  }
+
+  return { projects, total, loading, error, createProject, deleteProject, pinProject, archiveProject, refetch: fetchProjects };
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Trash2,
   Brain,
+  ExternalLink,
 } from "lucide-react";
 import { useAgents } from "@/hooks/useAgents";
 import { useProjects } from "@/hooks/useProjects";
@@ -59,6 +61,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
   const { agents } = useAgents();
   const { projects } = useProjects();
   const { t } = useTranslation();
+  const router = useRouter();
   const [scope, setScope] = useState<MemoryScope>("global");
   // "" = 全部 Agent（不按 agent 过滤，后端返回 scope=agent 的所有记忆）；
   // 具体 agent_id = 仅查看该 Agent 的记忆
@@ -345,7 +348,43 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           fontWeight: "500",
           color: "var(--text-level-1)",
           margin: "0 0 10px 0",
-        }}>{t("memory.memoryList")}</h3>
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "8px",
+        }}>
+          <span>{t("memory.memoryList")}</span>
+          {/* 完整管理入口：跳转独立二级页 /memories（记忆管理） */}
+          <button
+            onClick={() => router.push("/memories")}
+            title={t("memory.manage")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              padding: "4px 10px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--color-primary)",
+              background: "var(--color-primary-lighter)",
+              cursor: "pointer",
+              fontSize: "11px",
+              fontWeight: "500",
+              color: "var(--color-primary)",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              transition: "background 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--color-primary-light)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--color-primary-lighter)";
+            }}
+          >
+            <ExternalLink style={{ width: "12px", height: "12px" }} />
+            <span>{t("memory.manage")}</span>
+          </button>
+        </h3>
         {loading && filteredMemories.length === 0 ? (
           <p style={{ color: "var(--text-level-3)" }}>{t("common.loading")}</p>
         ) : filteredMemories.length === 0 ? (

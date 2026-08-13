@@ -6,7 +6,7 @@
   "author": "MfkAgent Team",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

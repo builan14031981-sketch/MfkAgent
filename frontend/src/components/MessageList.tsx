@@ -3,11 +3,11 @@
 import { useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { ArrowDown, AlertTriangle, RotateCw, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
-import { ChatMessage, ThinkingPanel, StreamingThinkingPanel } from "@/components/ChatMessage";
+import { ChatMessage, ThinkingPanel, StreamingThinkingPanel, MemorySavedNotice } from "@/components/ChatMessage";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { AgentIcon } from "@/components/AgentIcon";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { ToolCallCard } from "@/components/ToolCallCard";
+import { ToolCallGroup, groupToolCalls } from "@/components/ToolCallGroup";
 import { ToolApprovalCard } from "@/components/ToolApprovalCard";
 import { UserChoiceCard } from "@/components/UserChoiceCard";
 import type { RuntimeEvent } from "@/types/runtime";
@@ -424,6 +424,13 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     root.scrollBy({ top: delta, behavior: reduce ? "auto" : "smooth" });
   }, [focusAnchorId]);
 
+  // 流式 timeline：连续工具段合并为组（中间无 text/thinking/memory 则归一组），渲染层计算
+  const toolBlocks = useMemo(
+    () =>
+      groupToolCalls(timeline, (s) => (s.type === "tool" ? s.toolCall : undefined)),
+    [timeline]
+  );
+
   return (
     <>
     <div style={{ position: "relative", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -483,18 +490,23 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                     {currentAgent?.name || "AI"}
                   </span>
                 </div>
-                {timeline.map((seg) => {
+                {toolBlocks.map((block) => {
+                  // 工具段：按组渲染（流式中单行头 / 完成后摘要组头，可展开）
+                  if (block.kind === "tool") {
+                    return (
+                      <ToolCallGroup
+                        key={`toolgroup-${block.tools[0]?.tool_call_id ?? block.tools.length}`}
+                        tools={block.tools}
+                        streaming={block.streaming}
+                      />
+                    );
+                  }
+                  const seg = block.seg;
                   switch (seg.type) {
                     case "thinking":
                       return <ThinkingPanel key={seg.id} thinking={seg.content} />;
                     case "thinking_indicator":
                       return <StreamingThinkingPanel key={seg.id} content={seg.content} isActive={reasoningActive ?? false} />;
-                    case "tool":
-                      return (
-                        <div key={seg.id} style={{ marginBottom: "8px" }}>
-                          <ToolCallCard toolCall={seg.toolCall} />
-                        </div>
-                      );
                     case "approval":
                       return (
                         <div key={seg.id} style={{ marginTop: "8px" }}>
@@ -518,11 +530,21 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                       );
                     case "text":
                       return <MarkdownRenderer key={seg.id} content={seg.content} />;
+                    case "memory_saved":
+                      return (
+                        <div key={seg.id} style={{ marginBottom: "8px" }}>
+                          <MemorySavedNotice count={seg.count} items={seg.items} />
+                        </div>
+                      );
                     // task_* 事件不进入 timeline 渲染（由独立 tasks 状态 + TaskProgressCard 处理）
                     case "task_started":
                     case "task_completed":
                     case "task_failed":
                     case "task_skipped":
+                      return null;
+                    // 工具段已由 toolBlocks 分组提前消费（见 ToolCallGroup），此分支仅为保留类型收窄
+                    // （否则 default 分支中 seg 会包含无 title/content 的 ToolEvent 导致类型报错），运行时不会命中。
+                    case "tool":
                       return null;
                     // 未来扩展事件（verification / sub_agent / vision / memory）：
                     // 以通用占位块呈现，字段就绪后可替换为专用组件

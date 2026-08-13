@@ -29,6 +29,8 @@ class PermissionFilter:
         "search_files",
         "web_search", "fetch_url", "github_search",
         "add_memory", "manage_todos", "ask_user_choice", "get_datetime", "format_json",
+        # Phase SubAgent: 委派子任务给专门化子代理（子代理自身工具集被收窄）
+        "delegate_sub_agent",
     ]
 
     # 写入/有副作用工具（plan 模式移除；派生自 risk_engine，与执行闸保持同步）

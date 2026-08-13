@@ -14,7 +14,7 @@ import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from
  * text 目前由后端合并为单个事件追加在末尾（见 backend/app/api/chat.py）。
  */
 export interface TimelineEvent {
-  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | "user_choice" | string;
+  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | "user_choice" | "memory_saved" | string;
   content?: string;
   tool_call_id?: string;
   tool?: string;
@@ -24,6 +24,10 @@ export interface TimelineEvent {
   duration_ms?: number;
   error?: string;
   file_path?: string;
+  /** memory_saved：本次提取落库的记忆条数 */
+  count?: number;
+  /** memory_saved：每条记忆摘要 */
+  items?: Array<{ memory_type: string; content: string }>;
 }
 
 export interface Message {
@@ -144,6 +148,7 @@ export function useMessages(chatId: number | null) {
     onTaskEvent?: (evt: TaskEvent) => void,
     onTokenUsage?: (evt: TokenUsageEvent) => void,
     onAgentStateUpdate?: (evt: AgentStateUpdateEvent) => void,
+    onMemorySaved?: (evt: { count: number; items: Array<{ memory_type: string; content: string }>; chat_id?: number }) => void,
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void,
     attachments?: Attachment[],
     permissionMode?: PermissionMode,
@@ -405,6 +410,15 @@ export function useMessages(chatId: number | null) {
                       status: parsed.status ?? "working",
                       action_detail: parsed.action_detail ?? "",
                       task_progress: parsed.task_progress ?? "",
+                    });
+                    break;
+                  }
+                  case "memory_saved": {
+                    // 记忆保存通知（自动提取落库后由后端推送）
+                    onMemorySaved?.({
+                      count: parsed.count ?? 0,
+                      items: Array.isArray(parsed.items) ? parsed.items : [],
+                      chat_id: parsed.chat_id,
                     });
                     break;
                   }

@@ -32,6 +32,8 @@ export interface StreamSessionRefs {
   thinkingRaf: number | null;
   firstText: boolean;
   agentStateTimer: ReturnType<typeof setTimeout> | null;
+  /** 抉择超时预警定时器集合（choice_id → timer），供 resetStreaming 统一清理 */
+  choiceWarnTimers: Map<string, ReturnType<typeof setTimeout>> | null;
 }
 
 function createDefaultSession(): StreamSessionState {
@@ -55,6 +57,7 @@ function createDefaultRefs(): StreamSessionRefs {
     thinkingRaf: null,
     firstText: true,
     agentStateTimer: null,
+    choiceWarnTimers: null,
   };
 }
 

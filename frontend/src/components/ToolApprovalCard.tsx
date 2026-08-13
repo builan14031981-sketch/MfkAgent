@@ -52,19 +52,9 @@ export function ToolApprovalCard({ approval, onApprove, onDeny }: ToolApprovalCa
         : isWrite
         ? "color-mix(in srgb, var(--color-warning) 55%, var(--border-primary))"
         : "color-mix(in srgb, var(--color-info) 40%, var(--border-primary))",
-      animation: isDestructive && !isResolved ? "approval-pulse 2s ease-in-out infinite" : "none",
-      boxShadow: isDestructive && !isResolved
-        ? "0 0 12px color-mix(in srgb, var(--color-error) 25%, transparent)"
-        : "none",
       opacity: isResolved ? 0.7 : 1,
       transition: "opacity 0.3s ease, border-color 0.3s ease",
     }}>
-      <style>{`
-        @keyframes approval-pulse {
-          0%, 100% { border-color: var(--color-error); box-shadow: 0 0 8px color-mix(in srgb, var(--color-error) 20%, transparent); }
-          50% { border-color: color-mix(in srgb, var(--color-error) 50%, var(--border-primary)); box-shadow: 0 0 18px color-mix(in srgb, var(--color-error) 35%, transparent); }
-        }
-      `}</style>
 
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {isDestructive ? (

@@ -14,6 +14,8 @@ export interface Chat {
   personality_level: number;
   context_files: string[];
   mode: "build" | "plan";
+  is_archived?: boolean;
+  archived_at?: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -97,5 +99,10 @@ export function useChat(projectId?: number | null, page: number = 1, limit: numb
     await refreshAndBroadcast();
   }
 
-  return { chats, total, loading, error, createChat, updateChat, deleteChat, pinChat, refetch: fetchChats };
+  async function archiveChat(id: number) {
+    await apiPost(`/api/archive/chats/${id}`, {});
+    await refreshAndBroadcast();
+  }
+
+  return { chats, total, loading, error, createChat, updateChat, deleteChat, pinChat, archiveChat, refetch: fetchChats };
 }

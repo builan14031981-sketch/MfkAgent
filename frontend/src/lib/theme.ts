@@ -1,7 +1,7 @@
 /**
  * 视觉主题解析与首帧缓存（2026-08-11 从 providers.tsx 抽出）
  *
- * 抽出目的：修复"重启闪黑"FOUC——首帧 CSS（tokens.css :root 默认 obsidian）
+ * 抽出目的：修复"重启闪黑"FOUC——首帧 CSS（tokens.css :root 默认 studio-graphite）
  * 先于设置拉取绘制，需在 HTML 解析阶段（next/script beforeInteractive 内联脚本）
  * 读取 localStorage 缓存立即应用上次主题。store.ts 与 providers.tsx 共用本模块，
  * 避免循环依赖与名单双份漂移。
@@ -22,10 +22,13 @@ export type VisualTheme =
   | "mono"
   | "warm-minimal"
   | "aurora"
-  // 2026-08-11 配色调研：Studio 强调色 A/B/C 对比样张，验收后选定写回 studio 再移除
+  // 2026-08-13 主题整理：Studio 对比样张验收完毕，选定「石墨」转正为官方；
+  // 薰衣草（studio-lavender）与深蓝（studio-spectrum）淘汰移除。
   | "studio-graphite"
-  | "studio-lavender"
-  | "studio-spectrum";
+  // 2026-08-13 第三方候选（实验区预览）：陶土 Clay / 暗夜 Indigo / 石墨暗夜 graphite-dark
+  | "clay"
+  | "indigo"
+  | "graphite-dark";
 
 export const VALID_THEMES: readonly VisualTheme[] = [
   "obsidian",
@@ -38,22 +41,27 @@ export const VALID_THEMES: readonly VisualTheme[] = [
   "warm-minimal",
   "aurora",
   "studio-graphite",
-  "studio-lavender",
-  "studio-spectrum",
+  "clay",
+  "indigo",
+  "graphite-dark",
 ];
 
-/** 官方主题 id 集合（非官方即实验主题） */
-export const OFFICIAL_THEME_IDS: ReadonlySet<string> = new Set(["obsidian", "studio", "terminal"]);
+/**
+ * 官方主题 id 集合（非官方即实验主题）。
+ * 2026-08-13 整理：官方 = Studio 石墨 + Developer Terminal + warm-minimal；
+ * obsidian 与旧 Apple 明亮（studio）降级至实验区。
+ */
+export const OFFICIAL_THEME_IDS: ReadonlySet<string> = new Set(["studio-graphite", "terminal", "warm-minimal"]);
 
 /** 浅色基调主题：用于 .dark/.light 兼容类判定 */
-export const LIGHT_BASED_THEMES: ReadonlySet<string> = new Set(["studio", "titanium", "paper", "warm-minimal", "studio-graphite", "studio-lavender", "studio-spectrum"]);
+export const LIGHT_BASED_THEMES: ReadonlySet<string> = new Set(["studio", "titanium", "paper", "warm-minimal", "studio-graphite", "clay"]);
 
-/** 从设置中解析视觉主题：visual_theme 优先；存量 theme=light 迁移到 studio，其余回落默认 obsidian */
+/** 从设置中解析视觉主题：visual_theme 优先；存量 theme=light 迁移到 studio，其余回落默认 studio-graphite（石墨） */
 export function resolveVisualTheme(settings: Record<string, string> | null): VisualTheme {
   const raw = settings?.visual_theme;
   if (raw && (VALID_THEMES as readonly string[]).includes(raw)) return raw as VisualTheme;
   if (!raw && settings?.theme === "light") return "studio";
-  return "obsidian";
+  return "studio-graphite";
 }
 
 export function themeMode(theme: string): "light" | "dark" {
