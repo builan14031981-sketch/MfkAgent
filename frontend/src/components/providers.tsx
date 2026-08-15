@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSettingsStore } from "@/lib/store";
 import {
   resolveVisualTheme,
@@ -146,6 +147,17 @@ interface ProvidersProps {
 }
 
 export function Providers({ children }: ProvidersProps) {
+  const router = useRouter();
+
+  // 监听 Electron 主进程通知点击 → 客户端路由导航，避免 loadURL 硬导航白屏
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.onNavigateToChat) {
+      window.electronAPI.onNavigateToChat((chatId) => {
+        router.push(`/chat/${chatId}`);
+      });
+    }
+  }, [router]);
+
   return (
     <ThemeProvider>
       <AccentProvider>

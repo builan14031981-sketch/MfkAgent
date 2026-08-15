@@ -114,8 +114,8 @@ def test_available_models_filter():
     models = _get("/api/models/models")
     ids = {m["id"] for m in models}
     assert "qwen-flash" in ids and "deepseek-v4-flash" in ids
-    assert "wenxin-ernie-4-turbo" not in ids, "未配 Key 的文心不应出现"
-    assert "glm-4" not in ids, "未配 Key 的 glm 不应出现"
+    assert "wenxin-ernie-5.0" not in ids, "未配 Key 的文心不应出现"
+    assert "glm-5.1" not in ids, "未配 Key 的 glm 不应出现"
     assert not any(i.startswith("mimo") for i in ids), "mimo 全部不应出现"
 
 
@@ -148,10 +148,10 @@ def test_provider_key_save_reload():
     assert by_id["glm"]["api_key_masked"].endswith("9999")
 
     models = _get("/api/models/models")
-    assert any(m["id"] == "glm-4" for m in models), "配置 Key 后 glm-4 应可用"
+    assert any(m["id"] == "glm-5.1" for m in models), "配置 Key 后 glm-5.1 应可用"
 
     from app.services.model import model_service
-    assert model_service.models["glm-4"].api_key == "glm-secret-9999"
+    assert model_service.models["glm-5.1"].api_key == "glm-secret-9999"
 
     # API Base 覆盖
     r = _post("/api/models/provider-key", {"provider_id": "qwen", "api_base": "https://override.example.com/v1"})

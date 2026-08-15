@@ -41,10 +41,13 @@ _STEP_TEMPLATES: Dict[str, List[PlanStep]] = {
         PlanStep("分析采集结果，定位问题根因", ["run_command", "read_file"]),
         PlanStep("给出诊断结论与可选修复方案", []),
     ],
+    # A方案：文件操作降为单步 — 单一读取/修改请求不做多步拆分，
+    # 避免中间只读步骤被完成验证器按完整目标误判为"未写文件"。
+    # 注意 action 文案须避开探索关键词（"定位/确认/查看/分析"等），
+    # 否则会被 _task_round_budget 误判为探索类任务而收紧轮次到 6，
+    # 导致 Agent 在定位文件后无剩余轮次写文件（实证 run 308）。
     "file_operation": [
-        PlanStep("确认目标文件/目录位置与工作目录", ["list_files", "read_file"]),
-        PlanStep("执行文件读取或修改", ["read_file", "write_file"]),
-        PlanStep("验证结果并汇报", ["read_file", "run_command"]),
+        PlanStep("执行目标文件的读取或修改并验证结果", ["list_files", "read_file", "write_file", "run_command"]),
     ],
     "project_debug": [
         PlanStep("定位相关代码/日志并尝试复现问题", ["run_command", "read_file"]),

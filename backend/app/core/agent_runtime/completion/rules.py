@@ -44,10 +44,21 @@ def rule_final_content_present(ctx: CompletionContext) -> Optional[List[str]]:
 def rule_write_detected(ctx: CompletionContext) -> Optional[List[str]]:
     """写任务规则：任务目标明确要求写入文件时，必须存在 write 类工具调用。
 
+    B方案中间步骤豁免：当当前任务节点为 TaskNode 且其 action 不含写意图时，
+    说明是只读中间步骤（如"确认目标文件位置"），不按完整目标校验写操作。
+    最终步骤（action 含写意图）仍按完整目标校验。
+
     仅当任务目标含文件写入意图且工具记录中无任何写动作 → 视为未完成。
-    记忆类目标（“写入/添加记忆”）不是文件写任务，直接豁免；
+    记忆类目标（"写入/添加记忆"）不是文件写任务，直接豁免；
     add_memory/manage_todos 也属于写动作（实证 run 844：写入记忆被误判为写文件）。
     """
+    # B方案：任务图中间步骤豁免 — 根据当前任务节点的 action 判断
+    # 若当前任务 action 不含写意图，说明是只读中间步骤，跳过写检查
+    if ctx.current_task is not None and hasattr(ctx.current_task, 'action'):
+        task_action = (ctx.current_task.action or "").lower()
+        if not any(k in task_action for k in ("创建", "写入", "修改", "生成", "replace", "write", "创建文件")):
+            return None
+
     goal = (ctx.task_goal or "").lower()
     if not any(k in goal for k in ("创建", "写入", "修改", "生成", "replace", "write", "创建文件")):
         return None

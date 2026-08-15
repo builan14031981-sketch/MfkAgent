@@ -33,7 +33,14 @@ def _is_text_file(file_path: str) -> bool:
 
 
 def _search_dir(base: str, query_lower: str, max_results: int) -> List[str]:
-    """在 base 目录内递归搜索 query（不区分大小写），返回 [path:line: content] 文本行。"""
+    """在 base 目录内递归搜索 query（不区分大小写），返回 [path:line: content] 文本行。
+
+    支持 `|` 分隔的多关键词（任一命中即算命中），兼容模型以 `keyword1|keyword2`
+    形式一次搜索多个同义词的习惯（此前字面量匹配会把 `|` 当普通字符而搜不到）。
+    """
+    queries = [q for q in (p.strip() for p in query_lower.split("|")) if q]
+    if not queries:
+        queries = [query_lower]
     hits: List[str] = []
     for root, dirs, files in os.walk(base):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
@@ -53,7 +60,8 @@ def _search_dir(base: str, query_lower: str, max_results: int) -> List[str]:
 
             rel = os.path.relpath(file_path, base).replace("\\", "/")
             for i, line in enumerate(lines, 1):
-                if query_lower in line.lower():
+                low = line.lower()
+                if any(q in low for q in queries):
                     content = line.strip()[:LINE_TRIM]
                     hits.append(f"{rel}:{i}: {content}")
                     if len(hits) >= max_results:

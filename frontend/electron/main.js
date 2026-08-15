@@ -417,14 +417,13 @@ function registerIpcHandlers() {
         // 保持显示直到用户点击/关闭；短显信息类（完成）用默认时长
         timeoutType: opts.persistent === true ? "never" : "default",
       });
-      // 点击通知聚焦主窗口；带 chatId 时跳转到对应会话
+      // 点击通知聚焦主窗口；带 chatId 时通过 IPC 推送导航事件给渲染进程，
+      // 由渲染进程用 next/navigation router.push 做客户端路由，避免 loadURL 硬导航白屏
       notif.on("click", () => {
         showWindow();
         if (opts && Number.isFinite(opts.chatId)) {
           try {
-            const url = new URL(mainWindow.webContents.getURL());
-            url.pathname = `/chat/${Number(opts.chatId)}`;
-            mainWindow.loadURL(url.toString());
+            mainWindow.webContents.send("navigate-to-chat", Number(opts.chatId));
           } catch (err) {
             console.warn("[Electron] navigate on notification click failed:", err.message);
           }

@@ -105,7 +105,7 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
       ? "var(--color-error)"
       : ratio >= 30
         ? "var(--color-warning)"
-        : "var(--color-success)";
+        : "var(--color-primary)";
 
   const label = `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)`;
   const showWarning = ratio >= WARNING_THRESHOLD;
@@ -118,6 +118,17 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
     }}>
       {/* 环形进度圈：hover 显示完整文案，默认态无文字 */}
       <RingProgress ratio={ratio} color={color} label={label} />
+      {/* 上下文字数：已用 / 上限（11px 次级色，数字等宽防刷新抖动） */}
+      <span
+        style={{
+          fontSize: "11px",
+          color: "var(--text-level-3)",
+          whiteSpace: "nowrap",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {formatTokens(usage.total_tokens)} / {formatTokens(usage.model_max_tokens)}
+      </span>
 
       {/* 40% 水位预警：紧凑压缩按钮贴身环右侧（G6-B 压缩逻辑） */}
       {showWarning && (

@@ -549,6 +549,18 @@ export const ChatInput = memo(function ChatInput({
             }}
           />
 
+          {/* 工作模式 - 下拉胶囊按钮 + Popover（build 可写 / plan 只读） */}
+          <ModeSelector
+            mode={mode}
+            onModeChange={(m) => {
+              closePop();
+              onModeChange(m);
+            }}
+            open={modeOpen}
+            onToggle={() => togglePop("mode")}
+            onClose={closePop}
+          />
+
           {/* Agent 选择器（仅一级入口 allowAgentChange 时展示，向上弹出） */}
           {allowAgentChange && (
             <AgentSelector
@@ -570,18 +582,6 @@ export const ChatInput = memo(function ChatInput({
             }}
             open={modelOpen}
             onToggle={() => togglePop("model")}
-            onClose={closePop}
-          />
-
-          {/* 工作模式 - 下拉胶囊按钮 + Popover（build 可写 / plan 只读） */}
-          <ModeSelector
-            mode={mode}
-            onModeChange={(m) => {
-              closePop();
-              onModeChange(m);
-            }}
-            open={modeOpen}
-            onToggle={() => togglePop("mode")}
             onClose={closePop}
           />
 

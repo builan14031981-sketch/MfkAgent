@@ -6,6 +6,7 @@ import { resolveToolMeta } from "@/lib/toolMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useProjectPath } from "@/lib/projectPathContext";
 import { CLOSE_FILE_CTX_MENU } from "@/hooks/useFilePathInteraction";
+import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
 
 export type ToolStatus = "pending" | "running" | "success" | "failed" | "cancelled";
 
@@ -54,6 +55,33 @@ export function normalizeToolCall(tc: ToolCall): ToolCall {
 function formatMs(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * 工具 → 摘要分类 key（对应 locales 中的 toolSummary* 文案）。
+ * 分类用于"已编辑 3 个文件，读取 1 个文件"式的聚合摘要。
+ */
+function toolSummaryKey(tool: string): string {
+  switch (tool) {
+    case "write_file":
+      return "toolSummaryEditFile";
+    case "read_file":
+      return "toolSummaryReadFile";
+    case "list_files":
+    case "list_directory":
+      return "toolSummaryListDir";
+    case "search_files":
+    case "web_search":
+      return "toolSummarySearch";
+    case "fetch_url":
+      return "toolSummaryFetchUrl";
+    case "run_command":
+      return "toolSummaryCommand";
+    case "add_memory":
+      return "toolSummaryMemory";
+    default:
+      return tool.startsWith("git_") ? "toolSummaryGit" : "toolSummaryOther";
+  }
 }
 
 export type ToolRenderBlock<T> =
@@ -232,7 +260,21 @@ export function ToolCallRow({ toolCall }: { toolCall: ToolCall }) {
           <code
             onContextMenu={handleContextMenu}
             onDoubleClick={filePath ? handleOpenInFolder : undefined}
-            title={filePath ? t("chat.openInFileManager") : undefined}
+            onClick={(e) => {
+              if (!filePath) return;
+              // 左键单击：在右侧产出物面板浏览该文件
+              e.stopPropagation();
+              useArtifactStore.getState().openArtifact({
+                path: filePath,
+                fileName: artifactFileName(filePath),
+                projectPath,
+              });
+            }}
+            title={
+              filePath
+                ? `${t("artifact.preview")} / ${t("chat.openInFileManager")}`
+                : undefined
+            }
             style={{
               fontSize: "12px",
               color: failed ? "var(--color-error)" : "var(--text-level-3)",
@@ -479,12 +521,20 @@ export function ToolCallGroup({
     0
   );
   const showTotal = totalMs > 10;
-  const summary =
-    normalized
-      .map((x) => x.tool || "")
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(", ") + (normalized.length > 3 ? "…" : "");
+  // 摘要按操作类型分类统计（如：已编辑 3 个文件，读取 1 个文件），保留首次出现顺序
+  const summaryCounts = new Map<string, number>();
+  for (const tc of normalized) {
+    const key = toolSummaryKey(tc.tool ?? "");
+    summaryCounts.set(key, (summaryCounts.get(key) ?? 0) + 1);
+  }
+  let summary = "";
+  for (const [key, count] of summaryCounts) {
+    summary +=
+      (summary ? t("chat.toolSummarySeparator") : "") +
+      t(`chat.${key}`, { count: String(count) });
+  }
+  if (summary) summary = t("chat.toolSummaryPrefix") + summary;
+  else summary = t("chat.toolCallsCount", { count: String(normalized.length) });
 
   return (
     <div style={{ marginBottom: "8px", minWidth: 0, opacity: cancelledAll ? 0.6 : 1 }}>
@@ -517,7 +567,7 @@ export function ToolCallGroup({
             whiteSpace: "nowrap",
           }}
         >
-          {t("chat.toolCallsCount", { count: String(normalized.length) })} · {summary}
+          {summary}
         </span>
         {showTotal && (
           <span

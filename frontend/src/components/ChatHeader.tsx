@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useRef, useEffect, useCallback } from "react";
-import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink } from "lucide-react";
+import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink, TerminalSquare, Package } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import type { Agent } from "@/hooks/useAgents";
@@ -10,6 +10,7 @@ import type { TokenUsageEvent } from "@/types/runtime";
 import { AgentIcon } from "@/components/AgentIcon";
 import { ContextDashboard } from "@/components/ContextDashboard";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDockStore } from "@/lib/dockStore";
 
 interface ChatHeaderProps {
   chat: Chat | undefined;
@@ -83,6 +84,13 @@ export const ChatHeader = memo(function ChatHeader({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // 标签式右侧面板：终端 / 产出物 右上角入口（订阅标签激活态以切换按钮高亮）
+  const toggleTab = useDockStore((s) => s.toggleTab);
+  const activeTab = useDockStore((s) => s.activeTab);
+  const dockTabs = useDockStore((s) => s.tabs);
+  const terminalOpen = dockTabs.terminal;
+  const artifactOpen = dockTabs.artifacts;
 
   // 点击外部关闭下拉
   useEffect(() => {
@@ -345,6 +353,60 @@ export const ChatHeader = memo(function ChatHeader({
             borderRadius: "var(--radius-full)",
             background: "var(--bg-level-3)",
           }}>{agent.name}</span>
+          {/* 产出物入口：切换"产出物"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
+          <button
+            onClick={() => toggleTab("artifacts")}
+            title={t("artifact.title")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              padding: 0,
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              background: artifactOpen && activeTab === "artifacts" ? "var(--bg-level-4)" : "transparent",
+              cursor: "pointer",
+              color: artifactOpen && activeTab === "artifacts" ? "var(--color-primary)" : "var(--text-level-3)",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-4)";
+            }}
+            onMouseLeave={(e) => {
+              if (!(artifactOpen && activeTab === "artifacts")) e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <Package style={{ width: "15px", height: "15px" }} />
+          </button>
+          {/* 终端入口：切换"终端"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
+          <button
+            onClick={() => toggleTab("terminal")}
+            title={t("terminal.title")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              padding: 0,
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              background: terminalOpen && activeTab === "terminal" ? "var(--bg-level-4)" : "transparent",
+              cursor: "pointer",
+              color: terminalOpen && activeTab === "terminal" ? "var(--color-primary)" : "var(--text-level-3)",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-4)";
+            }}
+            onMouseLeave={(e) => {
+              if (!(terminalOpen && activeTab === "terminal")) e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <TerminalSquare style={{ width: "15px", height: "15px" }} />
+          </button>
         </div>
       )}
     </div>

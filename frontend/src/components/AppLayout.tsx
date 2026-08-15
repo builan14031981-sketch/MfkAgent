@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { SettingsPanel } from "./panels/SettingsPanel";
+import { DockPanel } from "./panels/DockPanel";
+import { useDockStore, hydrateDockUI, DOCK_MIN, DOCK_MAX, DOCK_DEFAULT } from "@/lib/dockStore";
+import { useChat } from "@/hooks/useChat";
+import { useProjects } from "@/hooks/useProjects";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -17,9 +21,11 @@ const SIDEBAR_DEFAULT = 260;
 const SIDEBAR_STORAGE_KEY = "sidebar_width";
 // 2026-08-11：侧边栏收起/展开态持久化（此前纯内存，刷新即丢）
 const SIDEBAR_COLLAPSED_KEY = "mfk_sidebar_collapsed";
+// 2026-08-14：右侧面板（终端/产出物标签式）宽度实时落库键
+const DOCK_WIDTH_STORAGE_KEY = "mfk_dock_width_css";
 
-function clampWidth(w: number): number {
-  return Math.min(Math.max(w, SIDEBAR_MIN), SIDEBAR_MAX);
+function clampWidth(w: number, min: number, max: number): number {
+  return Math.min(Math.max(w, min), max);
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -32,7 +38,22 @@ export function AppLayout({ children }: AppLayoutProps) {
     try {
       setSidebarCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
     } catch { /* localStorage 不可用时保持展开 */ }
+    // 2026-08-14：恢复右侧面板 UI 状态（width / isOpen / isFullscreen / activeTab / tabs）
+    hydrateDockUI();
   }, []);
+
+  // 面板：Ctrl+` 打开/关闭"终端"标签
+  const toggleTab = useDockStore((s) => s.toggleTab);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "`") {
+        e.preventDefault();
+        toggleTab("terminal");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleTab]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => {
@@ -48,10 +69,21 @@ export function AppLayout({ children }: AppLayoutProps) {
     return match ? Number(match[1]) : null;
   }, [pathname]);
 
-  // 侧边栏宽度：React state 驱动初始渲染，拖拽中仅直改 DOM CSS 变量（零 re-render）
+  // 终端 cwd：取当前会话关联项目的本地路径，无则回退 null（后端用主目录）
+  const { chats } = useChat();
+  const { projects } = useProjects(1, 100);
+  const terminalCwd = useMemo(() => {
+    if (currentChatId == null) return null;
+    const chat = chats.find((c) => c.id === currentChatId);
+    if (!chat?.project_id) return null;
+    const project = projects.find((p) => p.id === chat.project_id);
+    return project?.path ?? null;
+  }, [currentChatId, chats, projects]);
+
+  // ── 侧边栏宽度 ──
   const layoutRef = useRef<HTMLDivElement>(null);
-  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const [width, setWidth] = useState(SIDEBAR_DEFAULT);
+  const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
 
   // 初始从 localStorage 恢复宽度
   useEffect(() => {
@@ -61,7 +93,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         const n = Number(saved);
         if (Number.isFinite(n)) {
           // eslint-disable-next-line react-hooks/set-state-in-effect
-          setWidth(clampWidth(n));
+          setSidebarWidth(clampWidth(n, SIDEBAR_MIN, SIDEBAR_MAX));
         }
       }
     } catch {
@@ -69,62 +101,103 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, []);
 
-  // 同步 state → DOM CSS 变量（初始恢复与最终收尾时执行）
+  // 同步 sidebar state → DOM CSS 变量
   useEffect(() => {
-    layoutRef.current?.style.setProperty("--sidebar-width", `${width}px`);
-  }, [width]);
+    layoutRef.current?.style.setProperty("--sidebar-width", `${sidebarCollapsed ? 0 : sidebarWidth}px`);
+  }, [sidebarWidth, sidebarCollapsed]);
 
-  const startResize = useCallback((e: React.MouseEvent) => {
+  // ── 右侧面板宽度（终端/产出物共用）──
+  const dockWidth = useDockStore((s) => s.width);
+  const isDockOpen = useDockStore((s) => s.isOpen);
+  const isDockFullscreen = useDockStore((s) => s.isFullscreen);
+  const setDockWidth = useDockStore((s) => s.setWidth);
+
+  // 右侧面板拖拽调宽（拖拽条在面板左侧：向右拖变窄）
+  const dockDragRef = useRef<{ startX: number; startWidth: number; lastX: number } | null>(null);
+  const startDockResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const startWidth = Number(
-      getComputedStyle(layoutRef.current!).getPropertyValue("--sidebar-width").replace("px", "") || width
-    );
-    dragStateRef.current = { startX: e.clientX, startWidth };
+    const startWidth = useDockStore.getState().width;
+    dockDragRef.current = { startX: e.clientX, startWidth, lastX: e.clientX };
 
-    // 拖拽期间防止误选中文本
     document.body.style.userSelect = "none";
-    document.body.style.cursor = "col-resize";
+    document.body.style.cursor = "ew-resize";
 
     const onMove = (ev: MouseEvent) => {
-      const drag = dragStateRef.current;
+      const drag = dockDragRef.current;
       if (!drag) return;
-      const delta = ev.clientX - drag.startX;
-      const next = clampWidth(drag.startWidth + delta);
-      // 零 re-render：仅直改 DOM CSS 变量
-      layoutRef.current?.style.setProperty("--sidebar-width", `${next}px`);
+      drag.lastX = ev.clientX;
+      // 向右拖 → 面板变窄（delta 负值）；向左拖 → 面板变宽（delta 正值）
+      const delta = drag.startX - ev.clientX;
+      const next = clampWidth(drag.startWidth + delta, DOCK_MIN, DOCK_MAX);
+      layoutRef.current?.style.setProperty("--dock-width", `${next}px`);
     };
 
     const onUp = () => {
-      const drag = dragStateRef.current;
-      dragStateRef.current = null;
+      const drag = dockDragRef.current;
+      dockDragRef.current = null;
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       if (drag) {
-        // 唯一收尾：同步 state 并持久化
-        const final = clampWidth(drag.startWidth);
-        setWidth(final);
+        // 取拖拽过程中的最终宽度，避免回弹到起始宽度
+        const final = clampWidth(drag.startWidth + (drag.startX - drag.lastX), DOCK_MIN, DOCK_MAX);
+        setDockWidth(final);
         try {
-          localStorage.setItem(SIDEBAR_STORAGE_KEY, final.toString());
-        } catch {
-          /* 忽略 */
-        }
+          localStorage.setItem(DOCK_WIDTH_STORAGE_KEY, final.toString());
+        } catch { /* 忽略 */ }
       }
     };
 
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-  }, [width]);
+  }, [setDockWidth]);
+
+  // 侧边栏拖拽调宽
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const startWidth = Number(
+      getComputedStyle(layoutRef.current!).getPropertyValue("--sidebar-width").replace("px", "") || sidebarWidth
+    );
+    sidebarDragRef.current = { startX: e.clientX, startWidth };
+
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const onMove = (ev: MouseEvent) => {
+      const drag = sidebarDragRef.current;
+      if (!drag) return;
+      const delta = ev.clientX - drag.startX;
+      const next = clampWidth(drag.startWidth + delta, SIDEBAR_MIN, SIDEBAR_MAX);
+      layoutRef.current?.style.setProperty("--sidebar-width", `${next}px`);
+    };
+
+    const onUp = () => {
+      const drag = sidebarDragRef.current;
+      sidebarDragRef.current = null;
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      if (drag) {
+        const final = clampWidth(drag.startWidth, SIDEBAR_MIN, SIDEBAR_MAX);
+        setSidebarWidth(final);
+        try {
+          localStorage.setItem(SIDEBAR_STORAGE_KEY, final.toString());
+        } catch { /* 忽略 */ }
+      }
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [sidebarWidth]);
 
   const resetWidth = useCallback(() => {
-    setWidth(SIDEBAR_DEFAULT);
+    setSidebarWidth(SIDEBAR_DEFAULT);
     layoutRef.current?.style.setProperty("--sidebar-width", `${SIDEBAR_DEFAULT}px`);
     try {
       localStorage.setItem(SIDEBAR_STORAGE_KEY, SIDEBAR_DEFAULT.toString());
-    } catch {
-      /* 忽略 */
-    }
+    } catch { /* 忽略 */ }
   }, []);
 
   return (
@@ -135,7 +208,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         height: "100vh",
         background: "var(--bg-level-2)",
         position: "relative",
-        "--sidebar-width": `${sidebarCollapsed ? 0 : width}px`,
+        "--sidebar-width": `${sidebarCollapsed ? 0 : sidebarWidth}px`,
+        "--dock-width": isDockOpen && !isDockFullscreen ? `${dockWidth}px` : "0px",
       } as React.CSSProperties}
     >
       {/* 左侧 Sidebar */}
@@ -179,6 +253,26 @@ export function AppLayout({ children }: AppLayoutProps) {
       }}>
         {children}
       </main>
+
+      {/* 右侧面板拖拽调宽条：面板打开且非全屏时显示（位于面板左侧） */}
+      {isDockOpen && !isDockFullscreen && (
+        <div
+          onMouseDown={startDockResize}
+          style={{
+            width: 6,
+            height: "100vh",
+            cursor: "ew-resize",
+            flexShrink: 0,
+            touchAction: "none",
+            userSelect: "none",
+            background: "transparent",
+            zIndex: 20,
+          }}
+        />
+      )}
+
+      {/* 右侧面板（浏览器式标签：终端 / 产出物） */}
+      <DockPanel cwd={terminalCwd} />
 
       {/* 收起后浮动展开按钮：玻璃质感，左侧边缘居中 */}
       {sidebarCollapsed && (

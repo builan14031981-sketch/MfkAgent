@@ -117,7 +117,7 @@ async def run_tests():
     models = model_service._init_models()
     print(f"可用模型: {list(models.keys())[:10]}")
     # 优先 Qwen（唯一有 key 的）
-    for mid in ["qwen-flash", "qwen-plus", "qwen-plus-2025-07-28", "qwen-max", "qwen3.7-plus"]:
+    for mid in ["qwen-flash", "qwen-plus", "qwen3.7-plus", "qwen3.7-max", "qwen3.8-max"]:
         if mid in models:
             model_id = mid
             break

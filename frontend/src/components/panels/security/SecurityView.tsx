@@ -57,7 +57,7 @@ function Badge({ action }: { action: PolicyAction }) {
   const m = ACTION_META[action];
   return (
     <span style={{
-      display: "inline-block", padding: "1px 6px", borderRadius: 4,
+      display: "inline-block", padding: "2px 8px", borderRadius: "var(--radius-sm)",
       fontSize: 11, fontWeight: 600, lineHeight: "18px",
       color: m.color, background: m.bg, whiteSpace: "nowrap",
     }}>{m.text}</span>
@@ -81,7 +81,7 @@ function ModeSegment({ settings, saving, onUpdate, t }: SettingsViewProps) {
   return (
     <div>
       <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: "var(--radius-md)",
-        background: "var(--bg-level-3)", width: "100%", marginBottom: 10 }}>
+        background: "var(--bg-level-3)", width: "100%", marginBottom: 8 }}>
         {modes.map((m) => {
           const active = current === m.value;
           return (
@@ -90,7 +90,7 @@ function ModeSegment({ settings, saving, onUpdate, t }: SettingsViewProps) {
               onClick={() => onUpdate("agent_permission_mode", m.value)}
               disabled={saving === "agent_permission_mode"}
               style={{
-                flex: 1, padding: "7px 8px", borderRadius: "calc(var(--radius-md) - 2px)",
+                flex: 1, padding: "6px 8px", borderRadius: "calc(var(--radius-md) - 2px)",
                 border: "none", cursor: "pointer", fontSize: 13, fontWeight: active ? 600 : 400,
                 color: active ? "#fff" : "var(--text-level-3)",
                 background: active ? "var(--color-primary)" : "transparent",
@@ -100,7 +100,7 @@ function ModeSegment({ settings, saving, onUpdate, t }: SettingsViewProps) {
           );
         })}
       </div>
-      <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: 0, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: 0, lineHeight: 1.4 }}>
         {descs[current]}
       </p>
     </div>
@@ -128,10 +128,10 @@ function MatrixView() {
 
   return (
     <div>
-      <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: "0 0 10px 0", lineHeight: 1.5 }}>
+      <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: "0 0 8px 0", lineHeight: 1.4 }}>
         {data.note}
       </p>
-      <div style={{ display: "flex", gap: 2, marginBottom: 8, fontSize: 11, color: "var(--text-level-4)" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 8, fontSize: 11, color: "var(--text-level-4)" }}>
         <span style={{ width: 120 }}>工具</span>
         {data.modes.map((m) => (
           <span key={m} style={{ flex: 1, textAlign: "center" }}>{m}</span>
@@ -139,14 +139,14 @@ function MatrixView() {
       </div>
       {Object.entries(grouped).map(([cat, tools]) => (
         <div key={cat} style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-level-3)", marginBottom: 2 }}>{cat}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-level-3)", marginBottom: 4 }}>{cat}</div>
           {tools.map((tool) => (
             <div
               key={tool.name}
               title={tool.reason}
               style={{
-                display: "flex", gap: 2, alignItems: "center",
-                padding: "3px 0", borderBottom: "1px solid var(--border-primary)",
+                display: "flex", gap: 4, alignItems: "center",
+                padding: "4px 0", borderBottom: "1px solid var(--border-primary)",
                 fontSize: 12,
               }}
             >
@@ -168,7 +168,7 @@ function MatrixView() {
         <summary style={{ fontSize: 12, cursor: "pointer", color: "var(--text-level-3)" }}>
           只读工具（{data.read_only_tools.length} 项，全部自动放行）
         </summary>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px", marginTop: 6, fontSize: 11, color: "var(--text-level-4)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 8px", marginTop: 8, fontSize: 11, color: "var(--text-level-4)" }}>
           {data.read_only_tools.map((t) => <span key={t}>{t}</span>)}
         </div>
       </details>
@@ -208,7 +208,7 @@ function AuditView() {
   return (
     <div>
       {/* 筛选栏 */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 8, alignItems: "center" }}>
         <input
           placeholder="工具名筛选"
           value={toolFilter}
@@ -223,7 +223,7 @@ function AuditView() {
           value={successFilter}
           onChange={(e) => setSuccessFilter(e.target.value as any)}
           style={{
-            padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)",
+            padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
             color: "var(--text-level-2)", outline: "none",
           }}
@@ -263,7 +263,7 @@ function AuditView() {
       )}
 
       {items.length > 0 && (
-        <div style={{ fontSize: 11, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, lineHeight: 1.4 }}>
           <div style={{ display: "flex", gap: 4, padding: "4px 0", fontWeight: 600, color: "var(--text-level-3)",
             borderBottom: "1px solid var(--border-primary)" }}>
             <span style={{ width: 80 }}>时间</span>
@@ -274,7 +274,7 @@ function AuditView() {
           </div>
           {items.map((item) => (
             <div key={item.id} style={{
-              display: "flex", gap: 4, padding: "3px 0", alignItems: "center",
+              display: "flex", gap: 4, padding: "4px 0", alignItems: "center",
               borderBottom: "1px solid var(--border-primary)",
               color: "var(--text-level-2)",
             }}>
@@ -308,7 +308,7 @@ function AuditView() {
                 disabled={offset === 0}
                 onClick={() => load(Math.max(0, offset - 30))}
                 style={{
-                  padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
                   cursor: offset === 0 ? "default" : "pointer", color: "var(--text-level-2)",
                 }}
@@ -317,7 +317,7 @@ function AuditView() {
                 disabled={offset + 30 >= total}
                 onClick={() => load(offset + 30)}
                 style={{
-                  padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
                   cursor: offset + 30 >= total ? "default" : "pointer", color: "var(--text-level-2)",
                 }}
@@ -353,11 +353,11 @@ function StatusView() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {rows.map((r) => (
         <div key={r.label} style={{
           display: "flex", alignItems: "center", gap: 8,
-          padding: "6px 10px", borderRadius: "var(--radius-md)",
+          padding: "4px 8px", borderRadius: "var(--radius-sm)",
           background: "var(--bg-level-2)", fontSize: 12,
         }}>
           <span style={{ color: "var(--text-level-3)", display: "flex" }}>{r.icon}</span>
@@ -413,12 +413,12 @@ function LogViewer({ t }: { t: (key: string) => string }) {
   return (
     <div>
       {/* 工具栏 */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 8, alignItems: "center" }}>
         <select
           value={level}
           onChange={(e) => { setLevel(e.target.value); setPage(1); }}
           style={{
-            padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)",
+            padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
             color: "var(--text-level-2)", outline: "none",
           }}
@@ -476,8 +476,8 @@ function LogViewer({ t }: { t: (key: string) => string }) {
 
       {lines.length > 0 && (
         <div style={{
-          fontSize: 11, fontFamily: "var(--font-mono, monospace)", lineHeight: 1.6,
-          maxHeight: 400, overflowY: "auto",
+          fontSize: 11, fontFamily: "var(--font-mono, monospace)", lineHeight: 1.4,
+          maxHeight: 360, overflowY: "auto",
           background: "var(--bg-level-2)", borderRadius: "var(--radius-sm)",
           border: "1px solid var(--border-primary)",
         }}>
@@ -519,7 +519,7 @@ function LogViewer({ t }: { t: (key: string) => string }) {
               disabled={page <= 1}
               onClick={() => load(page - 1)}
               style={{
-                padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
                 cursor: page <= 1 ? "default" : "pointer", color: "var(--text-level-2)",
               }}
@@ -528,7 +528,7 @@ function LogViewer({ t }: { t: (key: string) => string }) {
               disabled={page >= totalPages}
               onClick={() => load(page + 1)}
               style={{
-                padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
                 cursor: page >= totalPages ? "default" : "pointer", color: "var(--text-level-2)",
               }}
@@ -559,7 +559,7 @@ const RISK_META: Record<RiskLevel, { text: string; color: string; bg: string }> 
 function MiniBadge({ text, color, bg }: { text: string; color: string; bg: string }) {
   return (
     <span style={{
-      display: "inline-block", padding: "1px 6px", borderRadius: 4,
+      display: "inline-block", padding: "2px 8px", borderRadius: "var(--radius-sm)",
       fontSize: 11, fontWeight: 600, lineHeight: "18px",
       color, background: bg, whiteSpace: "nowrap",
     }}>{text}</span>
@@ -602,7 +602,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
               key={s || "all"}
               onClick={() => setStatusFilter(s as "" | ApprovalStatus)}
               style={{
-                padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--border-primary)", cursor: "pointer",
                 background: active ? "var(--color-primary)" : "var(--bg-level-2)",
                 color: active ? "#fff" : "var(--text-level-2)",
@@ -613,7 +613,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
           );
         })}
         <button onClick={() => load(offset)} style={{
-          padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+          padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
           border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
           cursor: "pointer", color: "var(--text-level-2)", display: "flex", alignItems: "center", gap: 4,
           marginLeft: "auto",
@@ -631,7 +631,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
       )}
 
       {items.length > 0 && (
-        <div style={{ fontSize: 11, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 11, lineHeight: 1.4 }}>
           <div style={{ display: "flex", gap: 4, padding: "4px 0", fontWeight: 600, color: "var(--text-level-3)",
             borderBottom: "1px solid var(--border-primary)" }}>
             <span style={{ width: 74 }}>{t("settings.security.colTime")}</span>
@@ -648,7 +648,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
                 key={item.id}
                 title={item.risk_reason || undefined}
                 style={{
-                  display: "flex", gap: 4, padding: "3px 0", alignItems: "center",
+                  display: "flex", gap: 4, padding: "4px 0", alignItems: "center",
                   borderBottom: "1px solid var(--border-primary)",
                   color: "var(--text-level-2)",
                 }}
@@ -682,7 +682,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
                 disabled={offset === 0}
                 onClick={() => load(Math.max(0, offset - 30))}
                 style={{
-                  padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
                   cursor: offset === 0 ? "default" : "pointer", color: "var(--text-level-2)",
                 }}
@@ -691,7 +691,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
                 disabled={offset + 30 >= total}
                 onClick={() => load(offset + 30)}
                 style={{
-                  padding: "3px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
+                  padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
                   cursor: offset + 30 >= total ? "default" : "pointer", color: "var(--text-level-2)",
                 }}
@@ -738,12 +738,12 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
   return (
     <div>
       {/* 判定器 + 模式选择 */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 8, alignItems: "center" }}>
         <select
           value={engine}
           onChange={(e) => setEngine(e.target.value as any)}
           style={{
-            padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)",
+            padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
             color: "var(--text-level-2)", outline: "none",
           }}
@@ -755,7 +755,7 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
           value={mode}
           onChange={(e) => setMode(e.target.value as any)}
           style={{
-            padding: "4px 6px", fontSize: 12, borderRadius: "var(--radius-sm)",
+            padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
             color: "var(--text-level-2)", outline: "none",
           }}
@@ -783,7 +783,7 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
           />
         </div>
         <button onClick={run} disabled={loading || !command.trim()} style={{
-          padding: "4px 10px", fontSize: 12, borderRadius: "var(--radius-sm)",
+          padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
           border: "none", cursor: "pointer",
           background: "var(--color-primary)", color: "#fff",
           fontWeight: 500, opacity: loading || !command.trim() ? 0.5 : 1,
@@ -796,10 +796,10 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
 
       {result && !err && (
         <div style={{
-          marginTop: 4, padding: "10px 12px", borderRadius: "var(--radius-md)",
+          marginTop: 4, padding: "8px 12px", borderRadius: "var(--radius-sm)",
           background: "var(--bg-level-2)", border: "1px solid var(--border-primary)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <MiniBadge {...VERDICT_META[result.verdict]} />
             <MiniBadge {...(RISK_META[result.risk_level] || RISK_META.read_only)} />
           </div>
@@ -807,7 +807,7 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
             marginBottom: 4, wordBreak: "break-all" }}>
             {result.command}
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-level-3)", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: "var(--text-level-3)", lineHeight: 1.4 }}>
             {result.reason}
           </div>
         </div>
@@ -836,7 +836,7 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
       : c.allowed_args.join(" · ");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {/* 禁执行目录 */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600,
@@ -846,7 +846,7 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
         </div>
         <div style={{
           display: "flex", flexWrap: "wrap", gap: 4,
-          padding: "6px 8px", borderRadius: "var(--radius-sm)",
+          padding: "4px 8px", borderRadius: "var(--radius-sm)",
           background: "var(--bg-level-2)", border: "1px solid var(--border-primary)",
           fontSize: 11, color: "var(--text-level-2)", fontFamily: "var(--font-mono, monospace)",
         }}>
@@ -854,7 +854,7 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
             ? <span style={{ color: "var(--text-level-3)" }}>{t("common.noData")}</span>
             : data.forbidden_dirs.map((d) => (
                 <span key={d} style={{
-                  padding: "1px 6px", borderRadius: 4, background: "rgba(220,38,38,0.08)",
+                  padding: "2px 8px", borderRadius: "var(--radius-sm)", background: "rgba(220,38,38,0.08)",
                   color: "#dc2626",
                 }}>{d}</span>
               ))}
@@ -867,7 +867,7 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
           {t("settings.security.allowedCommands")}（{data.allowed_commands.length}）
         </summary>
         <div style={{
-          marginTop: 4, padding: "6px 8px", borderRadius: "var(--radius-sm)",
+          marginTop: 4, padding: "4px 8px", borderRadius: "var(--radius-sm)",
           background: "var(--bg-level-2)", border: "1px solid var(--border-primary)",
           fontSize: 11, color: "var(--text-level-2)", fontFamily: "var(--font-mono, monospace)",
           display: "flex", flexDirection: "column", gap: 2, maxHeight: 160, overflowY: "auto",
@@ -888,7 +888,7 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
         </summary>
         <div style={{
           marginTop: 4, display: "flex", flexWrap: "wrap", gap: "4px 8px",
-          padding: "6px 8px", borderRadius: "var(--radius-sm)",
+          padding: "4px 8px", borderRadius: "var(--radius-sm)",
           background: "var(--bg-level-2)", border: "1px solid var(--border-primary)",
           fontSize: 11, color: "var(--text-level-2)", fontFamily: "var(--font-mono, monospace)",
         }}>
@@ -902,10 +902,10 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
           {t("settings.security.writeTools")}（{data.write_tools.length}）
         </summary>
         <div style={{
-          marginTop: 4, padding: "6px 8px", borderRadius: "var(--radius-sm)",
+          marginTop: 4, padding: "4px 8px", borderRadius: "var(--radius-sm)",
           background: "var(--bg-level-2)", border: "1px solid var(--border-primary)",
           fontSize: 11, color: "var(--text-level-2)", fontFamily: "var(--font-mono, monospace)",
-          display: "flex", flexDirection: "column", gap: 3,
+          display: "flex", flexDirection: "column", gap: 4,
         }}>
           {data.write_tools.map((tool) => (
             <div key={tool.name} title={tool.reason} style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -936,7 +936,7 @@ export function SecurityView(props: SettingsViewProps) {
   return (
     <div>
       {/* 标题 */}
-      <div style={{ marginBottom: 12 }}>
+      <div style={{ marginBottom: 8 }}>
         <h3 style={{ fontSize: 14, fontWeight: 500, color: "var(--text-level-1)", margin: 0 }}>
           {t("settings.security.title")}
         </h3>
@@ -949,7 +949,7 @@ export function SecurityView(props: SettingsViewProps) {
       <ModeSegment {...props} />
 
       {/* 分隔 */}
-      <div style={{ height: 1, background: "var(--border-primary)", margin: "14px 0" }} />
+      <div style={{ height: 1, background: "var(--border-primary)", margin: "12px 0" }} />
 
       {/* 故障排查（折叠区域，仿字体选择字段交互：整行点击，箭头在右同一层级） */}
       <button
@@ -983,9 +983,9 @@ export function SecurityView(props: SettingsViewProps) {
       </button>
 
       {open && (
-        <div style={{ marginTop: 10, animation: "fadeIn 0.2s ease" }}>
+        <div style={{ marginTop: 8, animation: "fadeIn 0.2s ease" }}>
           {/* 子 tab 导航 */}
-          <div style={{ display: "flex", gap: 2, marginBottom: 12, padding: 3, borderRadius: "var(--radius-md)",
+          <div style={{ display: "flex", gap: 2, marginBottom: 8, padding: 3, borderRadius: "var(--radius-md)",
             background: "var(--bg-level-3)" }}>
             {TROUBLESHOOT_TABS.map((item) => {
               const active = troubleshootTab === item.id;
@@ -994,7 +994,7 @@ export function SecurityView(props: SettingsViewProps) {
                   key={item.id}
                   onClick={() => setTroubleshootTab(item.id)}
                   style={{
-                    flex: 1, padding: "5px 0", borderRadius: "calc(var(--radius-md) - 2px)",
+                    flex: 1, padding: "4px 0", borderRadius: "calc(var(--radius-md) - 2px)",
                     border: "none", cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400,
                     color: active ? "#fff" : "var(--text-level-3)",
                     background: active ? "var(--color-primary)" : "transparent",
@@ -1014,7 +1014,7 @@ export function SecurityView(props: SettingsViewProps) {
       )}
 
       {/* 分隔 */}
-      <div style={{ height: 1, background: "var(--border-primary)", margin: "14px 0" }} />
+      <div style={{ height: 1, background: "var(--border-primary)", margin: "12px 0" }} />
 
       {/* 安全防护（独立区块，仿字体选择字段交互；平时收起故障排查后无空隙） */}
       <button
@@ -1048,9 +1048,9 @@ export function SecurityView(props: SettingsViewProps) {
       </button>
 
       {guardOpen && (
-        <div style={{ marginTop: 10, animation: "fadeIn 0.2s ease" }}>
+        <div style={{ marginTop: 8, animation: "fadeIn 0.2s ease" }}>
           {/* 子 tab 导航 */}
-          <div style={{ display: "flex", gap: 2, marginBottom: 12, padding: 3, borderRadius: "var(--radius-md)",
+          <div style={{ display: "flex", gap: 2, marginBottom: 8, padding: 3, borderRadius: "var(--radius-md)",
             background: "var(--bg-level-3)" }}>
             {GUARD_TABS.map((item) => {
               const active = guardTab === item.id;
@@ -1059,7 +1059,7 @@ export function SecurityView(props: SettingsViewProps) {
                   key={item.id}
                   onClick={() => setGuardTab(item.id)}
                   style={{
-                    flex: 1, padding: "5px 0", borderRadius: "calc(var(--radius-md) - 2px)",
+                    flex: 1, padding: "4px 0", borderRadius: "calc(var(--radius-md) - 2px)",
                     border: "none", cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400,
                     color: active ? "#fff" : "var(--text-level-3)",
                     background: active ? "var(--color-primary)" : "transparent",

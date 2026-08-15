@@ -11,6 +11,7 @@ declare global {
       };
       selectDirectory?: () => Promise<string | null>;
       showNotification?: (opts: { title?: string; body?: string; silent?: boolean; persistent?: boolean; chatId?: number }) => Promise<boolean>;
+      onNavigateToChat?: (callback: (chatId: number) => void) => void;
       openInFolder?: (filePath: string) => Promise<boolean>;
       openPath?: (dirPath: string) => Promise<boolean>;
     };

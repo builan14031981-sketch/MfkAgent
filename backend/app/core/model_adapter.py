@@ -65,7 +65,7 @@ class ModelConfigAdapter:
             models[cm.model_id] = ModelConfig(
                 provider=self._provider_enum(cm.provider),
                 model_name=cm.model_name,
-                api_key=cm.api_key or "",
+                api_key=cm.api_key or (provider_def and self.resolve_api_key(provider_def) or ""),
                 api_base=cm.api_base,
                 max_tokens=cm.max_tokens,
                 temperature=cm.temperature,

@@ -14,15 +14,13 @@ AGENT_ORDER = {
     "g": 1,
     "coder": 2,
     "frontend_ui": 3,
-    "backend": 4,
-    "product": 5,
-    "analyst": 6,
-    "writer": 7,
-    "writer_narrative": 8,
-    "mentor": 9,
-    "personal": 10,
-    "spark": 11,
-    "pianai": 12,
+    "product": 4,
+    "writer": 5,
+    "writer_narrative": 6,
+    "personal": 7,
+    "spark": 8,
+    "pianai": 9,
+    "research": 10,
 }
 
 

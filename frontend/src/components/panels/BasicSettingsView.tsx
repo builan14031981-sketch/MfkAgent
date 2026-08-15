@@ -16,6 +16,7 @@ import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check } from "lucide-re
 import { ExtensionPanel } from "./ExtensionPanel";
 import { SecurityView } from "./security/SecurityView";
 import { ModelProvidersBasic } from "./ModelConfigSection";
+import { ProxySettingsSection } from "./ProxySettingsSection";
 import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { SwitchButton } from "@/components/SwitchButton";
 import { FONT_FAMILY_MAP } from "@/components/providers";
@@ -311,14 +312,27 @@ function ExperimentalThemePicker({
   t: (key: string) => string;
   onSelect: (id: string) => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      return localStorage.getItem("mfk_theme_picker_expanded") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const toggleExpanded = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_theme_picker_expanded", String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
   const current = EXPERIMENTAL_THEMES.find((theme) => theme.id === currentThemeId);
 
   return (
     <div>
       {/* 触发字段：仿字体选择的 select 外观，点击展开/收起 */}
       <button
-        onClick={() => setExpanded((v) => !v)}
+        onClick={toggleExpanded}
         disabled={saving}
         style={{
           width: "100%",
@@ -745,6 +759,14 @@ function GeneralBasic(props: SettingsViewProps) {
           onSelect={(id) => onUpdate("visual_theme", id)}
         />
       </div>
+
+      {/* 网络代理（可配置化：auto/manual/off + 测试） */}
+      <ProxySettingsSection
+        settings={settings}
+        saving={saving}
+        onUpdate={onUpdate}
+        t={t}
+      />
 
       {/* 语言 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>

@@ -119,7 +119,7 @@ class TestApplyReasoningPayload:
     def test_glm_none_disables_thinking(self):
         """GLM reasoning_effort=none → thinking.type=disabled"""
         svc = ModelService()
-        config = make_config(ModelProvider.GLM, "glm-4")
+        config = make_config(ModelProvider.GLM, "glm-5.1")
         payload = {}
         svc._apply_reasoning_payload(payload, config, "none")
         assert _payload_has_thinking_disabled(payload), (
@@ -133,7 +133,7 @@ class TestApplyReasoningPayload:
     def test_glm_high_enables_thinking(self):
         """GLM reasoning_effort=high → thinking.type=enabled + reasoning_effort"""
         svc = ModelService()
-        config = make_config(ModelProvider.GLM, "glm-4")
+        config = make_config(ModelProvider.GLM, "glm-5.1")
         payload = {}
         svc._apply_reasoning_payload(payload, config, "high")
         assert _payload_has_thinking_enabled(payload)

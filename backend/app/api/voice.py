@@ -65,7 +65,9 @@ async def _call_stt_api(audio_bytes: bytes, filename: str, content_type: str, co
     data = {"model": config["model"]}
     headers = {"Authorization": f"Bearer {config['api_key']}"}
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    from app.core.proxy import build_llm_client
+
+    async with build_llm_client(base_url, timeout=60.0) as client:
         resp = await client.post(url, files=files, data=data, headers=headers)
         resp.raise_for_status()
         result = resp.json()

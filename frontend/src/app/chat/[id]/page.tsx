@@ -13,10 +13,10 @@ import { useChatStream } from "@/hooks/useChatStream";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { useStreamStore } from "@/lib/streamStore";
-import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useVisibleModels } from "@/hooks/useVisibleModels";
 import { compressMessages } from "@/lib/api";
+import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 import { FileDropZone } from "@/components/FileDropZone";
 import type { DroppedFile, Attachment } from "@/components/FileDropZone";
@@ -68,6 +68,11 @@ function ChatPageInner() {
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
   const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, prefsLoaded, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
 
+  // 当前会话关联的 Agent / 项目（产出物收集需 projectPath 反查 projectId，故在 useChatStream 前解析）
+  const currentChat = chats.find((c) => c.id === chatId);
+  const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
+  const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
+
   const {
     isSending,
     timeline,
@@ -81,7 +86,7 @@ function ChatPageInner() {
     currentAgentState,
     reasoningActive,
     stop,
-  } = useChatStream({ chatId, sendMessageStream, appendMessage, refetch });
+  } = useChatStream({ chatId, sendMessageStream, appendMessage, refetch, projectPath: currentProject?.path ?? null });
 
   // 全局活跃会话同步：后台流结束时的通知判定依赖它（组件卸载→置 null，
   // 修复“离开聊天页后 ref 冻结导致永远不弹通知”的缺陷）
@@ -93,16 +98,22 @@ function ChatPageInner() {
     };
   }, [chatId]);
 
-  const currentChat = chats.find((c) => c.id === chatId);
-  const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
   // 稳定引用：避免每次 render 新建对象导致 memo(MessageList) 失效
   const currentAgentView = useMemo(
     () => (currentAgent ? { id: currentAgent.id, name: currentAgent.name } : null),
     [currentAgent]
   );
-  const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
-  // 模型优先级：会话内手动选择 > 会话快照 model > 偏好（localStorage→settings→qwen-flash）> 模型列表兜底
-  const currentModel = selectedModel || (currentChat?.model ? visibleModels.find(m => m.id === currentChat.model) || models.find(m => m.id === currentChat.model) || null : null) || visibleModels.find(m => m.id === prefModelId) || models.find(m => m.id === prefModelId) || visibleModels[0] || models[0] || null;
+  // 发送模型：本次页面内临时选择 > 会话快照 model（原样透传，查不到列表也不放弃、不兜底）；
+  // 未绑定则为 null，交给后端 settings.default_model 决定。绝不参与偏好/列表首项兜底，
+  // 防止"用户选的模型被静默替换"（2026-08-14 根治）。
+  const sendModelId = selectedModel?.id ?? currentChat?.model ?? null;
+  // 下拉显示模型：仅影响 UI 高亮，永不进入发送。优先级：临时选择 > 会话快照 > 全局默认 > 偏好 > 可见列表首项。
+  const displayModel = selectedModel
+    ?? (currentChat?.model ? visibleModels.find(m => m.id === currentChat.model) ?? null : null)
+    ?? (settings?.default_model ? visibleModels.find(m => m.id === settings.default_model) ?? null : null)
+    ?? visibleModels.find(m => m.id === prefModelId)
+    ?? visibleModels[0]
+    ?? null;
 
   // 人格初始值：优先读当前会话快照 currentChat.personality_level，仅当其缺失时回退全局默认/50。
   // 切换会话时（chatId 变化）重新初始化，确保老会话继承自己保存的理性度。
@@ -357,8 +368,8 @@ function ChatPageInner() {
       }
     }
     if (!userMsg) return;
-    await sendStream(userMsg.content, { modelId: currentModel?.id, personalityLevel, reasoningEffort, permissionMode, appendUserMessage: false });
-  }, [isSending, messages, sendStream, currentModel?.id, personalityLevel, reasoningEffort, permissionMode]);
+    await sendStream(userMsg.content, { modelId: sendModelId, personalityLevel, reasoningEffort, permissionMode, appendUserMessage: false });
+  }, [isSending, messages, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode]);
 
   // 重新生成：删除该 AI 消息及其后历史，找到前一条用户消息重新流式生成
   const handleRegenerate = useCallback(async (messageId: number) => {
@@ -380,8 +391,8 @@ function ChatPageInner() {
       console.error("Failed to clear history on regenerate:", err);
       return;
     }
-    await sendStream(userMsg.content, { modelId: currentModel?.id, personalityLevel, reasoningEffort, permissionMode, appendUserMessage: false });
-  }, [isSending, messages, deleteMessagesFrom, sendStream, currentModel?.id, personalityLevel, reasoningEffort, permissionMode]);
+    await sendStream(userMsg.content, { modelId: sendModelId, personalityLevel, reasoningEffort, permissionMode, appendUserMessage: false });
+  }, [isSending, messages, deleteMessagesFrom, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode]);
 
   // 切换会话时重置输入框：避免上一会话的多行内容（引用/编辑/草稿）残留导致 textarea 保持变高
   // render 阶段调整 state（非 effect），符合 React 官方推荐模式
@@ -414,14 +425,14 @@ function ChatPageInner() {
 
       // 自动发送消息（复用统一流式管线，携带从 chat.context_files 恢复的 attachments）
       sendStream(userMessage, {
-        modelId: currentModel?.id || FALLBACK_MODEL_ID,
+        modelId: sendModelId,
         personalityLevel,
         reasoningEffort,
         permissionMode,
         attachments,
       });
     }
-  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendStream, personalityLevel, reasoningEffort, permissionMode, currentModel?.id, attachments]);
+  }, [searchParams, hasAutoSent, chatId, messages, isSending, sendStream, personalityLevel, reasoningEffort, permissionMode, sendModelId, attachments]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isSending) return;
@@ -471,14 +482,14 @@ function ChatPageInner() {
     // - binary 类：后端注入元数据说明
     // 前端 buildContent 作为兜底：即使后端未注入，AI 也能从用户消息中看到文件内容
     await sendStream(userMessage, {
-      modelId: currentModel?.id || FALLBACK_MODEL_ID,
+      modelId: sendModelId,
       personalityLevel,
       reasoningEffort,
       permissionMode,
       buildContent,
       attachments: sentAttachments,
     });
-  }, [input, isSending, sendStream, currentModel?.id, personalityLevel, reasoningEffort, permissionMode, attachments]);
+  }, [input, isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments]);
 
   // 语音意图无缝衔接：语音小球转写成功后自动拉起 Agent 流程
   // 复用 handleSend 同款参数（模型/人格/推理/权限/附件），语音视为一次"语音版发送"
@@ -515,14 +526,14 @@ function ChatPageInner() {
     };
 
     await sendStream(prompt, {
-      modelId: currentModel?.id || FALLBACK_MODEL_ID,
+      modelId: sendModelId,
       personalityLevel,
       reasoningEffort,
       permissionMode,
       buildContent,
       attachments: sentAttachments,
     });
-  }, [isSending, sendStream, currentModel?.id, personalityLevel, reasoningEffort, permissionMode, attachments]);
+  }, [isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments]);
 
   // 模型切换：本地选中 + 持久化到会话快照 + 同步到偏好（localStorage）
   const handleModelChange = useCallback((id: string) => {
@@ -686,7 +697,7 @@ function ChatPageInner() {
             textareaRef={chatInputRef}
             draftKey={chatId ? `mfk_draft_${chatId}` : undefined}
             models={visibleModels}
-            modelId={currentModel?.id || null}
+            modelId={displayModel?.id || null}
             onModelChange={handleModelChange}
             reasoningEffort={reasoningEffort}
             onReasoningChange={(e) => {

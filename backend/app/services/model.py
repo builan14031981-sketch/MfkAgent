@@ -281,7 +281,9 @@ async def _vision_fallback_extract(vision_context: dict) -> str:
     # ── 调用备用 Vision 模型（熔断兜底）──
     _llm_start = time.perf_counter()
     try:
-        async with httpx.AsyncClient() as client:
+        from app.core.proxy import build_llm_client
+
+        async with build_llm_client(vbu, timeout=_VISION_FALLBACK_TIMEOUT) as client:
             response = await client.post(
                 f"{vbu}/chat/completions",
                 headers={
@@ -302,7 +304,6 @@ async def _vision_fallback_extract(vision_context: dict) -> str:
                     "max_tokens": _VISION_FALLBACK_MAX_TOKENS,
                     "temperature": 0.3,
                 },
-                timeout=_VISION_FALLBACK_TIMEOUT,
             )
 
             if response.status_code != 200:
@@ -781,12 +782,13 @@ class ModelService:
         _llm_success = True
         _llm_error = None
         try:
-            async with httpx.AsyncClient() as client:
+            from app.core.proxy import build_llm_client
+
+            async with build_llm_client(config.api_base, timeout=60.0) as client:
                 response = await client.post(
                     f"{config.api_base}/chat/completions",
                     headers=headers,
                     json=payload,
-                    timeout=60.0,
                 )
                 if response.status_code != 200:
                     self._check_model_not_found(response.status_code, response.text, config.model_name)
@@ -919,13 +921,14 @@ class ModelService:
 
         # ── 模型调用耗时统计（仅日志，不改变返回结果与异常行为）──
         _llm_start = time.perf_counter()
-        async with httpx.AsyncClient() as client:
+        from app.core.proxy import build_llm_client
+
+        async with build_llm_client(config.api_base, timeout=300.0) as client:
             async with client.stream(
                 "POST",
                 f"{config.api_base}/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=120.0,
             ) as response:
                 if response.status_code != 200:
                     _llm_duration_ms = int((time.perf_counter() - _llm_start) * 1000)

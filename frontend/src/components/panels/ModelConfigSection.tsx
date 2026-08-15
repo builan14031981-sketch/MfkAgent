@@ -68,13 +68,26 @@ const emptyForm: FormState = {
 // 注：2026-08-11 撤销 — 快捷池改为走后端 PROVIDERS 权威源（P1 修复）。
 // 旧版硬编码（含 openai: gpt-4o 等与后端脱钩的条目）见 _trash/20260811_models_drift_fix/ModelConfigSection.tsx.bak
 
-// 2026-08-11 新增：推荐模型白名单（仅展示 3 个新款文本模型，隐藏老款/专用/视觉型号）
-// - qwen3.7-plus：Qwen3.7 系列最新版
-// - qwen-plus-2025-07-28：Qwen Plus 2025-07 时间戳新版
-// - qwen-max：通义千问旗舰
-// 其余后端披露的 9 个模型（qwen-flash/qwen-plus/qwen-math-turbo/qwen-mt-flash/...）及 3 个 VL 视觉模型
-// 均不作为"快捷入口"展示，但用户仍可在区块3 "手动添加"输入 id 加入候选池。
-const RECOMMENDED_TEXT_NEW = new Set(["qwen3.7-plus", "qwen-plus-2025-07-28", "qwen-max"]);
+// 2026-08-14 更新：推荐模型白名单 = 各 Provider 当前最新版（覆盖上一版仅 3 个 qwen 的旧白名单）
+// 每个 provider 至少曝光其最新旗舰文本模型，其余型号走区块3 "手动添加"。
+const RECOMMENDED_TEXT_NEW = new Set([
+  // DeepSeek
+  "deepseek-v4-flash",
+  // 通义千问
+  "qwen3.8-max", "qwen3.7-max", "qwen3.7-plus",
+  // Google Gemini
+  "gemini-3.6-flash", "gemini-3.5-flash",
+  // 智谱 GLM
+  "glm-5.1", "glm-5", "glm-4.7-flash",
+  // 月之暗面 Kimi
+  "kimi-k2.7-code",
+  // MiniMax
+  "minimax-m2.5",
+  // 百度文心
+  "wenxin-ernie-5.0",
+  // 讯飞星火
+  "spark-4.0-ultra",
+]);
 
 /**
  * @deprecated 字段级边界重构后已拆分为 ModelProvidersBasic + ModelAdvancedFields。
@@ -1514,6 +1527,25 @@ export function ModelProvidersBasic() {
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteError, setRemoteError] = useState<string | null>(null);
 
+  // 2026-08-14：供应商列表级折叠（整行按钮，样式对齐实验主题/字体选择器）。
+  // 供应商数量过多时默认折叠；持久化 localStorage，展开/收起状态刷新不丢。
+  const [providersExpanded, setProvidersExpanded] = useState(() => {
+    try {
+      return localStorage.getItem("mfk_providers_list_expanded") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const toggleProvidersExpanded = () => {
+    setProvidersExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_providers_list_expanded", String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  const configuredCount = configs.filter((c) => c.has_key).length;
+
   if (loading) {
     return (
       <p style={{ color: "var(--text-level-3)", fontSize: "13px" }}>
@@ -1594,14 +1626,44 @@ export function ModelProvidersBasic() {
 
   return (
     <div>
-      <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-        {t("settings.model.providers.title")}
-      </h3>
-      <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 12px 0" }}>
-        {t("settings.model.providers.desc")}
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {configs.map((p) => (
+      <button
+        onClick={toggleProvidersExpanded}
+        style={{
+          width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+          padding: "8px 12px",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--border-primary)",
+          background: "var(--bg-level-2)",
+          cursor: "pointer",
+          fontSize: "13px",
+          color: "var(--text-level-2)",
+          transition: "border-color var(--transition-fast)",
+          marginBottom: providersExpanded ? "12px" : 0,
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ fontWeight: "500", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {t("settings.model.providers.title")} ({configs.length})
+          </span>
+          <span style={{ fontSize: "11px", color: "var(--text-level-3)", flexShrink: 0 }}>
+            {t("settings.model.providers.configured")} {configuredCount}
+          </span>
+        </span>
+        <ChevronDown style={{
+          width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
+          transform: providersExpanded ? "rotate(180deg)" : "rotate(0deg)",
+          transition: "transform var(--transition-fast)",
+        }} />
+      </button>
+
+      {providersExpanded && (
+        <>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 12px 0" }}>
+            {t("settings.model.providers.desc")}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {configs.map((p) => (
           <ProviderCard
             key={p.id}
             provider={p}
@@ -1632,7 +1694,9 @@ export function ModelProvidersBasic() {
             onToggleDisabled={() => setProviderDisabled(p.id, !isProviderDisabled(p.id))}
           />
         ))}
-      </div>
+        </div>
+        </>
+      )}
     </div>
   );
 }

@@ -3,12 +3,12 @@ import type { Message, useMessages, TimelineEvent } from "@/hooks/useMessages";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { ReasoningEffort } from "@/components/ChatInput";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
-import { FALLBACK_MODEL_ID } from "@/lib/modelDefaults";
 import type { Attachment } from "@/components/FileDropZone";
 import { apiPost } from "@/lib/api";
 import { showDesktopNotification } from "@/lib/notify";
 import { formatDuration } from "@/lib/format";
 import { useStreamStore, OrbStage } from "@/lib/streamStore";
+import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
 import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ThinkingIndicatorEvent } from "@/types/runtime";
 
 type SendMessageStream = ReturnType<typeof useMessages>["sendMessageStream"];
@@ -24,6 +24,8 @@ export interface UseChatStreamParams {
   sendMessageStream: SendMessageStream;
   appendMessage: AppendMessage;
   refetch: () => Promise<void>;
+  /** 当前会话关联项目根目录绝对路径（产出物收集用，无项目绑定为 null） */
+  projectPath?: string | null;
 }
 
 export interface SendStreamOptions {
@@ -56,6 +58,7 @@ export function useChatStream({
   sendMessageStream,
   appendMessage,
   refetch,
+  projectPath,
 }: UseChatStreamParams) {
   // 从全局 store 读取当前 chatId 的会话状态
   const session = useStreamStore((s) => (chatId != null ? s.sessions[chatId] : undefined));
@@ -454,7 +457,7 @@ export function useChatStream({
         refs.abortController = controller;
         await sendMessageStream(
           finalContent,
-          modelId || FALLBACK_MODEL_ID,
+          modelId ?? null,
           // onChunk（text）
           (chunk) => {
             if (refs.firstText) {
@@ -594,6 +597,20 @@ export function useChatStream({
           () => {},
           // onToolResult
           (toolResult) => {
+            // 产出物收集：工具返回 file_path 时自动加入右侧产出物列表（点击文件路径亦可）
+            if (toolResult.file_path && typeof toolResult.file_path === "string") {
+              const fp = toolResult.file_path;
+              // 相对路径（无盘符/根）→ 基于项目根目录补全为绝对路径，与 ToolCallGroup 一致
+              const abs = projectPath && !fp.match(/^[A-Za-z]:[\\/]/) && !fp.startsWith("/")
+                ? projectPath.replace(/[\\/]+$/, "") + "\\" + fp.replace(/^[\\/]+/, "")
+                : fp;
+              useArtifactStore.getState().addArtifact({
+                path: abs,
+                fileName: artifactFileName(abs),
+                projectPath: projectPath ?? null,
+                tool: toolResult.tool,
+              });
+            }
             const id = toolResult.tool_call_id;
             store.updateSession(targetChatId, (prev) => {
               let idx: number | undefined;
@@ -768,7 +785,7 @@ export function useChatStream({
         }
       }
     },
-    [chatId, sendMessageStream, appendMessage, refetch, resetStreaming, store]
+    [chatId, sendMessageStream, appendMessage, refetch, resetStreaming, store, projectPath]
   );
 
   return {

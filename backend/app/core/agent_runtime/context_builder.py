@@ -238,7 +238,7 @@ class ContextBuildInput:
     personality_level: Optional[int] = None
     use_tools: bool = True
     temperature: float = 0.7
-    max_tokens: int = 4096
+    max_tokens: int = 16384
     reasoning_effort: Optional[str] = None
     planning_level: Optional[int] = None  # G2-B: Planner 层级控制
     attachments: list = field(default_factory=list)  # Phase 2: AttachmentItem 列表

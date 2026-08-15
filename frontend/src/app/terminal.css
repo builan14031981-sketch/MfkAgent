@@ -1,0 +1,12 @@
+/* 内置终端样式（2026-08-14）：让 xterm 融入 MfkAgent 主题变量 */
+.terminal-root .xterm {
+  height: 100%;
+}
+
+.terminal-root .xterm .xterm-viewport {
+  background-color: transparent !important;
+}
+
+.terminal-root .xterm .xterm-screen {
+  height: 100%;
+}

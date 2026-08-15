@@ -65,6 +65,11 @@ DEFAULT_SETTINGS = {
     "agent_permission_mode": "standard",
     # 归档：磁盘导出文件夹（空 = 默认 backend/Archive/）
     "archive_dir": "",
+    # 网络代理（2026-08-14 代理可配置化）：
+    # - proxy_mode: auto（环境变量>Windows系统代理>直连）/ manual（用 proxy_url）/ off（强制直连）
+    # - proxy_url: 手动代理地址（如 http://127.0.0.1:7890）
+    "proxy_mode": "auto",
+    "proxy_url": "",
 }
 
 
@@ -277,6 +282,11 @@ async def update_setting(key: str, request: SettingUpdate):
         if key == "agent_permission_mode":
             _sync_approval_mode(request.value)
 
+        # proxy_* 更新 → 清代理配置缓存（proxy.py 下次读取即新值）
+        if key.startswith("proxy_"):
+            from app.core.proxy import invalidate as proxy_invalidate
+            proxy_invalidate()
+
         return SettingResponse(key=setting.key, value=setting.value)
     finally:
         db.close()
@@ -319,6 +329,11 @@ async def update_settings(request: SettingsBulkUpdate):
         # agent_permission_mode 更新 → 同步内存单例（与单条接口同套路）
         if "agent_permission_mode" in request.settings:
             _sync_approval_mode(request.settings["agent_permission_mode"])
+
+        # proxy_* 更新 → 清代理配置缓存（与单条接口同套路）
+        if any(k.startswith("proxy_") for k in request.settings):
+            from app.core.proxy import invalidate as proxy_invalidate
+            proxy_invalidate()
 
         return result
     finally:

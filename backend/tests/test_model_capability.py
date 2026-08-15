@@ -326,7 +326,7 @@ class TestCallOnceModelNotFound(unittest.TestCase):
         mock_response.status_code = 404
         mock_response.text = '{"error": {"message": "Model not found"}}'
 
-        with patch("app.services.model.httpx.AsyncClient") as mock_client_cls:
+        with patch("app.core.proxy.httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -359,7 +359,7 @@ class TestCallOnceModelNotFound(unittest.TestCase):
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("app.services.model.httpx.AsyncClient") as mock_client_cls:
+        with patch("app.core.proxy.httpx.AsyncClient") as mock_client_cls:
             mock_client_cls.return_value = mock_client
 
             with self.assertRaises(ModelNotFoundError) as ctx:

@@ -431,7 +431,9 @@ async def fetch_remote_models(body: FetchRemoteRequest):
     target_url = f"{api_base}/models"
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+        from app.core.proxy import build_llm_client
+
+        async with build_llm_client(api_base, timeout=5.0) as client:
             resp = await client.get(
                 target_url,
                 headers={
@@ -614,7 +616,9 @@ async def test_connection(body: TestConnectionRequest):
 
     # ── 策略 1：GET /models（最轻量）──
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+        from app.core.proxy import build_llm_client
+
+        async with build_llm_client(api_base, timeout=5.0) as client:
             resp = await client.get(
                 f"{api_base}/models",
                 headers={
@@ -670,7 +674,9 @@ async def test_connection(body: TestConnectionRequest):
     # ── 策略 2：POST /chat/completions max_tokens=1（/models 不可用时回退）──
     t0 = _time.perf_counter()
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+        from app.core.proxy import build_llm_client
+
+        async with build_llm_client(api_base, timeout=5.0) as client:
             resp = await client.post(
                 f"{api_base}/chat/completions",
                 headers={

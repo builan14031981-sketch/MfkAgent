@@ -95,6 +95,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = str(BACKEND_DIR / ".env")
         case_sensitive = True
+        extra = "allow"
 
 settings = Settings()
 

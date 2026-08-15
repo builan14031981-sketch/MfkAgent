@@ -58,16 +58,20 @@ PROVIDERS: list[ProviderDef] = [
         website="https://dashscope.aliyun.com",
         supports_vision=False,  # Provider 级默认不支持视觉；VL 模型由模型级显式覆盖
         models=(
-            ProviderModel("qwen-flash", "qwen-flash", context_window=131_072),
-            ProviderModel("qwen-plus", "qwen-plus", context_window=131_072),
-            ProviderModel("qwen-max", "qwen-max", "通义千问 Max", context_window=32_768),
-            ProviderModel("qwen-plus-2025-07-28", "qwen-plus-2025-07-28", "Qwen Plus 2025-07-28", context_window=131_072),
+            # 2026-08 最新旗舰：Qwen3.8-Max（思考模式）、Qwen3.7-Max（1M 上下文）
+            ProviderModel("qwen3.8-max", "qwen3.8-max", "Qwen3.8 Max", context_window=1_048_576),
+            ProviderModel("qwen3.7-max", "qwen3.7-max", "Qwen3.7 Max", context_window=1_048_576),
             ProviderModel("qwen3.7-plus", "qwen3.7-plus", "Qwen3.7 Plus", context_window=131_072),
+            ProviderModel("qwen-max", "qwen-max", "通义千问 Max", context_window=32_768),
+            ProviderModel("qwen-plus", "qwen-plus", context_window=131_072),
+            ProviderModel("qwen-flash", "qwen-flash", context_window=131_072),
             ProviderModel("qwen-math-turbo", "qwen-math-turbo", "Qwen Math Turbo", context_window=131_072),
             ProviderModel("qwen-mt-flash", "qwen-mt-flash", "Qwen MT Flash", context_window=131_072),
             ProviderModel("deepseek-r1-distill-qwen-7b", "deepseek-r1-distill-qwen-7b", "DeepSeek R1 蒸馏 7B", context_window=131_072),
             ProviderModel("glm-5", "glm-5", "GLM-5", context_window=128_000),
             # VL 视觉模型（显式标记 supports_vision=True）
+            ProviderModel("qwen3-vl-plus", "qwen3-vl-plus", "Qwen3 VL Plus", supports_vision=True, context_window=131_072),
+            ProviderModel("qwen3-vl-flash", "qwen3-vl-flash", "Qwen3 VL Flash", supports_vision=True, context_window=131_072),
             ProviderModel("qwen3-vl-235b-a22b-thinking", "qwen3-vl-235b-a22b-thinking", "Qwen3 VL 235B Thinking", supports_vision=True, context_window=131_072),
             ProviderModel("qwen3-vl-32b-thinking", "qwen3-vl-32b-thinking", "Qwen3 VL 32B Thinking", supports_vision=True, context_window=131_072),
             ProviderModel("qwen3-vl-30b-a3b-thinking", "qwen3-vl-30b-a3b-thinking", "Qwen3 VL 30B A3B Thinking", supports_vision=True, context_window=131_072),
@@ -83,9 +87,11 @@ PROVIDERS: list[ProviderDef] = [
         website="https://aistudio.google.com",
         supports_vision=True,  # Gemini OpenAI 兼容端点原生支持 image_url
         models=(
-            ProviderModel("gemini-3.5-flash", "gemini-3.5-flash", context_window=1_048_576),
-            ProviderModel("gemini-3-flash", "gemini-3-flash-preview", context_window=1_048_576),
-            ProviderModel("gemini-3.1-flash-lite", "gemini-3.1-flash-lite", context_window=1_048_576),
+            # 2026-08 最新：Gemini 3.6 Flash（GA）、Gemini 3.5 Flash（GA）
+            ProviderModel("gemini-3.6-flash", "gemini-3.6-flash", "Gemini 3.6 Flash", context_window=1_048_576),
+            ProviderModel("gemini-3.5-flash", "gemini-3.5-flash", "Gemini 3.5 Flash", context_window=1_048_576),
+            ProviderModel("gemini-3.5-flash-lite", "gemini-3.5-flash-lite", "Gemini 3.5 Flash Lite", context_window=1_048_576),
+            ProviderModel("gemini-3.1-flash-lite", "gemini-3.1-flash-lite", "Gemini 3.1 Flash Lite", context_window=1_048_576),
         ),
     ),
     ProviderDef(
@@ -98,7 +104,11 @@ PROVIDERS: list[ProviderDef] = [
         website="https://open.bigmodel.cn",
         supports_vision=False,  # GLM-4 纯文本模型不支持视觉；无 VL 子模型注册
         models=(
-            ProviderModel("glm-4", "glm-4", context_window=128_000),
+            # 2026-08 最新：GLM-5.1 / GLM-5（Agent 旗舰），GLM-4.7-Flash（永久免费）
+            ProviderModel("glm-5.1", "glm-5.1", "GLM-5.1", context_window=200_000),
+            ProviderModel("glm-5", "glm-5", "GLM-5", context_window=200_000),
+            ProviderModel("glm-4.7", "glm-4.7", "GLM-4.7", context_window=200_000),
+            ProviderModel("glm-4.7-flash", "glm-4.7-flash", "GLM-4.7 Flash（永久免费）", context_window=200_000),
         ),
     ),
     ProviderDef(
@@ -110,7 +120,9 @@ PROVIDERS: list[ProviderDef] = [
         description="支持超长上下文的模型",
         website="https://www.moonshot.cn",
         models=(
-            ProviderModel("moonshot-v1-8k", "moonshot-v1-8k", context_window=8_192),
+            # 2026-08 最新：Kimi K2.7 Code（编程 Agent 旗舰）、Kimi K2.6（通用）
+            ProviderModel("kimi-k2.7-code", "kimi-k2.7-code", "Kimi K2.7 Code", context_window=262_144),
+            ProviderModel("kimi-k2.6", "kimi-k2.6", "Kimi K2.6", context_window=262_144),
         ),
     ),
     ProviderDef(
@@ -151,7 +163,8 @@ PROVIDERS: list[ProviderDef] = [
         description="百度千帆大模型（默认值可覆盖）",
         website="https://qianfan.cloud.baidu.com",
         models=(
-            ProviderModel("wenxin-ernie-4-turbo", "ernie-4.0-turbo-8k", context_window=8_192),
+            ProviderModel("wenxin-ernie-5.0", "ernie-5.0", "文心 ERNIE 5.0", context_window=128_000),
+            ProviderModel("wenxin-ernie-4.5-turbo", "ernie-4.5-turbo-128k", "文心 ERNIE 4.5 Turbo 128K", context_window=128_000),
         ),
     ),
     ProviderDef(
@@ -163,7 +176,8 @@ PROVIDERS: list[ProviderDef] = [
         description="讯飞星火大模型（默认值可覆盖）",
         website="https://xinghuo.xfyun.cn",
         models=(
-            ProviderModel("spark-general-v3.5", "generalv3.5"),
+            ProviderModel("spark-4.0-ultra", "spark-4.0-ultra", "讯飞星火 4.0 Ultra"),
+            ProviderModel("spark-x1", "spark-x1", "讯飞星火 X1 深度推理"),
         ),
     ),
     ProviderDef(
@@ -175,7 +189,8 @@ PROVIDERS: list[ProviderDef] = [
         description="MiniMax 大模型（默认值可覆盖）",
         website="https://www.minimax.io",
         models=(
-            ProviderModel("minimax-text-01", "MiniMax-Text-01"),
+            ProviderModel("minimax-m2.7", "MiniMax-M2.7", "MiniMax M2.7", context_window=200_000),
+            ProviderModel("minimax-m2.5", "MiniMax-M2.5", "MiniMax M2.5", context_window=196_608),
         ),
     ),
     ProviderDef(

@@ -274,7 +274,11 @@ def execute_command(
 
     start = time.monotonic()
     try:
-        proc = run_subprocess(argv, cwd=work_dir, timeout=timeout)
+        from app.core.proxy import resolve_proxy_env
+
+        proc = run_subprocess(
+            argv, cwd=work_dir, timeout=timeout, env=resolve_proxy_env()
+        )
         elapsed_ms = int((time.monotonic() - start) * 1000)
         stdout = decode_subprocess_output(proc.stdout) or ""
         stderr = decode_subprocess_output(proc.stderr) or ""

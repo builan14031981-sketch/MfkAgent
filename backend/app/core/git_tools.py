@@ -88,7 +88,11 @@ def _write_git_audit(
 
 
 def _git(project_path: str, args: List[str], timeout: int = 60) -> str:
-    """执行 git 命令，返回 stdout（stderr 合并）。"""
+    """执行 git 命令，返回 stdout（stderr 合并）。
+
+    注入代理环境：为 git 子进程提供 http_proxy / https_proxy / NO_PROXY，
+    使访问 GitHub 等出墙站点自动走系统/手动代理，国内域名（白名单）直连。
+    """
     if not project_path:
         raise GitToolError("project_path 不能为空")
     try:
@@ -98,7 +102,11 @@ def _git(project_path: str, args: List[str], timeout: int = 60) -> str:
     if not os.path.isdir(proj_real):
         raise GitToolError(f"项目目录不存在: {project_path}")
     try:
-        proc = run_subprocess(["git"] + args, cwd=proj_real, timeout=timeout)
+        from app.core.proxy import resolve_proxy_env
+
+        proc = run_subprocess(
+            ["git"] + args, cwd=proj_real, timeout=timeout, env=resolve_proxy_env()
+        )
     except FileNotFoundError:
         raise GitToolError("未检测到 git 命令，请先安装 Git")
     except subprocess.TimeoutExpired:

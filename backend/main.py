@@ -167,7 +167,7 @@ def _seed_sub_agents():
 _seed_sub_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -331,6 +331,14 @@ app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
 app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
+app.include_router(proxy_api.router, prefix="/api/proxy", tags=["proxy"])
+app.include_router(terminal_api.router, prefix="/api", tags=["terminal"])
+
+# 关闭时清理所有终端 PTY 会话
+@app.on_event("shutdown")
+async def _shutdown_terminal():
+    from app.services.terminal import get_terminal_manager
+    get_terminal_manager().shutdown_all()
 
 @app.get("/")
 async def root():

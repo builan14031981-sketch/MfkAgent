@@ -12,6 +12,8 @@ import "@fontsource-variable/noto-sans-sc";
 import "@fontsource-variable/ibm-plex-sans";
 import "@fontsource/press-start-2p/latin.css";
 import "@fontsource/dotgothic16";
+import "@xterm/xterm/css/xterm.css";
+import "./terminal.css";
 import { Providers } from "@/components/providers";
 import { AppLayout } from "@/components/AppLayout";
 

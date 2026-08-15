@@ -574,7 +574,7 @@ class SendRequest(BaseModel):
     content: str
     model: Optional[str] = None
     temperature: float = 0.7
-    max_tokens: int = 4096
+    max_tokens: int = 16384
     personality_level: Optional[int] = None
     use_tools: bool = True
     reasoning_effort: Optional[str] = None
