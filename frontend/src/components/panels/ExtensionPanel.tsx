@@ -52,6 +52,7 @@ const PLUGIN_ICON_MAP: Record<string, typeof Globe> = {
   core: ShieldCheck,
   browser_automation: Globe,
   system_control: Terminal,
+  image_generation: Sparkles,
 };
 
 const PLUGIN_FALLBACK_ICON = Sparkles;

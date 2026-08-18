@@ -22,6 +22,19 @@ const nextConfig: NextConfig = {
 
   // 严格模式
   reactStrictMode: true,
+
+  // 开发模式 API 代理：将 /api/* 请求转发到后端
+  // 生产构建为静态导出，无需代理（Electron 直接调用后端）
+  async rewrites() {
+    if (process.env.NODE_ENV === "production") return [];
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8002";
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

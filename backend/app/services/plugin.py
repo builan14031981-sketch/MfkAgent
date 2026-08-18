@@ -327,6 +327,14 @@ _DEFAULT_PLUGINS = [
         author="MfkAgent",
         status=PluginStatus.ACTIVE,
     ),
+    Plugin(
+        plugin_id="image_generation",
+        name="文生图",
+        version="1.0.0",
+        description="根据提示词生成图片（generate_image）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
 ]
 
 

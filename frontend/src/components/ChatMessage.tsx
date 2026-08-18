@@ -40,6 +40,51 @@ function normalizeThinking(text: string): string {
   return text.trim().split(CR + LF).join(LF).replace(new RegExp(LF + "{2,}", "g"), LF);
 }
 
+/** 图片 markdown 行（![alt](src)）正则 */
+const IMG_MD_LINE_RE = /!\[[^\]]*\]\(([^)\s]+)\)/g;
+
+/**
+ * 提取文生图产物：从消息 timeline / tool_calls / content 中收集 generate_image 的
+ * markdown 图片引用（如 ![生成图片 1](/api/chat/1/generated_image?path=...)），
+ * 返回 { src, alt } 数组，用于在 AI 气泡内直接展示生成的图片。
+ */
+function extractGeneratedImages(message: Message): Array<{ src: string; alt: string }> {
+  const results: Array<{ src: string; alt: string }> = [];
+  const seen = new Set<string>();
+
+  const collect = (text: string | undefined | null) => {
+    if (!text) return;
+    IMG_MD_LINE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = IMG_MD_LINE_RE.exec(text)) !== null) {
+      // m[1] = src, alt 从 m[0] 解析
+      const altMatch = /!\[([^\]]*)\]/.exec(m[0]);
+      const alt = altMatch ? altMatch[1] : "";
+      const src = m[1].trim();
+      if (src && !seen.has(src)) {
+        seen.add(src);
+        results.push({ src, alt });
+      }
+    }
+  };
+
+  // 1. 从 timeline 的 tool_result 事件收集
+  for (const evt of message.timeline ?? []) {
+    if (evt.type === "tool_result" && evt.tool === "generate_image") {
+      collect(evt.result);
+    }
+  }
+  // 2. 从 tool_calls 结果收集
+  for (const tc of message.tool_calls ?? []) {
+    const tool = tc.tool ?? tc.name;
+    if (tool === "generate_image") collect(tc.result);
+  }
+  // 3. 从消息正文收集（模型可能直接把图片引用写进 reply）
+  collect(message.content);
+
+  return results;
+}
+
 /** 按 message.timeline 时序重建的可渲染片段 */
 type TimelineSegment =
   | { kind: "thinking"; content: string }
@@ -411,6 +456,73 @@ export function MemorySavedNotice({ count, items }: { count: number; items: Arra
   );
 }
 
+/** 子代理编排进度卡（spawn_orchestration 工具编排事件渲染）。
+ * 状态机：running（旋转 Loader + 蓝色边框）→ completed（绿色对勾）→ failed（红色叹号）。
+ * 历史消息回放时（timeline 持久化的 sub_agent 事件）也按此渲染。 */
+export function SubAgentProgressCard({ role, title, status, content }: {
+  role: string;
+  title: string;
+  status: "running" | "completed" | "failed";
+  content: string;
+}) {
+  const statusColor =
+    status === "completed"
+      ? "var(--color-success)"
+      : status === "failed"
+        ? "var(--color-error)"
+        : "var(--color-accent)";
+  return (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+      margin: "0 0 6px 0",
+      padding: "8px 12px",
+      borderRadius: "var(--radius-md)",
+      background: "var(--bg-level-3)",
+      border: `1px solid ${status === "running" ? "var(--border-primary)" : "var(--border-primary)"}`,
+      fontSize: "12px",
+      lineHeight: 1.5,
+      color: "var(--text-level-2)",
+    }}>
+      <span style={{
+        flexShrink: 0,
+        width: "18px",
+        height: "18px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: statusColor,
+      }}>
+        {status === "running" ? (
+          <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
+        ) : status === "completed" ? (
+          <Check style={{ width: "14px", height: "14px" }} />
+        ) : (
+          <span style={{ fontSize: "13px", fontWeight: 700, lineHeight: "14px" }}>!</span>
+        )}
+      </span>
+      <span style={{
+        flexShrink: 0,
+        padding: "0 7px",
+        borderRadius: "var(--radius-xs)",
+        fontSize: "11px",
+        fontWeight: 600,
+        lineHeight: "18px",
+        fontFamily: "var(--font-geist-mono), var(--font-family)",
+        color: statusColor,
+        background: "color-mix(in srgb, var(--bg-level-2) 60%, transparent)",
+        border: `1px solid ${statusColor}`,
+      }}>
+        {title || role || "子代理"}
+      </span>
+      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {content || (status === "running" ? "编排中…" : "")}
+      </span>
+    </div>
+  );
+}
+
 /** 复制按钮：真实 clipboard + 勾选反馈。
  * 点击后固定 300ms 显示勾选态即复位（不随 hover 续期），保持轻快反馈。 */
 function CopyButton({ text, iconSize = 13 }: { text: string; iconSize?: number }) {
@@ -634,6 +746,12 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
     [timelineSegments]
   );
 
+  // 文生图产物：AI 气泡内同时展示生成的图片（圆角缩略，点击放大，尺寸完整）
+  const generatedImages = useMemo(
+    () => (message.role === "assistant" ? extractGeneratedImages(message) : []),
+    [message]
+  );
+
   // 静态操作栏布局（Zero CLS）：固定 marginTop、无 maxHeight/overflow/高度动画。
   // hover 显隐：容器默认隐藏（CSS .mf-msg-row:hover 唤醒），按钮 hover 恢复 1。
   const actionBarStyle = (alignEnd: boolean): React.CSSProperties => ({
@@ -765,6 +883,53 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
       {/* 防御：timeline 中无 text 事件但正文存在（如录制不全）→ 补渲染正文，避免内容丢失 */}
       {timelineSegments && !timelineSegments.some((s) => s.kind === "text") && body && (
         <MarkdownRenderer content={body} />
+      )}
+      {/* 文生图产物：直接展示生成的图片，圆角缩略，点击放大，尺寸完整 */}
+      {generatedImages.length > 0 && (
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          marginTop: "10px",
+          marginBottom: "2px",
+        }}>
+          {generatedImages.map((img, i) => {
+            const isSingle = generatedImages.length === 1;
+            const urls = generatedImages.map((x) => x.src);
+            return (
+              <div
+                key={img.src}
+                onClick={() => {
+                  if (onImageClick) onImageClick(urls, i);
+                }}
+                style={{
+                  maxWidth: isSingle ? "480px" : "min(320px, 48%)",
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  background: "color-mix(in srgb, var(--text-level-1) 6%, transparent)",
+                  lineHeight: 0,
+                  border: "1px solid var(--border-primary)",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={img.src}
+                  alt={img.alt}
+                  title="点击查看大图"
+                  style={{
+                    display: "block",
+                    maxWidth: "100%",
+                    height: "auto",
+                    maxHeight: "400px",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
       )}
       {/* AI 消息悬浮操作栏：时间 + 用时 + 复制 / 引用 / 重生成 */}
       <div className="mf-bubble-actions" style={actionBarStyle(false)}>
