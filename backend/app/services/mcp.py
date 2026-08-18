@@ -1,5 +1,6 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 import json
+import asyncio
 
 
 class MCPResource:
@@ -53,6 +54,7 @@ class MCPServer:
         self.resources: Dict[str, MCPResource] = {}
         self.tools: Dict[str, MCPTool] = {}
         self.prompts: Dict[str, MCPPrompt] = {}
+        self.external_executors: Dict[str, Callable] = {}
 
     def add_resource(self, resource: MCPResource):
         self.resources[resource.uri] = resource
@@ -73,7 +75,7 @@ class MCPServer:
             capabilities["prompts"] = {"listChanged": True}
         return capabilities
 
-    def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
         method = request.get("method")
         params = request.get("params", {})
 
@@ -86,7 +88,7 @@ class MCPServer:
         elif method == "tools/list":
             return self._handle_tools_list()
         elif method == "tools/call":
-            return self._handle_tools_call(params)
+            return await self._handle_tools_call(params)
         elif method == "prompts/list":
             return self._handle_prompts_list()
         elif method == "prompts/get":
@@ -137,20 +139,83 @@ class MCPServer:
             }
         }
 
-    def _handle_tools_call(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_tools_call(self, params: Dict[str, Any]) -> Dict[str, Any]:
         name = params.get("name")
         if name not in self.tools:
             return {"error": {"code": -32602, "message": f"Tool not found: {name}"}}
-        return {
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"Tool {name} executed",
+        arguments = params.get("arguments", {})
+
+        # 优先走外部插件执行器
+        # 外部执行器签名：async def executor(tool_name: str, args: dict) -> Any
+        if name in self.external_executors:
+            try:
+                executor = self.external_executors[name]
+                result = await executor(name, arguments) if asyncio.iscoroutinefunction(executor) else executor(name, arguments)
+                result_dict = {"status": "ok", "result": result}
+                return {
+                    "result": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(result_dict, ensure_ascii=False),
+                            }
+                        ]
                     }
-                ]
-            }
+                }
+            except Exception as e:
+                return {
+                    "result": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps({"status": "error", "error": str(e)}, ensure_ascii=False),
+                            }
+                        ],
+                        "isError": True,
+                    }
+                }
+
+        # 内置工具：走 executor.execute_tool 流水线
+        from app.core.tool_runtime.executor import execute_tool
+
+        tool_call = {
+            "function": {"name": name, "arguments": json.dumps(arguments)},
+            "id": f"mcp-{name}",
         }
+        try:
+            record = await execute_tool(
+                tool_call=tool_call,
+                project_path=None,
+                read_only=False,
+                ctx={},
+                emit=None,
+                auto_approve=False,
+            )
+            success = record.get("success", False)
+            result_text = record.get("result", "")
+            return {
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": result_text,
+                        }
+                    ],
+                    "isError": not success,
+                }
+            }
+        except Exception as e:
+            return {
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f"Error: {e}",
+                        }
+                    ],
+                    "isError": True,
+                }
+            }
 
     def _handle_prompts_list(self) -> Dict[str, Any]:
         return {

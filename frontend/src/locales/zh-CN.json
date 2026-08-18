@@ -22,9 +22,9 @@
     "exitFullscreen": "退出全屏"
   },
   "sidebar": {
-    "newTask": "New Task",
+    "newTask": "新建任务",
     "chats": "Chats",
-    "settings": "Settings",
+    "settings": "设置",
     "memory": "Memory",
     "noChats": "还没有聊天",
     "noChatsDesc": "开始一次新的对话",
@@ -46,7 +46,9 @@
     "pickDirectory": "选择文件夹",
     "newChatInProject": "在此项目中新建会话",
     "newChatTitle": "新会话",
-    "openProjectFolder": "打开项目目录"
+    "openProjectFolder": "打开项目目录",
+    "search": "搜索",
+    "collapse": "收起侧边栏"
   },
   "home": {
     "welcome": [
@@ -123,6 +125,9 @@
       "compressing": "压缩中..."
     },
     "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
+    "menu": {
+      "more": "更多操作"
+    },
     "noProjectHint": "关联项目后可使用文件读写工具",
     "logTruncated": "… 日志已截断（共 {count} 字符，仅显示首尾）…",
     "openInFileManager": "在文件管理器中打开",
@@ -218,7 +223,18 @@
       "selectNewDirectory": "选择新目录…",
       "switchProject": "更换项目",
       "unbindProject": "解绑项目",
-      "noProjectsAvailable": "暂无已注册项目"
+      "noProjectsAvailable": "暂无已注册项目",
+      "addSkill": "添加 Skill",
+      "pasteClipboard": "粘贴剪贴板",
+      "confirmClearTitle": "清空对话历史？",
+      "confirmClearDesc": "将删除本会话的全部消息记录，且无法恢复。",
+      "confirm": "清空",
+      "cancel": "取消",
+      "noInstalledSkills": "暂无已安装 Skill，请先到 设置 → 扩展 安装",
+      "installedSkills": "已安装 Skill",
+      "removeSkill": "移出当前会话 Skill",
+      "skillSearch": "搜索 Skill（名称 / 描述 / 分类 / 标签）…",
+      "skillSearchEmpty": "未找到匹配的 Skill"
     },
     "linkProjectNow": "关联项目",
     "projectLinked": "已关联项目",
@@ -249,6 +265,9 @@
   },
   "settings": {
     "title": "设置",
+    "searchPlaceholder": "搜索设置...",
+    "searchNoResult": "没有匹配的设置，换个关键词试试",
+    "searchHits": "命中 {count} 项设置",
     "archive": {
       "title": "归档",
       "dirTitle": "归档文件夹",
@@ -380,9 +399,15 @@
         "title": "默认模型",
         "desc": "新聊天默认使用的 AI 模型"
       },
-      "reasoningEffort": {
+"reasoningEffort": {
         "title": "默认推理程度",
         "desc": "未显式指定时，消息使用的推理档位"
+      },
+      "imageGen": {
+        "title": "文生图模型",
+        "desc": "AI 生成图片时使用的千问图像模型（复用通义千问 API Key）",
+        "pro": "qwen-image-3.0-pro（质量优先）",
+        "flash": "qwen-image-3.0（速度更快）"
       },
       "vision": {
         "title": "备用识图模型 (Vision Fallback)",
@@ -605,27 +630,34 @@
       "futureNote": "未来将支持 Plugins（插件生态）与 Connections（外部连接），当前仅开放 Skills。",
       "skills": {
         "sectionTitle": "Skills",
-        "sectionDesc": "管理 AI 专业能力增强包",
+        "sectionDesc": "浏览并查看 Skill 详情；在对话输入框 + 号开启，仅当前会话生效",
         "scenarios": "适用场景",
         "capabilities": "能力说明",
-        "install": "安装",
-        "installed": "已启用",
-        "enabled": "已启用",
-        "disable": "关闭",
-        "installedCount": "已启用 {{count}} / {{total}}",
+        "install": "加入 Skill 库",
+        "installed": "已在 Skill 库",
+      "removeFromLibrary": "移出 Skill 库",
+        "enabled": "已在 Skill 库",
+        "disable": "移出 Skill 库",
+        "installedCount": "Skill 库 {{count}} / {{total}}",
         "categoryCount": "{{count}} 个",
-        "moreInfo": "点击卡片查看详情"
+        "moreInfo": "点击卡片查看详情",
+        "detail": "详情",
+        "usageNote": "Skill 在对话输入框的 + 号 → 调用 Skill 中开启，仅当前会话生效。"
       },
       "plugins": {
         "sectionTitle": "Plugins",
-        "sectionDesc": "系统级功能插件，V1 只读显示当前状态",
-        "softNote": "插件生态将在后续版本开放，本期仅展示后端默认插件及其运行状态。",
+        "sectionDesc": "启用/停用决定该插件工具是否对 Agent 可见（停用后相关工具不再被调用）",
+        "inDev": "开发中",
+        "inDevPlaceholder": "插件运行时尚未接入完成，暂无真实工具能力。当前为开发中占位，即将支持真实工具插件。",
+        "softNote": "插件是真实可调用的工具集，启用后其工具对 Agent 可见。停用插件则相关工具不再被调用。",
         "empty": "暂无插件",
-        "activeCount": "已激活 {{count}} / {{total}}",
-        "statusActive": "已激活",
+        "activeCount": "已启用 {{count}} / {{total}}",
+        "statusActive": "已启用",
         "statusInstalled": "已安装",
-        "statusInactive": "未激活",
-        "statusError": "异常"
+        "statusInactive": "未启用",
+        "statusError": "异常",
+        "enable": "启用",
+        "disable": "停用"
       },
       "skillDetail": {
         "backToList": "返回 Skills 列表",
@@ -771,5 +803,17 @@
     "fullscreen": "全屏",
     "exitFullscreen": "退出全屏",
     "close": "关闭"
+  },
+  "commandPalette": {
+    "placeholder": "搜索会话和项目...",
+    "noResults": "没有找到匹配的结果",
+    "startTyping": "输入关键词开始搜索",
+    "chats": "会话",
+    "projects": "项目",
+    "navigate": "↑↓ 导航",
+    "select": "↵ 选择"
   }
 }
+
+
+

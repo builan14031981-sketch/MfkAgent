@@ -24,6 +24,14 @@ Base.metadata.create_all(bind=engine)
 from app.services.plugin import plugin_manager as _pm
 _pm.seed_default_plugins()
 
+# MCP 桥接初始化：将插件工具注册到 MCPServer
+from app.core.mcp_bridge import register_plugin_tools_to_mcp
+register_plugin_tools_to_mcp()
+
+# MCP 外部插件注册：浏览器自动化、系统控制等真实能力
+from app.services.mcp_plugins import register_all_external_plugins
+register_all_external_plugins()
+
 # Persona System V1 seed（ExpressionKnowledge + PersonaTemplate）
 from seed_persona import seed_all as _seed_persona
 _seed_persona()
@@ -167,7 +175,7 @@ def _seed_sub_agents():
 _seed_sub_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -333,12 +341,18 @@ app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 app.include_router(proxy_api.router, prefix="/api/proxy", tags=["proxy"])
 app.include_router(terminal_api.router, prefix="/api", tags=["terminal"])
+app.include_router(browser_api.router, prefix="/api", tags=["browser"])
 
 # 关闭时清理所有终端 PTY 会话
 @app.on_event("shutdown")
 async def _shutdown_terminal():
     from app.services.terminal import get_terminal_manager
     get_terminal_manager().shutdown_all()
+
+@app.on_event("shutdown")
+async def _shutdown_browser():
+    from app.core.browser_session import browser_manager
+    browser_manager.shutdown()
 
 @app.get("/")
 async def root():

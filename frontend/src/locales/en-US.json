@@ -46,7 +46,9 @@
     "pickDirectory": "Pick Folder",
     "newChatInProject": "New chat in this project",
     "newChatTitle": "New Chat",
-    "openProjectFolder": "Open Project Folder"
+    "openProjectFolder": "Open Project Folder",
+    "search": "Search",
+    "collapse": "Collapse sidebar"
   },
   "home": {
     "welcome": [
@@ -123,6 +125,9 @@
       "compressing": "Compressing..."
     },
     "aiMayError": "MfkAgent may make mistakes. Please verify important information.",
+    "menu": {
+      "more": "More actions"
+    },
     "noProjectHint": "Link a project to enable file read/write tools",
     "logTruncated": "… Log truncated ({count} chars, showing head & tail) …",
     "openInFileManager": "Open in File Manager",
@@ -218,7 +223,18 @@
       "selectNewDirectory": "Select New Directory…",
       "switchProject": "Switch Project",
       "unbindProject": "Unbind Project",
-      "noProjectsAvailable": "No projects registered"
+      "noProjectsAvailable": "No projects registered",
+      "addSkill": "Add Skill",
+      "removeSkill": "Remove Skill from this session",
+      "pasteClipboard": "Paste Clipboard",
+      "confirmClearTitle": "Clear chat history?",
+      "confirmClearDesc": "This will delete all messages in this session and cannot be undone.",
+      "confirm": "Clear",
+      "cancel": "Cancel",
+      "noInstalledSkills": "No skills installed. Install some in Settings → Extensions first.",
+      "installedSkills": "Installed Skills",
+      "skillSearch": "Search skills (name / description / category / tags)…",
+      "skillSearchEmpty": "No matching skills found"
     },
     "linkProjectNow": "Link Project",
     "projectLinked": "Project linked",
@@ -249,6 +265,9 @@
   },
   "settings": {
     "title": "Settings",
+    "searchPlaceholder": "Search settings...",
+    "searchNoResult": "No matching settings found. Try another keyword",
+    "searchHits": "{count} settings matched",
     "archive": {
       "title": "Archive",
       "dirTitle": "Archive Folder",
@@ -380,9 +399,15 @@
         "title": "Default Model",
         "desc": "Default AI model for new chats"
       },
-      "reasoningEffort": {
+"reasoningEffort": {
         "title": "Default Reasoning",
         "desc": "Reasoning level used when not explicitly set"
+      },
+      "imageGen": {
+        "title": "Image Generation Model",
+        "desc": "Qwen image model used when AI generates images (reuses Qwen API key)",
+        "pro": "qwen-image-3.0-pro (quality first)",
+        "flash": "qwen-image-3.0 (faster)"
       },
       "vision": {
         "title": "Vision Fallback",
@@ -605,27 +630,34 @@
       "futureNote": "Plugins and Connections are coming in a future release. Only Skills are available in V1.",
       "skills": {
         "sectionTitle": "Skills",
-        "sectionDesc": "Manage AI professional capability packs",
+        "sectionDesc": "Browse and review Skill details; enable via the + button in the chat input, and it only applies to the current session",
         "scenarios": "Best for",
         "capabilities": "Capabilities",
-        "install": "Install",
-        "installed": "Enabled",
-        "enabled": "Enabled",
-        "disable": "Disable",
-        "installedCount": "{{count}} of {{total}} enabled",
+        "install": "Add to Skill library",
+        "installed": "In Skill library",
+      "removeFromLibrary": "Remove from library",
+        "enabled": "In Skill library",
+        "disable": "Remove from Skill library",
+        "installedCount": "{{count}} of {{total}} in library",
         "categoryCount": "{{count}}",
-        "moreInfo": "Click a card for details"
+        "moreInfo": "Click a card for details",
+        "detail": "Details",
+        "usageNote": "Enable a Skill via + → Add Skill in the chat input; it only applies to the current session."
       },
       "plugins": {
         "sectionTitle": "Plugins",
-        "sectionDesc": "System-level functional plugins. V1 is read-only.",
-        "softNote": "Plugin ecosystem opens in a future release. V1 only displays backend default plugins and their status.",
+        "sectionDesc": "Enable/disable decides whether a plugin's tools are visible to agents (disabling removes those tools from calls)",
+        "inDev": "In development",
+        "inDevPlaceholder": "The plugin runtime is not wired up yet, so there are no real tool plugins available. This is an in-development placeholder before real tool plugins ship.",
+        "softNote": "Plugins are real callable tool sets. When enabled, their tools become visible to Agents. Disabling a plugin removes its tools from calls.",
         "empty": "No plugins",
-        "activeCount": "{{count}} of {{total}} active",
-        "statusActive": "Active",
+        "activeCount": "{{count}} of {{total}} enabled",
+        "statusActive": "Enabled",
         "statusInstalled": "Installed",
-        "statusInactive": "Inactive",
-        "statusError": "Error"
+        "statusInactive": "Disabled",
+        "statusError": "Error",
+        "enable": "Enable",
+        "disable": "Disable"
       },
       "skillDetail": {
         "backToList": "Back to Skills list",
@@ -771,5 +803,16 @@
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
     "close": "Close"
+  },
+  "commandPalette": {
+    "placeholder": "Search chats and projects...",
+    "noResults": "No matching results found",
+    "startTyping": "Type to start searching",
+    "chats": "Chats",
+    "projects": "Projects",
+    "navigate": "↑↓ Navigate",
+    "select": "↵ Select"
   }
 }
+
+

@@ -19,14 +19,14 @@
  * - 卡片高度目标 ~60px
  */
 
-import { useMemo, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import {
   ChevronLeft,
   Sparkles,
   Code2,
-  Globe,
   Terminal,
   FileText,
+  Globe,
   Check,
   Database,
   Zap,
@@ -35,11 +35,26 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
-import { usePlugins, type PluginInfo } from "@/hooks/usePlugins";
 import { useSkills } from "@/hooks/useSkills";
+import { usePlugins, type PluginInfo, type PluginStatus } from "@/hooks/usePlugins";
 
 /** 翻译函数类型（与 useTranslation 返回的 t 签名一致） */
 type Translator = (key: string, params?: Record<string, string>) => string;
+
+// ── Plugin 图标映射（与后端 plugin_id 对应） ──
+const PLUGIN_ICON_MAP: Record<string, typeof Globe> = {
+  web_search: Globe,
+  code_execution: Terminal,
+  file_operations: FileText,
+  git: Code2,
+  browser_ui: Globe,
+  orchestration: Zap,
+  core: ShieldCheck,
+  browser_automation: Globe,
+  system_control: Terminal,
+};
+
+const PLUGIN_FALLBACK_ICON = Sparkles;
 
 // ── Skill 图标映射（按后端 category 字段） ──
 
@@ -52,16 +67,6 @@ const SKILL_CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
 };
 
 const SKILL_CATEGORY_FALLBACK_ICON = Sparkles;
-
-// ── Plugin 图标映射（与 usePlugins 后端数据 plugin_id 对应） ──
-
-const PLUGIN_ICON_MAP: Record<string, typeof Globe> = {
-  web_search: Globe,
-  code_execution: Terminal,
-  file_operations: FileText,
-};
-
-const PLUGIN_FALLBACK_ICON = Sparkles;
 
 // ── 公共样式（紧凑卡片基线） ──
 
@@ -145,11 +150,14 @@ function ExtensionHome({
   t: Translator;
 }) {
   const { skills, loading, error } = useSkills();
+  const { plugins: allPlugins } = usePlugins();
 
   const installedCount = useMemo(
     () => skills.filter((s) => s.installed).length,
     [skills]
   );
+
+  const pluginCount = useMemo(() => allPlugins.length, [allPlugins]);
 
   return (
     <div>
@@ -179,12 +187,12 @@ function ExtensionHome({
           onManage={() => onSelectSkill(SKILL_MANAGE_VIEW)}
         />
 
-        {/* 入口卡: Plugins */}
+        {/* 入口卡: Plugins（真能力：启用/停用决定该插件工具是否对 Agent 可见） */}
         <EntryCard
           icon={<Terminal style={{ width: "18px", height: "18px", color: "var(--color-primary)" }} />}
           name={t("settings.extensions.plugins.sectionTitle")}
           summary={t("settings.extensions.plugins.sectionDesc")}
-          meta=""
+          meta={pluginCount > 0 ? `${pluginCount} 个` : ""}
           actionLabel={t("settings.extensions.manage")}
           t={t}
           onManage={() => onSelectSkill(PLUGIN_MANAGE_VIEW)}
@@ -316,11 +324,12 @@ function ManageSkillList({
     return [...ordered, ...rest].map((cat) => ({ category: cat, list: map.get(cat)! }));
   }, [skills]);
 
-  const toggleSkill = async (id: string) => {
-    const skill = skills.find((s) => s.id === id);
-    if (!skill) return;
-    if (skill.installed) await uninstallSkill(id);
-    else await installSkill(id);
+  // 加入/移出 Skill 库：安装语义 = 出现在输入框 + 号「调用 Skill」列表，供用户在当前会话激活
+  const toggleLibrary = async (id: string) => {
+    const s = skills.find((x) => x.id === id);
+    if (!s) return;
+    if (s.installed) await uninstallSkill(s.id);
+    else await installSkill(s.id);
   };
 
   return (
@@ -339,6 +348,16 @@ function ManageSkillList({
           total: String(skills.length),
         })}
       />
+
+      {/* 会话级说明：告知 Skill 如何开启，消除「安装=全局生效」误解 */}
+      <p style={{
+        fontSize: "11px",
+        color: "var(--text-level-4)",
+        margin: "4px 0 10px 0",
+        lineHeight: 1.55,
+      }}>
+        {t("settings.extensions.skills.usageNote")}
+      </p>
 
       {loading ? (
         <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>{t("common.loading")}</p>
@@ -380,13 +399,10 @@ function ManageSkillList({
                     icon={<Icon style={{ width: "18px", height: "18px", color: "var(--color-primary)" }} />}
                     name={skill.name}
                     summary={skill.description}
-                    isInstalled={skill.installed}
+                    inLibrary={skill.installed}
                     t={t}
                     onClick={() => onSelectSkill(skill.id)}
-                    onToggle={(e) => {
-                      e.stopPropagation();
-                      toggleSkill(skill.id);
-                    }}
+                    onToggleLibrary={() => toggleLibrary(skill.id)}
                   />
                 );
               })}
@@ -398,24 +414,24 @@ function ManageSkillList({
   );
 }
 
-// ── Skill 紧凑卡片（核心规格：60px 高，10×12 padding） ──
+// ── Skill 紧凑卡片（核心规格：60px 高，10×12 padding）──
 
 function SkillCompactCard({
   icon,
   name,
   summary,
-  isInstalled,
+  inLibrary,
   t,
   onClick,
-  onToggle,
+  onToggleLibrary,
 }: {
   icon: ReactNode;
   name: string;
   summary: string;
-  isInstalled: boolean;
+  inLibrary: boolean;
   t: Translator;
   onClick: () => void;
-  onToggle: (e: MouseEvent) => void;
+  onToggleLibrary: () => void;
 }) {
   return (
     <div
@@ -453,55 +469,113 @@ function SkillCompactCard({
           {summary}
         </p>
       </div>
-      <button
-        onClick={onToggle}
-        title={isInstalled ? t("settings.extensions.skills.disable") : t("settings.extensions.skills.install")}
+      {inLibrary && (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: "1px 7px",
+            borderRadius: "var(--radius-full)",
+            background: "var(--color-primary-lighter, var(--bg-level-3))",
+            color: "var(--color-primary)",
+            fontSize: "10px",
+            fontWeight: "500",
+            lineHeight: "14px",
+            flexShrink: 0,
+          }}
+        >
+          {t("settings.extensions.skills.installed")}
+        </span>
+      )}
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={(e) => { e.stopPropagation(); onToggleLibrary(); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleLibrary();
+          }
+        }}
+        title={inLibrary ? t("settings.extensions.skills.removeFromLibrary") : t("settings.extensions.skills.install")}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: "3px",
           padding: "5px 10px",
           borderRadius: "var(--radius-sm)",
-          border: isInstalled ? "1px solid var(--border-primary)" : "1px solid var(--color-primary)",
-          background: isInstalled ? "transparent" : "var(--color-primary-lighter, var(--bg-level-2))",
+          border: inLibrary ? "1px solid var(--border-primary)" : "1px solid var(--color-primary)",
+          background: inLibrary ? "transparent" : "var(--color-primary)",
           cursor: "pointer",
           fontSize: "12px",
           fontWeight: "500",
-          color: isInstalled ? "var(--text-level-2)" : "var(--color-primary)",
+          color: inLibrary ? "var(--text-level-2)" : "#fff",
           whiteSpace: "nowrap",
           flexShrink: 0,
         }}
       >
-        {isInstalled ? (
-          <>
-            <Check style={{ width: "11px", height: "11px" }} />
-            {t("settings.extensions.skills.installed")}
-          </>
-        ) : (
-          t("settings.extensions.skills.install")
-        )}
-      </button>
+        {inLibrary ? t("settings.extensions.skills.removeFromLibrary") : t("settings.extensions.skills.install")}
+      </span>
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+          }
+        }}
+        title={t("settings.extensions.skills.detail")}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "3px",
+          padding: "5px 10px",
+          borderRadius: "var(--radius-sm)",
+          border: "1px solid var(--border-primary)",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: "12px",
+          fontWeight: "500",
+          color: "var(--text-level-2)",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
+        {t("settings.extensions.skills.detail")}
+      </span>
     </div>
   );
 }
 
-// ── Plugin 管理列表（二级，V1 只读）：展示全部插件及运行状态 ──
+// ── Plugin 管理列表（二级，真能力：启用/停用决定该插件工具是否对 Agent 可见） ──
+
+const PLUGIN_STATUS_COLOR: Record<string, string> = {
+  active: "var(--color-primary)",
+  installed: "var(--text-level-3)",
+  inactive: "var(--text-level-4)",
+  error: "var(--color-error)",
+};
 
 function ManagePluginList({ onBackToList, t }: { onBackToList: () => void; t: Translator }) {
-  const { plugins, loading, error } = usePlugins();
-
-  // 排序：active > installed > inactive > error
-  const sortedPlugins = useMemo(() => {
-    const order: Record<PluginInfo["status"], number> = {
-      active: 0, installed: 1, inactive: 2, error: 3,
-    };
-    return [...plugins].sort((a, b) => order[a.status] - order[b.status]);
-  }, [plugins]);
+  const { plugins, loading, setPluginActive } = usePlugins();
 
   const activeCount = useMemo(
     () => plugins.filter((p) => p.status === "active").length,
     [plugins]
   );
+
+  const toggle = async (p: PluginInfo) => {
+    const next = p.status !== "active";
+    try {
+      await setPluginActive(p.pluginId, next);
+    } catch (err) {
+      console.error("Failed to toggle plugin:", err);
+    }
+  };
 
   return (
     <div>
@@ -520,7 +594,6 @@ function ManagePluginList({ onBackToList, t }: { onBackToList: () => void; t: Tr
         })}
       />
 
-      {/* 软说明文：自然融入，紧跟副标题下方 */}
       <p style={{
         fontSize: "11px",
         color: "var(--text-level-4)",
@@ -532,126 +605,89 @@ function ManagePluginList({ onBackToList, t }: { onBackToList: () => void; t: Tr
 
       {loading ? (
         <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>{t("common.loading")}</p>
-      ) : error ? (
-        <p style={{ fontSize: "12px", color: "var(--color-error)", margin: 0 }}>{error}</p>
       ) : plugins.length === 0 ? (
-        <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>
-          {t("settings.extensions.plugins.empty")}
-        </p>
+        <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>{t("settings.extensions.plugins.empty")}</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {sortedPlugins.map((plugin) => {
-            const Icon = PLUGIN_ICON_MAP[plugin.pluginId] ?? PLUGIN_FALLBACK_ICON;
+          {plugins.map((p) => {
+            const active = p.status === "active";
+            const Icon = PLUGIN_ICON_MAP[p.pluginId] ?? PLUGIN_FALLBACK_ICON;
+            const statusLabel =
+              p.status === "active"
+                ? t("settings.extensions.plugins.statusActive")
+                : p.status === "inactive"
+                  ? t("settings.extensions.plugins.statusInactive")
+                  : p.status === "installed"
+                    ? t("settings.extensions.plugins.statusInstalled")
+                    : t("settings.extensions.plugins.statusError");
             return (
-              <PluginCompactCard
-                key={plugin.pluginId}
-                icon={<Icon style={{ width: "18px", height: "18px", color: "var(--color-primary)" }} />}
-                name={plugin.name}
-                version={`v${plugin.version}`}
-                summary={plugin.description}
-                status={plugin.status}
-                t={t}
-              />
+              <div
+                key={p.pluginId}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "10px 12px",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--bg-level-2)",
+                  border: "1px solid var(--border-primary)",
+                  minHeight: "60px",
+                }}
+              >
+                <Icon style={{ width: "18px", height: "18px", color: "var(--color-primary)", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)" }}>{p.name}</span>
+                    <span style={{
+                      fontSize: "10px",
+                      color: PLUGIN_STATUS_COLOR[p.status] ?? "var(--text-level-3)",
+                      background: "var(--bg-level-3)",
+                      borderRadius: "var(--radius-full)",
+                      padding: "1px 7px",
+                      lineHeight: "14px",
+                    }}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: "11px",
+                    color: "var(--text-level-3)",
+                    margin: "2px 0 0 0",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    lineHeight: 1.4,
+                  }}>
+                    {p.description}
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggle(p)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "3px",
+                    padding: "5px 10px",
+                    borderRadius: "var(--radius-sm)",
+                    border: active ? "1px solid var(--border-primary)" : "1px solid var(--color-primary)",
+                    background: active ? "transparent" : "var(--color-primary)",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: "500",
+                    color: active ? "var(--text-level-2)" : "#fff",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  {active && <Check style={{ width: "12px", height: "12px" }} />}
+                  {active ? t("settings.extensions.plugins.disable") : t("settings.extensions.plugins.enable")}
+                </button>
+              </div>
             );
           })}
         </div>
       )}
     </div>
-  );
-}
-
-// ── Plugin 紧凑卡片（同 Skill 卡片视觉，区分度在版本号 + 状态徽章） ──
-
-function PluginCompactCard({
-  icon,
-  name,
-  version,
-  summary,
-  status,
-  t,
-}: {
-  icon: ReactNode;
-  name: string;
-  version: string;
-  summary: string;
-  status: PluginInfo["status"];
-  t: Translator;
-}) {
-  return (
-    <div style={COMPACT_CARD_STYLE}>
-      {icon}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          lineHeight: 1.4,
-        }}>
-          <p style={{
-            fontSize: "13px",
-            fontWeight: "500",
-            color: "var(--text-level-1)",
-            margin: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
-            {name}
-          </p>
-          <span style={{
-            fontSize: "11px",
-            color: "var(--text-level-4)",
-            flexShrink: 0,
-          }}>
-            {version}
-          </span>
-          <StatusBadge status={status} t={t} />
-        </div>
-        <p style={{
-          fontSize: "11px",
-          color: "var(--text-level-3)",
-          margin: "2px 0 0 0",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          lineHeight: 1.4,
-        }}>
-          {summary}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status, t }: { status: PluginInfo["status"]; t: Translator }) {
-  const colorMap: Record<PluginInfo["status"], { bg: string; fg: string }> = {
-    active: { bg: "var(--color-primary-lighter, var(--bg-level-3))", fg: "var(--color-primary)" },
-    installed: { bg: "var(--bg-level-3)", fg: "var(--text-level-3)" },
-    inactive: { bg: "var(--bg-level-3)", fg: "var(--text-level-4)" },
-    error: { bg: "var(--bg-level-3)", fg: "var(--color-error)" },
-  };
-  const labelMap: Record<PluginInfo["status"], string> = {
-    active: "settings.extensions.plugins.statusActive",
-    installed: "settings.extensions.plugins.statusInstalled",
-    inactive: "settings.extensions.plugins.statusInactive",
-    error: "settings.extensions.plugins.statusError",
-  };
-  const c = colorMap[status];
-  return (
-    <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      padding: "1px 6px",
-      borderRadius: "var(--radius-full)",
-      background: c.bg,
-      color: c.fg,
-      fontSize: "10px",
-      fontWeight: "500",
-      lineHeight: "14px",
-      flexShrink: 0,
-    }}>
-      {t(labelMap[status])}
-    </span>
   );
 }
 
@@ -688,7 +724,9 @@ function SkillDetail({
   const Icon = SKILL_CATEGORY_ICON_MAP[skill.category] ?? SKILL_CATEGORY_FALLBACK_ICON;
   const isInstalled = skill.installed;
 
-  const toggle = async () => {
+  // 加入/移出 Skill 库：安装语义 = 出现在输入框 + 号「调用 Skill」列表
+  const toggleLibrary = async () => {
+    if (!skill) return;
     if (skill.installed) await uninstallSkill(skill.id);
     else await installSkill(skill.id);
   };
@@ -787,22 +825,31 @@ function SkillDetail({
         </div>
       </div>
 
-      {/* Block 4: 操作按钮 */}
-      <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+      {/* Block 4: 加入/移出 Skill 库（加入后出现在输入框 + 号「调用 Skill」列表） */}
+      <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end", gap: "8px", alignItems: "center" }}>
+        <span style={{ fontSize: "11px", color: "var(--text-level-4)", marginRight: "auto", lineHeight: 1.5, maxWidth: "300px" }}>
+          {t("settings.extensions.skills.usageNote")}
+        </span>
         <button
-          onClick={toggle}
+          onClick={toggleLibrary}
           style={{
-            padding: "7px 20px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "7px 16px",
             borderRadius: "var(--radius-sm)",
             border: isInstalled ? "1px solid var(--border-primary)" : "1px solid var(--color-primary)",
             background: isInstalled ? "transparent" : "var(--color-primary)",
-            color: isInstalled ? "var(--text-level-1)" : "#fff",
             cursor: "pointer",
-            fontSize: "13px",
+            fontSize: "12px",
             fontWeight: "500",
+            color: isInstalled ? "var(--text-level-2)" : "#fff",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
         >
-          {isInstalled ? t("settings.extensions.skills.disable") : t("settings.extensions.skills.install")}
+          {isInstalled && <Check style={{ width: "13px", height: "13px" }} />}
+          {isInstalled ? t("settings.extensions.skills.removeFromLibrary") : t("settings.extensions.skills.install")}
         </button>
       </div>
     </div>

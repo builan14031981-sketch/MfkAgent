@@ -7,7 +7,20 @@ router = APIRouter()
 @router.post("")
 async def handle_mcp(request: Request):
     body = await request.json()
-    response = mcp_server.handle_request(body)
+    response = await mcp_server.handle_request(body)
+    return response
+
+
+@router.post("/tools/call")
+async def call_tool(request: Request):
+    """调用 MCP 工具（别名：通过 POST /api/mcp/tools/call 直接调用）。"""
+    body = await request.json()
+    tool_name = body.get("name")
+    arguments = body.get("arguments", {})
+    response = await mcp_server.handle_request({
+        "method": "tools/call",
+        "params": {"name": tool_name, "arguments": arguments},
+    })
     return response
 
 

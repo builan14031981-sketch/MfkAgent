@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from enum import Enum
 import json
 import os
@@ -223,12 +223,43 @@ class PluginManager:
             db.close()
 
 
+# ── MCP 插件注册 ──────────────────────────────────────────────
+
+
+def register_mcp_plugin(external_tools: List[str], execute_fn: Callable):
+    """注册外部 MCP 插件工具到 MCPServer。
+
+    接收外部插件提供的工具名列表和执行回调，将工具注册到 MCPServer 的 tools 字典，
+    同时确保 _DEFAULT_PLUGINS 中每个插件的工具也同步注册到 MCPServer。
+
+    Args:
+        external_tools: 工具名列表 (如 ["browser_navigate", "browser_click"])
+        execute_fn: 执行函数回调，接收 (tool_name, args) 返回结果
+    """
+    from app.services.mcp import mcp_server, MCPTool
+    from app.core.mcp_bridge import register_plugin_tools_to_mcp
+
+    for tool_name in external_tools:
+        if tool_name not in mcp_server.tools:
+            mcp_server.add_tool(
+                MCPTool(
+                    name=tool_name,
+                    description=f"外部插件工具: {tool_name}",
+                    input_schema={"type": "object", "properties": {}},
+                )
+            )
+        mcp_server.external_executors[tool_name] = execute_fn
+
+    # 同步注册默认插件的工具到 MCPServer
+    register_plugin_tools_to_mcp()
+
+
 _DEFAULT_PLUGINS = [
     Plugin(
         plugin_id="web_search",
         name="Web Search",
         version="1.0.0",
-        description="搜索互联网获取信息",
+        description="搜索网页/抓取链接/GitHub 搜索（web_search, fetch_url, github_search）",
         author="MfkAgent",
         status=PluginStatus.ACTIVE,
     ),
@@ -236,7 +267,7 @@ _DEFAULT_PLUGINS = [
         plugin_id="code_execution",
         name="Code Execution",
         version="1.0.0",
-        description="执行 Python 代码",
+        description="执行命令与运行代码（run_command, execute_command）",
         author="MfkAgent",
         status=PluginStatus.ACTIVE,
     ),
@@ -244,7 +275,55 @@ _DEFAULT_PLUGINS = [
         plugin_id="file_operations",
         name="File Operations",
         version="1.0.0",
-        description="文件读写操作",
+        description="文件读写与目录浏览（read_file, write_file, list_files, search_files）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
+    Plugin(
+        plugin_id="git",
+        name="Git & GitHub",
+        version="1.0.0",
+        description="版本控制与 PR 操作（git_* 与 github_* 工具）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
+    Plugin(
+        plugin_id="browser_ui",
+        name="Browser & UI 自检",
+        version="1.0.0",
+        description="前端 UI 探测与截图（probe_ui, capture_screenshot, analyze_screenshot）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
+    Plugin(
+        plugin_id="orchestration",
+        name="任务编排",
+        version="1.0.0",
+        description="子代理委派与并行编排（delegate_sub_agent, spawn_orchestration）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
+    Plugin(
+        plugin_id="core",
+        name="核心基础",
+        version="1.0.0",
+        description="记忆/待办/时间/选择（add_memory, manage_todos, get_datetime, format_json, ask_user_choice）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
+    Plugin(
+        plugin_id="browser_automation",
+        name="浏览器自动化",
+        version="1.0.0",
+        description="浏览器导航、点击、输入、截图、滚动等（browser_navigate, browser_click, browser_type, browser_screenshot 等）",
+        author="MfkAgent",
+        status=PluginStatus.ACTIVE,
+    ),
+    Plugin(
+        plugin_id="system_control",
+        name="系统控制",
+        version="1.0.0",
+        description="系统信息、进程管理、环境变量、打开文件/文件夹、系统通知（system_info, list_processes, open_file, notify 等）",
         author="MfkAgent",
         status=PluginStatus.ACTIVE,
     ),

@@ -11,6 +11,7 @@
 from typing import List, Optional
 
 from app.core.tool_runtime.risk_engine import PLAN_FORBIDDEN_TOOLS
+from app.core.plugin_tools import get_enabled_plugin_tools  # 插件→工具集（DeepSeek Harness 范式）
 
 
 class PermissionFilter:
@@ -20,6 +21,7 @@ class PermissionFilter:
     BASE_TOOLS = [
         "run_command", "execute_command",
         "read_file", "write_file", "list_files",
+        "find_files", "edit_file", "apply_patch",
         "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
         "git_commit", "git_restore", "git_clone", "git_pull", "git_push", "git_fetch",
         "github_create_pr",
@@ -31,6 +33,12 @@ class PermissionFilter:
         "add_memory", "manage_todos", "ask_user_choice", "get_datetime", "format_json",
         # Phase SubAgent: 委派子任务给专门化子代理（子代理自身工具集被收窄）
         "delegate_sub_agent",
+        # Phase Orchestration: 复杂任务拆解 + 并行 spawn 子代理编排
+        "spawn_orchestration",
+        # UI 自检工具（前端 Agent 交付前自检）
+        "probe_ui", "capture_screenshot", "analyze_screenshot",
+        # 文生图（万相 API，外部付费服务，需审批）
+        "generate_image",
     ]
 
     # 写入/有副作用工具（plan 模式移除；派生自 risk_engine，与执行闸保持同步）
@@ -38,9 +46,11 @@ class PermissionFilter:
 
     # 项目专有工具（无 project_path 时移除）
     _project_only_tools = {
-        "read_file", "write_file", "list_files", "search_files",
+        "read_file", "write_file", "list_files", "find_files", "edit_file", "apply_patch",
+        "search_files",
         "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
         "git_commit", "git_restore", "git_clone", "git_pull", "git_push", "git_fetch",
+        "probe_ui", "capture_screenshot", "analyze_screenshot",
     }
 
     def resolve(
@@ -58,7 +68,9 @@ class PermissionFilter:
         Returns:
             工具名称列表
         """
-        tools = set(self.BASE_TOOLS)
+        # 插件→工具集：工具可见 = 基础工具 ∩ 启用的插件工具。
+        # 默认无插件记录=全启用 → 交集=全集（零回归）；仅显式停用某插件才扣除其工具。
+        tools = set(self.BASE_TOOLS) & get_enabled_plugin_tools()
 
         chat_mode = getattr(chat, "mode", "build") or "build"
         if chat_mode == "plan":
