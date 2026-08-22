@@ -96,6 +96,8 @@ class _AgentRun:
     def __init__(self, chat_id: int):
         self.chat_id = chat_id
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=256)
+        # 独立终止信号：结束哨兵不经过有界队列，QueueFull 时也必达，杜绝旧连接挂死
+        self.done: asyncio.Event = asyncio.Event()
         self.task: Optional["asyncio.Task"] = None
         self.finished = False
         self.db_persisted = False
@@ -723,12 +725,13 @@ async def send_message(chat_id: int, request: SendRequest):
                     logger.error("Roundtable error: chat_id=%s error=%s", chat_id, e, exc_info=True)
                     run.exception = e
                 finally:
-                    try:
-                        run.queue.put_nowait(None)
-                    except asyncio.QueueFull:
-                        pass
+                    # 独立 done 事件保证结束信号必达（不依赖有界队列 put_nowait）
+                    run.done.set()
                     run.finished = True
-                    _agent_runs.pop(chat_id, None)
+                    # 仅当当前 run 仍是该 chat_id 的活跃句柄时才弹走，避免连发时旧 run
+                    # 的 finally 误删新 run 的条目（导致外部再也 cancel 不到新 run）
+                    if _agent_runs.get(chat_id) is run:
+                        _agent_runs.pop(chat_id, None)
 
             run.task = asyncio.create_task(_background_roundtable())
 
@@ -741,18 +744,13 @@ async def send_message(chat_id: int, request: SendRequest):
                 def _should_flush():
                     return len(buffer) >= BATCH_MAX_CHARS or (time.monotonic() - last_flush) >= BATCH_INTERVAL
                 try:
-                    while True:
+                    # 结束条件 = done 事件置位；期间正常消费队列事件
+                    while not run.done.is_set():
                         try:
                             chunk = await asyncio.wait_for(run.queue.get(), timeout=HEARTBEAT_INTERVAL)
                         except asyncio.TimeoutError:
                             yield f"data: {_json.dumps({'type': 'keepalive', 'ts': time.time()})}\n\n"
                             continue
-                        if chunk is None:
-                            if buffer:
-                                yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
-                                buffer = ""
-                            yield "data: [DONE]\n\n"
-                            break
                         etype = chunk.get("type")
                         if etype == "text":
                             buffer += chunk.get("content", "")
@@ -765,6 +763,29 @@ async def send_message(chat_id: int, request: SendRequest):
                             yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
                             buffer = ""
                         yield f"data: {_json.dumps(chunk)}\n\n"
+                    # 后台已结束：排空队列残留后收尾
+                    while True:
+                        try:
+                            chunk = run.queue.get_nowait()
+                        except asyncio.QueueEmpty:
+                            break
+                        if chunk is None:
+                            continue
+                        etype = chunk.get("type")
+                        if etype == "text":
+                            buffer += chunk.get("content", "")
+                            if len(buffer) >= BATCH_MAX_CHARS:
+                                yield f"data: {_json.dumps({'type': 'text', 'content': buffer, 'agent_id': chunk.get('agent_id'), 'agent_name': chunk.get('agent_name'), 'is_summary': chunk.get('is_summary', False)})}\n\n"
+                                buffer = ""
+                            continue
+                        if buffer:
+                            yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                            buffer = ""
+                        yield f"data: {_json.dumps(chunk)}\n\n"
+                    if buffer:
+                        yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                        buffer = ""
+                    yield "data: [DONE]\n\n"
                 except asyncio.CancelledError:
                     logger.info("[INFO] Roundtable SSE disconnected: chat_id=%s", chat_id)
                 except Exception as e:
@@ -1004,12 +1025,12 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     logger.error("Roundtable error: chat_id=%s error=%s", chat_id, e, exc_info=True)
                     run.exception = e
                 finally:
-                    try: run.queue.put_nowait(None)
-                    except asyncio.QueueFull: pass
+                    run.done.set()
                     run.finished = True
-                    _agent_runs.pop(chat_id, None)
+                    if _agent_runs.get(chat_id) is run:
+                        _agent_runs.pop(chat_id, None)
             run.task = asyncio.create_task(_background_roundtable())
-            async def generate_rt():
+            async def generate_rt__v2():
                 buffer = ""
                 last_flush = time.monotonic()
                 BATCH_MAX_CHARS = 200
@@ -1018,18 +1039,12 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 def _should_flush():
                     return len(buffer) >= BATCH_MAX_CHARS or (time.monotonic() - last_flush) >= BATCH_INTERVAL
                 try:
-                    while True:
+                    while not run.done.is_set():
                         try:
                             chunk = await asyncio.wait_for(run.queue.get(), timeout=HEARTBEAT_INTERVAL)
                         except asyncio.TimeoutError:
                             yield f"data: {_json.dumps({'type': 'keepalive', 'ts': time.time()})}\n\n"
                             continue
-                        if chunk is None:
-                            if buffer:
-                                yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
-                                buffer = ""
-                            yield "data: [DONE]\n\n"
-                            break
                         etype = chunk.get("type")
                         if etype == "text":
                             buffer += chunk.get("content", "")
@@ -1042,12 +1057,34 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                             yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
                             buffer = ""
                         yield f"data: {_json.dumps(chunk)}\n\n"
+                    while True:
+                        try:
+                            chunk = run.queue.get_nowait()
+                        except asyncio.QueueEmpty:
+                            break
+                        if chunk is None:
+                            continue
+                        etype = chunk.get("type")
+                        if etype == "text":
+                            buffer += chunk.get("content", "")
+                            if len(buffer) >= BATCH_MAX_CHARS:
+                                yield f"data: {_json.dumps({'type': 'text', 'content': buffer, 'agent_id': chunk.get('agent_id'), 'agent_name': chunk.get('agent_name'), 'is_summary': chunk.get('is_summary', False)})}\n\n"
+                                buffer = ""
+                            continue
+                        if buffer:
+                            yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                            buffer = ""
+                        yield f"data: {_json.dumps(chunk)}\n\n"
+                    if buffer:
+                        yield f"data: {_json.dumps({'type': 'text', 'content': buffer})}\n\n"
+                        buffer = ""
+                    yield "data: [DONE]\n\n"
                 except asyncio.CancelledError:
                     logger.info("[INFO] Roundtable SSE disconnected: chat_id=%s", chat_id)
                 except Exception as e:
                     yield f"data: {_json.dumps({'type': 'error', 'message': str(e)})}\n\n"
             db.close()
-            return StreamingResponse(generate_rt(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+            return StreamingResponse(generate_rt__v2(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
 
         # Phase 3 T3/T8: 权限模式统一从 Settings 读取，不再从前端参数透传
 

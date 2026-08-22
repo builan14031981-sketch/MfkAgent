@@ -134,7 +134,7 @@ export function useMessages(chatId: number | null) {
   async function sendMessageStream(
     content: string,
     model: string | null = null,
-    onChunk: (chunk: string) => void,
+    onChunk: (chunk: string, meta?: { agent_id?: string; agent_name?: string }) => void,
     onFinish: () => void,
     onError: (error: string) => void,
     personalityLevel?: number,
@@ -154,7 +154,8 @@ export function useMessages(chatId: number | null) {
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void,
     attachments?: Attachment[],
     permissionMode?: PermissionMode,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    onRoundtableEvent?: (evt: { type: string; [k: string]: unknown }) => void
   ) {
     if (!chatId) throw new Error("No chat selected");
 
@@ -241,6 +242,7 @@ export function useMessages(chatId: number | null) {
     // 流式过程中累积完整内容 + tool_calls（用于 onComplete 一次性交付）
     let fullContent = "";
     let fullThinking = "";
+    let pendingMeta: { agent_id?: string; agent_name?: string } | undefined;
     const toolCallMap = new Map<string, ToolCall>();
 
     const flush = () => {
@@ -252,7 +254,7 @@ export function useMessages(chatId: number | null) {
       if (buffer === "") return;
       const chunk = buffer;
       buffer = "";
-      onChunk(chunk);
+      onChunk(chunk, pendingMeta);
     };
 
     const scheduleFlush = () => {
@@ -308,6 +310,14 @@ export function useMessages(chatId: number | null) {
                 // ---- v2 统一信封：按 type 分发 ----
                 switch (parsed.type) {
                   case "text": {
+                    const nextMeta = (parsed.agent_id || parsed.agent_name)
+                      ? { agent_id: parsed.agent_id, agent_name: parsed.agent_name }
+                      : undefined;
+                    // 圆桌：Agent 变化时先 flush 结算当前 buffer，避免多个发言者文本混在同一个流式气泡里
+                    if ((pendingMeta?.agent_id ?? undefined) !== (nextMeta?.agent_id ?? undefined)) {
+                      flushNowAndClear();
+                    }
+                    pendingMeta = nextMeta;
                     fullContent += parsed.content ?? "";
                     buffer += parsed.content ?? "";
                     scheduleFlush();
@@ -434,6 +444,13 @@ export function useMessages(chatId: number | null) {
                       status: parsed.status ?? "running",
                       content: parsed.content ?? "",
                     });
+                    break;
+                  }
+                  case "roundtable_start":
+                  case "roundtable_speaker_start":
+                  case "roundtable_speaker_end":
+                  case "roundtable_end": {
+                    onRoundtableEvent?.(parsed);
                     break;
                   }
                   case "error": {

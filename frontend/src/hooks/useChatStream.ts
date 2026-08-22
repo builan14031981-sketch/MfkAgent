@@ -9,7 +9,7 @@ import { showDesktopNotification } from "@/lib/notify";
 import { formatDuration } from "@/lib/format";
 import { useStreamStore, OrbStage } from "@/lib/streamStore";
 import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
-import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ThinkingIndicatorEvent } from "@/types/runtime";
+import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ThinkingIndicatorEvent, RoundtableSpeakerEvent } from "@/types/runtime";
 
 type SendMessageStream = ReturnType<typeof useMessages>["sendMessageStream"];
 type AppendMessage = ReturnType<typeof useMessages>["appendMessage"];
@@ -459,7 +459,8 @@ export function useChatStream({
           finalContent,
           modelId ?? null,
           // onChunk（text）
-          (chunk) => {
+          (chunk, meta) => {
+            // 首段文本统一处理：无论普通/圆桌，均停掉 thinking 指示器
             if (refs.firstText) {
               refs.firstText = false;
               store.updateSession(targetChatId, () => ({ reasoningActive: false }));
@@ -476,6 +477,38 @@ export function useChatStream({
                 }
                 return { timeline: filtered };
               });
+            }
+            const isRoundtable = !!(meta?.agent_id);
+            if (isRoundtable) {
+              // 圆桌：按 agent 归入独立的 roundtable_speaker 片段（分气泡）
+              store.updateSession(targetChatId, (prev) => {
+                const next = prev.timeline.slice();
+                let idx = -1;
+                for (let i = next.length - 1; i >= 0; i--) {
+                  if (next[i].type === "roundtable_speaker"
+                    && (next[i] as RoundtableSpeakerEvent).agentId === meta.agent_id
+                    && !(next[i] as RoundtableSpeakerEvent).done) {
+                    idx = i;
+                    break;
+                  }
+                }
+                const agentName = meta.agent_name;
+                if (idx >= 0) {
+                  const seg = next[idx] as RoundtableSpeakerEvent;
+                  next[idx] = { ...seg, content: seg.content + chunk, agentName: agentName ?? seg.agentName };
+                } else {
+                  next.push({
+                    id: `rt-${meta.agent_id}-${Date.now()}-${Math.random()}`,
+                    type: "roundtable_speaker" as const,
+                    agentId: meta.agent_id,
+                    agentName,
+                    content: chunk,
+                    done: false,
+                  });
+                }
+                return { timeline: next };
+              });
+              return;
             }
             store.updateSession(targetChatId, (prev) => {
               const last = prev.timeline[prev.timeline.length - 1];

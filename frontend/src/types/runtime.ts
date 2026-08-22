@@ -140,6 +140,18 @@ export interface TextEvent extends RuntimeEventBase {
   content: string;
 }
 
+/** 圆桌模式：单个 Agent 的发言片段（按 agent 分气泡） */
+export interface RoundtableSpeakerEvent extends RuntimeEventBase {
+  type: "roundtable_speaker";
+  /** 发言 Agent 的 id / 显示名 */
+  agentId?: string;
+  agentName?: string;
+  /** 已累积的发言文本（流式中持续追加，结束后定稿） */
+  content: string;
+  /** 该 Agent 是否已完成发言（false=仍在流式） */
+  done?: boolean;
+}
+
 /** 自动提取并保存记忆后的可见通知（memory_saved 事件）。
  * 由后端在对话流推送：告知"已保存 N 条记忆"，非确认卡、不阻塞对话。
  * 同时持久化进 Message.timeline，刷新后随消息展示。 */
@@ -257,4 +269,5 @@ export type RuntimeEvent =
   | TaskFailedEvent
   | TaskSkippedEvent
   | SubAgentEvent
+  | RoundtableSpeakerEvent
   | ExtensionEvent;
