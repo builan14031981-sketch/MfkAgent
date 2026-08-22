@@ -64,3 +64,8 @@ backend/test_siliconflow_api.py
 # Scratch / tool self-test artifacts
 CE1/
 
+
+# Generated environments (large binaries / venvs)
+backend/.py_deps/
+backend/.venv_test/
+

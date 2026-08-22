@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { Check, ChevronDown, ChevronRight } from "lucide-react";
 import type { Model } from "@/hooks/useModels";
 import {
   ghostPillStyle,
   chevronStyle,
-  portalDropdownStyle,
   popoverItemStyle,
   itemHoverBackground,
   pillActiveBackground,
@@ -30,7 +28,44 @@ const PROVIDER_NAMES: Record<string, string> = {
   spark: "讯飞星火",
   minimax: "MiniMax",
   siliconflow: "硅基流动",
+  custom: "自定义模型",
+  custom_2: "自定义模型",
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  mistral: "Mistral",
+  meta: "Meta Llama",
+  cohere: "Cohere",
+  together: "Together AI",
+  groq: "Groq",
+  zhipu: "智谱 AI",
+  baichuan: "百川",
+  yi: "零一万物",
+  stepfun: "阶跃星辰",
+  minimax2: "MiniMax",
+  doubao: "豆包",
+  bytedance: "豆包",
 };
+
+/** 未知 provider 的友好格式化：下划线转空格、去尾部数字、首字母大写 */
+function formatProviderFallback(providerId: string): string {
+  return providerId
+    .replace(/_/g, " ")
+    .replace(/\s*\d+\s*$/, "")
+    .trim()
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
+/** 归一化模型 ID：去掉可能的 "models/" 前缀，统一匹配格式 */
+function normalizeModelId(id: string | null | undefined): string {
+  if (!id) return "";
+  return id.replace(/^models\//, "");
+}
+
+/** 清理模型显示名：部分 provider 的 name 字段自带 "models/" 前缀，显示时去掉 */
+function formatModelName(name: string | null | undefined): string {
+  if (!name) return "";
+  return name.replace(/^models\//, "");
+}
 
 /** 按 provider 分组后的结构 */
 interface ProviderGroup {
@@ -48,15 +83,18 @@ interface ModelSelectorProps {
   onClose: () => void;
 }
 
-/** 模型选择胶囊：下拉胶囊按钮 + Popover（向上弹出，完整显示）；受控 open 由 ChatInput 互斥协调 */
+const DROPDOWN_WIDTH = 190;
+const DROPDOWN_MAX_HEIGHT = 320;
+
+/** 模型选择胶囊：下拉胶囊按钮 + Popover（CSS 绝对定位，按钮正上方展开，零 JS 坐标计算）；受控 open 由 ChatInput 互斥协调 */
 export function ModelSelector({ models, selectedId, onSelect, open, onToggle, onClose }: ModelSelectorProps) {
-  const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0, width: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   // Provider 分组折叠状态：默认全部展开
   const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(new Set());
 
-  const currentModelName = models.find((m) => m.id === selectedId)?.name ?? selectedId ?? "";
+  const normalizedSelectedId = normalizeModelId(selectedId);
+  const currentModelName = formatModelName(models.find((m) => m.id === normalizedSelectedId)?.name ?? selectedId ?? "");
 
   // 按 provider 分组，保持 provider 原始顺序（首次出现顺序）
   const providerGroups = useMemo<ProviderGroup[]>(() => {
@@ -67,7 +105,7 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
         seen.add(m.provider);
         groups.push({
           providerId: m.provider,
-          providerName: PROVIDER_NAMES[m.provider] || m.provider,
+          providerName: PROVIDER_NAMES[m.provider] || formatProviderFallback(m.provider),
           models: [],
         });
       }
@@ -96,17 +134,7 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
     <div style={{ position: "relative", minWidth: 0, maxWidth: "200px", flexShrink: 0 }}>
       <button
         ref={btnRef}
-        onClick={() => {
-          const rect = btnRef.current?.getBoundingClientRect();
-          if (rect) {
-            setDropdownPos({
-              bottom: window.innerHeight - rect.top,
-              left: Math.max(8, Math.min(rect.left, window.innerWidth - 200)),
-              width: Math.max(180, Math.min(rect.width, 220)),
-            });
-          }
-          onToggle();
-        }}
+        onClick={onToggle}
         title={currentModelName}
         style={{
           ...ghostPillStyle,
@@ -130,7 +158,6 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           minWidth: 0,
-          // 2026-08-11：限制最长胶囊宽度，避免长模型名撞爆窄容器工具栏
           maxWidth: "140px",
         }}>{currentModelName}</span>
         <ChevronDown style={{
@@ -140,8 +167,28 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
         }} />
       </button>
 
-      {open && createPortal(
-        <div ref={popRef} id="model-dropdown-portal" className="no-scrollbar" style={portalDropdownStyle({ ...dropdownPos, width: dropdownPos.width, maxHeight: 320 })}>
+      {open && (
+        <div
+          ref={popRef}
+          id="model-dropdown-portal"
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 6px)",
+            left: 0,
+            width: DROPDOWN_WIDTH,
+            maxHeight: DROPDOWN_MAX_HEIGHT,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1px",
+            padding: "4px",
+            borderRadius: "var(--radius-xl)",
+            background: "var(--bg-level-2)",
+            border: "1px solid var(--border-secondary)",
+            boxShadow: "var(--shadow-lg)",
+            zIndex: 100,
+          }}
+        >
           {providerGroups.map((group, gi) => {
             const isCollapsed = collapsedProviders.has(group.providerId);
             return <div key={group.providerId}>
@@ -172,7 +219,7 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
                   display: "flex",
                   alignItems: "center",
                   gap: "4px",
-                  padding: "5px 10px 3px",
+                  padding: "4px 10px 2px",
                   fontSize: "10px",
                   fontWeight: 600,
                   color: "var(--text-level-4)",
@@ -196,7 +243,7 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
 
               {/* 该 Provider 下的模型列表（折叠时隐藏） */}
               {!isCollapsed && group.models.map((model) => {
-                const active = model.id === selectedId;
+                const active = model.id === normalizedSelectedId;
                 return <button
                     key={model.id}
                     onClick={() => {
@@ -205,26 +252,26 @@ export function ModelSelector({ models, selectedId, onSelect, open, onToggle, on
                     }}
                     style={{
                       ...popoverItemStyle,
-                      paddingLeft: "24px",
+                      padding: "5px 10px 5px 24px",
+                      background: active ? "var(--color-primary-lighter)" : "transparent",
                       color: active ? "var(--color-primary)" : "var(--text-level-2)",
                       fontWeight: active ? 600 : 400,
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = itemHoverBackground; }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}
                   >
                     <span style={{
                       flex: 1,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                    }}>{model.name}</span>
+                    }}>{formatModelName(model.name)}</span>
                     {active && <Check style={{ width: "14px", height: "14px", color: "var(--color-primary)", flexShrink: 0 }} />}
                   </button>;
               })}
             </div>;
           })}
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

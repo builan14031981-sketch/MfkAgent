@@ -84,16 +84,16 @@ export const itemHoverBackground = "var(--bg-level-3)";
 
 /** portal 下拉容器（固定定位，随按钮位置出现） */
 export interface PortalDropdownStyleOptions {
-  bottom: number;
+  bottom?: number;
+  top?: number;
   left: number;
   width?: number;
   maxHeight?: number;
 }
 
-export function portalDropdownStyle({ bottom, left, width, maxHeight }: PortalDropdownStyleOptions): CSSProperties {
-  return {
+export function portalDropdownStyle({ bottom, top, left, width, maxHeight }: PortalDropdownStyleOptions): CSSProperties {
+  const pos: CSSProperties = {
     position: "fixed",
-    bottom: bottom + 8,
     left,
     display: "flex",
     flexDirection: "column",
@@ -109,4 +109,11 @@ export function portalDropdownStyle({ bottom, left, width, maxHeight }: PortalDr
     boxShadow: "var(--shadow-lg)",
     zIndex: 9999,
   };
+  // 优先 top（向下弹出），否则 bottom（向上弹出）
+  if (typeof top === "number") {
+    pos.top = top;
+  } else if (typeof bottom === "number") {
+    pos.bottom = bottom + 8;
+  }
+  return pos;
 }
