@@ -140,6 +140,8 @@ export interface UserChoiceEvent extends RuntimeEventBase {
 export interface TextEvent extends RuntimeEventBase {
   type: "text";
   content: string;
+  agent_id?: string;
+  agent_name?: string;
 }
 
 /** 自动提取并保存记忆后的可见通知（memory_saved 事件）。

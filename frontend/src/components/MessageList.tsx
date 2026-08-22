@@ -580,6 +580,21 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                         </div>
                       );
                     case "text":
+                      if (seg.agent_id) {
+                        return (
+                          <div key={seg.id} style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+                            <div style={{ flexShrink: 0, marginTop: "4px" }}>
+                              <AgentIcon id={seg.agent_id} size={24} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-level-3)", marginBottom: "4px" }}>
+                                {seg.agent_name || "Agent"}
+                              </div>
+                              <MarkdownRenderer content={seg.content} />
+                            </div>
+                          </div>
+                        );
+                      }
                       return <MarkdownRenderer key={seg.id} content={seg.content} />;
                     case "memory_saved":
                       return (

@@ -6,7 +6,7 @@ KnowledgeService：后者按 project_id + 显式 index 调用，且存内存易�
 接收 project_path + 相对路径，realpath 沙箱校验，返回文本结果。
 """
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from app.core.tools import ToolExecutionError
 from app.core.sandbox import resolve_sandbox_path
