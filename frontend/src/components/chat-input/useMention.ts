@@ -84,7 +84,7 @@ export function useMention(
 
       const beforeAt = value.slice(0, mentionState.matchIndex);
       const afterCursor = value.slice(textarea.selectionEnd || textarea.value.length);
-      const mentionText = `@${agent.name} `;
+      const mentionText = `@{${agent.id}} `;
       const newValue = `${beforeAt}${mentionText}${afterCursor}`;
 
       onChange(newValue);

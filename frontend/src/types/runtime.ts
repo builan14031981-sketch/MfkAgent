@@ -24,7 +24,9 @@ export type RuntimeEventType =
   | "memory"
   | "memory_saved"
   | "token_usage"
-  | "agent_state_update";
+  | "agent_state_update"
+  | "roundtable_speaker_start"
+  | "roundtable_speaker_end";
 
 /** 待审批命令（tool_approval 事件载荷） */
 export interface ApprovalRequest {
@@ -244,6 +246,17 @@ export interface SubAgentEvent extends RuntimeEventBase {
 }
 
 /** Runtime Event 判别联合：渲染层按 type 分发 */
+export interface RoundtableSpeakerStartEvent extends RuntimeEventBase {
+  type: "roundtable_speaker_start";
+  agent_id?: string;
+  agent_name?: string;
+}
+
+export interface RoundtableSpeakerEndEvent extends RuntimeEventBase {
+  type: "roundtable_speaker_end";
+  agent_id?: string;
+}
+
 export type RuntimeEvent =
   | ThinkingEvent
   | ThinkingIndicatorEvent
@@ -257,4 +270,6 @@ export type RuntimeEvent =
   | TaskFailedEvent
   | TaskSkippedEvent
   | SubAgentEvent
-  | ExtensionEvent;
+  | ExtensionEvent
+  | RoundtableSpeakerStartEvent
+  | RoundtableSpeakerEndEvent;

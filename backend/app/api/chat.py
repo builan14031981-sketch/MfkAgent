@@ -726,9 +726,11 @@ async def send_message(chat_id: int, request: SendRequest):
                     try:
                         run.queue.put_nowait(None)
                     except asyncio.QueueFull:
-                        pass
+                        # Queue满了就强塞（协程阻塞等待），保证哨兵必然入队以避免SSE死锁
+                        await run.queue.put(None)
                     run.finished = True
-                    _agent_runs.pop(chat_id, None)
+                    if _agent_runs.get(chat_id) is run:
+                        _agent_runs.pop(chat_id, None)
 
             run.task = asyncio.create_task(_background_roundtable())
 
@@ -1004,10 +1006,14 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                     logger.error("Roundtable error: chat_id=%s error=%s", chat_id, e, exc_info=True)
                     run.exception = e
                 finally:
-                    try: run.queue.put_nowait(None)
-                    except asyncio.QueueFull: pass
+                    try:
+                        run.queue.put_nowait(None)
+                    except asyncio.QueueFull:
+                        # Queue满了就强塞（协程阻塞等待），保证哨兵必然入队以避免SSE死锁
+                        await run.queue.put(None)
                     run.finished = True
-                    _agent_runs.pop(chat_id, None)
+                    if _agent_runs.get(chat_id) is run:
+                        _agent_runs.pop(chat_id, None)
             run.task = asyncio.create_task(_background_roundtable())
             async def generate_rt():
                 buffer = ""

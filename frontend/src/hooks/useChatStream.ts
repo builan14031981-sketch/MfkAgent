@@ -75,6 +75,7 @@ export function useChatStream({
 
   /** activeChatIdRef：始终跟踪当前 UI 活跃的 chatId（用于 appendMessage/refetch 守卫） */
   const activeChatIdRef = useRef<number | null>(chatId);
+  // eslint-disable-next-line react-hooks/refs
   activeChatIdRef.current = chatId;
 
   /** 从 timeline 末位事件派生 Orb 阶段 */
@@ -270,6 +271,10 @@ export function useChatStream({
   const sendStream = useCallback(
     async (content: string, options: SendStreamOptions = {}) => {
       if (!chatId) throw new Error("No chat selected");
+      if (useStreamStore.getState().sessions[chatId]?.isSending) {
+        console.warn("Already sending, ignoring request.");
+        return;
+      }
       const targetChatId = chatId; // 捕获发送时的 chatId，后续所有操作都使用此值
       const startedAt = Date.now(); // 任务开始时刻：用于完成通知与用时展示
 
@@ -767,6 +772,33 @@ export function useChatStream({
               }
               return { timeline: [...prev.timeline, sub] };
             });
+          },
+          // onRoundtableSpeakerStart
+          (evt) => {
+            store.updateSession(targetChatId, (prev) => ({
+              timeline: [
+                ...prev.timeline,
+                {
+                  id: `speaker-start-${Date.now()}`,
+                  type: "roundtable_speaker_start" as const,
+                  agent_id: evt.agent_id,
+                  agent_name: evt.agent_name,
+                },
+              ],
+            }));
+          },
+          // onRoundtableSpeakerEnd
+          (evt) => {
+            store.updateSession(targetChatId, (prev) => ({
+              timeline: [
+                ...prev.timeline,
+                {
+                  id: `speaker-end-${Date.now()}`,
+                  type: "roundtable_speaker_end" as const,
+                  agent_id: evt.agent_id,
+                },
+              ],
+            }));
           },
           // onComplete
           appendAssistant,

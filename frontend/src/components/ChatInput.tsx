@@ -615,14 +615,20 @@ export const ChatInput = memo(function ChatInput({
           value={value}
           onChange={(e) => {
             onChange(e.target.value);
-            checkMentionTrigger(e.target.value, e.target.selectionStart || 0);
+            if (roundtableAttendees && roundtableAttendees.length > 0) {
+              checkMentionTrigger(e.target.value, e.target.selectionStart || 0);
+            }
           }}
           onClick={(e) => {
-            checkMentionTrigger(value, (e.target as HTMLTextAreaElement).selectionStart || 0);
+            if (roundtableAttendees && roundtableAttendees.length > 0) {
+              checkMentionTrigger(value, (e.target as HTMLTextAreaElement).selectionStart || 0);
+            }
           }}
           onKeyUp={(e) => {
             if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
-              checkMentionTrigger(value, (e.target as HTMLTextAreaElement).selectionStart || 0);
+              if (roundtableAttendees && roundtableAttendees.length > 0) {
+                checkMentionTrigger(value, (e.target as HTMLTextAreaElement).selectionStart || 0);
+              }
             }
           }}
           onKeyDown={handleKeyDown}

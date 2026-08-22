@@ -13,7 +13,7 @@ import type { AgentStateUpdateEvent, SubAgentEvent, TaskEvent, TaskNode, TokenUs
  * text 目前由后端合并为单个事件追加在末尾（见 backend/app/api/chat.py）。
  */
 export interface TimelineEvent {
-  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | "user_choice" | "memory_saved" | string;
+  type: "thinking" | "text" | "tool_start" | "tool_result" | "tool_approval" | "user_choice" | "memory_saved" | "roundtable_speaker_start" | "roundtable_speaker_end" | string;
   content?: string;
   tool_call_id?: string;
   tool?: string;
@@ -27,6 +27,8 @@ export interface TimelineEvent {
   count?: number;
   /** memory_saved：每条记忆摘要 */
   items?: Array<{ memory_type: string; content: string }>;
+  agent_id?: string;
+  agent_name?: string;
 }
 
 export interface Message {
@@ -151,6 +153,8 @@ export function useMessages(chatId: number | null) {
     onAgentStateUpdate?: (evt: AgentStateUpdateEvent) => void,
     onMemorySaved?: (evt: { count: number; items: Array<{ memory_type: string; content: string }>; chat_id?: number }) => void,
     onSubAgent?: (evt: SubAgentEvent) => void,
+    onRoundtableSpeakerStart?: (evt: { agent_id?: string; agent_name?: string }) => void,
+    onRoundtableSpeakerEnd?: (evt: { agent_id?: string }) => void,
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void,
     attachments?: Attachment[],
     permissionMode?: PermissionMode,
@@ -433,6 +437,21 @@ export function useMessages(chatId: number | null) {
                       title: parsed.title ?? parsed.role ?? "子代理",
                       status: parsed.status ?? "running",
                       content: parsed.content ?? "",
+                    });
+                    break;
+                  }
+                  case "roundtable_speaker_start": {
+                    // 圆桌模式：专家开始发言
+                    onRoundtableSpeakerStart?.({
+                      agent_id: parsed.agent_id,
+                      agent_name: parsed.agent_name,
+                    });
+                    break;
+                  }
+                  case "roundtable_speaker_end": {
+                    // 圆桌模式：专家结束发言
+                    onRoundtableSpeakerEnd?.({
+                      agent_id: parsed.agent_id,
                     });
                     break;
                   }
