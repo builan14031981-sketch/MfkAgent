@@ -24,7 +24,10 @@ export type RuntimeEventType =
   | "memory"
   | "memory_saved"
   | "token_usage"
-  | "agent_state_update";
+  | "agent_state_update"
+  | "roundtable_speaker"
+  | "roundtable_speaker_start"
+  | "roundtable_speaker_end";
 
 /** 待审批命令（tool_approval 事件载荷） */
 export interface ApprovalRequest {
@@ -138,6 +141,9 @@ export interface UserChoiceEvent extends RuntimeEventBase {
 export interface TextEvent extends RuntimeEventBase {
   type: "text";
   content: string;
+  /** 圆桌模式：该文本段归属的 Agent id / 显示名（非圆桌时为 undefined） */
+  agent_id?: string;
+  agent_name?: string;
 }
 
 /** 圆桌模式：单个 Agent 的发言片段（按 agent 分气泡） */
@@ -150,6 +156,19 @@ export interface RoundtableSpeakerEvent extends RuntimeEventBase {
   content: string;
   /** 该 Agent 是否已完成发言（false=仍在流式） */
   done?: boolean;
+}
+
+/** 圆桌模式：某 Agent 开始发言（指示器事件） */
+export interface RoundtableSpeakerStartEvent extends RuntimeEventBase {
+  type: "roundtable_speaker_start";
+  agent_id?: string;
+  agent_name?: string;
+}
+
+/** 圆桌模式：某 Agent 结束发言 */
+export interface RoundtableSpeakerEndEvent extends RuntimeEventBase {
+  type: "roundtable_speaker_end";
+  agent_id?: string;
 }
 
 /** 自动提取并保存记忆后的可见通知（memory_saved 事件）。
@@ -270,4 +289,6 @@ export type RuntimeEvent =
   | TaskSkippedEvent
   | SubAgentEvent
   | RoundtableSpeakerEvent
+  | RoundtableSpeakerStartEvent
+  | RoundtableSpeakerEndEvent
   | ExtensionEvent;

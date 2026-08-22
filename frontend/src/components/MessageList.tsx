@@ -11,7 +11,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { ToolCallGroup, groupToolCalls } from "@/components/ToolCallGroup";
 import { ToolApprovalCard } from "@/components/ToolApprovalCard";
 import { UserChoiceCard } from "@/components/UserChoiceCard";
-import type { RuntimeEvent } from "@/types/runtime";
+import type { RuntimeEvent, RoundtableSpeakerEvent } from "@/types/runtime";
 import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
@@ -580,6 +580,21 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                         </div>
                       );
                     case "text":
+                      if (seg.agent_id) {
+                        return (
+                          <div key={seg.id} style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+                            <div style={{ flexShrink: 0, marginTop: "4px" }}>
+                              <AgentIcon id={seg.agent_id} size={24} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-level-3)", marginBottom: "4px" }}>
+                                {seg.agent_name || "Agent"}
+                              </div>
+                              <MarkdownRenderer content={seg.content} />
+                            </div>
+                          </div>
+                        );
+                      }
                       return <MarkdownRenderer key={seg.id} content={seg.content} />;
                     case "memory_saved":
                       return (
@@ -589,6 +604,34 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                       );
                     case "sub_agent":
                       return <SubAgentProgressCard key={seg.id} role={seg.role} title={seg.title} status={seg.status} content={seg.content} />;
+                    case "roundtable_speaker_start":
+                      return (
+                        <div key={seg.id} style={{ display: "flex", alignItems: "center", gap: "8px", margin: "12px 0 6px 0" }}>
+                          <AgentIcon id={seg.agent_id || "unknown"} size={16} style={{ color: "var(--text-level-3)" }} />
+                          <span style={{ fontSize: "13px", fontWeight: 500, lineHeight: 1.25, color: "var(--text-level-3)" }}>
+                            {seg.agent_name || "Agent"} 正在发言...
+                          </span>
+                        </div>
+                      );
+                    case "roundtable_speaker_end":
+                      return null;
+                    case "roundtable_speaker": {
+                      const speaker = seg as RoundtableSpeakerEvent;
+                      return (
+                        <div key={speaker.id} style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+                          <div style={{ flexShrink: 0, marginTop: "4px" }}>
+                            <AgentIcon id={speaker.agentId || "unknown"} size={24} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-level-3)", marginBottom: "4px" }}>
+                              {speaker.agentName || "Agent"}
+                              {!speaker.done && <span style={{ marginLeft: "6px", fontWeight: 400, opacity: 0.7 }}>正在发言…</span>}
+                            </div>
+                            <MarkdownRenderer content={speaker.content} />
+                          </div>
+                        </div>
+                      );
+                    }
                     // task_* 事件不进入 timeline 渲染（由独立 tasks 状态 + TaskProgressCard 处理）
                     case "task_started":
                     case "task_completed":
@@ -664,7 +707,25 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                   color: "var(--text-level-2)",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
-                }}>{streamingError}</p>
+                }}>
+                  {(() => {
+                    const errStr = streamingError || "";
+                    const is503 = errStr.includes("503") || errStr.toLowerCase().includes("overloaded");
+                    const agentMatch = errStr.match(/\[发言中断：(.*?)\]/);
+                    const agentStr = agentMatch ? ` ${agentMatch[1]}` : "";
+                    const reasonStr = is503 ? "（服务过载，请重试）" : "";
+
+                    return (
+                      <>
+                        <span style={{ fontWeight: 600, color: "var(--color-error)" }}>
+                          {agentStr} 发生错误 {reasonStr}
+                        </span>
+                        <br />
+                        {errStr}
+                      </>
+                    );
+                  })()}
+                </p>
                 {onRetry && (
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "12px" }}>
                     <button

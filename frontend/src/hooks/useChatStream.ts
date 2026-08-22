@@ -75,6 +75,7 @@ export function useChatStream({
 
   /** activeChatIdRef：始终跟踪当前 UI 活跃的 chatId（用于 appendMessage/refetch 守卫） */
   const activeChatIdRef = useRef<number | null>(chatId);
+  // eslint-disable-next-line react-hooks/refs
   activeChatIdRef.current = chatId;
 
   /** 从 timeline 末位事件派生 Orb 阶段 */
@@ -270,6 +271,10 @@ export function useChatStream({
   const sendStream = useCallback(
     async (content: string, options: SendStreamOptions = {}) => {
       if (!chatId) throw new Error("No chat selected");
+      if (useStreamStore.getState().sessions[chatId]?.isSending) {
+        console.warn("Already sending, ignoring request.");
+        return;
+      }
       const targetChatId = chatId; // 捕获发送时的 chatId，后续所有操作都使用此值
       const startedAt = Date.now(); // 任务开始时刻：用于完成通知与用时展示
 
@@ -511,13 +516,33 @@ export function useChatStream({
               return;
             }
             store.updateSession(targetChatId, (prev) => {
+              // 寻找最新的 speaker
+              let currentSpeakerId: string | undefined;
+              let currentSpeakerName: string | undefined;
+              for (let i = prev.timeline.length - 1; i >= 0; i--) {
+                const s = prev.timeline[i];
+                if (s.type === "roundtable_speaker_start") {
+                  currentSpeakerId = s.agent_id;
+                  currentSpeakerName = s.agent_name;
+                  break;
+                }
+              }
+
               const last = prev.timeline[prev.timeline.length - 1];
-              if (last && last.type === "text") {
+              if (last && last.type === "text" && last.agent_id === currentSpeakerId) {
                 const next = prev.timeline.slice();
                 next[next.length - 1] = { ...last, content: last.content + chunk };
                 return { timeline: next };
               }
-              return { timeline: [...prev.timeline, { id: `text-${Date.now()}-${Math.random()}`, type: "text" as const, content: chunk }] };
+              return {
+                timeline: [...prev.timeline, {
+                  id: `text-${Date.now()}-${Math.random()}`,
+                  type: "text" as const,
+                  content: chunk,
+                  agent_id: currentSpeakerId,
+                  agent_name: currentSpeakerName
+                }]
+              };
             });
           },
           // onFinish: 兜底清理。正常流程中 onComplete(appendAssistant) 已先执行完毕，
@@ -808,7 +833,34 @@ export function useChatStream({
           // 权限模式
           permissionMode,
           // 中断信号
-          controller.signal
+          controller.signal,
+          // onRoundtableEvent：统一分发圆桌生命周期事件（最后一个参数）
+          (evt: { type: string; agent_id?: string; agent_name?: string }) => {
+            if (evt.type === "roundtable_speaker_start") {
+              store.updateSession(targetChatId, (prev) => ({
+                timeline: [
+                  ...prev.timeline,
+                  {
+                    id: `speaker-start-${Date.now()}`,
+                    type: "roundtable_speaker_start" as const,
+                    agent_id: evt.agent_id,
+                    agent_name: evt.agent_name,
+                  },
+                ],
+              }));
+            } else if (evt.type === "roundtable_speaker_end") {
+              store.updateSession(targetChatId, (prev) => ({
+                timeline: [
+                  ...prev.timeline,
+                  {
+                    id: `speaker-end-${Date.now()}`,
+                    type: "roundtable_speaker_end" as const,
+                    agent_id: evt.agent_id,
+                  },
+                ],
+              }));
+            }
+          }
         );
       } catch (err) {
         // 主动中断（用户点击停止）不算错误：静默清理
