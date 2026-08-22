@@ -4,6 +4,9 @@ const http = require("http");
 const net = require("net");
 const { spawn, spawnSync } = require("child_process");
 const fs = require("fs");
+// 截图模块：自定义区域截图（类似 QQ/豆包）
+const { startScreenshot } = require("./screenshot");
+const { precreateOverlayWindow } = require("./screenshot/overlay-window");
 
 // ── 单实例锁（Phase 8）：防止多开，第二个实例退出并聚焦已有窗口 ──
 const gotTheLock = app.requestSingleInstanceLock();
@@ -339,6 +342,8 @@ app.whenReady().then(async () => {
   registerIpcHandlers();
   createTray();
   createWindow();
+  // 预创建截图窗口（隐藏状态，预加载 HTML），点击截图时可立即显示，避免创建延迟
+  precreateOverlayWindow();
 });
 
 // 应用退出前干净终结后端进程树（同步阻塞，保证退出时无残留进程）
@@ -481,6 +486,24 @@ function registerIpcHandlers() {
     }
   });
   console.log("[Electron] IPC handler 'open-path' registered");
+
+  // 自定义区域截图：类似 QQ/豆包的截图工具，拖拽选区域后返回图片文件
+  ipcMain.handle("start-screenshot", async () => {
+    try {
+      console.log("[Electron] start-screenshot: begin");
+      const result = await startScreenshot();
+      if (!result) {
+        console.log("[Electron] start-screenshot: cancelled by user");
+        return { success: false, cancelled: true };
+      }
+      console.log("[Electron] start-screenshot: success", result.filePath, `${result.width}x${result.height}`);
+      return { success: true, ...result };
+    } catch (err) {
+      console.error("[Electron] start-screenshot failed:", err);
+      return { success: false, error: err.message };
+    }
+  });
+  console.log("[Electron] IPC handler 'start-screenshot' registered");
 }
 
 app.on("window-all-closed", () => {

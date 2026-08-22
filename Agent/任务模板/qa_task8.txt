@@ -1,0 +1,32 @@
+【最终打磨任务】请委派 sub_frontend 对 E:\智慧项目\portfolio-mfkagent\index.html 做一次整体视觉精修，并强制 verify_spec 全断言 PASS。
+
+【背景】H1 标题曾被误改为「设计思维与实践」，需恢复为「创意作品集」。滑块已修好（translate3d px 位移），本次不得破坏。平台已部署 AutoSpecCheck：write_file 后会自动机器校验文件存在/非空/UTF-8/HTML闭合，结果会追加到工具输出，这是平台强制证据，你不能跳过。
+
+【精修要求】
+1. H1 恢复为「创意作品集」（保持匿名，不出现姓名/求职/简历字样）。
+2. 作品墙（作品展示）错落化：打破三栏等宽模板感，采用错落/不等宽的网格或瀑布布局；占位图卡保留（作品 01~12），用内联占位（纯色块+文字编号），禁止引入任何外部图片 URL。
+3. 配色收敛：以 #12141C（近黑）/ #EDE8E0（米白）/ #C0392B（朱红）为主，朱红只用于强调与 CTA，减少滥用；CTA 按钮要与普通文字明显区分。
+4. 「解决问题能力」章节四步（问题识别与分析/方案设计与原型/实施与优化/成果评估与总结）保持，排版加大留白、降低密度，读起来有呼吸感。
+5. 动效全部保留：自定义光标、鼠标视差、磁吸 CTA、3D tilt、prefers-reduced-motion。
+6. 字体栈保持：无 Google Fonts、无 Inter；正文系统中文栈、标题衬线（Georgia/'Songti SC'）、等宽点缀。
+7. 滑块（工作风格评估）不得破坏：thumb 用 translate3d(px)、Pointer Events、键盘、ARIA、五档、档位圆点+激活高亮+进度填充、「当前 中性 · 03/05」。
+
+【强制校验】write_file 完成后调用 verify_spec 对 E:\智慧项目\portfolio-mfkagent\index.html 校验以下断言，SPEC_CHECK_RESULT 必须为 PASS，并回报逐条原文：
+1. {name:"h1_title", pattern:"创意作品集", expect:"present"}
+2. {name:"h2_gallery", pattern:"作品展示", expect:"present"}
+3. {name:"h2_case", pattern:"解决问题能力", expect:"present"}
+4. {name:"thumb_px", pattern:"translate3d\\(\\$\\{", expect:"present"}
+5. {name:"no_thumb_left", pattern:"thumb\\.style\\.left", expect:"absent"}
+6. {name:"five_traits", pattern:"专业|友好|中性|创意|幽默", expect:"present", count_min:5}
+7. {name:"aria_slider", pattern:"role=\"slider\"|aria-valuenow", expect:"present"}
+8. {name:"value_display", pattern:"当前 中性 · 03/05", expect:"present"}
+9. {name:"no_google_fonts", pattern:"fonts\\.googleapis\\.com", expect:"absent"}
+10. {name:"no_inter", pattern:"font-family:\\s*['\"]?Inter|[,;]\\s*Inter[,;]", expect:"absent"}
+11. {name:"accent_color", pattern:"#C0392B", expect:"present", case_sensitive:true}
+12. {name:"reduced_motion", pattern:"prefers-reduced-motion", expect:"present"}
+13. {name:"no_name_leak", pattern:"严志辉|求职|简历", expect:"absent"}
+14. {name:"gallery_count", pattern:"class=\"portfolio-item\"|class=\"portfolio-card\"", expect:"present", count_min:6}
+15. {name:"case_steps", pattern:"class=\"case-step\"", expect:"present", count_min:4}
+16. {name:"html_closed", pattern:"</html>", expect:"present"}
+
+【回报】必须包含：verify_spec 逐条 PASS/FAIL 原文 + SPEC_CHECK_RESULT；若首次 FAIL，修复后重新校验直到 PASS 再回报。

@@ -1,11 +1,11 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { API_BASE, apiGet, apiPost, apiDelete } from "@/lib/api";
+import { getCurrentApiBase, apiGet, apiPost, apiDelete } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { Attachment, AttachmentKind } from "@/components/FileDropZone";
 import { getFileExt } from "@/components/FileDropZone";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
-import type { AgentStateUpdateEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
+import type { AgentStateUpdateEvent, SubAgentEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
 /**
  * 后端 Message.timeline 持久化的时序事件（GET /messages 随消息下发）。
@@ -40,6 +40,8 @@ export interface Message {
   timeline?: TimelineEvent[];
   attachments?: Array<{ name: string; path?: string; mime?: string; kind?: string; size?: number }>;
   created_at: string;
+  /** 圆桌模式：消息发送者的 Agent ID */
+  agent_id?: string;
 }
 
 // ──── 消息缓存：切换会话秒出，后台静默刷新（stale-while-revalidate） ────
@@ -148,6 +150,7 @@ export function useMessages(chatId: number | null) {
     onTokenUsage?: (evt: TokenUsageEvent) => void,
     onAgentStateUpdate?: (evt: AgentStateUpdateEvent) => void,
     onMemorySaved?: (evt: { count: number; items: Array<{ memory_type: string; content: string }>; chat_id?: number }) => void,
+    onSubAgent?: (evt: SubAgentEvent) => void,
     onComplete?: (finalContent: string, toolCalls: ToolCall[], finalThinking: string) => void,
     attachments?: Attachment[],
     permissionMode?: PermissionMode,
@@ -196,7 +199,7 @@ export function useMessages(chatId: number | null) {
       }
     }
 
-    const response = await fetch(`${API_BASE}/api/chat/${chatId}/send/stream`, {
+    const response = await fetch(`${getCurrentApiBase()}/api/chat/${chatId}/send/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -421,6 +424,18 @@ export function useMessages(chatId: number | null) {
                     });
                     break;
                   }
+                  case "sub_agent": {
+                    // 子代理编排进度事件（spawn_orchestration 工具）
+                    onSubAgent?.({
+                      id: parsed.id ?? `sub-agent-${Date.now()}-${Math.random()}`,
+                      type: "sub_agent",
+                      role: parsed.role ?? "",
+                      title: parsed.title ?? parsed.role ?? "子代理",
+                      status: parsed.status ?? "running",
+                      content: parsed.content ?? "",
+                    });
+                    break;
+                  }
                   case "error": {
                     flushNowAndClear();
                     onError(parsed.message ?? "Unknown error");
@@ -513,7 +528,7 @@ export async function uploadAttachment(chatId: number, file: File): Promise<Atta
   const formData = new FormData();
   formData.append("file", file);
   try {
-    const response = await fetch(`${API_BASE}/api/chat/${chatId}/upload`, {
+    const response = await fetch(`${getCurrentApiBase()}/api/chat/${chatId}/upload`, {
       method: "POST",
       body: formData,
     });

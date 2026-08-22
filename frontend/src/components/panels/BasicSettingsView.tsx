@@ -14,6 +14,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check } from "lucide-react";
 import { ExtensionPanel } from "./ExtensionPanel";
+import { FeishuSettingsPanel } from "./FeishuSettingsPanel";
 import { SecurityView } from "./security/SecurityView";
 import { ModelProvidersBasic } from "./ModelConfigSection";
 import { ProxySettingsSection } from "./ProxySettingsSection";
@@ -42,6 +43,8 @@ export interface AdvancedSettingsViewProps extends SettingsViewProps {
   agents: Agent[];
   onManageAgents: () => void;
   onManageSubAgents?: () => void;
+  /** 关闭设置面板（用于跳转独立页面时自动关闭） */
+  onClose?: () => void;
 }
 
 /** Provider ID → 中文展示名映射（与 ModelSelector 保持一致） */
@@ -436,7 +439,7 @@ function getSortedActiveAgents(agents: { id: string; name: string; status: strin
       const bi = AGENT_ORDER.indexOf(b.id);
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     })
-    .filter((agent) => agent.status === "active");
+    .filter((agent) => agent.status === "active" && !agent.id.startsWith("sub_"));
 }
 
 const inputStyle: React.CSSProperties = {
@@ -1232,6 +1235,46 @@ function ModelBasic(props: SettingsViewProps) {
         </div>
       </div>
 
+      {/* 显示思考过程 */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+        <div>
+          <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+            {t("settings.model.showReasoning.title")}
+          </h3>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
+            {t("settings.model.showReasoning.desc")}
+          </p>
+        </div>
+        <SwitchButton
+          checked={settings?.show_reasoning !== "false"}
+          disabled={saving === "show_reasoning"}
+          onChange={(v) => onUpdate("show_reasoning", v ? "true" : "false")}
+        />
+      </div>
+
+      {/* 文生图模型（Phase H：AI 生成图片使用的千问图像模型，复用通义千问 API Key） */}
+      <div style={{ marginBottom: "18px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+              {t("settings.model.imageGen.title")}
+            </h3>
+            <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
+              {t("settings.model.imageGen.desc")}
+            </p>
+          </div>
+          <select
+            value={settings?.image_gen_model || "qwen-image-3.0-pro"}
+            onChange={(e) => onUpdate("image_gen_model", e.target.value)}
+            disabled={saving === "image_gen_model"}
+            style={{ ...inputStyle, minWidth: "200px" }}
+          >
+            <option value="qwen-image-3.0-pro">{t("settings.model.imageGen.pro")}</option>
+            <option value="qwen-image-3.0">{t("settings.model.imageGen.flash")}</option>
+          </select>
+        </div>
+      </div>
+
       {/* 字段级边界：Provider 卡片基础配置（API Key + 模型 Chip + 连通性 + 远程拉取）
           Base URL 覆盖输入框在此处隐藏，下沉到 AdvancedSettingsView。
           新手绝不会看到 Base URL 这种复杂的输入框。 */}
@@ -1399,11 +1442,14 @@ export function BasicSettingsView(
       return <SecurityView {...props} />;
     case "extensions":
       return (
-        <ExtensionPanel
-          editingSkillId={(props.editingSkillId ?? null) as never}
-          onSelectSkill={(id) => props.onSelectSkill?.(id)}
-          onBackToList={() => props.onBackToExtensionList?.()}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <FeishuSettingsPanel />
+          <ExtensionPanel
+            editingSkillId={(props.editingSkillId ?? null) as never}
+            onSelectSkill={(id) => props.onSelectSkill?.(id)}
+            onBackToList={() => props.onBackToExtensionList?.()}
+          />
+        </div>
       );
     case "about":
       return <AboutSection {...props} />;

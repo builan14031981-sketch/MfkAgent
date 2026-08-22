@@ -14,6 +14,20 @@ import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# 测试隔离（2026-08-16 根因修复）：必须指向独立测试库，绝不触碰生产库 backend/mfkagent.db。
+# 此前本文件未设置 DATABASE_URL，且 test_clear_key_purge_associated 以 "glm" 为目标
+# 执行清除 Key 动作，导致每次运行测试都清空用户真实 GLM API Key。
+# 直接运行时（python tests/xxx.py）不加载 conftest.py，故在此兜底设置；
+# pytest 运行时 conftest.py 已先行设置，此处 setdefault 不覆盖。
+_TEST_DB = os.path.abspath(os.path.join(os.path.dirname(__file__), "mfkagent_test.db"))
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_TEST_DB.replace(os.sep, '/')}")
+
+# 直接运行时（python tests/xxx.py）不加载 conftest.py，需自行保证测试库表结构存在。
+import app.models.agent  # noqa: E402,F401  让模型注册到 Base.metadata
+from app.core.database import Base as _Base, engine as _Engine  # noqa: E402
+
+_Base.metadata.create_all(bind=_Engine)
+
 
 def test_param_validation():
     """参数校验：空 key / 空 base+provider"""
@@ -116,6 +130,7 @@ def test_clear_key_purge_associated():
             max_tokens=4096,
             temperature=0.7,
             enabled=True,
+            source="sync",  # purge 只删 source='sync' 的行
         )
         db.add(fake)
         db.commit()

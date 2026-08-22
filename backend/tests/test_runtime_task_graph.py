@@ -838,7 +838,7 @@ class TestModelContextConfig(unittest.TestCase):
     def test_known_model_exact_match(self):
         self.assertEqual(get_model_max_tokens("gpt-4o"), 128000)
         self.assertEqual(get_model_max_tokens("claude-3-5-sonnet"), 200000)
-        self.assertEqual(get_model_max_tokens("deepseek-chat"), 64000)
+        self.assertEqual(get_model_max_tokens("deepseek-chat"), 256000)
 
     def test_prefix_match(self):
         """前缀模糊匹配：gpt-4o-2024-08-06 → 128000"""
@@ -856,8 +856,8 @@ class TestModelContextConfig(unittest.TestCase):
         """水位百分比计算。"""
         # 1000 / 128000 * 100 = 0.78
         self.assertEqual(compute_watermark(1000, "gpt-4o"), 0.78)
-        # 64000 / 64000 * 100 = 100.0
-        self.assertEqual(compute_watermark(64000, "deepseek-chat"), 100.0)
+        # 256000 / 256000 * 100 = 100.0
+        self.assertEqual(compute_watermark(256000, "deepseek-chat"), 100.0)
         # 0 tokens → 0.0
         self.assertEqual(compute_watermark(0, "gpt-4o"), 0.0)
 

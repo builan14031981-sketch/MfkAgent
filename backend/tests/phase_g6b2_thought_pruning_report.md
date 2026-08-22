@@ -1,6 +1,6 @@
 # MfkAgent Historical Thought Pruning 测试报告（Phase G6-B 第二阶段）
 
-- 时间: 2026-08-07 19:01:59
+- 时间: 2026-08-18 14:32:20
 
 ## 结果总览
 
@@ -13,8 +13,8 @@
 | 5 | T5  tool_calls 保留 | ✅ PASS | 0ms |
 | 6 | T6  tool_result 保留 | ✅ PASS | 0ms |
 | 7 | T7  原始 message 对象不变 | ✅ PASS | 0ms |
-| 8 | T8  已有 Runtime 测试回归 | ✅ PASS | 14871ms |
-| 9 | T9  ContextBuilder 集成（DB→payload） | ✅ PASS | 43ms |
+| 8 | T8  已有 Runtime 测试回归 | ✅ PASS | 10782ms |
+| 9 | T9  ContextBuilder 集成（DB→payload） | ✅ PASS | 72ms |
 | 10 | T10 ModelMessage 类型保持 + 裁剪 | ✅ PASS | 0ms |
 | 11 | T11 ORM tool_calls 保留 | ✅ PASS | 0ms |
 | 12 | T12 多个 <thinking> 块裁剪 | ✅ PASS | 0ms |

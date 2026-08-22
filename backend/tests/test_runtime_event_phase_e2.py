@@ -23,7 +23,7 @@ import tempfile
 import time
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -246,6 +246,7 @@ def test_stream_tool_events(project_dir: Path) -> dict:
     install_fake_llm([
         tool_call_round("run_command", '{"command": "ipconfig"}'),
         text_round("命令已执行。"),
+        text_round("自查完成，任务结束。"),
     ])
     events = stream_send(cid, "执行命令")
     starts = [e for e in events if e["type"] == "tool_start"]
@@ -404,6 +405,7 @@ def test_sequence_continuity(project_dir: Path) -> dict:
         tool_call_round("run_command", '{"command": "hostname"}'),
         tool_call_round("run_command", '{"command": "hostname"}'),
         text_round("多轮执行完成。"),
+        text_round("自查完成，任务结束。"),
     ])
     events = stream_send(cid, "连续执行")
     assert len([e for e in events if e["type"] == "tool_result"]) == 2, "应有两轮工具结果"

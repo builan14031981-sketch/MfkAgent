@@ -16,7 +16,8 @@
 
 import json
 import logging
-from typing import Any, Dict, List
+from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional
 
 from app.core.database import AsyncSessionLocal
 from app.models.agent import MemoryItem
@@ -38,16 +39,18 @@ VALID_MEMORY_TYPES = (
     "user_preference", "interaction_pattern", "relationship_note", "current_context",
 )
 
-# 提取用轻量模型（优先 flash 低成本模型；配额耗尽时回退 flash 备选）
-# 原则：不用 DeepSeek / 高级模型（GLM-5.2 / LongCat 等），能 flash 就 flash
-EXTRACTOR_MODEL = "qwen-mt-flash"
-# 回退模型链：依次尝试直到成功（全部是 flash / 低成本，绝不浪费高级模型配额）
-# 注意：必须使用实际可用且支持当前 user-role-only 消息格式的模型，
-# 被禁用的 provider（siliconflow 等）其模型会因 ModelConfigError 被跳过。
-EXTRACTOR_FALLBACK_MODELS = ("qwen3.6-flash-2026-04-16", "glm-5.1")
+# 记忆提取模型：直接使用用户在前端配置的默认主模型，不硬编码任何特定模型名。
+# 原则：后端不假设用户启用了哪些模型，所有模型选择基于用户实际配置。
+# 主模型不可用时跳过本次提取，不尝试调用用户未配置的模型。
 
 # 触发提取的最小用户输入长度（低于则视为寒暄，直接跳过）
 MIN_USER_INPUT_LEN = 5
+
+# 记忆置信度最低阈值：低于此值的提取结果不保存（过滤低质量/不确定的记忆）
+MIN_CONFIDENCE = 0.5
+
+# 去重相似度阈值：新记忆与已有记忆相似度超过此值则视为重复，跳过或更新
+DEDUP_SIMILARITY_THRESHOLD = 0.85
 
 
 class MemoryExtractor:
@@ -57,9 +60,7 @@ class MemoryExtractor:
     """
 
     def _pick_model(self) -> str:
-        """选择最快速、低成本的模型；不可用时回退到默认模型。"""
-        if EXTRACTOR_MODEL in model_service.models:
-            return EXTRACTOR_MODEL
+        """直接使用用户在前端配置的默认主模型，不硬编码任何特定模型。"""
         from app.core.agent_runtime.context_builder import get_default_model
         return get_default_model()
 
@@ -221,32 +222,9 @@ class MemoryExtractor:
                 max_tokens=2048,
             )
         except Exception:  # noqa: BLE001
-            # 主力提取模型不可用（如配额耗尽）时，依次回退备用模型
-            logger.warning("[memory_extractor] 提取模型 %s 调用失败，尝试回退模型", model_id, exc_info=True)
-            fallback_chain = list(EXTRACTOR_FALLBACK_MODELS)
-            from app.core.agent_runtime.context_builder import get_default_model
-            default_id = get_default_model()
-            if default_id and default_id not in fallback_chain:
-                fallback_chain.append(default_id)
-
-            result = None
-            for fb_id in fallback_chain:
-                if fb_id == model_id or fb_id not in model_service.models:
-                    continue
-                try:
-                    result = await model_service.call_once(
-                        model_id=fb_id,
-                        messages=messages,
-                        temperature=0.2,
-                        max_tokens=2048,
-                    )
-                    break
-                except Exception:  # noqa: BLE001
-                    logger.warning("[memory_extractor] 回退模型 %s 也失败", fb_id, exc_info=True)
-                    continue
-            if result is None:
-                logger.warning("[memory_extractor] 全部备选模型均不可用，跳过本次提取")
-                return []
+            # 主模型不可用时跳过本次提取，不尝试调用用户未配置的模型
+            logger.warning("[memory_extractor] 提取模型 %s 调用失败，跳过本次提取", model_id, exc_info=True)
+            return []
 
         raw = (result.content or "").strip()
         if not raw:
@@ -258,6 +236,15 @@ class MemoryExtractor:
             if norm:
                 actions.append(norm)
         return actions
+
+
+# 写作类 Agent 黑名单：这类 Agent 专注文本创作，不需要长期记忆提取，
+# 且无项目绑定时会误存 global 记忆污染其他 Agent。命中则直接跳过提取。
+MEMORY_EXTRACTION_AGENT_BLOCKLIST = frozenset({
+    "writer_jiangnan",   # 听澜
+    "writer",             # 笔神
+    "writer_narrative",   # 作家
+})
 
 
 async def run_memory_extraction(
@@ -277,6 +264,10 @@ async def run_memory_extraction(
 
     任何异常都被捕获并记录日志，绝不影响用户聊天响应。
     """
+    # 写作类 Agent 跳过记忆提取：避免无项目绑定时误存 global 记忆污染其他 Agent
+    if agent_id and agent_id in MEMORY_EXTRACTION_AGENT_BLOCKLIST:
+        return []
+
     try:
         extractor = MemoryExtractor()
 
@@ -304,19 +295,41 @@ async def run_memory_extraction(
 
             actions = await extractor.extract(user_message, ai_content, existing)
 
+            saved_count = 0
             for action in actions:
+                # P1: confidence 阈值过滤
+                if action.get("confidence", 0) < MIN_CONFIDENCE:
+                    logger.info("[memory_extractor] 跳过低置信度记忆 (%.2f < %.2f): %s",
+                                action.get("confidence", 0), MIN_CONFIDENCE, action.get("content", "")[:50])
+                    continue
+
+                content = action["content"]
+
                 if action["action"] == "add":
+                    # P1: 文本相似度硬去重（不依赖 LLM 判断）
+                    is_duplicate = False
+                    for mem in existing:
+                        ratio = SequenceMatcher(None, content, mem.get("content", "")).ratio()
+                        if ratio > DEDUP_SIMILARITY_THRESHOLD:
+                            is_duplicate = True
+                            logger.info("[memory_extractor] 跳过重复记忆 (相似度%.2f): %s",
+                                        ratio, content[:50])
+                            break
+                    if is_duplicate:
+                        continue
+
                     session.add(
                         MemoryItem(
                             scope=scope,
                             agent_id=agent_id if scope == "agent" else None,
                             project_id=project_id if scope == "project" else None,
-                            content=action["content"],
+                            content=content,
                             memory_type=action["memory_type"],
                             confidence=action["confidence"],
                             source_chat_id=chat_id,
                         )
                     )
+                    saved_count += 1
                 elif action["action"] == "update":
                     target = (
                         session.query(MemoryItem)
@@ -327,12 +340,14 @@ async def run_memory_extraction(
                         .first()
                     )
                     if target:
-                        target.content = action["content"]
+                        target.content = content
                         target.memory_type = action["memory_type"]
                         target.confidence = action["confidence"]
                         target.source_chat_id = chat_id
+                        saved_count += 1
 
             session.commit()
+            logger.info("[memory_extractor] 本次提取保存 %d 条记忆（共 %d 个动作）", saved_count, len(actions))
             return actions
     except Exception:  # noqa: BLE001
         logger.exception("[memory_extractor] 后台记忆提取失败（已忽略）")

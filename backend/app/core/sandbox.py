@@ -25,6 +25,15 @@ from typing import Dict, List, Optional, Tuple, Union
 # Phase 9 P1: 长路径与 Junction 过滤
 from app.core.path_utils import safe_resolve as _safe_resolve, ensure_long_path, IS_WINDOWS
 
+# Windows Node.js 常见安装目录（run_subprocess 里用于补齐 PATH，让 Agent 能执行 npm/tsc）。
+# 仅追加已存在且 PATH 未包含的目录；纯本机路径，随环境可增补。
+_NODEJS_BIN_DIRS: List[str] = [
+    r"E:\Program Files\nodejs",
+    r"C:\Program Files\nodejs",
+    os.path.expandvars(r"%ProgramFiles%\nodejs"),
+    os.path.expandvars(r"%LOCALAPPDATA%\Programs\nodejs"),
+]
+
 
 class SandboxViolation(PermissionError):
     """路径越权异常：既是 PermissionError（明确的越权语义），也便于上层精确捕获。"""
@@ -202,30 +211,65 @@ def detect_high_risk_disk_op(command: str) -> Optional[str]:
 
 
 
-def resolve_sandbox_path(target_path: str, project_root: str) -> Path:
+def resolve_sandbox_path(
+    target_path: str,
+    project_root: Optional[str] = None,
+    allow_outside: bool = False,
+) -> Path:
     """解析并校验路径，防止 Path Traversal 路径穿越。
 
     Phase 9: 使用 safe_resolve() 替代 Path.resolve()，避免穿透 Windows Junction
     导致路径解析到项目目录之外。
 
+    - 支持 ~ 路径展开与 %USERPROFILE% 等环境变量自动展开
+    - 只读模式 (allow_outside=True)：
+      - 允许访问项目之外的绝对路径（如用户主目录配置 %USERPROFILE%/.config/opencode/opencode.json）
+      - 只要不命中系统级危险保护目录（is_forbidden_cwd 目录）即允许只读
+    - 写入模式 (allow_outside=False)：
+      - 严格要求在 project_root 沙箱边界内，严禁越界修改
+
     Args:
-        target_path: 目标路径（支持相对路径或绝对路径，如 src/app.py / C:\\proj\\x）
-        project_root: 项目根目录绝对路径（沙箱边界）。相对路径会被转为绝对路径。
+        target_path: 目标路径（支持相对路径或绝对路径，如 src/app.py / C:\\proj\\x / ~/.config/x）
+        project_root: 项目根目录绝对路径（沙箱边界，可选）。
+        allow_outside: 是否允许跨目录只读访问（只读工具传 True，写工具传 False）。
 
     Returns:
         Path: 规范化后的真实路径
 
     Raises:
-        SandboxViolation(PermissionError): 真实路径越出 project_root 之外
+        SandboxViolation(PermissionError): 真实路径越权
     """
-    # project_root 统一归一为绝对路径（兼容相对路径调用方，如测试中的 "."）
+    # 自动展开 ~ 用户主目录与 Windows/Linux 环境变量（如 %USERPROFILE%）
+    expanded = os.path.expanduser(os.path.expandvars(target_path.strip()))
+
+    if not project_root:
+        if Path(expanded).is_absolute():
+            target = _safe_resolve(expanded)
+        else:
+            target = _safe_resolve(Path.cwd() / expanded)
+        forbidden, reason = is_forbidden_cwd(str(target))
+        if forbidden:
+            raise SandboxViolation(f"【安全拦截】禁止访问系统受保护目录: {target_path} ({reason})")
+        return target
+
+    # project_root 统一归一为绝对路径
     root = _safe_resolve(os.path.abspath(project_root))
-    if Path(target_path).is_absolute():
-        target = _safe_resolve(target_path)
+    is_abs = Path(expanded).is_absolute()
+    if is_abs:
+        target = _safe_resolve(expanded)
     else:
-        target = _safe_resolve(root / target_path)
+        target = _safe_resolve(root / expanded)
+
+    # 如果允许外部只读（如读取系统配置、全局配置）且传入的是绝对路径：
+    if allow_outside and is_abs:
+        forbidden, reason = is_forbidden_cwd(str(target))
+        if forbidden:
+            raise SandboxViolation(f"【安全拦截】禁止访问系统受保护目录: {target_path} ({reason})")
+        return target
 
     if not (target == root or target.is_relative_to(root)):
+        if allow_outside and is_abs:
+            return target
         raise SandboxViolation(
             f"【安全拦截】路径越权，禁止访问项目目录之外: {target_path}"
         )
@@ -263,6 +307,27 @@ def run_subprocess(
     run_env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     if env:
         run_env.update(env)
+    # Windows：补齐 Node.js 可执行目录到 PATH（后端进程若由 start.bat/cmd 启动，
+    # 可能缺少用户级 nodejs 目录，导致 Agent 执行 npm/tsc 时报"找不到命令"）。
+    # 仅追加存在且 PATH 中未包含的目录；npm.cmd 依赖 PATHEXT 解析（.ps1 无法被 subprocess 调用）。
+    if os.name == "nt":
+        _paths = run_env.get("PATH", "").split(os.pathsep)
+        _has = {p.strip().lower().rstrip("\\") for p in _paths if p.strip()}
+        for _node_dir in _NODEJS_BIN_DIRS:
+            if os.path.isdir(_node_dir):
+                _key = _node_dir.strip().lower().rstrip("\\")
+                if _key not in _has:
+                    _paths.append(_node_dir)
+                    _has.add(_key)
+        run_env["PATH"] = os.pathsep.join(_paths)
+
+    # Windows: subprocess(shell=False) 不会自动按 PATHEXT 解析 .cmd/.bat（如 npm->npm.cmd）。
+    # 用 shutil.which（按 run_env PATH + PATHEXT）把无扩展名命令解析为真实可执行文件路径。
+    if os.name == "nt" and argv and not os.path.splitext(argv[0])[1]:
+        _resolved = shutil.which(argv[0], path=run_env.get("PATH", ""))
+        if _resolved:
+            argv = [_resolved] + list(argv[1:])
+
     return subprocess.run(
         argv,
         cwd=cwd,

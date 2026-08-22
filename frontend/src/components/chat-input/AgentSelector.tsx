@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Users } from "lucide-react";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
+import { RoundtableCreator } from "@/components/RoundtableCreator";
 import {
   ghostPillStyle,
   chevronStyle,
@@ -33,6 +34,7 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose, h
   const { t } = useTranslation();
   const { agents, loading: agentsLoading } = useAgents();
   const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0 });
+  const [showRoundtable, setShowRoundtable] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
 
@@ -94,9 +96,9 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose, h
         }} />
       </button>
       {open && createPortal(
-        <div ref={popRef} id="agent-dropdown-portal" className="no-scrollbar" style={portalDropdownStyle({ ...dropdownPos, maxHeight: 220 })}>
+        <div ref={popRef} id="agent-dropdown-portal" className="no-scrollbar" style={portalDropdownStyle({ ...dropdownPos, width: 260, maxHeight: 280 })}>
           {agents
-            .filter((agent) => agent.status === "active")
+            .filter((agent) => agent.status === "active" && !agent.id.startsWith("sub_"))
             .map((agent) => {
               const active = agent.id === selectedId;
               return (
@@ -143,6 +145,10 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose, h
                       fontSize: "10px",
                       lineHeight: 1.25,
                       color: "var(--text-level-4)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "210px",
                     }}>{agent.description}</div>
                     )}
                   </div>
@@ -157,8 +163,50 @@ export function AgentSelector({ open, onToggle, selectedId, onSelect, onClose, h
                 </button>
               );
             })}
+          {/* 圆桌讨论入口 */}
+          <div style={{ borderTop: "1px solid var(--border-color)", marginTop: "4px", paddingTop: "4px" }}>
+            <button
+              onClick={() => {
+                onClose();
+                setShowRoundtable(true);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                width: "100%",
+                padding: "6px 10px",
+                border: "none",
+                borderRadius: "var(--radius-sm)",
+                background: "transparent",
+                cursor: "pointer",
+                textAlign: "left",
+                fontSize: "12px",
+                fontWeight: 500,
+                lineHeight: 1.25,
+                color: "var(--accent-color)",
+                outline: "none",
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "color-mix(in srgb, var(--accent-color) 10%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Users size={13} style={{ flexShrink: 0 }} />
+              <span>圆桌讨论（多 Agent）</span>
+            </button>
+          </div>
         </div>,
         document.body
+      )}
+      {showRoundtable && (
+        <RoundtableCreator
+          onClose={() => setShowRoundtable(false)}
+          initialAgentId={selectedId ?? undefined}
+        />
       )}
     </div>
   );

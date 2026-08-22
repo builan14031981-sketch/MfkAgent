@@ -78,6 +78,9 @@ class AgentContext:
     # 完成验证失败后最大重试次数（默认 3，超限安全收尾）
     max_completion_retry: Optional[int] = None
 
+    # ──── Phase H: checkpoint 血缘（重跑/断点续跑时记录的父 run id，仅追溯不影响行为）────
+    parent_run_id: Optional[int] = None
+
     @property
     def identity(self) -> str:
         """结构化别名：identity == agent_identity（来自 Agent.identity）。"""

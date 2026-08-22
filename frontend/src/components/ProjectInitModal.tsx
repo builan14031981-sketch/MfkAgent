@@ -56,10 +56,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
     const def = settings?.default_reasoning_effort;
     return def === "high" || def === "max" ? def : "none";
   });
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => {
-    const def = settings?.agent_permission_mode;
-    return def === "safe" || def === "standard" || def === "autonomous" ? def : "standard";
-  });
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("standard");
   const [mode, setMode] = useState<"build" | "plan">("build");
   const [files, setFiles] = useState<string[]>([]);
   // 2026-08-11：Agent 选择器上提到标题行（会话创建后不可更改，与工具栏可改参数语义分离）
@@ -125,7 +122,8 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
         projectId,
         (selectedModel || (settings?.default_model ? visibleModels.find(m => m.id === settings.default_model) || null : null) || visibleModels[0] || null)?.id || null,
         files,
-        mode
+        mode,
+        permissionMode
       );
       // 1. 立即先关闭弹窗并跳转路由（给用户最快的 UI 响应）
       onClose();
@@ -141,7 +139,7 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
       setInput(userMessage);
       setIsSending(false);
     }
-  }, [input, isSending, agentId, settings, activeAgents, selectedModel, visibleModels, projectId, files, mode, createChat, onCreated, onClose, router]);
+  }, [input, isSending, agentId, settings, activeAgents, selectedModel, visibleModels, projectId, files, mode, permissionMode, createChat, onCreated, onClose, router]);
 
   /**
    * 跳过：创建关联当前 project 的空会话（无 ?message 参数，不触发自动发送），

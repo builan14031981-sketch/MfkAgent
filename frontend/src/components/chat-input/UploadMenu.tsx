@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { Plus, FileUp, FolderPlus, Trash2, Folder, ChevronRight } from "lucide-react";
+import { Plus, FileUp, Trash2, Clipboard, Sparkles, Check, X, Search, Camera } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { Project } from "@/hooks/useProjects";
+import type { SkillInfo } from "@/hooks/useSkills";
 import {
   popoverStyle,
   popoverItemStyle,
@@ -19,23 +19,45 @@ interface UploadMenuProps {
   open: boolean;
   onToggle: () => void;
   onPickFile: () => void;
-  onPickDirectory: () => void;
   onClearContext: () => void;
   hasContext: boolean;
   onClose: () => void;
-  /** 已注册项目列表：传入后「关联项目」展开为二级选择面板 */
-  projects?: Project[];
-  /** 从已有项目列表中选择一个 */
-  onSelectExistingProject?: (projectId: number) => void;
+
+  /** 已启用的 Skill 列表：供「添加 Skill」会话级注入 */
+  skills?: SkillInfo[];
+  /** 会话级启用某个 Skill（把其 prompt 作为文档喂给当前会话） */
+  onApplySkill?: (skill: SkillInfo) => void;
+  /** 当前会话已启用的 Skill id 集合 */
+  activeSkillIds?: Set<string>;
+  /** 移除某个会话级 Skill */
+  onRemoveSkill?: (skillId: string) => void;
+  /** 粘贴剪贴板（文本/图片）到输入框 */
+  onPasteClipboard?: () => void;
+  /** 启动截图工具（Electron 自定义区域截图），截图完成后通过 onUploadFile 上传 */
+  onScreenshot?: () => void;
 }
 
-/** + 极简菜单按钮：上传文件 / 关联项目 / 清空上下文 */
-export function UploadMenu({ open, onToggle, onPickFile, onPickDirectory, onClearContext, hasContext, onClose, projects, onSelectExistingProject }: UploadMenuProps) {
+/** + 极简菜单按钮：上传文件 / 添加 Skill / 粘贴剪贴板 / 清空上下文 */
+export function UploadMenu({
+  open,
+  onToggle,
+  onPickFile,
+  onClearContext,
+  hasContext,
+  onClose,
+  skills,
+  onApplySkill,
+  activeSkillIds,
+  onRemoveSkill,
+  onPasteClipboard,
+  onScreenshot,
+}: UploadMenuProps) {
   const { t } = useTranslation();
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
-  const [projectSubOpen, setProjectSubOpen] = useState(false);
-  const subRef = useRef<HTMLDivElement>(null);
+  const [skillSubOpen, setSkillSubOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [skillQuery, setSkillQuery] = useState("");
 
   // 点击外部关闭
   useEffect(() => {
@@ -50,8 +72,27 @@ export function UploadMenu({ open, onToggle, onPickFile, onPickDirectory, onClea
     return () => document.removeEventListener("mousedown", handler);
   }, [open, onClose]);
 
-  // 有关联项目列表时，「关联项目」变为二级入口
-  const hasProjectList = Array.isArray(projects) && projects.length > 0;
+  // 关闭菜单时重置确认/二级面板状态
+  useEffect(() => {
+    if (!open) {
+      setConfirming(false);
+      setSkillSubOpen(false);
+      setSkillQuery("");
+    }
+  }, [open]);
+
+  // 已安装（enabled）的 Skill 列表，供会话级注入使用
+  const installedSkills = (skills ?? []).filter((s) => s.installed);
+
+  // 本地模糊搜索：基于 name / description / category / tags，大小写不敏感（转小写 substring 命中即算）
+  const skillLower = skillQuery.trim().toLowerCase();
+  const filteredSkills = skillLower
+    ? installedSkills.filter((s) =>
+        [s.name, s.description, s.category, ...(s.tags ?? [])].some((v) =>
+          String(v).toLowerCase().includes(skillLower)
+        )
+      )
+    : installedSkills;
 
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
@@ -107,131 +148,233 @@ export function UploadMenu({ open, onToggle, onPickFile, onPickDirectory, onClea
             <span>{t("chat.menu.uploadFile")}</span>
           </button>
 
-          {/* 关联项目：有列表时展开为二级面板，否则直接选目录 */}
-          {hasProjectList ? (
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setProjectSubOpen((v) => !v)}
-                style={{
-                  ...popoverItemStyle,
-                  justifyContent: "space-between",
-                  background: projectSubOpen ? "var(--bg-level-3)" : "transparent",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
-                onMouseLeave={(e) => { if (!projectSubOpen) e.currentTarget.style.background = "transparent"; }}
-              >
-                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <FolderPlus style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
-                  <span>{t("chat.menu.linkProject")}</span>
-                </span>
-                <ChevronRight style={{
-                  width: "12px",
-                  height: "12px",
-                  color: "var(--text-level-4)",
-                  transform: projectSubOpen ? "rotate(90deg)" : "rotate(0deg)",
-                  transition: "transform 0.15s ease",
-                }} />
-              </button>
-
-              {/* 二级项目选择面板 */}
-              {projectSubOpen && (
-                <div
-                  ref={subRef}
-                  style={{
-                    position: "absolute",
-                    left: "100%",
-                    top: "-4px",
-                    marginLeft: "4px",
-                    minWidth: "180px",
-                    maxHeight: "240px",
-                    overflowY: "auto",
-                    background: "var(--bg-level-1)",
-                    border: "1px solid var(--border-primary)",
-                    borderRadius: "var(--radius-md)",
-                    boxShadow: "var(--shadow-lg)",
-                    padding: "4px",
-                    zIndex: 1000,
-                  }}
-                >
-                  {/* 已有项目列表 */}
-                  {projects!.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        onClose();
-                        onSelectExistingProject?.(p.id);
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        width: "100%",
-                        padding: "6px 10px",
-                        border: "none",
-                        borderRadius: "var(--radius-sm)",
-                        background: "transparent",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                        color: "var(--text-level-2)",
-                        textAlign: "left",
-                        outline: "none",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                      title={p.path}
-                    >
-                      <Folder style={{ width: "13px", height: "13px", color: "var(--color-primary)", flexShrink: 0 }} />
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
-                    </button>
-                  ))}
-                  {/* 分割线 + 选择新目录 */}
-                  <div style={{ height: "1px", background: "var(--border-secondary)", margin: "4px 0" }} />
-                  <button
-                    onClick={() => { onClose(); onPickDirectory(); }}
-                    style={{
-                      ...popoverItemStyle,
-                      fontSize: "12px",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                  >
-                    <FolderPlus style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
-                    <span style={{ color: "var(--text-level-3)" }}>{t("chat.menu.selectNewDirectory")}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
+          {/* 截图：Electron 自定义区域截图（类似 QQ/豆包） */}
+          {onScreenshot && (
             <button
-              onClick={() => { onClose(); onPickDirectory(); }}
+              onClick={() => { onClose(); onScreenshot(); }}
               style={popoverItemStyle}
               onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
-              <FolderPlus style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
-              <span>{t("chat.menu.linkProject")}</span>
+              <Camera style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
+              <span>截图</span>
             </button>
           )}
+
+          {/* 粘贴剪贴板 */}
+          <button
+            onClick={() => { onClose(); onPasteClipboard?.(); }}
+            style={popoverItemStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <Clipboard style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
+            <span>{t("chat.menu.pasteClipboard")}</span>
+          </button>
+
+          {/* 添加 Skill：二级面板列出已安装 Skill，点选即会话级注入 */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setSkillSubOpen((v) => !v)}
+              style={{
+                ...popoverItemStyle,
+                justifyContent: "space-between",
+                background: skillSubOpen ? "var(--bg-level-3)" : "transparent",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
+              onMouseLeave={(e) => { if (!skillSubOpen) e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Sparkles style={{ width: "15px", height: "15px", color: "var(--color-primary)", flexShrink: 0 }} />
+                <span>{t("chat.menu.addSkill")}</span>
+              </span>
+              <span style={{ color: "var(--text-level-4)", fontSize: "11px" }}>
+                {(activeSkillIds?.size ?? 0) > 0 ? activeSkillIds!.size : ""}
+              </span>
+            </button>
+
+            {skillSubOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: "100%",
+                  top: "-4px",
+                  marginLeft: "4px",
+                  minWidth: "200px",
+                  maxHeight: "260px",
+                  overflowY: "auto",
+                  background: "var(--bg-level-1)",
+                  border: "1px solid var(--border-primary)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-lg)",
+                  padding: "4px",
+                  zIndex: 1000,
+                }}
+              >
+                {installedSkills.length === 0 ? (
+                  <div style={{ padding: "8px 10px", fontSize: "11px", color: "var(--text-level-4)", lineHeight: "1.5" }}>
+                    {t("chat.menu.noInstalledSkills")}
+                  </div>
+                ) : (
+                  <>
+                    {/* 搜索框：按 name/description/category/tags 本地模糊过滤 */}
+                    <div style={{ position: "relative", marginBottom: "4px" }}>
+                      <Search style={{
+                        position: "absolute",
+                        left: "8px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        width: "13px",
+                        height: "13px",
+                        color: "var(--text-level-4)",
+                        pointerEvents: "none",
+                      }} />
+                      <input
+                        value={skillQuery}
+                        onChange={(e) => setSkillQuery(e.target.value)}
+                        placeholder={t("chat.menu.skillSearch")}
+                        style={{
+                          width: "100%",
+                          padding: "5px 8px 5px 26px",
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid var(--border-primary)",
+                          background: "var(--bg-level-2)",
+                          color: "var(--text-level-1)",
+                          fontSize: "12px",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                    <div style={{ padding: "2px 10px 6px", fontSize: "11px", color: "var(--text-level-4)" }}>
+                      {t("chat.menu.installedSkills")}
+                    </div>
+                    {filteredSkills.length === 0 ? (
+                      <div style={{ padding: "8px 10px", fontSize: "11px", color: "var(--text-level-4)", lineHeight: "1.5" }}>
+                        {t("chat.menu.skillSearchEmpty")}
+                      </div>
+                    ) : (
+                      filteredSkills.map((skill) => {
+                        const active = activeSkillIds?.has(skill.id) ?? false;
+                        return (
+                          <button
+                            key={skill.id}
+                            onClick={() => {
+                              onClose();
+                              if (active) onRemoveSkill?.(skill.id);
+                              else onApplySkill?.(skill);
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              width: "100%",
+                              padding: "6px 10px",
+                              border: "none",
+                              borderRadius: "var(--radius-sm)",
+                              background: "transparent",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              color: "var(--text-level-2)",
+                              textAlign: "left",
+                              outline: "none",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = itemHoverBackground; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                            title={skill.description}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ display: "block", fontSize: "12px", color: "var(--text-level-1)" }}>{skill.name}</span>
+                              <span style={{
+                                display: "block",
+                                fontSize: "10px",
+                                color: "var(--text-level-4)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}>{skill.description}</span>
+                            </div>
+                            {active && <Check style={{ width: "13px", height: "13px", color: "var(--color-primary)", flexShrink: 0 }} />}
+                          </button>
+                        );
+                      })
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
 
           <div style={{
             height: "1px",
             background: "var(--border-secondary)",
             margin: "4px 0",
           }} />
-          <button
-            onClick={() => { onClose(); onClearContext(); }}
-            disabled={!hasContext}
-            style={{
-              ...popoverItemStyle,
-              color: hasContext ? "var(--color-error)" : "var(--text-level-4)",
-              cursor: hasContext ? "pointer" : "not-allowed",
-            }}
-            onMouseEnter={(e) => { if (hasContext) e.currentTarget.style.background = itemHoverBackground; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-          >
-            <Trash2 style={{ width: "15px", height: "15px", color: hasContext ? "var(--color-error)" : "var(--text-level-4)", flexShrink: 0 }} />
-            <span>{t("chat.menu.clearContext")}</span>
-          </button>
+
+          {/* 清除上下文：真实清空对话历史，需二次确认 */}
+          {confirming ? (
+            <div style={{ padding: "8px 10px" }}>
+              <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-level-1)", marginBottom: "2px" }}>
+                {t("chat.menu.confirmClearTitle")}
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginBottom: "8px", lineHeight: "1.5" }}>
+                {t("chat.menu.confirmClearDesc")}
+              </div>
+              <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setConfirming(false)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "4px 10px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--border-primary)",
+                    background: "transparent",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    color: "var(--text-level-2)",
+                  }}
+                >
+                  <X style={{ width: "12px", height: "12px" }} />
+                  {t("chat.menu.cancel")}
+                </button>
+                <button
+                  onClick={() => { setConfirming(false); onClose(); onClearContext(); }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "4px 10px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--color-error)",
+                    background: "var(--color-error)",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    color: "#fff",
+                  }}
+                >
+                  <Trash2 style={{ width: "12px", height: "12px" }} />
+                  {t("chat.menu.confirm")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => { if (hasContext) setConfirming(true); }}
+              disabled={!hasContext}
+              style={{
+                ...popoverItemStyle,
+                color: hasContext ? "var(--color-error)" : "var(--text-level-4)",
+                cursor: hasContext ? "pointer" : "not-allowed",
+              }}
+              onMouseEnter={(e) => { if (hasContext) e.currentTarget.style.background = itemHoverBackground; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <Trash2 style={{ width: "15px", height: "15px", color: hasContext ? "var(--color-error)" : "var(--text-level-4)", flexShrink: 0 }} />
+              <span>{t("chat.menu.clearContext")}</span>
+            </button>
+          )}
         </div>
       )}
     </div>

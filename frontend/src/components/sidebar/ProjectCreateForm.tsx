@@ -119,13 +119,12 @@ export function ProjectCreateForm({
               <span
                 title="打开文件工作区"
                 onClick={(e) => { e.stopPropagation(); onOpenProjectWorkspace(project.id); }}
+                className="sb-project-action"
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: "22px", height: "22px", borderRadius: "var(--radius-sm)",
-                  color: "var(--text-level-3)", cursor: "pointer",
+                  color: "var(--text-level-3)",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--text-level-1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
               >
                 <FolderOpen style={{ width: "13px", height: "13px" }} />
               </span>
@@ -151,13 +150,12 @@ export function ProjectCreateForm({
                       setConfirmRemoveId((c) => (c === project.id ? null : c));
                     }, 2000);
                   }}
+                  className="sb-project-action"
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center",
                     width: "22px", height: "22px", borderRadius: "var(--radius-sm)",
-                    color: "var(--text-level-3)", cursor: "pointer",
+                    color: "var(--text-level-3)",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-error)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
                 >
                   <Trash2 style={{ width: "13px", height: "13px" }} />
                 </span>
@@ -185,20 +183,7 @@ export function ProjectCreateForm({
         }}>{t("sidebar.newProject")}</p>
         <button
           onClick={onPickDirectory}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            padding: "3px 8px",
-            borderRadius: "var(--radius-full)",
-            border: "1px solid var(--border-primary)",
-            background: "transparent",
-            cursor: "pointer",
-            fontSize: "11px",
-            color: "var(--text-level-3)",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.color = "var(--color-primary)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.color = "var(--text-level-3)"; }}
+          className="sb-btn--outline"
         >
           <FolderSearch style={{ width: "12px", height: "12px" }} />
           <span>{t("sidebar.pickDirectory")}</span>

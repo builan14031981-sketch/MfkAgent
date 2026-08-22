@@ -40,14 +40,28 @@ class RuntimeEventRecorder:
 
     # ──── AgentRun 生命周期 ────
 
-    def create_run(self, chat_id: Optional[int], agent_id: str) -> Optional[int]:
+    def create_run(
+        self,
+        chat_id: Optional[int],
+        agent_id: str,
+        parent_run_id: Optional[int] = None,
+    ) -> Optional[int]:
         """创建运行记录（status=running, state=pending），返回 run_id。
+
+        Phase H: parent_run_id 记录 checkpoint 血缘（本次执行从哪个 run 继续），
+        不改变状态机任何行为，仅追溯。
 
         失败返回 None（不阻断执行），日志记录原因。
         """
         db = SessionLocal()
         try:
-            run = AgentRun(chat_id=chat_id, agent_id=agent_id, status="running", state=INITIAL_PHASE)
+            run = AgentRun(
+                chat_id=chat_id,
+                agent_id=agent_id,
+                status="running",
+                state=INITIAL_PHASE,
+                parent_run_id=parent_run_id,
+            )
             db.add(run)
             db.commit()
             db.refresh(run)
@@ -95,6 +109,48 @@ class RuntimeEventRecorder:
         except Exception as e:  # noqa: BLE001
             logger.warning("[runtime-events] get_state 失败: %s", e)
             return None
+        finally:
+            db.close()
+
+    def recover_stale_runs(self) -> int:
+        """回收陈旧运行：进程启动时把遗留的 status=running run 置为 failed。
+
+        原因（证据化收尾）：模型调用挂死 / 进程崩溃重启后，run 会永远停在 running
+        （如 1281 卡死、1229/1234 僵尸），既不反映真实状态也无任何失败证据。
+        启动瞬间不可能存在合法 running run（执行链在进程内），因此直接全部回收。
+
+        每个被回收的 run 补写一条 error 事件作为失败证据（sequence 续接，避免冲突）。
+        """
+        db = SessionLocal()
+        try:
+            now = datetime.utcnow()
+            stale = db.query(AgentRun).filter(AgentRun.status == "running").all()
+            count = 0
+            for run in stale:
+                last = (
+                    db.query(RuntimeEvent)
+                    .filter(RuntimeEvent.run_id == run.id)
+                    .order_by(RuntimeEvent.sequence.desc())
+                    .first()
+                )
+                seq = (last.sequence + 1) if last else 1
+                run.status = "failed"
+                run.state = "failed"
+                run.finished_at = now
+                db.add(RuntimeEvent(
+                    run_id=run.id,
+                    event_type="error",
+                    payload={"message": "进程重启，运行被中断（stale run recovery）"},
+                    sequence=seq,
+                ))
+                count += 1
+            db.commit()
+            if count:
+                logger.warning("[runtime-events] 回收陈旧 running run %d 个", count)
+            return count
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[runtime-events] 回收陈旧 run 失败: %s", e)
+            return 0
         finally:
             db.close()
 

@@ -25,7 +25,7 @@ import time
 import sqlite3
 
 # 配置
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 API_PREFIX = "/api"
 DB_PATH = "mfkagent.db"  # 相对于 backend/ 目录
 

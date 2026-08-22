@@ -1,22 +1,27 @@
 "use client";
 
-import { TerminalSquare, Package, X, Maximize2, Minimize2 } from "lucide-react";
+import { TerminalSquare, Package, Globe, X, Maximize2, Minimize2 } from "lucide-react";
 import { useDockStore, DOCK_TAB_ORDER, type DockTabId } from "@/lib/dockStore";
 import { useTranslation } from "@/hooks/useTranslation";
 import { TerminalPanel } from "./TerminalPanel";
 import { ArtifactsPanel } from "./ArtifactsPanel";
+import { BrowserPanel } from "./BrowserPanel";
 
 interface DockPanelProps {
   cwd?: string | null;
+  /** 当前会话 id（供浏览器标签按 chat 隔离会话） */
+  chatId?: number | null;
+  /** 当前绑定的项目路径（供浏览器面板判断默认页） */
+  projectPath?: string | null;
 }
 
 /**
  * 右侧面板（浏览器式标签页）。
- * - 单一面板，顶部标签栏：终端 / 产出物，选中哪个就显示哪个内容（互斥不并排）
+ * - 单一面板，顶部标签栏：终端 / 产出物 / 浏览器，选中哪个就显示哪个内容（互斥不并排）
  * - 每个标签自带 X：关闭该标签；全部关闭则整个面板收起
  * - 非激活标签保持挂载（终端后台运行），仅激活标签执行尺寸同步
  */
-export function DockPanel({ cwd }: DockPanelProps) {
+export function DockPanel({ cwd, chatId, projectPath }: DockPanelProps) {
   const { t } = useTranslation();
   const isOpen = useDockStore((s) => s.isOpen);
   const isFullscreen = useDockStore((s) => s.isFullscreen);
@@ -31,10 +36,13 @@ export function DockPanel({ cwd }: DockPanelProps) {
 
   const openTabs = DOCK_TAB_ORDER.filter((id) => tabs[id]);
 
-  const tabLabel = (id: DockTabId) => (id === "terminal" ? t("terminal.title") : t("artifact.title"));
+  const tabLabel = (id: DockTabId) =>
+    id === "terminal" ? t("terminal.title") : id === "browser" ? t("browser.title") : t("artifact.title");
   const tabIcon = (id: DockTabId, active: boolean) =>
     id === "terminal" ? (
       <TerminalSquare style={{ width: 13, height: 13, color: active ? "var(--color-primary)" : "var(--text-level-4)" }} />
+    ) : id === "browser" ? (
+      <Globe style={{ width: 13, height: 13, color: active ? "var(--color-primary)" : "var(--text-level-4)" }} />
     ) : (
       <Package style={{ width: 13, height: 13, color: active ? "var(--color-primary)" : "var(--text-level-4)" }} />
     );
@@ -183,6 +191,17 @@ export function DockPanel({ cwd }: DockPanelProps) {
         >
           <ArtifactsPanel />
         </div>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: activeTab === "browser" ? "flex" : "none",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <BrowserPanel chatId={chatId} projectPath={projectPath} />
+        </div>
       </div>
     </div>
   );
@@ -203,3 +222,4 @@ const panelBtnStyle: React.CSSProperties = {
   outline: "none",
   transition: "background 0.15s, color 0.15s",
 };
+

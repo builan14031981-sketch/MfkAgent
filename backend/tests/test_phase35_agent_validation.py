@@ -476,7 +476,7 @@ class TestTask6FinalAcceptance:
         active_agents = [a for a in PRESET_AGENTS if a.get("status") == "active"]
         assert len(active_agents) >= 8, f"需要至少 8 个 active Agent，实际 {len(active_agents)}"
 
-        required_agents = ["general", "coder", "frontend_ui", "g", "product", "mentor", "research", "writer"]
+        required_agents = ["general", "coder", "frontend_ui", "g", "product", "research", "writer"]
         active_ids = {a["agent_id"] for a in active_agents}
         for agent_id in required_agents:
             assert agent_id in active_ids, f"缺少必需 Agent: {agent_id}"

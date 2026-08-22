@@ -81,6 +81,11 @@ class Settings(BaseSettings):
 
     # Google Gemini 配置
     GOOGLE_API_KEY: str = ""
+
+    # 飞书配置（用于飞书多维表格集成）
+    FEISHU_APP_ID: str = ""
+    FEISHU_APP_SECRET: str = ""
+    FEISHU_WS_ENABLED: bool = True
     
     # CORS配置
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"]

@@ -318,6 +318,28 @@ class TestRunStreamErrorYield(unittest.TestCase):
 class TestCallOnceModelNotFound(unittest.TestCase):
     """call_once 遇到 404 → ModelNotFoundError。"""
 
+    def setUp(self):
+        """脱离生产配置：禁用检查清空 + 注入带 Key 的 qwen 配置（仅验证 HTTP 404 熔断）。"""
+        from app.services.model import model_service
+
+        self._disabled_patch = patch.object(model_service, "_disabled_providers", set())
+        self._config_patch = patch.object(
+            model_service,
+            "get_model_config",
+            return_value=ModelConfig(
+                provider=ModelProvider.QWEN,
+                model_name="qwen-flash",
+                api_key="test-key",
+                api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+        )
+        self._disabled_patch.start()
+        self._config_patch.start()
+
+    def tearDown(self):
+        self._config_patch.stop()
+        self._disabled_patch.stop()
+
     def test_call_once_404_raises_model_not_found(self):
         """call_once 遇到 HTTP 404 → 抛出 ModelNotFoundError。"""
         from app.services.model import model_service

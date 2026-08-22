@@ -149,57 +149,11 @@ export function MessageOutline({ messages, activeUserMessageId = null, forceOpen
 
   const userMessages = messages.filter((m) => m.role === "user");
 
-  // 高亮闪烁：用 Web Animations API 直接作用于目标消息行，无需改动 MessageList 内部
-  const flashTarget = useCallback((id: number) => {
-    const el = document.getElementById(`msg-${id}`);
-    if (!el) return;
-    el.animate(
-      [
-        { backgroundColor: "rgba(76, 154, 255, 0.16)" },
-        { backgroundColor: "rgba(76, 154, 255, 0)" },
-      ],
-      { duration: 1600, easing: "ease-out" }
-    );
-  }, []);
-
   const handleJump = useCallback((id: number) => {
-    const el = document.getElementById(`msg-${id}`);
-    if (!el) return;
-
-    // 找到滚动容器（overflow 可滚动的祖先）；找不到则回退 scrollIntoView
-    let container: HTMLElement | null = el.parentElement;
-    while (container && container !== document.body) {
-      const overflowY = getComputedStyle(container).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") break;
-      container = container.parentElement;
-    }
-
-    if (container && container !== document.body) {
-      // 只滚动消息容器：scrollIntoView 会同时滚动所有滚动祖先，长距离跳转时
-      // 多层 smooth 动画并发易被 Chromium 取消 →「第一下没反应」
-      const elRect = el.getBoundingClientRect();
-      const conRect = container.getBoundingClientRect();
-      const targetTop =
-        container.scrollTop + (elRect.top - conRect.top) - conRect.height / 2 + elRect.height / 2;
-      const clamped = Math.min(
-        Math.max(targetTop, 0),
-        container.scrollHeight - container.clientHeight
-      );
-      const startTop = container.scrollTop;
-      container.scrollTo({ top: clamped, behavior: "smooth" });
-      // 兜底：若 smooth 动画被布局变化取消（几乎未动且目标仍远），350ms 后瞬时补跳
-      setTimeout(() => {
-        const cur = container.scrollTop;
-        if (Math.abs(cur - startTop) < 4 && Math.abs(cur - clamped) > 8) {
-          container.scrollTop = clamped;
-        }
-      }, 350);
-    } else {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-
-    flashTarget(id);
-  }, [flashTarget]);
+    // 虚拟化后目标行可能未渲染（不在 DOM），MessageList 监听 msg:jump 事件
+    // 用 scrollToIndex 定位并执行高亮闪烁（元素渲染后 flash 才有效，由列表端处理）
+    window.dispatchEvent(new CustomEvent("msg:jump", { detail: { id } }));
+  }, []);
 
   if (userMessages.length === 0) return null;
 

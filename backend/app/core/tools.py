@@ -5,9 +5,14 @@
 在项目工作区内，越权抛 PermissionError（SandboxViolation），防止路径穿越。
 
 Phase 9 P1: 写入文件时通过 sanitize_filename 清理非法字符。
+Phase H (super_enhance_20260818):
+  - read_file 支持 offset/limit 行窗口（大文件分段读取，防上下文爆炸）
+  - 新增 find_files（glob 模式匹配）/ edit_file（增量替换+写后回读）/ apply_patch（统一补丁）
 """
-from typing import Dict, List, Optional
+import fnmatch
 import os
+import re
+from typing import Dict, List, Optional
 
 from app.core.sandbox import SandboxViolation, resolve_sandbox_path
 from app.core.sanitize import sanitize_filename
@@ -15,6 +20,18 @@ from app.core.sanitize import sanitize_filename
 
 class ToolExecutionError(Exception):
     """工具执行失败（消息会原样返回给 LLM）"""
+
+
+# Phase H: 目录遍历黑名单（find_files / apply_patch 共用）
+SKIP_DIRS_H = {
+    ".git", ".idea", ".vscode", "node_modules", "__pycache__", "dist", "build",
+    ".venv", "venv", ".next", ".nuxt", "chroma_db", ".pytest_cache",
+    "_backup", "backups", "Mfkagent_backups", "Archive", "归档", "_trash",
+    ".opencode", ".trae", ".py_deps",
+}
+
+# Phase H: 单次全读的防御性行数上限（超限自动切窗口，避免一轮多个大文件撑爆上下文）
+READ_FILE_AUTO_WINDOW_LINES = 500
 
 
 def _sanitize_relative_path(relative_path: str) -> str:
@@ -35,9 +52,9 @@ def write_file(project_path: str, relative_path: str, content: str) -> str:
 
     Phase 9: 文件名组件通过 sanitize_filename 清理非法字符。
     """
-    # Phase 9: 逐级清理文件名中的非法字符
-    sanitized = _sanitize_relative_path(relative_path)
-    target = resolve_sandbox_path(sanitized, project_path)
+    # Phase 9: 逐级清理文件名中的非法字符（绝对路径不净化，交给沙箱统一校验）
+    sanitized = relative_path if os.path.isabs(relative_path) else _sanitize_relative_path(relative_path)
+    target = resolve_sandbox_path(sanitized, project_path, allow_outside=False)
     os.makedirs(target.parent, exist_ok=True)
     with open(target, "w", encoding="utf-8") as f:
         f.write(content)
@@ -45,20 +62,57 @@ def write_file(project_path: str, relative_path: str, content: str) -> str:
     return f"文件已写入: {sanitized} ({len(content)} 字符) | abs_path={abs_path}"
 
 
-def read_file(project_path: str, relative_path: str) -> str:
-    """读取本地项目文件内容。"""
-    target = resolve_sandbox_path(relative_path, project_path)
+def read_file(
+    project_path: Optional[str],
+    relative_path: str,
+    offset: Optional[int] = None,
+    limit: Optional[int] = None,
+) -> str:
+    """读取本地项目或指定路径的文件内容（支持跨目录绝对路径与 ~ 用户主目录）。
+
+    Phase H: 支持行窗口读取：
+      - offset/limit 均不传 → 全读；文件超过 READ_FILE_AUTO_WINDOW_LINES 行时
+        自动只读前 500 行并提示（防一轮多个大文件撑爆上下文）。
+      - 传 offset/limit → 按行区间读取，输出带行号，便于模型定位与后续 edit_file。
+    """
+    target = resolve_sandbox_path(relative_path, project_path, allow_outside=True)
     if not os.path.isfile(target):
         raise ToolExecutionError(f"文件不存在: {relative_path}")
     if os.path.getsize(target) > 100 * 1024:
-        raise ToolExecutionError(f"文件过大（>100KB）: {relative_path}")
+        raise ToolExecutionError(f"文件过大（>100KB）: {relative_path}，请用 offset/limit 分段读取")
     with open(target, "r", encoding="utf-8", errors="ignore") as f:
-        return f.read()
+        lines = f.readlines()
+    total = len(lines)
+
+    if offset is None and limit is None:
+        if total > READ_FILE_AUTO_WINDOW_LINES:
+            body = "".join(lines[:READ_FILE_AUTO_WINDOW_LINES])
+            return (
+                body
+                + f"\n\n[提示] 文件共 {total} 行，已自动只读前 {READ_FILE_AUTO_WINDOW_LINES} 行。"
+                f"如需读取后续内容，请调用 read_file(relative_path=\"{relative_path}\", offset={READ_FILE_AUTO_WINDOW_LINES + 1}, limit=500)。"
+            )
+        return "".join(lines)
+
+    start = max(0, (offset or 1) - 1)
+    if start >= total:
+        return f"[提示] offset={offset} 超出文件总行数（{total} 行）。"
+    end = total if limit is None else min(total, start + limit)
+    body = "".join(lines[start:end])
+    numbered = "\n".join(
+        f"{i + 1}: {line.rstrip()}" for i, line in enumerate(lines[start:end], start=start)
+    )
+    hint = (
+        f"\n\n[提示] 已显示第 {start + 1}-{end} 行（共 {total} 行）。"
+        f"如需继续读取，请用 offset={end + 1}, limit={limit or 500}。"
+        if end < total else ""
+    )
+    return numbered + hint
 
 
-def list_files(project_path: str, relative_path: str = ".") -> str:
-    """查看本地项目目录结构。"""
-    target = resolve_sandbox_path(relative_path, project_path)
+def list_files(project_path: Optional[str], relative_path: str = ".") -> str:
+    """查看本地项目或指定路径的目录结构。"""
+    target = resolve_sandbox_path(relative_path, project_path, allow_outside=True)
     if not os.path.isdir(target):
         raise ToolExecutionError(f"目录不存在: {relative_path}")
     lines = []
@@ -75,11 +129,221 @@ def list_files(project_path: str, relative_path: str = ".") -> str:
     return "\n".join(lines) if lines else "(空目录)"
 
 
-def add_memory(scope: str, content: str, agent_id: str = None, project_id: int = None) -> str:
+def find_files(project_path: Optional[str], pattern: str, relative_path: str = ".") -> str:
+    """在项目或指定目录按 glob 通配符搜索文件（如 *.py、src/**/*.ts）。"""
+    import fnmatch
+    target_dir = resolve_sandbox_path(relative_path, project_path, allow_outside=True)
+    if not os.path.isdir(target_dir):
+        raise ToolExecutionError(f"目录不存在: {relative_path}")
+
+    # 规范化 pattern：去除首尾空格
+    pat = pattern.strip()
+    # 兼容 **/*.ext 模式：若 pattern 包含 **/，转换为 fnmatch 适用的递归匹配
+    is_recursive_glob = pat.startswith("**/")
+    pure_pat = pat[3:] if is_recursive_glob else pat
+
+    matched = []
+    for root, dirs, files in os.walk(target_dir):
+        # 跳过忽略目录
+        dirs[:] = [d for d in dirs if d not in {".git", "node_modules", "__pycache__", ".venv", "venv", ".next"}]
+        for name in files:
+            full = os.path.join(root, name)
+            # 计算相对于 target_dir 的相对路径
+            rel = os.path.relpath(full, target_dir).replace("\\", "/")
+            # 匹配逻辑：纯文件名匹配 OR 相对路径匹配（支持 **/*.ext）
+            if fnmatch.fnmatch(name, pure_pat) or fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(name, pat):
+                try:
+                    size = os.path.getsize(full)
+                except OSError:
+                    size = 0
+                matched.append(f"{rel} ({size} bytes)")
+                if len(matched) >= 100:
+                    matched.append("... (结果超过100条已截断)")
+                    return "\n".join(matched)
+    return "\n".join(matched) if matched else f"未找到匹配 '{pattern}' 的文件"
+
+
+def find_files(
+    project_path: str,
+    pattern: str = "*",
+    relative_path: str = ".",
+    max_results: int = 200,
+) -> str:
+    """按 glob 模式递归查找项目内文件（如 `**/*.py` 或 `*.tsx`）。
+
+    Phase H: 跳过构建/依赖/备份目录（SKIP_DIRS_H），结果上限默认 200 条。
+    """
+    pattern = (pattern or "").strip()
+    if not pattern:
+        return "错误: pattern 不能为空"
+    target = resolve_sandbox_path(relative_path, project_path, allow_outside=True)
+    if not os.path.isdir(target):
+        raise ToolExecutionError(f"目录不存在: {relative_path}")
+    max_results = max(1, min(int(max_results or 200), 500))
+    base = str(target)
+    matches: List[str] = []
+
+    if "**" in pattern:
+        from pathlib import Path
+        rglob_pattern = pattern.replace("**/", "", 1) if pattern.startswith("**/") else pattern
+        try:
+            for p in Path(base).rglob(rglob_pattern):
+                if p.is_file() and not any(part in SKIP_DIRS_H for part in p.parts[:-1]):
+                    matches.append(os.path.relpath(str(p), base).replace("\\", "/"))
+                    if len(matches) >= max_results:
+                        break
+        except (OSError, ValueError):
+            pass
+    else:
+        # 非递归：只匹配相对路径下第一层（`*.ts` 匹配当前目录文件，不深入子目录）
+        from pathlib import Path
+        try:
+            for p in Path(base).glob(pattern):
+                if p.is_file() and not p.name.startswith("."):
+                    matches.append(os.path.relpath(str(p), base).replace("\\", "/"))
+                    if len(matches) >= max_results:
+                        break
+        except (OSError, ValueError):
+            pass
+
+    if not matches:
+        return f"未找到匹配 pattern={pattern} 的文件（目录: {relative_path}）"
+    return f"找到 {len(matches)} 个匹配文件（上限 {max_results}）：\n" + "\n".join(matches)
+
+
+def edit_file(
+    project_path: str,
+    relative_path: str,
+    old_text: str,
+    new_text: str,
+) -> str:
+    """增量替换文件中的一段文本（唯一匹配），写后回读校验。
+
+    Phase H: 精确替换而非整文件重写：
+      - old_text 必须与文件内容完全一致（含缩进/空白）
+      - 匹配 0 次 → 报错（不落盘）；匹配多次 → 报错要求提供更多上下文消歧
+      - 写后立即回读比对（防 R5 实证的"write_file 内容与落盘不一致"浪费多轮）
+    """
+    if not old_text:
+        raise ToolExecutionError("old_text 不能为空")
+    target = resolve_sandbox_path(relative_path, project_path)
+    if not os.path.isfile(target):
+        raise ToolExecutionError(f"文件不存在: {relative_path}")
+    with open(target, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    count = content.count(old_text)
+    if count == 0:
+        raise ToolExecutionError(
+            f"在 {relative_path} 中未找到要替换的文本。请确认 old_text 与文件内容完全一致"
+            "（注意缩进、空白、换行符），可先 read_file 读取文件再构造精确片段。"
+        )
+    if count > 1:
+        raise ToolExecutionError(
+            f"old_text 在 {relative_path} 中出现 {count} 次，存在歧义。"
+            "请扩大 old_text 范围（包含相邻行）使匹配唯一。"
+        )
+
+    updated = content.replace(old_text, new_text)
+    with open(target, "w", encoding="utf-8") as f:
+        f.write(updated)
+    with open(target, "r", encoding="utf-8") as f:
+        verify = f.read()
+    if verify != updated:
+        raise ToolExecutionError(f"写入校验失败：{relative_path} 落盘内容与预期不一致，请重试")
+    return (
+        f"已更新 {relative_path}：替换 1 处（{len(content)} → {len(updated)} 字符），"
+        "写入回读校验通过。"
+    )
+
+
+def apply_patch(project_path: str, patch: str) -> str:
+    """应用统一 diff 补丁（基础版），支持一次修改多个文件。
+
+    Phase H: 兼容 Claude Code 风格的 Unified Diff 片段：
+      --- a/path.py
+      +++ b/path.py
+      @@ ... @@
+      - 被删除的行
+      + 新增的行
+       上下文行（忽略不校验）
+    纯新增块（无 - 行）追加到文件末尾。写后回读校验。
+    """
+    patch = (patch or "").strip()
+    if not patch:
+        raise ToolExecutionError("patch 内容为空")
+    lines = patch.splitlines()
+
+    blocks: List[tuple] = []  # (path, old_lines, new_lines)
+    cur_path: Optional[str] = None
+    old_lines: List[str] = []
+    new_lines: List[str] = []
+    in_hunk = False
+
+    def _flush():
+        nonlocal cur_path, old_lines, new_lines, in_hunk
+        if cur_path and (old_lines or new_lines):
+            blocks.append((cur_path, list(old_lines), list(new_lines)))
+        cur_path, old_lines, new_lines, in_hunk = None, [], [], False
+
+    for line in lines:
+        if line.startswith("--- "):
+            _flush()
+            cur_path = line[4:].lstrip("a/").strip()
+        elif line.startswith("+++ "):
+            continue  # 目标名与 --- 一致（简化版不区分 a/ b/）
+        elif line.startswith("@@"):
+            in_hunk = True
+        elif in_hunk:
+            if line.startswith("-"):
+                old_lines.append(line[1:])
+            elif line.startswith("+"):
+                new_lines.append(line[1:])
+            # 空格上下文 / \ No newline：忽略
+    _flush()
+
+    if not blocks:
+        raise ToolExecutionError("patch 无法解析：未找到 `--- a/path` 文件块（请用 Unified Diff 格式）")
+
+    results: List[str] = []
+    for path, olds, news in blocks:
+        target = resolve_sandbox_path(path, project_path)
+        if not os.path.isfile(target):
+            raise ToolExecutionError(f"patch 目标文件不存在: {path}")
+        with open(target, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        if not olds:
+            add_text = "\n".join(news) + "\n"
+            updated = content + add_text
+        else:
+            old_seq = "\n".join(olds)
+            idx = content.find(old_seq)
+            if idx < 0:
+                raise ToolExecutionError(
+                    f"patch 在 {path} 中找不到待替换的行序列（上下文不匹配），未做任何修改"
+                )
+            updated = content[:idx] + "\n".join(news) + content[idx + len(old_seq):]
+
+        with open(target, "w", encoding="utf-8") as f:
+            f.write(updated)
+        with open(target, "r", encoding="utf-8") as f:
+            verify = f.read()
+        if verify != updated:
+            raise ToolExecutionError(f"写入校验失败: {path}，请重试")
+        results.append(f"已应用 patch: {path}（{len(olds)} 删 / {len(news)} 增），回读校验通过")
+    return "\n".join(results)
+
+
+def add_memory(scope: str = "agent", content: str = "", agent_id: str = None, project_id: int = None) -> str:
     """将内容持久化保存为记忆（三作用域隔离）。
 
-    scope：global=所有对话可见；agent=当前 Agent 专属（需 agent_id）；
+    scope：global=所有对话可见；agent=当前 Agent 专属（需 agent_id，默认）；
            project=当前项目下 Agent 共享（需 project_id）。
+
+    防乱加机制：
+    - 内容长度 < 10 字拒绝（防止无意义碎片）
+    - 同 scope 下已有内容相似度 > 0.8 则更新而非新增（去重）
     """
     if scope not in ("global", "agent", "project"):
         return f"错误: scope 必须是 global/agent/project，收到: {scope}"
@@ -90,11 +354,36 @@ def add_memory(scope: str, content: str, agent_id: str = None, project_id: int =
     content = (content or "").strip()
     if not content:
         return "错误: content 不能为空"
+    if len(content) < 10:
+        return f"错误: 记忆内容过短（{len(content)}字），至少需要10字，防止无意义碎片记忆"
+    from difflib import SequenceMatcher
     from app.core.database import SessionLocal
     from app.models.agent import MemoryItem
 
     db = SessionLocal()
     try:
+        # 去重：同 scope 下查找相似内容，相似度 > 0.8 则更新
+        query = db.query(MemoryItem).filter(MemoryItem.scope == scope, MemoryItem.is_active == True)
+        if scope == "agent":
+            query = query.filter(MemoryItem.agent_id == agent_id)
+        elif scope == "project":
+            query = query.filter(MemoryItem.project_id == project_id)
+        existing = query.all()
+
+        best_match = None
+        best_ratio = 0.0
+        for mem in existing:
+            ratio = SequenceMatcher(None, content, mem.content or "").ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_match = mem
+
+        if best_match and best_ratio > 0.8:
+            best_match.content = content
+            best_match.is_active = True
+            db.commit()
+            return f"记忆已更新（相似度{best_ratio:.2f}，id={best_match.id}）: {content[:80]}"
+
         item = MemoryItem(
             scope=scope,
             agent_id=agent_id if scope == "agent" else None,
@@ -142,13 +431,25 @@ FILE_TOOLS_DEFINITIONS: List[Dict] = [
         "type": "function",
         "function": {
             "name": "read_file",
-            "description": "读取本地项目文件内容（工作区内，相对项目根路径）。",
+            "description": (
+                "读取本地项目文件内容（工作区内，相对项目根路径）。"
+                "可选 offset/limit 按行区间读取（1 起始），大文件必须分段读取；"
+                "超过 500 行会自动只读前 500 行并提示如何续读。"
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "relative_path": {
                         "type": "string",
                         "description": "相对项目根目录的文件路径",
+                    },
+                    "offset": {
+                        "type": "integer",
+                        "description": "起始行号（1 起始），与 limit 搭配分段读取",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "最多读取的行数",
                     },
                 },
                 "required": ["relative_path"],
@@ -171,12 +472,96 @@ FILE_TOOLS_DEFINITIONS: List[Dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "find_files",
+            "description": (
+                "按 glob 模式递归查找项目内文件，如 `**/*.py`、`*.tsx`、`test_*.py`。"
+                "自动跳过 .git/node_modules/dist 等目录。适合确认文件是否存在、"
+                "列出某类文件清单，比 list_files 逐层浏览更高效。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "glob 模式，支持 `**/*.ext` 递归匹配",
+                    },
+                    "relative_path": {
+                        "type": "string",
+                        "description": "限定搜索的子目录（相对项目根），默认整个项目",
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "最多返回条数，默认 200",
+                    },
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_file",
+            "description": (
+                "增量替换文件中的一段文本（精确匹配，须唯一）。"
+                "只修改指定片段而非整文件重写：old_text 必须与文件内容完全一致"
+                "（含缩进空白），匹配多次会报错要求提供更多上下文。"
+                "写后自动回读校验。修改代码的推荐方式。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "relative_path": {
+                        "type": "string",
+                        "description": "相对项目根目录的文件路径",
+                    },
+                    "old_text": {
+                        "type": "string",
+                        "description": "要替换的原始文本（必须与文件内容完全一致，可先用 read_file 确认）",
+                    },
+                    "new_text": {
+                        "type": "string",
+                        "description": "替换后的新文本",
+                    },
+                },
+                "required": ["relative_path", "old_text", "new_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "apply_patch",
+            "description": (
+                "应用 Unified Diff 格式补丁，可一次修改多个文件。"
+                "格式：--- a/path.py 换行 +++ b/path.py 换行 @@ 定位行 换行"
+                "- 删除行 / + 新增行。纯新增块追加到文件末尾。"
+                "写后自动回读校验。适合多处小改动的批量提交。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "patch": {
+                        "type": "string",
+                        "description": "Unified Diff 补丁全文（含 --- / +++ / @@ 头）",
+                    },
+                },
+                "required": ["patch"],
+            },
+        },
+    },
 ]
 
 FILE_TOOLS = {
     "write_file": write_file,
     "read_file": read_file,
     "list_files": list_files,
+    "find_files": find_files,
+    "edit_file": edit_file,
+    "apply_patch": apply_patch,
 }
 
 

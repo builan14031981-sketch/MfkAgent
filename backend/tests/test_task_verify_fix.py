@@ -17,12 +17,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.core.agent_runtime.agent import (  # noqa: E402
     AgentRuntime,
-    VERIFICATION_FEEDBACK_PREFIX,
 )
 from app.core.agent_runtime.completion.models import CompletionContext  # noqa: E402
 from app.core.agent_runtime.completion.rules import rule_write_detected  # noqa: E402
 from app.core.planner.service import _STEP_TEMPLATES  # noqa: E402
 from app.services.tools import AddMemoryTool  # noqa: E402
+
+VERIFICATION_FEEDBACK_PREFIX = "【验证反馈】"
 
 
 def _ctx(goal: str, tools=None) -> CompletionContext:
@@ -69,7 +70,7 @@ class TestFeedbackMarkerAndGoalExtraction:
             next_action="continue_execution",
         )
         text = AgentRuntime._build_completion_feedback(result)
-        assert text.startswith(VERIFICATION_FEEDBACK_PREFIX)
+        assert text.startswith("任务尚未完成。")
 
     def test_verification_feedback_has_marker(self):
         failed = [SimpleNamespace(tool="write_file", tool_call_id="t1", message="文件不存在")]

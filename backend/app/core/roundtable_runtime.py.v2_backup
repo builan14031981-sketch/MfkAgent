@@ -1,0 +1,314 @@
+"""圆桌运行时（Roundtable Runtime）—— 多 Agent 同会话讨论
+
+核心流程：
+  用户消息 → 入讨论历史
+    ↓
+  第1轮：Agent A 发言 → Agent B 发言 → Agent C 发言
+    ↓
+  第2轮：A 回应 B/C → B 回应 → C 回应
+    ↓
+  ...达到最大轮次
+    ↓
+  主持人/末位 Agent 做最终总结
+
+每个 Agent 发言时看到完整讨论历史（含其他 Agent 的发言），形成真正的对话感。
+复用 model_service.stream_once，纯文本讨论（无工具调用），SSE 事件带 agent_id 标识。
+"""
+import asyncio
+import json
+import logging
+from typing import AsyncIterator, Dict, List, Optional, Callable, Any
+
+from app.core.database import SessionLocal
+from app.models.agent import Agent, Chat, Message
+from app.services.model import model_service
+
+logger = logging.getLogger(__name__)
+
+# 圆桌讨论的系统提示词模板
+ROUNDTABLE_SYSTEM_PROMPT = """你是「{agent_name}」，正在参与一个多专家圆桌讨论。
+
+【你的身份】
+{identity}
+
+【讨论规则】
+1. 你正在和其他专家一起讨论用户提出的问题/任务
+2. 你可以看到其他专家的发言，请基于他们的观点给出你的看法
+3. 可以赞同、补充、质疑或反驳其他专家的观点，但要保持专业和建设性
+4. 发言要简洁有力，聚焦你的专业领域，不要重复别人已经说过的内容
+5. 不要提及"作为AI"或"我是一个语言模型"，保持角色代入感
+6. 直接输出你的观点，不要加"我认为"之类的开场白
+
+【当前讨论主题】
+{user_task}
+"""
+
+# 总结提示词
+SUMMARY_PROMPT = """你是圆桌讨论的主持人。请基于以上所有专家的发言，给出最终总结：
+
+1. 汇总各方的核心观点和共识
+2. 指出存在的分歧和争议点
+3. 给出你认为最优的解决方案或结论
+4. 总结要全面但不冗长，突出最有价值的洞见
+
+直接输出总结，不要加开场白。"""
+
+
+class RoundtableRuntime:
+    """圆桌运行时 — 编排多 Agent 讨论流程"""
+
+    def __init__(
+        self,
+        chat_id: int,
+        agent_ids: List[str],
+        user_content: str,
+        model_id: str,
+        max_rounds: int = 2,
+        need_summary: bool = True,
+        moderator_id: Optional[str] = None,
+        temperature: float = 0.8,
+        max_tokens: int = 2048,
+    ):
+        """
+        Args:
+            chat_id: 会话 ID
+            agent_ids: 参与讨论的 Agent ID 列表（按发言顺序）
+            user_content: 用户提出的任务/问题
+            model_id: 使用的模型 ID
+            max_rounds: 最大讨论轮次
+            need_summary: 是否需要最终总结
+            moderator_id: 主持人 Agent ID（None = 列表最后一个）
+            temperature: 模型温度
+            max_tokens: 单条消息最大 token
+        """
+        self.chat_id = chat_id
+        self.agent_ids = agent_ids
+        self.user_content = user_content
+        self.model_id = model_id
+        self.max_rounds = max_rounds
+        self.need_summary = need_summary
+        self.moderator_id = moderator_id or (agent_ids[-1] if agent_ids else None)
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+
+        # 讨论历史：[{"role": "user/assistant", "name": agent_name, "content": "..."}]
+        self.discussion_history: List[Dict[str, str]] = []
+        # Agent 信息缓存：{agent_id: {name, identity, system_prompt}}
+        self.agent_info: Dict[str, Dict[str, str]] = {}
+
+    def _load_agents(self):
+        """从数据库加载参与讨论的 Agent 信息"""
+        db = SessionLocal()
+        try:
+            for aid in self.agent_ids:
+                agent = db.query(Agent).filter(Agent.agent_id == aid).first()
+                if agent:
+                    self.agent_info[aid] = {
+                        "name": agent.name or aid,
+                        "identity": agent.identity or agent.system_prompt or f"你是{agent.name}，一位专业的专家。",
+                        "system_prompt": agent.system_prompt or "",
+                    }
+                else:
+                    self.agent_info[aid] = {
+                        "name": aid,
+                        "identity": f"你是{aid}，一位专业的专家。",
+                        "system_prompt": "",
+                    }
+        finally:
+            db.close()
+
+    def _build_agent_messages(self, agent_id: str) -> List[Dict[str, str]]:
+        """为指定 Agent 构建消息列表（system + 讨论历史）"""
+        info = self.agent_info.get(agent_id, {"name": agent_id, "identity": ""})
+        system_prompt = ROUNDTABLE_SYSTEM_PROMPT.format(
+            agent_name=info["name"],
+            identity=info["identity"],
+            user_task=self.user_content[:500],
+        )
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.extend(self.discussion_history)
+        return messages
+
+    async def _agent_speak(
+        self,
+        agent_id: str,
+        emit: Callable[[Dict[str, Any]], None],
+        is_summary: bool = False,
+    ) -> str:
+        """让一个 Agent 发言，流式输出事件，返回完整内容
+
+        Args:
+            agent_id: 发言的 Agent ID
+            emit: 事件发射函数（发到 SSE 队列）
+            is_summary: 是否为总结发言
+
+        Returns:
+            完整的发言内容
+        """
+        info = self.agent_info.get(agent_id, {"name": agent_id})
+        agent_name = info["name"]
+
+        # 发射"开始发言"事件
+        emit({
+            "type": "roundtable_speaker_start",
+            "agent_id": agent_id,
+            "agent_name": agent_name,
+            "is_summary": is_summary,
+        })
+
+        messages = self._build_agent_messages(agent_id)
+        if is_summary:
+            messages.append({"role": "user", "content": SUMMARY_PROMPT})
+
+        full_content = ""
+        try:
+            async for chunk in model_service.stream_once(
+                model_id=self.model_id,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                tools=None,  # 纯文本讨论，无工具
+            ):
+                chunk_type = chunk.get("type")
+                if chunk_type == "text":
+                    content = chunk.get("content", "")
+                    full_content += content
+                    # 转发文本事件，带 agent 标识
+                    emit({
+                        "type": "text",
+                        "content": content,
+                        "agent_id": agent_id,
+                        "agent_name": agent_name,
+                        "is_summary": is_summary,
+                    })
+                elif chunk_type == "finish":
+                    break
+        except Exception as e:
+            logger.error("[roundtable] Agent %s 发言失败: %s", agent_name, e, exc_info=True)
+            error_msg = f"[发言中断：{str(e)[:100]}]"
+            full_content += error_msg
+            emit({"type": "text", "content": error_msg, "agent_id": agent_id, "agent_name": agent_name})
+
+        # 发射"结束发言"事件
+        emit({
+            "type": "roundtable_speaker_end",
+            "agent_id": agent_id,
+            "agent_name": agent_name,
+            "is_summary": is_summary,
+        })
+
+        # 将发言加入讨论历史
+        if full_content.strip():
+            self.discussion_history.append({
+                "role": "assistant",
+                "name": agent_name,
+                "content": full_content,
+            })
+
+        return full_content
+
+    async def run(
+        self,
+        emit: Callable[[Dict[str, Any]], None],
+    ) -> List[Dict[str, str]]:
+        """运行圆桌讨论
+
+        Args:
+            emit: 事件发射函数
+
+        Returns:
+            讨论历史（含用户消息和所有 Agent 发言）
+        """
+        if not self.agent_ids:
+            logger.error("[roundtable] 没有参与讨论的 Agent")
+            return []
+
+        logger.info(
+            "[roundtable] 开始讨论 chat_id=%d agents=%s rounds=%d model=%s",
+            self.chat_id, self.agent_ids, self.max_rounds, self.model_id,
+        )
+
+        # 加载 Agent 信息
+        self._load_agents()
+
+        # 用户消息入讨论历史
+        self.discussion_history.append({
+            "role": "user",
+            "content": self.user_content,
+        })
+
+        # 发射讨论开始事件
+        emit({
+            "type": "roundtable_start",
+            "chat_id": self.chat_id,
+            "agent_ids": self.agent_ids,
+            "agent_names": [self.agent_info.get(a, {}).get("name", a) for a in self.agent_ids],
+            "max_rounds": self.max_rounds,
+        })
+
+        # 多轮讨论
+        for round_num in range(1, self.max_rounds + 1):
+            emit({
+                "type": "roundtable_round_start",
+                "round": round_num,
+                "max_rounds": self.max_rounds,
+            })
+
+            for agent_id in self.agent_ids:
+                await self._agent_speak(agent_id, emit, is_summary=False)
+
+            emit({
+                "type": "roundtable_round_end",
+                "round": round_num,
+            })
+
+        # 最终总结
+        if self.need_summary and self.moderator_id:
+            emit({"type": "roundtable_summary_start"})
+            await self._agent_speak(self.moderator_id, emit, is_summary=True)
+            emit({"type": "roundtable_summary_end"})
+
+        # 讨论结束
+        emit({
+            "type": "roundtable_end",
+            "chat_id": self.chat_id,
+            "total_messages": len(self.discussion_history),
+        })
+
+        logger.info("[roundtable] 讨论结束，共 %d 条消息", len(self.discussion_history))
+        return self.discussion_history
+
+    def persist_messages(self):
+        """将讨论历史落库（每条 Agent 发言单独存为一条消息）"""
+        db = SessionLocal()
+        try:
+            for msg in self.discussion_history:
+                if msg.get("role") == "user":
+                    continue  # 用户消息已在请求时落库
+                agent_name = msg.get("name", "")
+                content = msg.get("content", "")
+                # 查找 agent_id（通过 name 反查）
+                agent_id = None
+                for aid, info in self.agent_info.items():
+                    if info.get("name") == agent_name:
+                        agent_id = aid
+                        break
+                db_msg = Message(
+                    chat_id=self.chat_id,
+                    role="assistant",
+                    agent_id=agent_id,
+                    content=content,
+                )
+                db.add(db_msg)
+            # 更新会话时间
+            chat = db.query(Chat).filter(Chat.id == self.chat_id).first()
+            if chat:
+                from datetime import datetime
+                chat.updated_at = datetime.utcnow()
+            db.commit()
+            logger.info("[roundtable] 落库 %d 条消息", len([m for m in self.discussion_history if m.get("role") != "user"]))
+        except Exception as e:
+            logger.error("[roundtable] 落库失败: %s", e, exc_info=True)
+            db.rollback()
+        finally:
+            db.close()

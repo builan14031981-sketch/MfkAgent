@@ -1,7 +1,7 @@
 # MfkAgent Tool Runtime Phase A 测试报告
 
-- 时间: 2026-08-08 11:58:36
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseA_f85o5zci`
+- 时间: 2026-08-18 14:33:37
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseA_wej9uu47`
 - 测试模式: FastAPI TestClient + 脚本化 LLM（httpx 层注入），executor / 事件源 / SSE 管道均为生产代码
 - 模型占位: `deepseek-v4-flash`（LLM 响应为脚本化数据，不依赖真实 API）
 
@@ -9,10 +9,10 @@
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | 网络诊断工具调用 (run_command) | ✅ PASS | 426ms |
-| 2 | 文件读取工具调用 (read_file) | ✅ PASS | 240ms |
-| 3 | Git 工具调用 (git_status) | ✅ PASS | 1137ms |
-| 4 | 文件写入工具调用 (write_file) | ✅ PASS | 264ms |
+| 1 | 网络诊断工具调用 (run_command) | ✅ PASS | 565ms |
+| 2 | 文件读取工具调用 (read_file) | ✅ PASS | 363ms |
+| 3 | Git 工具调用 (git_status) | ✅ PASS | 1345ms |
+| 4 | 文件写入工具调用 (write_file) | ✅ PASS | 404ms |
 | 5 | 持久化 Message.tool_calls 新旧字段兼容 | ✅ PASS | 0ms |
 
 **通过率: 5/5**
@@ -24,7 +24,7 @@
 - tool: `run_command`
 - tool_call_id: `call_net_1`
 - success: True
-- duration_ms: 138
+- duration_ms: 80
 - has_thinking: True
 - has_text: True
 - has_finish: True
@@ -35,7 +35,7 @@
 - tool: `read_file`
 - tool_call_id: `call_read_1`
 - success: True
-- duration_ms: 12
+- duration_ms: 16
 - content_hit: True
 - chat_id: 2
 
@@ -44,7 +44,7 @@
 - tool: `git_status`
 - tool_call_id: `call_git_1`
 - success: True
-- duration_ms: 163
+- duration_ms: 251
 - output_hit: True
 - chat_id: 3
 
@@ -53,7 +53,7 @@
 - tool: `write_file`
 - tool_call_id: `call_write_1`
 - success: True
-- duration_ms: 2
+- duration_ms: 5
 - file_created: True
 - approval_gate: True
 - chat_id: 4

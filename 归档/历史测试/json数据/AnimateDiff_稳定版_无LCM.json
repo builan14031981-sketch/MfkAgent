@@ -1,0 +1,122 @@
+{
+  "3": {
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "④ K采样器（稳定版 20步）"
+    },
+    "inputs": {
+      "seed": 123456789,
+      "steps": 20,
+      "cfg": 7.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0,
+      "model": ["11", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["5", 0]
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "① 加载SD大模型（选你的真人模型）"
+    },
+    "inputs": {
+      "ckpt_name": "v1-5-pruned-emaonly.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "② 分辨率512×768 / 16帧"
+    },
+    "inputs": {
+      "width": 512,
+      "height": 768,
+      "batch_size": 16
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "✅ 正面提示词"
+    },
+    "inputs": {
+      "text": "masterpiece, best quality, ultra detailed, 8k, cinematic, a woman, solo, looking at viewer, dramatic lighting, film grain, depth of field",
+      "clip": ["4", 1]
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "❌ 负面提示词"
+    },
+    "inputs": {
+      "text": "worst quality, low quality, normal quality, blurry, jpeg artifacts, signature, watermark, username, error, missing fingers, extra digit, fewer digits, cropped, cartoon, anime, 3d render",
+      "clip": ["4", 1]
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "⑤ VAE解码"
+    },
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "18": {
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "🖼️ 浏览器预览"
+    },
+    "inputs": {
+      "images": ["8", 0],
+      "filename_prefix": "稳定版_预览"
+    }
+  },
+  "9": {
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "🎬 合成MP4视频"
+    },
+    "inputs": {
+      "images": ["8", 0],
+      "frame_rate": 8,
+      "loop_count": 0,
+      "filename_prefix": "稳定版_视频",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  },
+  "10": {
+    "class_type": "ADE_StandardUniformContextOptions",
+    "_meta": {
+      "title": "⚙️ 显存优化"
+    },
+    "inputs": {
+      "context_length": 12,
+      "context_stride": 1,
+      "context_overlap": 4,
+      "fuse_method": "pyramid",
+      "use_on_equal_length": false,
+      "start_percent": 0.0,
+      "guarantee_steps": 1
+    }
+  },
+  "11": {
+    "class_type": "ADE_AnimateDiffLoaderGen1",
+    "_meta": {
+      "title": "③ 加载运动模型"
+    },
+    "inputs": {
+      "model": ["4", 0],
+      "model_name": "mm_sd_v15_v2.ckpt",
+      "beta_schedule": "autoselect",
+      "context_options": ["10", 0]
+    }
+  }
+}

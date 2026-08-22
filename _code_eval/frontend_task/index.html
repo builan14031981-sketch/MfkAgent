@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的待办</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 32px;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 24px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        #todo-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #todo-input:focus {
+            border-color: #667eea;
+        }
+
+        #add-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 500;
+        }
+
+        #add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        #add-btn:active {
+            transform: translateY(0);
+        }
+
+        #todo-list {
+            list-style: none;
+            margin-bottom: 24px;
+        }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        .todo-item:hover {
+            background: #f0f1f3;
+        }
+
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-radius: 50%;
+            margin-right: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .todo-item.completed .checkbox {
+            background: #667eea;
+        }
+
+        .checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            display: none;
+        }
+
+        .todo-item.completed .checkbox::after {
+            display: block;
+        }
+
+        .todo-text {
+            flex: 1;
+            font-size: 16px;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #ff4757;
+            cursor: pointer;
+            padding: 8px;
+            font-size: 18px;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+            flex-shrink: 0;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 32px;
+            font-size: 14px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
+        }
+
+        .remaining-count {
+            font-weight: 600;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>我的待办</h1>
+        
+        <div class="input-group">
+            <input 
+                type="text" 
+                id="todo-input" 
+                placeholder="添加新任务..."
+                autocomplete="off"
+            >
+            <button id="add-btn">添加</button>
+        </div>
+        
+        <ul id="todo-list">
+            <!-- 待办列表将在这里动态生成 -->
+        </ul>
+        
+        <div class="footer">
+            剩余 <span class="remaining-count" id="remaining-count">0</span> 项未完成
+        </div>
+    </div>
+
+    <script>
+        // 获取 DOM 元素
+        const todoInput = document.getElementById('todo-input');
+        const addBtn = document.getElementById('add-btn');
+        const todoList = document.getElementById('todo-list');
+        const remainingCount = document.getElementById('remaining-count');
+
+        // 从 localStorage 加载待办事项
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+
+        // 保存待办事项到 localStorage
+        function saveTodos() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+
+        // 更新剩余数量显示
+        function updateRemainingCount() {
+            const remaining = todos.filter(todo => !todo.completed).length;
+            remainingCount.textContent = remaining;
+        }
+
+        // 渲染待办列表
+        function renderTodos() {
+            if (todos.length === 0) {
+                todoList.innerHTML = '<li class="empty-state">暂无待办事项，添加一个开始吧！</li>';
+                updateRemainingCount();
+                return;
+            }
+
+            todoList.innerHTML = todos.map((todo, index) => `
+                <li class="todo-item ${todo.completed ? 'completed' : ''}">
+                    <div class="checkbox" onclick="toggleTodo(${index})"></div>
+                    <span class="todo-text">${escapeHtml(todo.text)}</span>
+                    <button class="delete-btn" onclick="deleteTodo(${index})">×</button>
+                </li>
+            `).join('');
+
+            updateRemainingCount();
+        }
+
+        // 转义 HTML 防止 XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 添加待办事项
+        function addTodo() {
+            const text = todoInput.value.trim();
+            if (text === '') return;
+
+            todos.push({
+                text: text,
+                completed: false,
+                createdAt: new Date().toISOString()
+            });
+
+            saveTodos();
+            renderTodos();
+            todoInput.value = '';
+            todoInput.focus();
+        }
+
+        // 切换完成状态
+        window.toggleTodo = function(index) {
+            todos[index].completed = !todos[index].completed;
+            saveTodos();
+            renderTodos();
+        };
+
+        // 删除待办事项
+        window.deleteTodo = function(index) {
+            todos.splice(index, 1);
+            saveTodos();
+            renderTodos();
+        };
+
+        // 事件监听
+        addBtn.addEventListener('click', addTodo);
+
+        todoInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addTodo();
+            }
+        });
+
+        // 初始化渲染
+        renderTodos();
+    </script>
+</body>
+</html>

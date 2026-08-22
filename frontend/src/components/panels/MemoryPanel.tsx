@@ -354,9 +354,9 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           gap: "8px",
         }}>
           <span>{t("memory.memoryList")}</span>
-          {/* 完整管理入口：跳转独立二级页 /memories（记忆管理） */}
+          {/* 完整管理入口：跳转独立二级页 /memories（记忆管理），同时关闭设置面板 */}
           <button
-            onClick={() => router.push("/memories")}
+            onClick={() => { onClose?.(); router.push("/memories"); }}
             title={t("memory.manage")}
             style={{
               display: "inline-flex",

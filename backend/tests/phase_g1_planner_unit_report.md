@@ -1,6 +1,6 @@
 # MfkAgent Planner V1 单元测试报告（Phase G1）
 
-- 时间: 2026-08-07 16:04:04
+- 时间: 2026-08-18 14:31:35
 
 ## 结果总览
 
@@ -13,7 +13,7 @@
 | 5 | U5 plan 模式 → 只读约束 | ✅ PASS | 1ms |
 | 6 | U6 adapter.render(None) → 空 | ✅ PASS | 0ms |
 | 7 | U7 adapter.render(dict) → 段落 | ✅ PASS | 0ms |
-| 8 | U8 不控制工具（仅文本参考） | ✅ PASS | 0ms |
+| 8 | U8 不控制工具（仅文本参考） | ✅ PASS | 1ms |
 | 9 | U9 goal 截断 200 字符 | ✅ PASS | 0ms |
 | 10 | U10 全部意图有模板 | ✅ PASS | 3ms |
 | 11 | U11 current_step_index 指向 | ✅ PASS | 0ms |

@@ -107,6 +107,8 @@ class RuntimeEventType(str, Enum):
     COMPLETION_VERIFY_STARTED = "completion_verify_started"
     COMPLETION_VERIFY_PASSED = "completion_verify_passed"
     COMPLETION_VERIFY_FAILED = "completion_verify_failed"
+    # G4-B: TaskGraph 汇总事件（run 结束附随，供消费端落库/切页重放）
+    TASK_GRAPH = "task_graph"
     FINISH = "finish"
     ERROR = "error"
 

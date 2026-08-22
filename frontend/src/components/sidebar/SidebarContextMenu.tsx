@@ -69,7 +69,6 @@ export function SidebarContextMenu({
     width: "100%",
     padding: "3px 8px",
     border: "none",
-    background: "transparent",
     cursor: "pointer",
     fontSize: "12px",
     color: "var(--text-level-2)",
@@ -101,9 +100,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.chatId != null) onRenameChat(state.chatId);
             }}
+            className="ctx-menu-item"
             style={menuItemStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Edit2 style={{ width: "13px", height: "13px" }} />
             <span>{t("sidebar.rename")}</span>
@@ -112,9 +110,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.chatId != null) onPinChat(state.chatId);
             }}
+            className="ctx-menu-item"
             style={menuItemStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             {state.chatId != null && chats.find((c) => c.id === state.chatId)?.is_pinned ? (
               <>
@@ -132,9 +129,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.chatId != null) onArchiveChat(state.chatId);
             }}
+            className="ctx-menu-item"
             style={menuItemStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Archive style={{ width: "13px", height: "13px" }} />
             <span>{t("sidebar.archive")}</span>
@@ -148,9 +144,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.chatId != null) onDeleteChat(state.chatId);
             }}
+            className="ctx-menu-item"
             style={{ ...menuItemStyle, color: "var(--color-error)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Trash2 style={{ width: "13px", height: "13px" }} />
             <span>{t("sidebar.delete")}</span>
@@ -162,9 +157,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.projectId != null) onOpenProjectFolder(state.projectId);
             }}
+            className="ctx-menu-item"
             style={menuItemStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <FolderOpen style={{ width: "13px", height: "13px" }} />
             <span>{t("sidebar.openProjectFolder")}</span>
@@ -178,9 +172,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.projectId != null) onPinProject(state.projectId);
             }}
+            className="ctx-menu-item"
             style={menuItemStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             {state.projectId != null && projects.find((p) => p.id === state.projectId)?.is_pinned ? (
               <>
@@ -198,9 +191,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.projectId != null) onArchiveProject(state.projectId);
             }}
+            className="ctx-menu-item"
             style={menuItemStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Archive style={{ width: "13px", height: "13px" }} />
             <span>{t("sidebar.archive")}</span>
@@ -214,9 +206,8 @@ export function SidebarContextMenu({
             onClick={() => {
               if (state.projectId != null) onDeleteProject(state.projectId);
             }}
+            className="ctx-menu-item"
             style={{ ...menuItemStyle, color: "var(--color-error)" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Trash2 style={{ width: "13px", height: "13px" }} />
             <span>{t("sidebar.delete")}</span>

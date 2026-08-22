@@ -13,9 +13,10 @@ import { useChatStream } from "@/hooks/useChatStream";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { useStreamStore } from "@/lib/streamStore";
+import { useTabStore } from "@/lib/tabStore";
 import { usePreferences } from "@/hooks/usePreferences";
 import { useVisibleModels } from "@/hooks/useVisibleModels";
-import { compressMessages } from "@/lib/api";
+import { compressMessages, apiDelete } from "@/lib/api";
 import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
 import { ProjectContextPanel } from "@/components/panels/ProjectContextPanel";
 import { FileDropZone } from "@/components/FileDropZone";
@@ -30,6 +31,8 @@ import { MessageOutline } from "@/components/MessageOutline";
 import { ChatHeader } from "@/components/ChatHeader";
 import { TaskProgressCard } from "@/components/TaskProgressCard";
 import { ProjectPathContext } from "@/lib/projectPathContext";
+import { useSkills, SkillInfo } from "@/hooks/useSkills";
+import { selectDirectory } from "@/lib/selectDirectory";
 
 // 2026-08-11：项目上下文面板开关态持久化 key（与侧边栏 mfk_sidebar_collapsed 同一模式）
 const PROJECT_CONTEXT_OPEN_KEY = "mfk_project_context_open";
@@ -56,15 +59,18 @@ function ChatPageInner() {
   const [personalityInitForChatId, setPersonalityInitForChatId] = useState<number | null>(null);
 
   const { agents } = useAgents();
+  const { skills: allSkills } = useSkills();
+  // 会话级 Skill：只在当前会话生效，刷新即失效（不写入全局 enabled，不污染其他会话）
+  const [sessionSkills, setSessionSkills] = useState<SkillInfo[]>([]);
   const { models } = useModels();
   // 三层漏斗过滤：Provider 总开关 → API Key 检查 → 模型白名单（按 provider 独立）
   // 抽到 useVisibleModels hook 统一 4 个入口行为（2026-08-11）
   // 兜底：过滤后为空时显示全部，避免首屏空白或老用户升级后模型消失
   const visibleModels = useVisibleModels(models);
   const { projects, createProject } = useProjects();
-  const { chats, updateChat } = useChat();
+  const { chats, createChat, updateChat } = useChat();
   const { messages, setMessages, sendMessageStream, deleteMessagesFrom, refetch, appendMessage, invalidateMessagesCache } = useMessages(chatId);
-  const { settings, updateSettings } = useSettingsStore();
+  const { settings } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
   const { modelId: prefModelId, reasoningEffort: prefReasoningEffort, hasLocalReasoning, prefsLoaded, setModel: setPrefModel, setReasoning: setPrefReasoning } = usePreferences(models, settings);
 
@@ -72,6 +78,21 @@ function ChatPageInner() {
   const currentChat = chats.find((c) => c.id === chatId);
   const currentAgent = agents.find((a) => a.id === currentChat?.agent_id);
   const currentProject = (currentChat?.project_id ? projects.find(p => p.id === currentChat.project_id) : null) ?? null;
+
+  // 当前圆桌参会 Agent 席位列表（供输入框 @mention 优先联想展示）
+  const roundtableAttendees = useMemo(() => {
+    if (!currentChat || currentChat.mode !== "roundtable" || !currentChat.roundtable_config) {
+      return undefined;
+    }
+    const config = currentChat.roundtable_config;
+    const agentIds: string[] = [];
+    if (Array.isArray(config.agent_ids)) {
+      agentIds.push(...config.agent_ids);
+    }
+    if (agentIds.length === 0) return undefined;
+    const attendeeSet = new Set(agentIds);
+    return agents.filter((a) => attendeeSet.has(a.id));
+  }, [currentChat, agents]);
 
   const {
     isSending,
@@ -97,6 +118,26 @@ function ChatPageInner() {
       useStreamStore.getState().setActiveChatId(null);
     };
   }, [chatId]);
+
+  // 从 URL skills 参数恢复会话级 Skill：首页选中后随 ?skills=[...] 带给新会话
+  useEffect(() => {
+    if (allSkills.length === 0 || chatId == null) return;
+    try {
+      const raw = searchParams.get("skills");
+      if (!raw) return;
+      const ids: string[] = JSON.parse(raw);
+      if (!Array.isArray(ids)) return;
+      setSessionSkills((prev) => {
+        const existing = new Set(prev.map((s) => s.id));
+        const toAdd = allSkills.filter((s) => ids.includes(s.id) && !existing.has(s.id));
+        return toAdd.length ? [...prev, ...toAdd] : prev;
+      });
+    } catch {
+      /* 非法 JSON 忽略 */
+    }
+    // 只在挂载时读一次，避免搜索参数变化时反复触发
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSkills, chatId]);
 
   // 稳定引用：避免每次 render 新建对象导致 memo(MessageList) 失效
   const currentAgentView = useMemo(
@@ -129,9 +170,7 @@ function ChatPageInner() {
 
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
   const [reasoningInitForChatId, setReasoningInitForChatId] = useState<number | null>(null);
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>(
-    (settings?.agent_permission_mode as PermissionMode) || "standard"
-  );
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("standard");
   const [permissionInitForChatId, setPermissionInitForChatId] = useState<number | null>(null);
   const [mode, setMode] = useState<ChatMode>("build");
   const [modeInitForChatId, setModeInitForChatId] = useState<number | null>(null);
@@ -195,13 +234,11 @@ function ChatPageInner() {
     setMode(currentChat.mode === "plan" ? "plan" : "build");
   }
 
-  // Phase 3 T3/T8: 权限模式同步 settings.agent_permission_mode（safe/standard/autonomous）
-  if (permissionInitForChatId !== chatId && settings) {
+  // 权限模式初始值：读会话快照 currentChat.permission_mode（会话级，无全局默认），切换会话时重置
+  if (permissionInitForChatId !== chatId && currentChat) {
     setPermissionInitForChatId(chatId);
-    const mode = settings.agent_permission_mode;
-    if (mode === "safe" || mode === "standard" || mode === "autonomous") {
-      setPermissionMode(mode);
-    }
+    const mode = currentChat.permission_mode;
+    setPermissionMode(mode === "safe" || mode === "standard" || mode === "autonomous" ? mode : "standard");
   }
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -284,6 +321,12 @@ function ChatPageInner() {
     }
   }, [chatId, createProject, updateChat]);
 
+  // 右上角「关联项目」胶囊：直接打开目录选择器（不经过加号菜单）
+  const handleOpenDirectoryPicker = useCallback(async () => {
+    const dir = await selectDirectory();
+    if (dir) await handleSelectDirectory(dir);
+  }, [handleSelectDirectory]);
+
   // 关联已有项目：直接从已注册列表中选择
   const handleSelectExistingProject = useCallback(async (projectId: number) => {
     if (!chatId) return;
@@ -319,10 +362,54 @@ function ChatPageInner() {
     }
   }, [chatId, updateChat]);
 
-  const handleClearContext = useCallback(() => {
+  // 清除上下文：真实清空当前会话的对话历史（含会话级 Skill），并清附件
+  const handleClearContext = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      await apiDelete(`/api/v1/chat/${chatId}/messages`);
+    } catch (err) {
+      console.error("Failed to clear chat history:", err);
+    }
+    setMessages([]);
+    invalidateMessagesCache();
+    setSessionSkills([]);
     setAttachments([]);
     fileMapRef.current.clear();
+  }, [chatId, setMessages, invalidateMessagesCache]);
+
+  // 会话级启用 Skill：把其 prompt 说明书作为文档喂给当前会话（不写全局 enabled）
+  const handleApplySkill = useCallback((skill: SkillInfo) => {
+    setSessionSkills((prev) => (prev.some((s) => s.id === skill.id) ? prev : [...prev, skill]));
   }, []);
+
+  // 移除某个会话级 Skill
+  const handleRemoveSkill = useCallback((skillId: string) => {
+    setSessionSkills((prev) => prev.filter((s) => s.id !== skillId));
+  }, []);
+
+  // 粘贴剪贴板：文本追加到输入框；图片作为附件上传（复用 onUploadFile 需 File，故走文件流）
+  const handlePasteClipboard = useCallback(async () => {
+    try {
+      if (!navigator.clipboard) {
+        setInput((v) => v + (v ? "\n" : "") + "[系统] 当前环境不支持剪贴板读取");
+        return;
+      }
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imgType = item.types.find((t) => t.startsWith("image/"));
+        if (imgType) {
+          const blob = await item.getType(imgType);
+          const file = new File([blob], `clipboard-${Date.now()}.png`, { type: imgType });
+          handleUploadFile(file);
+          return;
+        }
+      }
+      const text = await navigator.clipboard.readText();
+      if (text) setInput((v) => v + (v ? "\n" : "") + text);
+    } catch (err) {
+      console.warn("[handlePasteClipboard] 读取剪贴板失败:", err);
+    }
+  }, [handleUploadFile]);
 
   // 引用：把 AI 回复追加到输入框并聚焦（> 引用块格式）
   const handleQuote = useCallback((content: string) => {
@@ -419,40 +506,86 @@ function ChatPageInner() {
 
       const userMessage = decodeURIComponent(messageParam);
 
+      // 从 URL 参数恢复从首页随新建会话传递的附件（如屏幕截图）
+      const attachmentsParam = searchParams.get("attachments");
+      let urlAttachments = attachments;
+      if (attachmentsParam) {
+        try {
+          const parsed = JSON.parse(decodeURIComponent(attachmentsParam));
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            urlAttachments = parsed;
+            setAttachments(parsed);
+          }
+        } catch (e) {
+          console.warn("Failed to parse attachments from URL param:", e);
+        }
+      }
+
       // 清除URL参数
       const newUrl = `/chat/${chatId}`;
       window.history.replaceState({}, "", newUrl);
 
-      // 自动发送消息（复用统一流式管线，携带从 chat.context_files 恢复的 attachments）
+      // 自动发送消息（复用统一流式管线，携带 attachments）
       sendStream(userMessage, {
         modelId: sendModelId,
         personalityLevel,
         reasoningEffort,
         permissionMode,
-        attachments,
+        attachments: urlAttachments,
       });
     }
   }, [searchParams, hasAutoSent, chatId, messages, isSending, sendStream, personalityLevel, reasoningEffort, permissionMode, sendModelId, attachments]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isSending) return;
+  const handleSend = useCallback(async (screenshots?: Array<{ id: string; dataUrl: string; file: File }>) => {
+    // 允许只发文字、只发附件、或只发截图
+    if ((!input.trim() && attachments.length === 0 && (!screenshots || screenshots.length === 0)) || isSending) return;
 
-    const userMessage = input.trim();
-    setInput("");
+    const userMessage = input.trim() || "[图片]";
 
-    // 快照当前附件与 File 映射（buildContent 是异步的，必须在 clear 前捕获）
-    const sentAttachments = attachments;
+    // 收集所有附件：已有附件 + 截图附件（手动收集，不依赖 React 异步状态更新）
+    const sentAttachments = [...attachments];
     const sentFileMap = new Map(fileMapRef.current);
 
-    // 发送后立即清空附件，避免已发送的附件残留在输入框
+    // 上传截图并加到 sentAttachments（直接调用 uploadAttachment，确保附件对象被收集）
+    if (screenshots && screenshots.length > 0 && chatId) {
+      for (const item of screenshots) {
+        try {
+          const uploaded = await uploadAttachment(chatId, item.file);
+          if (uploaded) {
+            sentAttachments.push(uploaded);
+            sentFileMap.set(uploaded.id, item.file);
+          }
+        } catch (err) {
+          console.error("[Screenshot] upload failed in handleSend:", err);
+        }
+      }
+    }
+
+    // 上传完成后再清空输入框和附件，避免重新渲染干扰 fetch
+    setInput("");
     setAttachments([]);
     fileMapRef.current.clear();
 
-    // buildContent：读取 text 附件内容，拼接到用户消息前（前端兜底，保障 AI 一定看到文件内容）
+    // buildContent：读取 text 附件内容 + 会话级 Skill 说明书，拼接到用户消息前
     const buildContent = async (content: string): Promise<string> => {
-      if (sentAttachments.length === 0) return content;
-
       let prefix = "";
+
+      // 会话级 Skill：把启用 Skill 的说明书作为【强制行为契约】喂给当前会话（只在本会话生效）
+      if (sessionSkills.length > 0) {
+        const skillSection = sessionSkills
+          .map((s) => `<skill name="${s.name}">\n${s.prompt ?? s.description}\n</skill>`)
+          .join("\n\n");
+        prefix += (
+          `【本会话已启用 Skill 行为契约】\n` +
+          `以下 Skill 是当前会话的【强制执行规范】，不是参考文档。处理用户请求时必须逐条严格遵循，` +
+          `包括其中的输出格式、必含字段、禁止项与自查清单。若 Skill 要求输出某字段/清单/对照表，` +
+          `缺一项即视为未完成任务，必须补齐后再交付。\n\n` +
+          `${skillSection}\n\n---\n\n`
+        );
+      }
+
+      if (sentAttachments.length === 0) return prefix ? `${prefix}${content}` : content;
+
       for (const att of sentAttachments) {
         if (att.kind !== "text") continue;
         const file = sentFileMap.get(att.id);
@@ -489,7 +622,7 @@ function ChatPageInner() {
       buildContent,
       attachments: sentAttachments,
     });
-  }, [input, isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments]);
+  }, [input, isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments, sessionSkills, chatId]);
 
   // 语音意图无缝衔接：语音小球转写成功后自动拉起 Agent 流程
   // 复用 handleSend 同款参数（模型/人格/推理/权限/附件），语音视为一次"语音版发送"
@@ -503,11 +636,20 @@ function ChatPageInner() {
     setAttachments([]);
     fileMapRef.current.clear();
 
-    // buildContent：与 handleSend 一致的 text 附件兜底（语音可能配合已拖入的文件）
+    // buildContent：与 handleSend 一致的 text 附件兜底 + 会话级 Skill 说明书
     const buildContent = async (content: string): Promise<string> => {
-      if (sentAttachments.length === 0) return content;
-      const fileMap = fileMapRef.current;
       let prefix = "";
+
+      // 会话级 Skill：把启用 Skill 的说明书作为文档喂给当前会话
+      if (sessionSkills.length > 0) {
+        const skillSection = sessionSkills
+          .map((s) => `【本会话已启用 Skill：${s.name}】\n${s.prompt ?? s.description}\n`)
+          .join("\n\n");
+        prefix += `[以下为当前任务应遵循的行为规范文档，请据此处理用户请求]\n\n${skillSection}\n\n---\n\n`;
+      }
+
+      if (sentAttachments.length === 0) return prefix ? `${prefix}${content}` : content;
+      const fileMap = fileMapRef.current;
       for (const att of sentAttachments) {
         if (att.kind !== "text") continue;
         const file = fileMap.get(att.id);
@@ -533,7 +675,7 @@ function ChatPageInner() {
       buildContent,
       attachments: sentAttachments,
     });
-  }, [isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments]);
+  }, [isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments, sessionSkills]);
 
   // 模型切换：本地选中 + 持久化到会话快照 + 同步到偏好（localStorage）
   const handleModelChange = useCallback((id: string) => {
@@ -614,13 +756,50 @@ function ChatPageInner() {
 
   const handleSaveTitle = async () => {
     if (!chatId || !editTitle.trim()) return;
+    const newTitle = editTitle.trim();
     try {
-      await updateChat(chatId, { title: editTitle.trim() });
+      await updateChat(chatId, { title: newTitle });
+      useTabStore.getState().updateTabTitle(chatId, newTitle);
       setIsEditingTitle(false);
     } catch (err) {
       console.error("Failed to update title:", err);
     }
   };
+
+  // 浏览器式多标签：进入对话自动入驻顶部 TabBar 并激活
+  useEffect(() => {
+    if (chatId) {
+      useTabStore.getState().openTab({
+        chatId,
+        title: currentChat?.title || "新对话",
+        agentId: currentAgent?.id || currentChat?.agent_id,
+        projectId: currentProject?.id ?? currentChat?.project_id ?? null,
+      });
+    }
+  }, [chatId, currentChat?.title, currentChat?.agent_id, currentChat?.project_id, currentAgent?.id, currentProject?.id]);
+
+  // 新建对话（聊天头部 + 按钮 + 快捷键联动）
+  const handleNewChat = useCallback(async () => {
+    const agent = currentAgent || agents[0];
+    if (!agent) {
+      router.push("/");
+      return;
+    }
+    try {
+      const chat = await createChat(
+        agent.id,
+        "新对话",
+        currentProject?.id ?? null,
+        selectedModel?.id || settings?.default_model || null,
+        [],
+        currentChat?.mode || "build",
+        currentChat?.permission_mode || "standard"
+      );
+      router.push(`/chat/${chat.id}`);
+    } catch (err) {
+      console.error("Failed to create chat:", err);
+    }
+  }, [currentAgent, agents, currentProject, selectedModel, settings, currentChat, createChat, router]);
 
   return (
     <ProjectPathContext.Provider value={currentProject?.path ?? null}>
@@ -643,10 +822,12 @@ function ChatPageInner() {
         projects={projects}
         onSwitchProject={handleSwitchProject}
         onUnbindProject={handleUnbindProject}
+        onSelectDirectory={handleOpenDirectoryPicker}
+        onNewChat={handleNewChat}
       />
 
       {/* 消息列表（智能吸底滚动 + Markdown 渲染 + 代码块折叠）+ 对话大纲悬浮导航 */}
-      <div style={{
+      <div data-zoomable="message-list" style={{
         position: "relative",
         flex: 1,
         minHeight: 0,
@@ -673,14 +854,14 @@ function ChatPageInner() {
         <MessageOutline messages={messages} activeUserMessageId={activeUserMessageId} />
       </div>
 
-      {/* 多 Agent 任务进度面板：输入框上方，与 ChatComposer 等宽对齐 */}
-      <div style={{ maxWidth: "768px", margin: "0 auto", padding: "0 16px", width: "100%" }}>
+      {/* 多 Agent 任务进度面板：输入框上方，与 ChatComposer 等宽对齐，两侧各留 100px 空隙（不顶满） */}
+      <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "0 100px", width: "100%" }}>
         <TaskProgressCard tasks={tasks ?? []} chatId={chatId} live={isSending} />
       </div>
 
       {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮）
           有看待抉择请求时，输入框整体被选择框替换（无感，不打断） */}
-      <div style={{
+      <div data-zoomable="composer" style={{
         flexShrink: 0,
         background: "transparent",
       }}>
@@ -707,22 +888,32 @@ function ChatPageInner() {
             permissionMode={permissionMode}
             onPermissionChange={(mode) => {
               setPermissionMode(mode);
-              updateSettings({ agent_permission_mode: mode });
+              if (chatId != null) {
+                updateChat(chatId, { permission_mode: mode }).catch((err) =>
+                  console.error("Failed to persist permission mode:", err)
+                );
+              }
             }}
             mode={mode}
             onModeChange={handleModeChange}
             onUploadFile={handleUploadFile}
             onSelectDirectory={handleSelectDirectory}
             onClearContext={handleClearContext}
-            hasContext={attachments.length > 0}
+            hasContext={messages.length > 0 || sessionSkills.length > 0}
             projects={projects}
             onSelectExistingProject={handleSelectExistingProject}
+            skills={allSkills}
+            onApplySkill={handleApplySkill}
+            activeSkillIds={new Set(sessionSkills.map((s) => s.id))}
+            onRemoveSkill={handleRemoveSkill}
+            onPasteClipboard={handlePasteClipboard}
             files={[]}
             onRemoveFile={() => {}}
             projectName={currentProject?.name || null}
             attachments={attachments}
             onRemoveAttachment={removeAttachment}
             onVoicePrompt={handleVoicePrompt}
+            roundtableAttendees={roundtableAttendees}
           />
         )}
       </div>

@@ -61,10 +61,9 @@ export function ChatRow({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        // 缩进：项目内 22px 对齐项目图标起点；通用对话 0
-        padding: indented
-          ? "3px var(--sidebar-row-px) 3px 22px"
-          : "3px var(--sidebar-row-px)",
+        // 统一文字起始位置 44px（对齐标题文字：4padding + 12Chevron + 8gap + 12icon + 8gap = 44）
+        // 项目内会话与通用对话统一对齐，不再单独缩进
+        padding: "3px var(--sidebar-row-px) 3px 44px",
         borderRadius: "var(--radius-sm)",
         background: isActive ? "var(--sidebar-active-bg)" : "transparent",
         cursor: "pointer",
@@ -74,7 +73,7 @@ export function ChatRow({
       onClick={() => !isRenaming && router.push(`/chat/${chat.id}`)}
       onContextMenu={(e) => onContextMenu(e, chat.id)}
       onMouseEnter={(e) => {
-        if (!isActive) e.currentTarget.style.background = "var(--bg-level-3)";
+        if (!isActive) e.currentTarget.style.background = "var(--bg-level-4)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = isActive
@@ -169,24 +168,25 @@ export function ChatRow({
             {chat.title}
           </span>
         )}
-        {/* 2026-08-12：最后交互时间（标题同行右侧，重命名时隐藏） */}
-        {!isRenaming && chat.updated_at && (
-          <span
-            title={formatFullTime(chat.updated_at)}
-            style={{
-              fontSize: "10px",
-              lineHeight: 1,
-              color: "var(--text-level-4)",
-              fontVariantNumeric: "tabular-nums",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-              marginLeft: "6px",
-            }}
-          >
-            {formatRelativeTime(chat.updated_at, t, now)}
-          </span>
-        )}
       </div>
+      {/* 右侧操作区：时间 + 更多按钮，容器负 margin 抵消 padding-right 贴边 */}
+      <div style={{ display: "flex", alignItems: "center", gap: "4px", marginRight: "-8px", flexShrink: 0 }}>
+      {/* 2026-08-20：最后交互时间移到整行最右侧，tabular-nums 缩放稳定，重命名时隐藏 */}
+      {!isRenaming && chat.updated_at && (
+        <span
+          title={formatFullTime(chat.updated_at)}
+          style={{
+            fontSize: "10px",
+            lineHeight: 1,
+            color: "var(--text-level-4)",
+            fontVariantNumeric: "tabular-nums",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
+          {formatRelativeTime(chat.updated_at, t, now)}
+        </span>
+      )}
       {/* ... 按钮：22×22 / 圆角 radius-sm / 默认 opacity 0 */}
       <button
         onClick={(e) => onMore(e, chat.id)}
@@ -224,6 +224,7 @@ export function ChatRow({
           }}
         />
       </button>
+      </div>
     </div>
   );
 }

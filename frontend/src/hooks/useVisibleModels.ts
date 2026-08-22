@@ -26,7 +26,8 @@ export function useVisibleModels(models: Model[]): Model[] {
 
   return useMemo(() => {
     const loaded = !providerConfig.loading && providerConfig.settings != null;
-    if (!loaded) return models;
+    // 2026-08-20：加载中返回空数组而非原始 models，避免下拉框闪现已禁用/无Key的旧模型
+    if (!loaded) return [];
     const filtered = models.filter((m) => {
       // 1. Provider 总开关禁用 → 隐藏（内置 + 自定义 均适用）
       if (providerConfig.isProviderDisabled(m.provider)) return false;

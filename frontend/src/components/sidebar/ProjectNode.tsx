@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Folder, FolderOpen, Pin, Plus, MoreHorizontal } from "lucide-react";
+import { Folder, FolderOpen, Pin, Plus, MoreHorizontal } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import type { OrbStage } from "@/lib/streamStore";
@@ -76,11 +76,11 @@ export function ProjectNode({
           position: "relative",
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "4px var(--sidebar-row-px)",
+          gap: "6px",
+          padding: "4px var(--sidebar-row-px) 4px 22px",
           borderRadius: "var(--radius-sm)",
           cursor: "pointer",
-          background: isActive ? "var(--sidebar-active-bg-strong)" : "transparent",
+          background: isActive ? "var(--sidebar-active-bg-strong)" : (isHovered ? "var(--bg-level-4)" : "transparent"),
           transition: "background var(--transition-fast)",
         }}
       >
@@ -100,34 +100,13 @@ export function ProjectNode({
           />
         )}
 
-        {/* 折叠/展开 Chevron：与小图标档同尺寸 */}
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "var(--sidebar-icon-size-sm)",
-            height: "var(--sidebar-icon-size-sm)",
-            flexShrink: 0,
-            transition: "transform var(--transition-fast)",
-            transform: isCollapsed ? "none" : "rotate(90deg)",
-          }}
-        >
-          <ChevronRight
-            style={{
-              width: "var(--sidebar-icon-size-sm)",
-              height: "var(--sidebar-icon-size-sm)",
-              color: "var(--text-level-4)",
-            }}
-          />
-        </span>
 
-        {/* 文件夹图标：行内统一 14px */}
+        {/* 文件夹图标：16px（对齐标题文字起始位置 44px = 22padding + 16icon + 6gap） */}
         {isCollapsed ? (
           <Folder
             style={{
-              width: "var(--sidebar-icon-size)",
-              height: "var(--sidebar-icon-size)",
+              width: "16px",
+              height: "16px",
               color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-3)",
               flexShrink: 0,
             }}
@@ -135,8 +114,8 @@ export function ProjectNode({
         ) : (
           <FolderOpen
             style={{
-              width: "var(--sidebar-icon-size)",
-              height: "var(--sidebar-icon-size)",
+              width: "16px",
+              height: "16px",
               color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-3)",
               flexShrink: 0,
             }}
@@ -172,20 +151,24 @@ export function ProjectNode({
           />
         )}
 
-        {/* chat 数量角标：12px + tabular-nums（与提示同档） */}
-        <span
-          style={{
-            fontSize: "12px",
-            lineHeight: "var(--line-height-normal)",
-            color: "var(--text-level-4)",
-            flexShrink: 0,
-            fontVariantNumeric: "tabular-nums",
-            minWidth: "14px",
-            textAlign: "right",
-          }}
-        >
-          {chats.length}
-        </span>
+        {/* 右侧操作区：chat数量 + 新建 + 更多，容器负 margin 抵消 padding-right 贴边 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "2px", marginRight: "-8px", flexShrink: 0 }}>
+        {/* chat 数量角标：为 0 时不显示，tabular-nums 等宽缩放稳定 */}
+        {chats.length > 0 && (
+          <span
+            style={{
+              fontSize: "12px",
+              lineHeight: "var(--line-height-normal)",
+              color: "var(--text-level-4)",
+              flexShrink: 0,
+              fontVariantNumeric: "tabular-nums",
+              minWidth: "14px",
+              textAlign: "right",
+            }}
+          >
+            {chats.length}
+          </span>
+        )}
 
         {/* 悬停显示 +：快速新建会话（22×22 / 圆角 radius-sm） */}
         <button
@@ -263,6 +246,7 @@ export function ProjectNode({
             }}
           />
         </button>
+        </div>
       </div>
 
       {/* 项目内会话：与 ChatRow 一致的缩进（22px 对齐项目图标起点） */}
@@ -289,3 +273,4 @@ export function ProjectNode({
     </div>
   );
 }
+

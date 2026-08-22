@@ -1,0 +1,71 @@
+{
+  "project": {
+    "id": 49,
+    "name": "coder_glm51_bench",
+    "path": "E:\\智慧项目\\Mfkagent\\_benchmark\\coder_glm51",
+    "created_at": "2026-08-13 05:51:59.783937",
+    "archived_at": "2026-08-13 09:29:01.021168"
+  },
+  "chats": [
+    {
+      "id": 229,
+      "title": "bench-coder",
+      "agent_id": "coder"
+    },
+    {
+      "id": 230,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 231,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 232,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 233,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 234,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 235,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 236,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 237,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 238,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 239,
+      "title": "bench",
+      "agent_id": "coder"
+    },
+    {
+      "id": 240,
+      "title": "bench",
+      "agent_id": "coder"
+    }
+  ]
+}

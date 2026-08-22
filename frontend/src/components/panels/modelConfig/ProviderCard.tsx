@@ -1,0 +1,826 @@
+"use client";
+
+/**
+ * ProviderCard —— 模型 Provider 卡片（从 ModelConfigSection.tsx 拆分，零行为变化）
+ *
+ * 职责：API Key 配置 + 模型候选池三区块 + 一键拉取 + 连通性测试。
+ * 纯展示组件，状态由父级 ModelProvidersBasic 注入。
+ */
+import { useState } from "react";
+import { ChevronDown, ChevronRight, ExternalLink, Globe, Plus, Trash2, Wifi, X, Zap } from "lucide-react";
+import type { RemoteModelInfo, TestConnectionRequest, TestConnectionResponse } from "@/hooks/useProviderConfig";
+import { ApiKeyInput } from "@/components/ApiKeyInput";
+import { RemoteModelPicker } from "@/components/RemoteModelPicker";
+import { SwitchButton } from "@/components/SwitchButton";
+import { maskApiKey } from "./constants";
+import { ProviderIcon } from "./ProviderIcon";
+// 2026-08-14 更新：推荐模型白名单 = 各 Provider 当前最新版（覆盖上一版仅 3 个 qwen 的旧白名单）
+// 每个 provider 至少曝光其最新旗舰文本模型，其余型号走区块3 "手动添加"。
+const RECOMMENDED_TEXT_NEW = new Set([
+  // DeepSeek
+  "deepseek-v4-flash",
+  // 通义千问
+  "qwen3.8-max", "qwen3.7-max", "qwen3.7-plus",
+  // Google Gemini
+  "gemini-3.6-flash", "gemini-3.5-flash",
+  // 智谱 GLM
+  "glm-5.1", "glm-5", "glm-4.7-flash",
+  // 月之暗面 Kimi
+  "kimi-k2.7-code",
+  // MiniMax
+  "minimax-m2.5",
+  // 百度文心
+  "wenxin-ernie-5.0",
+  // 讯飞星火
+  "spark-4.0-ultra",
+]);
+
+// ── Provider 卡片：含 API Key 配置 + 动态模型 Chip 三区块 ──────────────────
+
+interface ProviderCardProps {
+  provider: {
+    id: string;
+    name: string;
+    description?: string;
+    free: boolean;
+    website?: string;
+    api_key_masked: string;
+    has_key: boolean;
+    api_base: string;
+    api_base_override: boolean;
+    models: { id: string; name: string }[];
+  };
+  editing: boolean;
+  keyInput: string;
+  baseInput: string;
+  savingProvider: string | null;
+  savedProvider: string | null;
+  onOpenEdit: () => void;
+  onCloseEdit: () => void;
+  onKeyChange: (v: string) => void;
+  onBaseChange: (v: string) => void;
+  onSaveProvider: () => void;
+  onClearKey: () => void;
+  enabledModels: string[];
+  onAddModel: (modelId: string) => void;
+  onRemoveModel: (modelId: string) => void;
+  onFetchRemote: () => void;
+  remotePickerOpen: boolean;
+  remoteModels: RemoteModelInfo[];
+  remoteLoading: boolean;
+  remoteError: string | null;
+  onCloseRemotePicker: () => void;
+  onTestConnection: (data: TestConnectionRequest) => Promise<TestConnectionResponse>;
+  t: (key: string, params?: Record<string, string>) => string;
+  /**
+   * 字段级边界重构：是否隐藏 editing 表单中的 Base URL 覆盖输入框。
+   * - true（基础区）：隐藏 Base URL，新手绝不会看到深水区参数。
+   *   此时 onSaveProvider 内部必须传 undefined 给 apiBase，否则空字符串会误清除已存 override。
+   * - false（高级区/完整模式）：显示 Base URL 输入框，保持原行为。
+   */
+  hideBaseUrl?: boolean;
+  /** Provider 总开关：是否被禁用 */
+  providerDisabled?: boolean;
+  /** 切换 Provider 启用/禁用状态 */
+  onToggleDisabled?: () => void;
+}
+
+export function ProviderCard({
+  provider: p,
+  editing,
+  keyInput,
+  baseInput,
+  savingProvider,
+  savedProvider,
+  onOpenEdit,
+  onCloseEdit,
+  onKeyChange,
+  onBaseChange,
+  onSaveProvider,
+  onClearKey,
+  enabledModels,
+  onAddModel,
+  onRemoveModel,
+  onFetchRemote,
+  remotePickerOpen,
+  remoteModels,
+  remoteLoading,
+  remoteError,
+  onCloseRemotePicker,
+  onTestConnection,
+  t,
+  hideBaseUrl = false,
+  providerDisabled = false,
+  onToggleDisabled,
+}: ProviderCardProps) {
+  // 自定义手动添加输入框（每个 provider 独立）
+  const [customInput, setCustomInput] = useState("");
+  // 2026-08-11：候选池折叠状态，默认折叠（像字体选择器那样不占空间）
+  // 2026-08-20：折叠态持久化到 localStorage（此前纯内存，重进设置即丢）
+  const [poolExpanded, setPoolExpanded] = useState(() => {
+    try { return localStorage.getItem(`mfk_pool_expanded_${p.id}`) === "1"; }
+    catch { return false; }
+  });
+
+  // ── 连通性测试状态（每张卡片独立，临时 UI 状态）──
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<TestConnectionResponse | null>(null);
+
+  // 模型区域收起/展开（持久化到 localStorage，记忆用户偏好）
+  const [modelsExpanded, setModelsExpanded] = useState(() => {
+    try {
+      return localStorage.getItem(`mfk_provider_expanded_${p.id}`) !== "false";
+    } catch {
+      return true;
+    }
+  });
+  const toggleModelsExpanded = () => {
+    setModelsExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(`mfk_provider_expanded_${p.id}`, String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  // 综合配置状态：has_key（已配置 Key）或 api_base_override（已配置 Base URL 覆盖）
+  // 用于控制"清除"按钮显隐：仅配置 Base URL 不填 Key 的本地模型也能正常清除
+  const isConfigured = p.has_key || p.api_base_override;
+
+  // 推荐模型：唯一权威源 = ProviderConfig.models（后端 model_providers.py）
+  // 历史：之前用 RECOMMENDED_MODELS 硬编码常驻，与后端脱钩导致漂移（百炼新模型漏显示、qwen-turbo 幽灵等）。
+  // 2026-08-11 改为单源（见 P1 修复）。百炼一类的聚合 provider 也能露出全部子模型。
+  // 2026-08-11 进一步精简：仅展示 3 个新款文本模型（白名单 RECOMMENDED_TEXT_NEW）
+  // 其余模型走区块3 "手动添加"输入名字加入。
+  const recommended = p.models.map((m) => m.id);
+  // 已启用集合（O(1) 查找）
+  const enabledSet = new Set(enabledModels);
+  // 快捷添加区只展示"白名单 ∩ 尚未启用"的推荐模型
+  const quickAddList = recommended.filter((m) => !enabledSet.has(m) && RECOMMENDED_TEXT_NEW.has(m));
+
+  const handleCustomAdd = () => {
+    const id = customInput.trim();
+    if (!id) return;
+    onAddModel(id);
+    setCustomInput("");
+  };
+
+  /**
+   * 连通性测试：使用输入框中的实时草稿值（Draft State）。
+   * 关键逻辑：
+   *   - api_key: 传入 keyInput 草稿值；为空时不传，后端自动回退读取已存 Key
+   *   - api_base: 传入 baseInput 草稿值；为空时不传，后端取默认端点
+   *   - 不依赖 Store 中已保存的值，支持"无需保存即可验证"
+   */
+  const handleTestConnection = async () => {
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const payload: TestConnectionRequest = { provider_id: p.id };
+      // 仅在输入框有值时传入草稿，空值留给后端回退
+      const draftKey = keyInput.trim();
+      const draftBase = baseInput.trim();
+      if (draftKey) payload.api_key = draftKey;
+      if (draftBase) payload.api_base = draftBase;
+      const result = await onTestConnection(payload);
+      setTestResult(result);
+    } catch (err) {
+      // HTTP 层异常（如网络错误、404 provider 不存在）
+      const msg = err instanceof Error ? err.message : String(err);
+      setTestResult({ ok: false, latency_ms: 0, detail: msg });
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        padding: "12px 14px",
+        borderRadius: "var(--radius-md)",
+        border: providerDisabled
+          ? "1px dashed var(--border-primary)"
+          : "1px solid var(--border-primary)",
+        background: "var(--bg-level-2)",
+        opacity: providerDisabled ? 0.55 : 1,
+        transition: "opacity 0.2s ease, border 0.2s ease",
+      }}
+    >
+      {/* ── 头部行：始终可见（收起态仅保留核心信息）── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {/* 收起/展开箭头 */}
+        <button
+          type="button"
+          onClick={toggleModelsExpanded}
+          title={modelsExpanded ? t("settings.model.providers.collapseModels") : t("settings.model.providers.expandModels")}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "20px",
+            height: "20px",
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            color: "var(--text-level-4)",
+            flexShrink: 0,
+            transition: "color 0.15s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--text-level-2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-level-4)")}
+        >
+          {modelsExpanded ? (
+            <ChevronDown style={{ width: "14px", height: "14px" }} />
+          ) : (
+            <ChevronRight style={{ width: "14px", height: "14px" }} />
+          )}
+        </button>
+
+        {/* 厂商品牌图标 */}
+        <ProviderIcon providerId={p.id} size={20} />
+
+        {/* Provider 名称（视觉中心） */}
+        <span style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-level-1)", flexShrink: 0 }}>
+          {p.name}
+        </span>
+
+        {/* Provider 总开关：启用/禁用（与设置页其他开关统一的 SwitchButton） */}
+        {onToggleDisabled && (
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+            <SwitchButton
+              checked={!providerDisabled}
+              onChange={() => onToggleDisabled()}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                color: providerDisabled ? "var(--text-level-4)" : "var(--color-success)",
+                fontWeight: 500,
+                userSelect: "none",
+              }}
+            >
+              {providerDisabled ? t("settings.model.providers.disabled") : t("settings.model.providers.enabled")}
+            </span>
+          </div>
+        )}
+
+        {/* 右侧：脱敏 Key + 清除按钮 + 配置状态（统一胶囊高度） */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+          {p.has_key && (
+            <span style={{ fontSize: "12px", color: "var(--text-level-4)", fontFamily: "monospace" }}>
+              {maskApiKey(p.api_key_masked)}
+            </span>
+          )}
+          {isConfigured && (
+            <button
+              onClick={onClearKey}
+              disabled={savingProvider === p.id}
+              title={t("settings.model.providers.clearKey")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "24px",
+                height: "24px",
+                padding: 0,
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid transparent",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--text-level-4)",
+                opacity: savingProvider === p.id ? 0.6 : 1,
+                transition: "all 0.15s ease",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                if (savingProvider !== p.id) {
+                  e.currentTarget.style.background = "rgba(239,68,68,0.1)";
+                  e.currentTarget.style.color = "var(--color-danger, #ef4444)";
+                  e.currentTarget.style.borderColor = "rgba(239,68,68,0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--text-level-4)";
+                e.currentTarget.style.borderColor = "transparent";
+              }}
+            >
+              <Trash2 style={{ width: "13px", height: "13px" }} />
+            </button>
+          )}
+          <span style={{
+            fontSize: "11px",
+            padding: "2px 8px",
+            borderRadius: "999px",
+            background: p.has_key
+              ? "rgba(16,185,129,0.12)"
+              : "rgba(107,114,128,0.12)",
+            color: p.has_key ? "var(--color-success)" : "var(--text-level-3)",
+            lineHeight: 1.4,
+            flexShrink: 0,
+          }}>
+            {p.has_key
+              ? t("settings.model.providers.configured")
+              : t("settings.model.providers.notConfigured")}
+          </span>
+        </div>
+      </div>
+
+      {/* ── 以下内容仅在展开时显示 ── */}
+      {modelsExpanded && (
+      <>
+      {/* 元信息行：免费标签 + 官网链接（收起态隐藏，保持头部简洁） */}
+      {(p.free || p.website) && (
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
+          {p.free && (
+            <span style={{
+              fontSize: "11px",
+              padding: "2px 8px",
+              borderRadius: "999px",
+              background: "var(--color-success-lighter, rgba(16,185,129,0.12))",
+              color: "var(--color-success)",
+              lineHeight: 1.4,
+            }}>
+              {t("settings.model.providers.free")}
+            </span>
+          )}
+          {p.website && (
+            <a
+              href={p.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={p.website}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "3px",
+                fontSize: "11px",
+                color: "var(--color-primary)",
+                textDecoration: "none",
+                cursor: "pointer",
+              }}
+            >
+              <ExternalLink style={{ width: "11px", height: "11px" }} />
+              {t("settings.model.providers.website")}
+            </a>
+          )}
+        </div>
+      )}
+      {p.description && (
+        <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "6px 0 0 0" }}>
+          {p.description}
+        </p>
+      )}
+
+      {/* ── 动态模型 Chip 三区块 ── */}
+      <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        {/* 区块1：已加入候选池的模型（可折叠，像字体选择器一样简洁） */}
+        <div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "2px 0",
+              fontSize: "11px",
+              color: "var(--text-level-3)",
+            }}
+          >
+            <span
+              title={t("settings.model.providers.enabledModelsHint")}
+              style={{ cursor: "help", textDecoration: "underline dotted var(--text-level-4)" }}
+            >
+              {t("settings.model.providers.enabledModels")} ({enabledModels.length})
+            </span>
+            <div style={{ flex: 1 }} />
+            {enabledModels.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setPoolExpanded((v) => {
+                  const next = !v;
+                  try { localStorage.setItem(`mfk_pool_expanded_${p.id}`, next ? "1" : "0"); } catch { /* noop */ }
+                  return next;
+                })}
+                aria-label={poolExpanded ? "collapse" : "expand"}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "20px",
+                  height: "20px",
+                  padding: 0,
+                  borderRadius: "var(--radius-xs)",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "var(--text-level-3)",
+                  transition: "color var(--transition-fast), background var(--transition-fast)",
+                  outline: "none",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--text-level-1)";
+                  e.currentTarget.style.background = "var(--bg-level-3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-level-3)";
+                  e.currentTarget.style.background = "transparent";
+                }}
+              >
+                <ChevronDown
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    transform: poolExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform var(--transition-fast)",
+                  }}
+                />
+              </button>
+            )}
+          </div>
+
+          {/* 展开后：紧湊列表（28px 行高）+ 每行右侧 X 删除按钮 */}
+          {poolExpanded && enabledModels.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1px", marginTop: "2px" }}>
+              {enabledModels.map((mid) => (
+                <div
+                  key={mid}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    height: "28px",
+                    padding: "0 6px 0 10px",
+                    borderRadius: "var(--radius-sm)",
+                    background: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
+                    border: "1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)",
+                  }}
+                >
+                  <span
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: "12px",
+                      fontFamily: "monospace",
+                      color: "var(--text-level-1)",
+                    }}
+                  >
+                    {mid}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveModel(mid)}
+                    title={t("settings.model.providers.removeModel")}
+                    aria-label="remove"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "18px",
+                      height: "18px",
+                      padding: 0,
+                      borderRadius: "50%",
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      color: "var(--text-level-3)",
+                      flexShrink: 0,
+                      transition: "color var(--transition-fast), background var(--transition-fast)",
+                      outline: "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--color-error)";
+                      e.currentTarget.style.background = "var(--bg-level-3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--text-level-3)";
+                      e.currentTarget.style.background = "transparent";
+                    }}
+                  >
+                    <X style={{ width: "12px", height: "12px" }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 折叠状态或空状态：仍显示提示（默认折叠时仅一行 header 文字提示） */}
+          {!poolExpanded && enabledModels.length === 0 && (
+            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+              {t("settings.model.providers.noEnabled")}
+            </span>
+          )}
+        </div>
+
+        {/* 区块2：推荐模型快捷添加 */}
+        {quickAddList.length > 0 && (
+          <div>
+            <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginBottom: "4px" }}>
+              {t("settings.model.providers.quickAdd")}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {quickAddList.map((mid) => (
+                <button
+                  key={mid}
+                  type="button"
+                  onClick={() => onAddModel(mid)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "2px 10px",
+                    borderRadius: "999px",
+                    background: "transparent",
+                    color: "var(--text-level-3)",
+                    fontSize: "12px",
+                    fontFamily: "monospace",
+                    border: "1px dashed var(--border-primary)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Plus style={{ width: "12px", height: "12px" }} />
+                  {mid}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 区块3：自定义手动添加 */}
+        <div>
+          <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginBottom: "4px" }}>
+            {t("settings.model.providers.customAdd")}
+          </div>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <input
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleCustomAdd();
+                }
+              }}
+              placeholder={t("settings.model.providers.customPlaceholder")}
+              style={{
+                flex: 1,
+                padding: "5px 10px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-1)",
+                fontSize: "12px",
+                color: "var(--text-level-2)",
+                outline: "none",
+                fontFamily: "monospace",
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleCustomAdd}
+              disabled={!customInput.trim()}
+              style={{
+                padding: "5px 12px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-primary)",
+                background: "transparent",
+                color: "var(--text-level-2)",
+                fontSize: "12px",
+                cursor: customInput.trim() ? "pointer" : "not-allowed",
+                opacity: customInput.trim() ? 1 : 0.5,
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+            >
+              <Plus style={{ width: "12px", height: "12px" }} />
+              {t("settings.model.providers.addBtn")}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 一键拉取官方模型（防爆：结果进搜索下拉，不平铺） */}
+      <div style={{ marginTop: "8px" }}>
+        <button
+          type="button"
+          onClick={onFetchRemote}
+          disabled={!p.has_key}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+            padding: "4px 12px",
+            borderRadius: "var(--radius-sm)",
+            border: remotePickerOpen
+              ? "1px solid var(--color-primary)"
+              : "1px solid var(--border-primary)",
+            background: remotePickerOpen
+              ? "color-mix(in srgb, var(--color-primary) 8%, transparent)"
+              : "transparent",
+            color: p.has_key ? "var(--color-primary)" : "var(--text-level-4)",
+            fontSize: "12px",
+            cursor: p.has_key ? "pointer" : "not-allowed",
+            opacity: p.has_key ? 1 : 0.5,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Zap style={{ width: "12px", height: "12px" }} />
+          {t("settings.model.providers.fetchRemote")}
+        </button>
+        {!p.has_key && (
+          <span style={{ marginLeft: "6px", fontSize: "11px", color: "var(--text-level-4)" }}>
+            {t("settings.model.providers.fetchRemoteHint")}
+          </span>
+        )}
+        {remotePickerOpen && (
+          <RemoteModelPicker
+            providerId={p.id}
+            models={remoteModels}
+            enabledSet={enabledSet}
+            onAdd={onAddModel}
+            onClose={onCloseRemotePicker}
+            loading={remoteLoading}
+            error={remoteError}
+          />
+        )}
+      </div>
+
+      {/* API Key 配置入口 */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+        <button
+          onClick={editing ? onCloseEdit : onOpenEdit}
+          style={{
+            padding: "5px 12px",
+            borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--border-primary)",
+            background: "transparent",
+            cursor: "pointer",
+            fontSize: "12px",
+            color: "var(--text-level-2)",
+            transition: "all 0.15s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--color-primary)";
+            e.currentTarget.style.color = "var(--color-primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-primary)";
+            e.currentTarget.style.color = "var(--text-level-2)";
+          }}
+        >
+          {t(editing ? "common.cancel" : "settings.model.providers.configure")}
+        </button>
+        {savedProvider === p.id && (
+          <span style={{ fontSize: "12px", color: "var(--color-success)" }}>
+            {t("common.saved")}
+          </span>
+        )}
+      </div>
+
+      {editing && (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          marginTop: "12px",
+          padding: "12px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--bg-level-1)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <label style={{ minWidth: "70px", fontSize: "12px", color: "var(--text-level-2)", flexShrink: 0 }}>
+              {t("settings.model.providers.keyLabel")}
+            </label>
+            {/* 任务1：主 Provider API Key 复用公共组件 */}
+            <ApiKeyInput
+              value={keyInput}
+              onChange={onKeyChange}
+              placeholder={p.api_key_masked || "sk-..."}
+              showIcon={false}
+              settingKey={`api_key_${p.id}`}
+            />
+          </div>
+          {/* 字段级边界：Base URL 覆盖仅在高级区显示，基础区隐藏 */}
+          {!hideBaseUrl && (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <label style={{ minWidth: "70px", fontSize: "12px", color: "var(--text-level-2)", display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                <Globe style={{ width: "12px", height: "12px" }} />
+                {t("settings.model.providers.baseLabel")}
+              </label>
+              <input
+                type="text"
+                value={baseInput}
+                onChange={(e) => onBaseChange(e.target.value)}
+                placeholder={p.api_base}
+                style={{
+                  flex: 1,
+                  padding: "6px 10px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border-primary)",
+                  background: "var(--bg-level-2)",
+                  fontSize: "13px",
+                  color: "var(--text-level-2)",
+                  outline: "none",
+                }}
+              />
+            </div>
+          )}
+          {/* 基础区提示：已配置 override 时告知用户去高级区修改 */}
+          {hideBaseUrl && p.api_base_override && (
+            <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: 0 }}>
+              {t("settings.model.providers.baseUrlInAdvanced")}
+            </p>
+          )}
+          {/* 任务2：连通性测试 —— 使用输入框实时草稿值，无需保存即可验证 */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            flexWrap: "wrap",
+            padding: "8px 10px",
+            borderRadius: "var(--radius-sm)",
+            background: "color-mix(in srgb, var(--color-primary) 4%, transparent)",
+            border: "1px dashed color-mix(in srgb, var(--color-primary) 25%, transparent)",
+          }}>
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={testLoading}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "5px 14px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--color-primary)",
+                background: "transparent",
+                color: "var(--color-primary)",
+                cursor: testLoading ? "not-allowed" : "pointer",
+                fontSize: "12px",
+                fontWeight: "500",
+                opacity: testLoading ? 0.7 : 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Wifi style={{ width: "12px", height: "12px" }} />
+              {testLoading
+                ? t("settings.model.providers.testConnectionTesting")
+                : t("settings.model.providers.testConnection")}
+            </button>
+            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+              {t("settings.model.providers.testConnectionHint")}
+            </span>
+            {/* 内联反馈：成功显示延迟（绿色），失败显示 detail（红色） */}
+            {testResult && (
+              <span
+                style={{
+                  fontSize: "12px",
+                  fontFamily: "monospace",
+                  color: testResult.ok
+                    ? "var(--color-success)"
+                    : "var(--color-danger, #ef4444)",
+                  wordBreak: "break-all",
+                  flex: "1 1 auto",
+                  minWidth: 0,
+                }}
+              >
+                {testResult.ok
+                  ? t("settings.model.providers.testConnectionOk", {
+                      latency: String(testResult.latency_ms),
+                    })
+                  : t("settings.model.providers.testConnectionFail", {
+                      detail: testResult.detail,
+                    })}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              onClick={onSaveProvider}
+              disabled={savingProvider === p.id}
+              style={{
+                padding: "6px 16px",
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "var(--color-primary)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: "500",
+                opacity: savingProvider === p.id ? 0.7 : 1,
+              }}
+            >
+              {savingProvider === p.id ? t("common.saving") : t("common.save")}
+            </button>
+          </div>
+        </div>
+      )}
+      </>
+      )}
+    </div>
+  );
+}

@@ -13,7 +13,8 @@
 from typing import Dict, List, Optional
 import logging
 
-from app.core.model_providers import PROVIDERS, PROVIDER_MAP, ProviderDef
+import app.core.model_providers as _mp
+from app.core.model_providers import ProviderDef
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,19 +31,30 @@ class ModelConfigAdapter:
         """解析全部可用模型配置（内置 provider + 自定义覆盖）。
 
         合并规则：
-          1. 先填入内置 PROVIDERS 的全部模型
+          1. 先填入内置 _mp.PROVIDERS 的全部模型
+          1b. 对 p.models 为空的 provider（自定义端点），从 enabled_models 动态生成模型
           2. 再用 CustomModel 表（enabled=True）覆盖同名 model_id
 
         Returns:
             Dict[model_id, ModelConfig]
         """
         # 延迟导入避免循环依赖（model.py 在模块级实例化 ModelService）
-        from app.services.model import ModelConfig
+        from app.services.model import ModelConfig, ModelProvider
+        import json as _json
 
         models: Dict[str, ModelConfig] = {}
 
-        # 1. 内置 PROVIDERS
-        for p in PROVIDERS:
+        # 读取 enabled_models（用于自定义端点动态生成模型）
+        enabled_map = {}
+        try:
+            raw = self._read_setting("enabled_models")
+            if raw:
+                enabled_map = _json.loads(raw)
+        except Exception:
+            pass
+
+        # 1. 内置 _mp.PROVIDERS
+        for p in _mp.PROVIDERS:
             api_base = self.resolve_api_base(p)
             api_key = self.resolve_api_key(p)
             for m in p.models:
@@ -54,21 +66,38 @@ class ModelConfigAdapter:
                     supports_vision=_detect_supports_vision(m.upstream, p.supports_vision, m.supports_vision),
                     supports_tools=True,
                 )
+            # 1b. 自定义端点：p.models 为空，从 enabled_models 动态生成
+            if not p.models and p.id in enabled_map:
+                for model_id in enabled_map[p.id]:
+                    if model_id not in models:
+                        models[model_id] = ModelConfig(
+                            provider=ModelProvider.CUSTOM,
+                            provider_id=p.id,  # 存储原始 custom_<id>
+                            model_name=model_id,  # 自定义端点的 model_id 即上游模型名
+                            api_key=api_key,
+                            api_base=api_base,
+                            supports_vision=_detect_supports_vision(model_id, p.supports_vision, None),
+                            supports_tools=True,
+                        )
 
         # 2. CustomModel 表覆盖（同名 model_id 覆盖内置）
         for cm in self._custom_models():
-            provider_def = PROVIDER_MAP.get(cm.provider)
+            provider_def = _mp.PROVIDER_MAP.get(cm.provider)
             provider_vision = provider_def.supports_vision if provider_def else False
             # 数据库级显式标记优先（用户可在模型设置面板手动切换）
             # 仅 True 视为显式启用；False（默认值）回退到名称/Provider 检测
             model_vision = True if (hasattr(cm, 'supports_vision') and cm.supports_vision) else None
+            # 自定义端点（custom_<id>）用 CUSTOM 枚举 + provider_id 区分
+            is_custom = cm.provider.startswith("custom_")
             models[cm.model_id] = ModelConfig(
-                provider=self._provider_enum(cm.provider),
+                provider=ModelProvider.CUSTOM if is_custom else self._provider_enum(cm.provider),
+                provider_id=cm.provider if is_custom else None,
                 model_name=cm.model_name,
                 api_key=cm.api_key or (provider_def and self.resolve_api_key(provider_def) or ""),
                 api_base=cm.api_base,
                 max_tokens=cm.max_tokens,
                 temperature=cm.temperature,
+                context_window=getattr(cm, 'context_window', 200000) or 200000,
                 supports_vision=_detect_supports_vision(cm.model_name, provider_vision, model_vision),
                 supports_tools=True,
             )
@@ -176,7 +205,7 @@ def _detect_supports_vision(model_name: str, provider_vision: bool, model_vision
 
     三级优先级：
       1. 模型级显式指定（非 None）→ 直接使用（最高优先级）
-      2. 命名推测（含 vl / vision）→ True
+      2. 命名推测（含 vl / vision / gemini / 4o / claude-3 / omni / multimodal / image / llava）→ True
       3. 回退 Provider 级 supports_vision 配置
 
     Args:
@@ -190,7 +219,8 @@ def _detect_supports_vision(model_name: str, provider_vision: bool, model_vision
     if model_vision is not None:
         return model_vision
     name_lower = (model_name or "").lower()
-    if "vl" in name_lower or "vision" in name_lower:
+    vision_keywords = ("vl", "vision", "gemini", "4o", "claude-3", "omni", "multimodal", "image", "llava")
+    if any(kw in name_lower for kw in vision_keywords):
         return True
     return provider_vision
 

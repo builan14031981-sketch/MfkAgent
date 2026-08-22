@@ -83,7 +83,7 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     if not command:
         return "错误: command 不能为空"
     if _FORBIDDEN_RE.search(command):
-        return "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行"
+        return "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 run_command（Windows 下不支持 ; 连接）"
     if _CD_ESCAPE_RE.search(command):
         return "错误: 不支持 cd 切换到项目外目录（工作目录已锚定在项目内），请直接使用项目内相对命令"
 
@@ -242,7 +242,7 @@ def execute_command(
         return json.dumps({"stdout": "", "stderr": "execute_command 需要绑定项目（project_path 不能为空）", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
 
     if _FORBIDDEN_RE.search(command):
-        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（; & | ` $ < > 等），拒绝执行", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（; & | ` $ < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 execute_command", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
 
     if _CD_ESCAPE_RE.search(command):
         return json.dumps({"stdout": "", "stderr": "不支持 cd 切换到项目外目录", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
@@ -370,6 +370,165 @@ def execute_command(
         return json.dumps({"stdout": "", "stderr": f"命令执行异常: {e}", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
 
 
+# ──── run_outside_command（沙箱外命令 · 强制人工审批）────
+
+OUTSIDE_TIMEOUT = 60
+OUTSIDE_MAX_OUTPUT = 10000
+
+
+def run_command_outside(
+    project_path: str,
+    command: str,
+    cwd: str,
+    timeout: int = OUTSIDE_TIMEOUT,
+    chat_id: Optional[int] = None,
+    agent_run_id: Optional[int] = None,
+) -> str:
+    """在项目沙箱外执行命令（任意 cwd），返回结构化 JSON 结果。
+
+    与 execute_command 的核心差异：**不做 resolve_sandbox_path 沙箱锚定**，
+    工作目录可以是项目外的任意目录（沙箱外的意义所在）。
+
+    安全约束：
+      - 必须绑定 project_path（会话前置条件，与 execute_command 一致）
+      - cwd 必填且必须为绝对路径（拒绝相对路径，避免落到后端进程不可预期的当前目录）
+      - cwd 必须存在
+      - 允许自由 cd 到任意非禁执行目录（不做 _CD_ESCAPE_RE 拦截）
+      - 保留 shell 元字符拦截（_FORBIDDEN_RE，纵深防御）
+      - Phase 4 T1: cwd 落入禁执行目录黑名单（Windows 系统目录/Program Files/盘根）→ 拒绝
+      - Phase 4 T1: 高风险磁盘操作（git clone/npm install/pip install）执行前检查磁盘配额
+      - Phase 4 T1: 执行后写审计日志（写入失败不影响执行）
+      - 超时自动终止 + 输出截断
+
+    风险判定在 executor 层由 evaluate_outside 完成（恒定 HIGH_RISK → 强制人工审批），
+    本模块只负责"执行"。所有拦截返回统一以"错误:" 开头（供完成验证的拦截豁免识别）。
+    """
+    command = (command or "").strip()
+    cwd = (cwd or "").strip()
+    if not command:
+        return json.dumps({"stdout": "", "stderr": "command 不能为空", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+    if not project_path:
+        return json.dumps({"stdout": "", "stderr": "run_outside_command 需要绑定项目（project_path 不能为空）", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+    if not cwd:
+        return json.dumps({"stdout": "", "stderr": "cwd 不能为空，必须显式指定沙箱外目标目录（绝对路径）", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+    if not os.path.isabs(cwd):
+        return json.dumps({"stdout": "", "stderr": f"cwd 必须为绝对路径: {cwd}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+    if _FORBIDDEN_RE.search(command):
+        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（; & | ` $ < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 run_command_outside", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    work_dir = os.path.normpath(cwd)
+    if not os.path.isdir(work_dir):
+        return json.dumps({"stdout": "", "stderr": f"错误: 工作目录不存在: {work_dir}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    # Phase 4 T1: 禁执行目录黑名单（系统目录/Program Files/盘根 → 拒绝）
+    forbidden, forbid_reason = is_forbidden_cwd(work_dir)
+    if forbidden:
+        return json.dumps({"stdout": "", "stderr": f"错误: 【安全拦截】{forbid_reason}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    # Phase 4 T1: 高风险磁盘操作配额检查
+    quota_err = _check_disk_quota_for_command(command, work_dir)
+    if quota_err:
+        return json.dumps({"stdout": "", "stderr": f"错误: 【安全拦截】{quota_err}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+
+    timeout = max(1, min(int(timeout or OUTSIDE_TIMEOUT), 300))
+    argv = _split_command(command)
+
+    start = time.monotonic()
+    try:
+        from app.core.proxy import resolve_proxy_env
+
+        proc = run_subprocess(argv, cwd=work_dir, timeout=timeout, env=resolve_proxy_env())
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        stdout = decode_subprocess_output(proc.stdout) or ""
+        stderr = decode_subprocess_output(proc.stderr) or ""
+        exit_code = proc.returncode
+        success = (exit_code == 0)
+
+        # 输出截断
+        if len(stdout) > OUTSIDE_MAX_OUTPUT:
+            stdout = stdout[:OUTSIDE_MAX_OUTPUT] + f"\n...(stdout 已截断，共 {len(stdout)} 字符)"
+        if len(stderr) > OUTSIDE_MAX_OUTPUT:
+            stderr = stderr[:OUTSIDE_MAX_OUTPUT] + f"\n...(stderr 已截断，共 {len(stderr)} 字符)"
+
+        # Phase 4 T1: 写审计日志（双重 try/except 兜底，失败不影响主流程）
+        try:
+            _write_sandbox_audit(
+                tool_name="run_outside_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=exit_code,
+                output_size=len(stdout) + len(stderr),
+                success=success,
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[run_outside_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+
+        return json.dumps({
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": exit_code,
+            "execution_time": round(elapsed_ms / 1000, 3),
+        }, ensure_ascii=False)
+
+    except FileNotFoundError:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        try:
+            _write_sandbox_audit(
+                tool_name="run_outside_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=-1,
+                output_size=0,
+                success=False,
+                error_message=f"找不到命令 '{argv[0] if argv else ''}'（可能未安装或不在 PATH）",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[run_outside_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+        return json.dumps({"stdout": "", "stderr": f"找不到命令 '{argv[0]}'（可能未安装或不在 PATH）", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
+    except subprocess.TimeoutExpired:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        try:
+            _write_sandbox_audit(
+                tool_name="run_outside_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=-1,
+                output_size=0,
+                success=False,
+                error_message=f"命令执行超时（>{timeout}s）",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[run_outside_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+        return json.dumps({"stdout": "", "stderr": f"命令执行超时（>{timeout}s），已终止", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
+    except Exception as e:
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        try:
+            _write_sandbox_audit(
+                tool_name="run_outside_command",
+                command=command,
+                cwd=work_dir,
+                duration_ms=elapsed_ms,
+                exit_code=-1,
+                output_size=0,
+                success=False,
+                error_message=f"命令执行异常: {e}",
+                chat_id=chat_id,
+                agent_run_id=agent_run_id,
+            )
+        except Exception as audit_err:
+            logger.warning("[run_outside_command] 审计日志写入异常（已吞掉）: %s", audit_err)
+        return json.dumps({"stdout": "", "stderr": f"命令执行异常: {e}", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
+
+
 # ──── Schema & 注册 ────
 
 COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
@@ -438,11 +597,43 @@ COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_outside_command",
+            "description": (
+                "在项目沙箱外执行命令（任意工作目录），返回结构化 JSON：stdout / stderr / exit_code / execution_time。\n"
+                "与 execute_command 不同：工作目录不受项目根限制，可用于操作项目外的其他目录。\n"
+                "安全约束：cwd 必须为绝对路径且存在；Windows 系统目录/Program Files/盘符根目录被拒绝；禁止 shell 元字符。\n"
+                "【重要】每一步沙箱外命令都会弹出人工审批，用户批准后才执行，任何权限模式都不会自动放行。"
+                "仅在用户明确要求操作项目外目录时使用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "command": {
+                        "type": "string",
+                        "description": "要执行的命令，如 'ver'、'dir'、'python app.py'、'git log'",
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "沙箱外目标工作目录（必须为绝对路径，如 'E:/data'、'D:/repo'）",
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "超时秒数（默认 60，上限 300）",
+                    },
+                },
+                "required": ["command", "cwd"],
+            },
+        },
+    },
 ]
 
 COMMAND_TOOLS = {
     "run_command": run_command,
     "execute_command": execute_command,
+    "run_outside_command": run_command_outside,
 }
 
 

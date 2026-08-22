@@ -1,7 +1,7 @@
 # MfkAgent Runtime Stabilization Phase E7 测试报告
 
-- 时间: 2026-08-08 11:15:20
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_stabE7_ecmam0zj`
+- 时间: 2026-08-18 14:32:20
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_stabE7_9i1ao4x5`
 
 ## 交付内容
 
@@ -16,18 +16,18 @@
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | 原工具列表 API 保持不变 (GET /api/tools) | ✅ PASS | 49ms |
-| 2 | 原工具定义 API 保持不变 (GET /api/tools/definitions) | ✅ PASS | 4ms |
-| 3 | 旁路封堵 (POST /api/tools/call → 404) | ✅ PASS | 13ms |
+| 1 | 原工具列表 API 保持不变 (GET /api/tools) | ✅ PASS | 71ms |
+| 2 | 原工具定义 API 保持不变 (GET /api/tools/definitions) | ✅ PASS | 5ms |
+| 3 | 旁路封堵 (POST /api/tools/call → 404) | ✅ PASS | 30ms |
 | 4 | dev 裸工具调用 DEBUG 开启可用 | ✅ PASS | 4ms |
 | 5 | dev 裸工具调用 DEBUG 关闭 404 | ✅ PASS | 3ms |
-| 6 | Runtime 权限闸不受影响 (Plan 拒绝写/放行只读) | ✅ PASS | 4ms |
+| 6 | Runtime 权限闸不受影响 (Plan 拒绝写/放行只读) | ✅ PASS | 5ms |
 | 7 | AgentContext.task_context 默认 None | ✅ PASS | 0ms |
 | 8 | AgentContext.task_context V1 结构 | ✅ PASS | 0ms |
-| 9 | ChatContextBuilder task_context 预留位 | ✅ PASS | 24ms |
-| 10 | Replay API 不存在 run → 404 | ✅ PASS | 6ms |
-| 11 | Replay API sequence ASC 排序 + payload 展开 | ✅ PASS | 18ms |
-| 12 | Replay API run 摘要字段 | ✅ PASS | 15ms |
+| 9 | ChatContextBuilder task_context 预留位 | ✅ PASS | 38ms |
+| 10 | Replay API 不存在 run → 404 | ✅ PASS | 8ms |
+| 11 | Replay API sequence ASC 排序 + payload 展开 | ✅ PASS | 23ms |
+| 12 | Replay API run 摘要字段 | ✅ PASS | 20ms |
 
 **通过率: 12/12**
 
@@ -35,12 +35,12 @@
 
 ### 1. 原工具列表 API 保持不变 (GET /api/tools)
 
-- count: 6
+- count: 15
 - has_add_memory: True
 
 ### 2. 原工具定义 API 保持不变 (GET /api/tools/definitions)
 
-- count: 6
+- count: 15
 
 ### 3. 旁路封堵 (POST /api/tools/call → 404)
 
@@ -49,7 +49,7 @@
 ### 4. dev 裸工具调用 DEBUG 开启可用
 
 - status_code: 200
-- output: 2026-08-08 11:15:20
+- output: 2026-08-18 14:32:20
 
 ### 5. dev 裸工具调用 DEBUG 关闭 404
 

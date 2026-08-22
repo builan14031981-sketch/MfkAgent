@@ -1,0 +1,2 @@
+﻿src/components/panels/AdvancedSettingsView.tsx(87,38): error TS2322: Type '(() => void) | undefined' is not assignable to type '() => void'.
+  Type 'undefined' is not assignable to type '() => void'.

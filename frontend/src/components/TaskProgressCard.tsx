@@ -113,7 +113,7 @@ export const TaskProgressCard = memo(function TaskProgressCard({ tasks, chatId =
     <div style={{
       borderRadius: "var(--radius-md)",
       border: "1px solid var(--border-primary)",
-      background: "var(--bg-level-2)",
+      background: "var(--bg-level-3)",
       boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
       padding: "4px 12px",
       position: "relative",

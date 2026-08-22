@@ -400,10 +400,10 @@ class TestSeedAgents:
         assert "frontend_design" in agent["capabilities"]
 
     def test_mentor_agent_exists(self):
-        """Mentor Agent 存在"""
+        """Mentor Agent 存在（已下线为 legacy，数据保留）"""
         assert "mentor" in self.agents
         agent = self.agents["mentor"]
-        assert agent["status"] == "active"
+        assert agent["status"] == "legacy"
 
     def test_spark_agent_exists(self):
         """Spark Agent 存在"""
@@ -478,10 +478,12 @@ class TestPromptFileMapping:
             )
 
     def test_all_mapped_agents_are_active(self):
-        """所有映射的 Agent 均为 active 状态"""
+        """所有映射的 Agent 均为 active 状态（mentor 已下线为 legacy，跳过）"""
         for agent_id in set(self.PROMPT_FILE_MAP.values()):
             agent = self.agents.get(agent_id)
             assert agent is not None
+            if agent["status"] == "legacy":
+                continue  # mentor 已下线（保留数据）
             assert agent["status"] == "active", (
                 f"Agent '{agent_id}' 状态应为 active，当前为 {agent['status']}"
             )

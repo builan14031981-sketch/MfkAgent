@@ -1,6 +1,67 @@
 /** 后端 API 基址：优先读环境变量，缺省回退本地默认端口（Electron 桌面应用场景） */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
 
+/**
+ * 后端端口自动探测：后端 main.py 的 find_available_port(start_port=8001) 会在端口被占用时
+ * 漂移到 8002/8003…，写死的 API_BASE 会失联。运行时探测候选端口 /health，命中即缓存，
+ * 后续 URL 拼接（附件图片/下载/SSE/WS）统一走解析后的基址，端口漂移不再导致"无法连接"。
+ */
+const PROBE_PORTS = [8000, 8001, 8002, 8003, 8004, 8005];
+
+let resolvedApiBase: string | null = null;
+let probePromise: Promise<string | null> | null = null;
+let probeFailedAt = 0;
+
+async function probeBackend(): Promise<string | null> {
+  const results = await Promise.all(
+    PROBE_PORTS.map(async (port) => {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 1200);
+        const res = await fetch(`http://127.0.0.1:${port}/health`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const body = await res.json().catch(() => null);
+          if (body && body.status === "healthy") return `http://127.0.0.1:${port}`;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return results.find((b) => b !== null) ?? null;
+}
+
+/** 同步获取当前生效的 API 基址（URL 拼接用，探测完成后自动用新端口） */
+export function getCurrentApiBase(): string {
+  return resolvedApiBase ?? API_BASE;
+}
+
+/** 解析可用的 API 基址：已有缓存直接返回；否则触发一次探测（带 5s 失败冷却） */
+async function resolveApiBase(force = false): Promise<string> {
+  if (resolvedApiBase) return resolvedApiBase;
+  const now = Date.now();
+  if (!force && now - probeFailedAt < 5_000) return API_BASE;
+  if (!probePromise) {
+    probePromise = probeBackend().finally(() => {
+      probePromise = null;
+    });
+  }
+  const found = await probePromise;
+  if (found) {
+    resolvedApiBase = found;
+  } else {
+    probeFailedAt = Date.now();
+  }
+  return resolvedApiBase ?? API_BASE;
+}
+
+// 页面加载即后台探测一次，让同步 URL 拼接尽早拿到正确端口
+if (typeof window !== "undefined") {
+  resolveApiBase().catch(() => {});
+}
+
 /** 请求默认超时（ms） */
 export const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -47,26 +108,48 @@ function createAbortController(
 
 export async function apiFetch(path: string, options: RequestInit & { timeout?: number } = {}) {
   const { timeout = DEFAULT_TIMEOUT_MS, ...rest } = options;
-  const { controller, timeoutId } = createAbortController(timeout, rest.signal);
-  const fetchOptions: RequestInit = { ...rest };
-  if (controller) fetchOptions.signal = controller.signal;
-  const timedOut = timeoutId !== null;
 
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, fetchOptions);
-  } catch (err) {
-    const aborted = err instanceof DOMException && err.name === "AbortError";
-    if (aborted && timedOut && timeoutId) {
-      clearTimeout(timeoutId);
-      throw new ApiError("timeout", `请求超时（${timeout}ms）`, null);
+  // 2026-08-21：统一给 /api/ path 添加末尾斜杠，避免 Next.js trailingSlash 导致 308 重定向
+  // POST/PUT/PATCH 请求遇到 308 时浏览器可能不自动跟随，导致 createChat 等操作静默失败
+  const normalizedPath = (() => {
+    if (!path.startsWith("/api/")) return path;
+    // 分离查询参数
+    const [pathPart, queryPart] = path.split("?");
+    // 已有末尾斜杠则不重复添加
+    const withSlash = pathPart.endsWith("/") ? pathPart : pathPart + "/";
+    return queryPart ? `${withSlash}?${queryPart}` : withSlash;
+  })();
+
+  async function attempt(base: string, retried: boolean): Promise<Response> {
+    const { controller, timeoutId } = createAbortController(timeout, rest.signal);
+    const fetchOptions: RequestInit = { ...rest };
+    if (controller) fetchOptions.signal = controller.signal;
+    const timedOut = timeoutId !== null;
+
+    try {
+      const res = await fetch(`${base}${normalizedPath}`, fetchOptions);
+      if (timeoutId) clearTimeout(timeoutId);
+      return res;
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      const aborted = err instanceof DOMException && err.name === "AbortError";
+      if (aborted && timedOut && timeoutId) {
+        throw new ApiError("timeout", `请求超时（${timeout}ms）`, null);
+      }
+      if (aborted) {
+        throw new ApiError("abort", "请求已取消", null);
+      }
+      // 网络错误：端口可能漂移，强制重新探测一次后重试
+      if (!retried) {
+        const probed = await resolveApiBase(true);
+        if (probed !== base) return attempt(probed, true);
+      }
+      throw new ApiError("network", "网络错误：无法连接到服务器", null);
     }
-    if (aborted) {
-      throw new ApiError("abort", "请求已取消", null);
-    }
-    throw new ApiError("network", "网络错误：无法连接到服务器", null);
   }
-  if (timeoutId) clearTimeout(timeoutId);
+
+  const base = await resolveApiBase();
+  const res = await attempt(base, false);
 
   if (!res.ok) {
     // 尝试读取后端错误体（部分接口返回 { detail: ... }）
@@ -155,7 +238,7 @@ export async function compressMessages(chatId: number, keepRecent = 4): Promise<
 
 /** 构造消息附件图片的后端访问 URL */
 export function getAttachmentImageUrl(chatId: number, path: string): string {
-  return `${API_BASE}/api/chat/${chatId}/file?path=${encodeURIComponent(path)}`;
+  return `${getCurrentApiBase()}/api/chat/${chatId}/file?path=${encodeURIComponent(path)}`;
 }
 
 // ──── 安全中心（专业向安全可视化，只读） ────
@@ -240,7 +323,7 @@ export function getAuditExportUrl(query: { tool_name?: string; success?: boolean
   if (query.tool_name) params.set("tool_name", query.tool_name);
   if (query.success !== undefined) params.set("success", String(query.success));
   const qs = params.toString();
-  return `${API_BASE}/api/security/audit/export${qs ? `?${qs}` : ""}`;
+  return `${getCurrentApiBase()}/api/security/audit/export${qs ? `?${qs}` : ""}`;
 }
 
 // ──── 应用日志 ────
@@ -289,7 +372,7 @@ export async function getLogContent(params: {
 }
 
 export function getLogDownloadUrl(): string {
-  return `${API_BASE}/api/security/logs/download`;
+  return `${getCurrentApiBase()}/api/security/logs/download`;
 }
 
 // ──── 审批记录 ────
@@ -378,7 +461,9 @@ export async function getGuardrails(): Promise<GuardrailsData> {
   return apiGet<GuardrailsData>("/api/security/guardrails");
 }
 
-// ──── 子代理（Sub-Agent）管理 ────
+// ──── 子代理 / 角色模板（Sub-Agent / Role Template）管理 ────
+// 子代理即角色模板：身份提示词 + 工具白名单，持久化于 agents 表。
+// 主 Agent 通过 delegate_sub_agent 委派，编排按模板 spawn 用完即弃实例。
 
 export interface SubAgent {
   id: string;
@@ -392,6 +477,9 @@ export interface SubAgent {
   parent_agent_id: string | null;
   is_builtin: boolean;
 }
+
+/** 角色模板 = 子代理定义（轻量改名：概念对齐）。 */
+export type RoleTemplate = SubAgent;
 
 export interface SubAgentInput {
   agent_id: string;

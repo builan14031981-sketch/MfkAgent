@@ -39,13 +39,26 @@ from app.core.persona_signature import (
     render_signature_text,
     render_strategy_text,
     select_response_mode,
+    AgentPersonaSignature,
 )
 from app.core.persona_quirks import (
     ConversationState,
     get_agent_quirk,
     render_quirk_text,
     render_state_hint,
+    PersonaQuirk,
 )
+from app.core.character_presets import (
+    get_preset,
+    detect_preset_switch,
+    render_preset_language_style,
+    render_preset_intro,
+    CharacterPreset,
+    detect_vague_switch,
+    render_preset_menu,
+    render_greeting,
+)
+from app.core.agent_openings import render_opening_instruction
 
 logger = logging.getLogger(__name__)
 
@@ -583,6 +596,12 @@ class PersonaContext:
     response_modes: list = field(default_factory=list)  # V15-A: 本轮 response_mode
     quirk_text: str = ""                # V16: 人味层（交流习惯 + 不完美规则）
     state_hint_text: str = ""           # V16: 短期会话节奏提示
+    preset_text: str = ""               # V17: 多人格预设语言风格引导
+    preset_intro_text: str = ""         # V17: 预设切换自我介绍（仅刚切换时注入）
+    current_preset: str = "default"     # V17: 当前生效的预设 ID
+    first_message: bool = False         # V17: 是否首次对话
+    greeting_text: str = ""             # V17: 首次对话开场白指令
+    vague_switch_text: str = ""         # V17: 模糊切换指令时的人格列表提示
     budget: Optional[ExpressionBudget] = None
     is_work_mode: bool = False
     user_emotion: str = "neutral"
@@ -597,6 +616,7 @@ def build_persona_context(
     user_message: str = "",
     interaction_count: int = 0,
     conversation_state: Optional[ConversationState] = None,
+    first_message: bool = False,
 ) -> PersonaContext:
     """构建运行时人格上下文（V2）。
 
@@ -612,6 +632,26 @@ def build_persona_context(
         PersonaContext 包含 V1（persona_text/expression_text）+ V2 全部分层
     """
     ctx = PersonaContext()
+
+    # ── V17: 多人格预设检测与切换 ──
+    # 仅对 natural_companion 类 Agent（当前为 Pianai）开启预设系统
+    ep = agent.expression_profile if agent else ""
+    preset = get_preset("default")
+    if ep == "natural_companion":
+        # 检测用户消息中的切换指令
+        switch_to = detect_preset_switch(user_message)
+        if switch_to and conversation_state is not None:
+            conversation_state.character_preset = switch_to
+            conversation_state.preset_just_switched = True
+        elif conversation_state is not None:
+            conversation_state.preset_just_switched = False
+        current_preset_id = (
+            conversation_state.character_preset
+            if conversation_state is not None
+            else "default"
+        )
+        preset = get_preset(current_preset_id)
+        ctx.current_preset = preset.preset_id
 
     # ── V2 基础层：所有 Agent 无条件加载 ──
     profile = get_profile_config(agent.expression_profile if agent else None)
@@ -643,6 +683,16 @@ def build_persona_context(
             )
         # empathy / none / work：保持默认零动作（action_desc_max=0）
 
+    # V17: 应用预设的表达预算覆盖（仅 natural_companion 且非默认预设且有覆盖时）
+    if ep == "natural_companion" and preset.preset_id != "default":
+        budget = ExpressionBudget(
+            emoji_max=preset.emoji_max if preset.emoji_max is not None else budget.emoji_max,
+            action_desc_max=preset.action_desc_max if preset.action_desc_max is not None else budget.action_desc_max,
+            rich_text_policy=budget.rich_text_policy,
+            emotion_word_density=preset.emotion_word_density if preset.emotion_word_density is not None else budget.emotion_word_density,
+            continuous_acting=budget.continuous_acting,
+        )
+
     ctx.budget = budget
 
     behavior = knowledge.get_behavior_rules()
@@ -655,11 +705,30 @@ def build_persona_context(
 
     # ── V15-A: Persona Signature 稳定倾向层（确定性渲染，不随消息变化）──
     sig = get_agent_signature(agent.agent_id if agent else None)
+    # V17: 应用预设的 signature 覆盖（仅 natural_companion 且非默认预设）
+    if sig and ep == "natural_companion" and preset.preset_id != "default":
+        sig = AgentPersonaSignature(
+            warmth=preset.warmth if preset.warmth is not None else sig.warmth,
+            directness=preset.directness if preset.directness is not None else sig.directness,
+            humor=preset.humor if preset.humor is not None else sig.humor,
+            curiosity=preset.curiosity if preset.curiosity is not None else sig.curiosity,
+            challenge=preset.challenge if preset.challenge is not None else sig.challenge,
+        )
     if sig:
         ctx.signature_text = render_signature_text(sig)
 
     # ── V16: 人味层（固定表达偏向 + 不完美规则，仅注册 quirks 的 Agent）──
     quirk = get_agent_quirk(agent.agent_id if agent else None)
+    # V17: 应用预设的 quirks 覆盖（仅 natural_companion 且非默认预设）
+    if quirk and ep == "natural_companion" and preset.preset_id != "default":
+        quirk = PersonaQuirk(
+            agent_id=quirk.agent_id,
+            humor_style=preset.humor_style if preset.humor_style is not None else quirk.humor_style,
+            conversation_habits=preset.conversation_habits if preset.conversation_habits is not None else quirk.conversation_habits,
+            challenge_style=preset.challenge_style if preset.challenge_style is not None else quirk.challenge_style,
+            response_bias=preset.response_bias if preset.response_bias is not None else quirk.response_bias,
+            avoid_patterns=preset.avoid_patterns if preset.avoid_patterns is not None else quirk.avoid_patterns,
+        )
     if quirk:
         ctx.quirk_text = render_quirk_text(quirk)
 
@@ -687,6 +756,29 @@ def build_persona_context(
             ctx.empathy_text = render_empathy_text()
         else:
             ctx.emotional_moment_text = render_emotional_moment_text(perf, budget)
+
+    # V17: 注入多人格预设语言风格引导（必须在 persona_template 提前返回之前）
+    if ep == "natural_companion":
+        ctx.preset_text = render_preset_language_style(preset)
+        if conversation_state is not None and conversation_state.preset_just_switched:
+            ctx.preset_intro_text = render_preset_intro(preset)
+
+        # V17: 模糊切换指令 —— 用户说"换个风格"但没说具体哪个，列出所有可选人格
+        if detect_vague_switch(user_message):
+            ctx.vague_switch_text = (
+                "## 用户想换人格但没说具体哪个\n"
+                + render_preset_menu()
+            )
+
+    # V17.1: 首次对话开场白 —— 对所有 Agent 生效
+    ctx.first_message = first_message
+    if first_message:
+        if ep == "natural_companion":
+            ctx.greeting_text = render_greeting(preset)
+        else:
+            opening = render_opening_instruction(agent.agent_id)
+            if opening:
+                ctx.greeting_text = opening
 
     # ── V1 层：有 PersonaTemplate 时注入人格特质 + 表达偏好 ──
     if not persona_template:

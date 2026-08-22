@@ -27,7 +27,7 @@ import tempfile
 import time
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -284,6 +284,10 @@ def test_event_type_registry() -> dict:
     expected = {"text", "thinking", "tool_start", "tool_result", "tool_approval", "tool_calls",
                 "verify_result", "verification_failed", "state_change",
                 "task_started", "task_completed", "task_failed",  # G4-B: TaskGraph 任务级生命周期事件
+                "task_skipped",  # G4-C: 级联跳过事件
+                "task_graph",  # G4-B: TaskGraph 汇总事件
+                "agent_state_update",  # 战略4: Agent 状态可视化
+                "completion_verify_started", "completion_verify_passed", "completion_verify_failed",  # Phase 12
                 "token_usage",  # G6-A: Token 水位监控
                 "finish", "error"}
     ok = RUNTIME_EVENT_TYPES == expected
@@ -350,6 +354,7 @@ def test_stream_tool_round_lifecycle(project_dir: Path) -> dict:
     install_fake_llm([
         tool_round("run_command", {"command": "hostname"}, "call_st_1"),
         text_round("执行完成。"),
+        text_round("自查完成，任务结束。"),
     ])
     events = stream_send(cid, "执行命令")
     assert any(e["type"] == "tool_result" for e in events), "应有 tool_result"
@@ -539,6 +544,9 @@ def test_non_stream_run_lifecycle(project_dir: Path) -> dict:
             return self._data
 
     class _PostFakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
         async def __aenter__(self):
             return self
 

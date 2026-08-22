@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Eye, EyeOff, Copy, Check, KeyRound } from "lucide-react";
+import { Eye, EyeOff, Copy, Check, KeyRound, Loader2 } from "lucide-react";
+import { apiGet } from "@/lib/api";
 
 export interface ApiKeyInputProps {
   /** 当前输入值（受控） */
@@ -18,6 +19,8 @@ export interface ApiKeyInputProps {
   showIcon?: boolean;
   /** 无障碍标签 */
   label?: string;
+  /** 设置项 key：传入后点击小眼睛会调用 /api/settings/{key}/reveal 获取明文 */
+  settingKey?: string;
 }
 
 /**
@@ -44,9 +47,32 @@ export function ApiKeyInput({
   style,
   showIcon = true,
   label,
+  settingKey,
 }: ApiKeyInputProps) {
   const [visible, setVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+
+  /** 判断当前值是否是脱敏后的（包含 ****） */
+  const isMasked = value.includes("****");
+
+  const handleToggleVisible = useCallback(async () => {
+    // 如果当前是脱敏状态且有 settingKey，先从后端获取明文
+    if (settingKey && isMasked && !visible) {
+      setRevealing(true);
+      try {
+        const res = await apiGet<{ key: string; value: string }>(`/api/settings/${settingKey}/reveal`);
+        if (res?.value) {
+          onChange(res.value);
+        }
+      } catch (err) {
+        console.error("Failed to reveal API key:", err);
+      } finally {
+        setRevealing(false);
+      }
+    }
+    setVisible((v) => !v);
+  }, [settingKey, isMasked, visible, onChange]);
 
   const handleCopy = useCallback(async () => {
     if (!value) return;
@@ -114,16 +140,18 @@ export function ApiKeyInput({
       {/* 明密文切换：value 为空时禁用，避免"空输入框 + 小眼睛"摆设误导 */}
       <button
         type="button"
-        onClick={() => setVisible((v) => !v)}
-        disabled={disabled || !value}
-        title={value ? (visible ? "隐藏" : "显示") : "请先输入 API Key"}
+        onClick={handleToggleVisible}
+        disabled={disabled || !value || revealing}
+        title={value ? (visible ? "隐藏" : "显示明文") : "请先输入 API Key"}
         style={{
           ...iconBtnStyle,
-          opacity: (!value || disabled) ? 0.4 : 1,
-          cursor: (!value || disabled) ? "not-allowed" : "pointer",
+          opacity: (!value || disabled || revealing) ? 0.4 : 1,
+          cursor: (!value || disabled || revealing) ? "not-allowed" : "pointer",
         }}
       >
-        {visible
+        {revealing
+          ? <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} />
+          : visible
           ? <EyeOff style={{ width: "14px", height: "14px" }} />
           : <Eye style={{ width: "14px", height: "14px" }} />}
       </button>

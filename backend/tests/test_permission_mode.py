@@ -367,7 +367,7 @@ class TestExecutorWithApprovalPolicy(unittest.TestCase):
 
         executed = []
 
-        async def _mock_run(func_name, func_args, project_path, ctx):
+        async def _mock_run(func_name, func_args, project_path, ctx, emit=None):
             executed.append(func_name)
             return "On branch main"
 
@@ -485,7 +485,7 @@ class TestPermissionModeRuntimeIntegration(unittest.TestCase):
 
         executed = []
 
-        async def _mock_run(func_name, func_args, project_path, ctx):
+        async def _mock_run(func_name, func_args, project_path, ctx, emit=None):
             executed.append(func_name)
             return "执行成功"
 
@@ -543,7 +543,7 @@ class TestPermissionModeRuntimeIntegration(unittest.TestCase):
 
         executed = []
 
-        async def _mock_run(func_name, func_args, project_path, ctx):
+        async def _mock_run(func_name, func_args, project_path, ctx, emit=None):
             executed.append(func_name)
             return "执行成功"
 

@@ -1,0 +1,834 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "create": "创建",
+    "back": "返回",
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制",
+    "search": "搜索",
+    "noData": "暂无数据",
+    "clear": "清空",
+    "saved": "已保存",
+    "saving": "保存中...",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏"
+  },
+  "sidebar": {
+    "newTask": "新建任务",
+    "chats": "Chats",
+    "settings": "设置",
+    "memory": "Memory",
+    "noChats": "还没有聊天",
+    "noChatsDesc": "开始一次新的对话",
+    "rename": "重命名",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "archive": "归档",
+    "delete": "删除",
+    "projectWorkspace": "项目工作区",
+    "generalChats": "通用对话",
+    "openProject": "打开 / 新建项目工作区",
+    "openProjectDesc": "选择或创建一个项目，让 AI 进入工作区",
+    "noProjects": "暂无项目",
+    "noProjectsDesc": "打开或新建一个项目工作区",
+    "newProject": "新建项目",
+    "projectName": "项目名称",
+    "projectPath": "项目路径",
+    "createProject": "创建",
+    "pickDirectory": "选择文件夹",
+    "newChatInProject": "在此项目中新建会话",
+    "newChatTitle": "新会话",
+    "openProjectFolder": "打开项目目录",
+    "search": "搜索",
+    "collapse": "收起侧边栏"
+  },
+  "home": {
+    "welcome": [
+      "嗨，今天感觉怎么样？",
+      "今天想做哪个项目？",
+      "有什么新的灵感吗？",
+      "准备好开始工作了吗？",
+      "需要我帮你做什么？"
+    ],
+    "inputPlaceholder": "输入内容开始工作...",
+    "agentSwitch": "切换 Agent",
+    "quickStarts": [
+      "帮我审查一段代码",
+      "设计一个组件方案",
+      "分析项目架构",
+      "写一份周报"
+    ],
+    "hero": {
+      "title": "启动主题",
+      "switchTheme": "切换启动主题",
+      "animations": "开场动画",
+      "favorites": "收藏",
+      "seeMore": "查看更多",
+      "allThemes": "全部主题",
+      "random": "随机",
+      "back": "返回",
+      "quoteMenu": "台词菜单",
+      "switchQuote": "切换欢迎语",
+      "quoteShort": "台词",
+      "quoteRandom": "随机一句",
+      "quoteFavorite": "收藏这条欢迎语（标记保留）",
+      "quoteUnfavorite": "取消收藏",
+      "quoteFavCount": "已收藏 {count} 条",
+      "noFavorites": "暂无收藏，点 ☆ 收藏常用主题",
+      "favorite": "收藏",
+      "unfavorite": "取消收藏",
+      "categories": {
+        "classic": "经典",
+        "terminal": "终端",
+        "system": "系统",
+        "retro": "复古",
+        "developer": "开发者",
+        "cinematic": "影院",
+        "ai": "AI 未来",
+        "design": "设计",
+        "other": "其他"
+      }
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "startConversation": "开始对话",
+    "startConversationDesc": "输入消息开始与 {name} 交流",
+    "memorySaved": "已保存 {count} 条记忆",
+    "archiveProjectConfirm": "归档项目「{name}」？其下所有会话将一并归档，并导出记录到归档文件夹。可在设置→归档中恢复。",
+    "cannotArchiveRunning": "该会话正在进行生成，无法归档。请先停止或等待完成。",
+    "inputPlaceholder": "输入消息...",
+    "sending": "发送中...",
+    "stop": "停止生成",
+    "voiceStart": "点击开始语音输入",
+    "voiceStop": "点击停止录音并转写",
+    "voiceTranscribing": "正在转写…",
+    "orb": {
+      "working": "正在等待响应",
+      "solving": "正在思考",
+      "searching": "正在调用工具",
+      "listening": "等待你的批准",
+      "composing": "正在生成"
+    },
+    "context": {
+      "dashboard": "上下文",
+      "warning": "⚠️ 上下文已达 {pct}%，建议压缩会话",
+      "compress": "压缩",
+      "compressing": "压缩中..."
+    },
+    "aiMayError": "MfkAgent 可能会犯错，请核实重要信息",
+    "menu": {
+      "more": "更多操作"
+    },
+    "noProjectHint": "关联项目后可使用文件读写工具",
+    "logTruncated": "… 日志已截断（共 {count} 字符，仅显示首尾）…",
+    "openInFileManager": "在文件管理器中打开",
+    "toolCallsCount": "{count} 次调用",
+    "toolRunning": "正在执行 {current}/{total}: {name}",
+    "toolSummaryPrefix": "已",
+    "toolSummarySeparator": "，",
+    "toolSummaryEditFile": "编辑 {count} 个文件",
+    "toolSummaryReadFile": "读取 {count} 个文件",
+    "toolSummaryListDir": "列出 {count} 个目录",
+    "toolSummarySearch": "搜索 {count} 次",
+    "toolSummaryFetchUrl": "获取 {count} 个网页",
+    "toolSummaryCommand": "执行 {count} 条命令",
+    "toolSummaryGit": "执行 {count} 次 Git 操作",
+    "toolSummaryMemory": "记录 {count} 条记忆",
+    "toolSummaryOther": "{count} 次操作",
+    "invalidId": "无效的聊天 ID",
+    "backToHome": "返回首页",
+    "projectContext": "项目上下文",
+    "selectedFiles": "已选文件",
+    "noFilesSelected": "勾选项目文件以带入聊天上下文",
+    "reasoning": {
+      "title": "思考模式",
+      "off": "关闭",
+      "fast": "high",
+      "deep": "max"
+    },
+    "permission": {},
+    "mode": {
+      "build": "构建",
+      "plan": "规划"
+    },
+    "personality": {
+      "title": "人格",
+      "levels": {
+        "warm": {
+          "name": "温和",
+          "desc": "更体贴、注重感受，语气温暖"
+        },
+        "gentle": {
+          "name": "偏温和",
+          "desc": "兼顾理解，表达偏感性"
+        },
+        "balanced": {
+          "name": "平衡",
+          "desc": "理性与感性均衡"
+        },
+        "rational": {
+          "name": "偏理性",
+          "desc": "逻辑优先，表达简洁"
+        },
+        "strong": {
+          "name": "强理性",
+          "desc": "严格逻辑、客观直接"
+        }
+      }
+    },
+    "dropToAttach": "松开以添加文件到上下文",
+    "dragHint": "拖拽文件到此处作为上下文",
+    "attachedFiles": "已附加文件",
+    "taskProgress": {
+      "title": "任务执行",
+      "expand": "展开",
+      "collapse": "折叠",
+      "completed": "任务完成",
+      "running": "运行中"
+    },
+    "toolWritten": "已自动写入硬盘",
+    "codeExpand": "展开",
+    "codeCollapse": "折叠",
+    "codeCopy": "复制",
+    "codeCopied": "已复制",
+    "codeCollapsedHint": "内容已折叠，点击展开查看",
+    "jumpToLatest": "回最新",
+    "stuckHint": "双击回到原位",
+    "streamErrorTitle": "响应失败",
+    "streamRetry": "重试",
+    "messageOutline": "对话大纲",
+    "edit": "编辑",
+    "quote": "引用",
+    "regenerate": "重新生成",
+    "thinking": "思考过程",
+    "projectInitTitle": "已关联项目：{name}",
+    "projectInitDesc": "您想要在这个项目里面做什么？",
+    "projectInitPlaceholder": "输入任务，回车开始...",
+    "projectInitSkip": "跳过，直接开始新对话",
+    "projectInitDefaultTitle": "{name} 的新对话",
+    "menu": {
+      "uploadFile": "上传文件",
+      "linkProject": "关联本地项目",
+      "clearContext": "清除上下文",
+      "selectExistingProject": "选择已有项目",
+      "selectNewDirectory": "选择新目录…",
+      "switchProject": "更换项目",
+      "unbindProject": "解绑项目",
+      "noProjectsAvailable": "暂无已注册项目",
+      "addSkill": "添加 Skill",
+      "pasteClipboard": "粘贴剪贴板",
+      "confirmClearTitle": "清空对话历史？",
+      "confirmClearDesc": "将删除本会话的全部消息记录，且无法恢复。",
+      "confirm": "清空",
+      "cancel": "取消",
+      "noInstalledSkills": "暂无已安装 Skill，请先到 设置 → 扩展 安装",
+      "installedSkills": "已安装 Skill",
+      "removeSkill": "移出当前会话 Skill",
+      "skillSearch": "搜索 Skill（名称 / 描述 / 分类 / 标签）…",
+      "skillSearchEmpty": "未找到匹配的 Skill"
+    },
+    "linkProjectNow": "关联项目",
+    "projectLinked": "已关联项目",
+    "projectLinkFailed": "关联项目失败",
+    "approvalTitle": "等待你的确认",
+    "approvalDestructiveTitle": "安全二次确认 — 高危操作",
+    "approvalApprove": "批准执行",
+    "approvalDeny": "拒绝",
+    "approvalApproved": "已批准",
+    "approvalRejected": "已拒绝",
+    "choiceTitle": "AI 询问你",
+    "choiceRecommended": "推荐",
+    "choiceCustomPlaceholder": "或者输入你的想法…",
+    "choiceSubmitCustom": "提交我的想法",
+    "choiceConfirm": "确认选择",
+    "choiceSkip": "跳过这题，按推荐项继续",
+    "choiceResolvedSelected": "已选择",
+    "choiceResolvedSkipped": "已跳过",
+    "choiceResolvedTimeout": "已超时（采纳推荐项）",
+    "choiceHint": "选择一项，或在上方输入你的想法",
+    "choiceWaiting": "AI 正在等你选择…",
+    "choiceResolvedLine": "{question} · {action}",
+    "riskLevel": {
+      "read_only": "只读",
+      "write": "写入",
+      "destructive": "破坏性"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "searchPlaceholder": "搜索设置...",
+    "searchNoResult": "没有匹配的设置，换个关键词试试",
+    "searchHits": "命中 {count} 项设置",
+    "archive": {
+      "title": "归档",
+      "dirTitle": "归档文件夹",
+      "dirHint": "归档的项目/会话记录将导出到该文件夹。留空使用默认目录（应用数据目录下 Archive/）。归档不触碰项目本地代码目录。",
+      "dirDefaultHint": "输入绝对路径，或点击右侧图标选择目录",
+      "pickDir": "选择目录",
+      "listTitle": "归档列表",
+      "empty": "暂无归档项目或会话",
+      "typeProject": "项目",
+      "typeChat": "会话",
+      "restore": "恢复",
+      "purge": "彻底删除",
+      "purgeConfirm": "确定彻底删除「{name}」？此操作将删除磁盘归档文件并永久清除记录，不可恢复。"
+    },
+    "advanced": {
+      "show": "⚙️ 显示高级设置",
+      "hide": "收起高级设置"
+    },
+    "general": {
+      "title": "通用",
+      "theme": {
+        "title": "外观",
+        "desc": "选择界面主题",
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "visualTheme": {
+        "desc": "选择界面视觉主题，每套主题包含完整配色与层级体系",
+        "obsidian": "Obsidian Dark",
+        "obsidianDesc": "专业 AI 工作站 · 深色",
+        "studio": "Apple Studio Light",
+        "studioDesc": "简洁明亮 · 日间通用",
+        "terminal": "Developer Terminal",
+        "terminalDesc": "开发者终端 · 高密度",
+        "studioGraphite": "Studio 石墨",
+        "studioGraphiteDesc": "石墨墨色 · Notion 式近黑主按钮，白底零色相噪音 · 默认",
+        "warmMinimal": "Warm Minimal",
+        "warmMinimalDesc": "暖调极简 · 柔和米白"
+      },
+      "experimentalTheme": {
+        "title": "实验主题",
+        "desc": "探索中的主题，用于预览与筛选，可能在未来版本调整或移除",
+        "placeholder": "选择实验主题",
+        "backToOfficial": "返回官方主题（Studio 石墨）",
+        "titanium": "Titanium",
+        "titaniumDesc": "钛金冷灰 · 金属质感浅色",
+        "paper": "Paper Studio",
+        "paperDesc": "纸面工作室 · 暖调创作",
+        "midnight": "Midnight",
+        "midnightDesc": "午夜深蓝 · 深沉静谧",
+        "mono": "Mono",
+        "monoDesc": "纯单色 · 零彩度反白强调",
+        "warmMinimal": "Warm Minimal",
+        "warmMinimalDesc": "暖调极简 · 柔和米白",
+        "aurora": "Aurora",
+        "auroraDesc": "极光青绿 · 低饱和非霓虹",
+        "clay": "Studio 陶土",
+        "clayDesc": "暖白纸感 · Claude 式陶土橙，温暖人文",
+        "indigo": "暗夜靛",
+        "indigoDesc": "Linear 式近黑工程 · 薰衣草靛，精密克制",
+        "graphiteDark": "石墨暗夜",
+        "graphiteDarkDesc": "与石墨配套的纯中性深色 · 日夜配对"
+      },
+      "proxy": {
+        "title": "网络代理",
+        "desc": "Agent 联网（LLM 调用 / 联网工具 / git 访问 GitHub 等）是否走代理",
+        "modeAuto": "自动",
+        "modeManual": "手动",
+        "modeOff": "关闭",
+        "effective": "当前生效",
+        "effectiveOff": "已关闭（强制直连）",
+        "effectiveNone": "未检测到代理（直连）",
+        "noProxyHint": "国内模型域名（bigmodel.cn / dashscope / deepseek 等）始终直连，不受代理影响；代理仅影响出墙站点（GitHub 等）。",
+        "test": "测试连接",
+        "testFailed": "测试请求失败"
+      },
+      "language": {
+        "title": "语言",
+        "desc": "界面显示语言",
+        "zh-CN": "中文",
+        "en-US": "English"
+      },
+      "font": {
+        "title": "字体",
+        "desc": "选择界面字体风格",
+        "system": "系统默认",
+        "source-han-sans": "思源黑体",
+        "lxgw-wenkai": "霞鹜文楷",
+        "ibm-plex-sans": "IBM Plex Sans"
+      },
+      "accentTheme": {
+        "title": "主题",
+        "desc": "选择界面强调色",
+        "default": "Apple 蓝（默认）",
+        "teal": "翡翠青",
+        "amber": "琥珀橙",
+        "violet": "星空紫",
+        "rose": "玫红",
+        "graphite": "石墨中性"
+      },
+      "heroTheme": {
+        "title": "首页启动主题",
+        "desc": "控制首页主题入口与随机规则；收藏与切换在首页完成",
+        "entry": "启用首页主题入口",
+        "entryDesc": "关闭后首页显示静态标题，不展示主题入口",
+        "random": "启动时随机主题",
+        "randomDesc": "每次启动从范围内随机选择主题，保留探索感",
+        "scope": "随机主题范围",
+        "scopeDesc": "随机时的候选主题范围",
+        "scopeAll": "全部主题",
+        "scopeFavorites": "收藏主题"
+      },
+      "greeting": {
+        "title": "首页台词",
+        "desc": "控制首页欢迎语与台词小组件",
+        "builtin": "内置台词",
+        "custom": "我的台词",
+        "off": "关闭",
+        "customEmpty": "还没有自定义台词，点击下方添加",
+        "customPlaceholder": "输入一句台词...",
+        "customAdd": "添加台词",
+        "customMaxHint": "最多 5 条"
+      }
+    },
+    "model": {
+      "title": "模型",
+      "defaultModel": {
+        "title": "默认模型",
+        "desc": "新聊天默认使用的 AI 模型"
+      },
+"reasoningEffort": {
+        "title": "默认推理程度",
+        "desc": "未显式指定时，消息使用的推理档位"
+      },
+      "showReasoning": {
+        "title": "显示思考过程",
+        "desc": "在对话中显示 AI 的思考过程（reasoning/thinking 内容）"
+      },
+      "imageGen": {
+        "title": "文生图模型",
+        "desc": "AI 生成图片时使用的千问图像模型（复用通义千问 API Key）",
+        "pro": "qwen-image-3.0-pro（质量优先）",
+        "flash": "qwen-image-3.0（速度更快）"
+      },
+      "vision": {
+        "title": "备用识图模型 (Vision Fallback)",
+        "desc": "主模型不支持图片时，自动回退到此 BYOK 通道识图。Key 仅存储在本机",
+        "provider": "服务商",
+        "selectProvider": "选择服务商",
+        "apiKey": "API Key",
+        "model": "模型名",
+        "baseUrl": "Base URL",
+        "configured": "已配置",
+        "notConfigured": "未配置"
+      },
+      "tattoo": {
+        "title": "纹身图模型 (Tattoo Image Gen)",
+        "desc": "纹身设计专用生图端点，独立于通用文生图。Key 仅存储在本机",
+        "provider": "服务商",
+        "selectProvider": "选择服务商",
+        "apiKey": "API Key",
+        "model": "模型名",
+        "baseUrl": "Base URL",
+        "configured": "已配置",
+        "notConfigured": "未配置"
+      },
+      "apiConfig": {
+        "title": "API 配置",
+        "desc": "配置各提供商的 API Key，保存后生效"
+      },
+      "providers": {
+        "title": "模型提供商",
+        "desc": "配置各提供商的 API Key 与端点，Key 仅存储在本机",
+        "free": "免费",
+        "website": "官网",
+        "configured": "已配置",
+        "notConfigured": "未配置",
+        "configure": "配置",
+        "clearKey": "清除 Key",
+        "keyLabel": "API Key",
+        "baseLabel": "API Base（留空恢复默认）",
+        "enabledModels": "已加入候选池",
+        "noEnabled": "尚未添加任何模型，从下方加入",
+        "enabledModelsHint": "这些模型会出现在聊天页的模型选择器中。（仅作参考，供应商配了 Key 的全部内置模型都能选择）",
+        "quickAdd": "推荐模型（点击添加）",
+        "customAdd": "手动添加模型 ID",
+        "customPlaceholder": "手动输入模型 ID (如 Qwen2.5-72B)",
+        "addBtn": "添加",
+        "removeModel": "移除",
+        "fetchRemote": "一键拉取官方最新模型",
+        "fetchRemoteHint": "需先配置 API Key",
+        "testConnection": "测试连接",
+        "testConnectionTesting": "测试中...",
+        "testConnectionOk": "连接成功（{latency}ms）",
+        "testConnectionFail": "连接失败：{detail}",
+        "testConnectionHint": "使用输入框中的草稿值即时验证连通性，无需保存",
+        "baseUrlInAdvanced": "Base URL 已在高级设置中配置，请展开高级设置修改",
+        "baseUrlOverrideTitle": "端点覆盖",
+        "baseUrlOverrideDesc": "覆盖各提供商的默认端点地址，留空恢复默认（深水区参数）",
+        "baseUrlCollapsed": "点击展开",
+        "baseUrlExpanded": "点击收起",
+        "overrideActive": "已覆盖",
+        "defaultEndpoint": "默认端点",
+        "resetBase": "恢复默认",
+        "collapseModels": "收起模型",
+        "expandModels": "展开模型",
+        "enable": "启用",
+        "disable": "关闭",
+        "enabled": "已启用",
+        "disabled": "已关闭"
+      },
+      "custom": {
+        "title": "自定义模型",
+        "desc": "接入任意 OpenAI 兼容端点，model_id 与内置重名时覆盖内置",
+        "add": "添加",
+        "edit": "编辑",
+        "delete": "删除",
+        "enabled": "启用/停用",
+        "name": "显示名称",
+        "modelId": "模型 ID",
+        "provider": "提供商",
+        "modelName": "上游模型名",
+        "apiBase": "API Base",
+        "apiKey": "API Key",
+        "maxTokens": "最大 Token",
+        "temperature": "温度",
+        "noCustom": "暂无自定义模型",
+        "syncHidden": "候选池内的模型由上方 Provider 卡片统一管理，此处仅接入第三方端点",
+        "confirmDelete": "确定删除该自定义模型？",
+        "supportsVision": "支持多模态识图（Vision）",
+        "fetchModels": "拉取模型列表"
+      }
+    },
+    "ai": {
+      "title": "AI 行为",
+      "defaultAgent": {
+        "title": "默认 Agent",
+        "desc": "新聊天默认使用的 AI 工作伙伴"
+      },
+      "defaultPersonality": {
+        "title": "默认人格",
+        "desc": "调整 AI 的理性/感性倾向",
+        "veryEmotional": "极度感性",
+        "balanced": "平衡",
+        "veryRational": "极度理性"
+      },
+      "memoryRead": {
+        "title": "读取记忆",
+        "desc": "关闭后 AI 不再读取已保存的记忆（记忆保留在库中）"
+      },
+      "memoryWrite": {
+        "title": "自动保存记忆",
+        "desc": "关闭后 AI 不再自动提取并保存对话中的新记忆"
+      },
+      "memoryAlert": {
+        "title": "记忆保存提示",
+        "desc": "自动保存记忆后，在对话流中显示“已保存 N 条记忆”"
+      },
+      "agents": {
+        "title": "预设 Agent",
+        "desc": "系统提供的 AI 工作伙伴",
+        "systemPrompt": "系统提示词",
+        "personality": "人格配置",
+        "detail": "详情",
+        "manage": "管理 Agent 列表",
+        "backToSettings": "返回设置",
+        "backToAgentList": "返回列表",
+        "parameters": "参数配置",
+        "modelGlobal": "模型选择在每次聊天中独立配置，Agent 不绑定默认模型",
+        "capabilities": "能力",
+        "capabilitiesHint": "能力倾向标签影响 Agent 的行为倾向，不影响工具权限"
+      },
+      "subAgents": {
+        "title": "子代理",
+        "desc": "主 Agent 委派子任务给专门化子代理，独立上下文执行并返回摘要",
+        "manage": "管理子代理",
+        "create": "新建子代理"
+      }
+    },
+    "memory": {
+      "title": "长期记忆",
+      "desc": "AI 会记住你的偏好和重要信息",
+      "types": {
+        "all": "全部",
+        "preference": "偏好",
+        "fact": "事实",
+        "workflow": "工作流",
+        "project": "项目规则",
+        "userPreference": "交流偏好",
+        "interactionPattern": "交流模式",
+        "relationshipNote": "交流痕迹",
+        "currentContext": "近期关注",
+        "unknown": "其他"
+      }
+    },
+    "security": {
+      "title": "安全",
+      "desc": "Agent 工具执行权限控制",
+      "permission": {
+        "safe": "安全模式",
+        "safeDesc": "所有写入操作需人工审批",
+        "standard": "标准模式",
+        "standardDesc": "普通操作自动执行，高风险需审批",
+        "autonomous": "自主模式",
+        "autonomousDesc": "仅极高风险操作需审批"
+      },
+      "troubleshoot": "故障排查",
+      "matrix": "审批矩阵",
+      "audit": "审计日志",
+      "status": "运行状态",
+      "appLogs": "应用日志",
+      "log": {
+        "title": "应用日志",
+        "level": "级别",
+        "levelAll": "全部",
+        "levelError": "错误",
+        "levelWarning": "警告",
+        "levelInfo": "信息",
+        "levelDebug": "调试",
+        "search": "搜索日志...",
+        "refresh": "刷新",
+        "download": "下载",
+        "noLogs": "暂无日志",
+        "loadFailed": "加载失败",
+        "total": "共 {total} 条",
+        "pagePrev": "上一页",
+        "pageNext": "下一页",
+        "files": "日志文件",
+        "currentLog": "今日日志"
+      },
+      "guardSection": "安全防护",
+      "approvals": "审批记录",
+      "commandRisk": "命令风险",
+      "guardrails": "防护清单",
+      "noApprovals": "暂无审批记录",
+      "colTime": "时间",
+      "colTool": "工具",
+      "colCommand": "命令",
+      "colRisk": "风险",
+      "colStatus": "状态",
+      "commandPlaceholder": "输入命令查看风险...",
+      "preview": "预览",
+      "anyArgs": "任意参数",
+      "forbiddenDirs": "禁执行目录",
+      "allowedCommands": "只读命令白名单",
+      "readOnlyTools": "只读工具",
+      "writeTools": "写入工具规则"
+    },
+    "plugins": {
+      "title": "插件",
+      "desc": "管理 AI 扩展能力（持久化存储）",
+      "create": "新建插件",
+      "cancelCreate": "取消",
+      "name": "名称",
+      "version": "版本",
+      "description": "描述",
+      "author": "作者",
+      "config": "配置",
+      "configInvalid": "JSON 格式无效",
+      "empty": "暂无插件，点击右上角新建",
+      "delete": "删除",
+      "deleteConfirm": "确定要删除此插件吗？该操作不可逆。",
+      "statusActive": "已激活",
+      "statusInactive": "未激活",
+      "statusInstalled": "已安装",
+      "statusError": "异常"
+    },
+    "extensions": {
+      "title": "扩展",
+      "desc": "管理 AI 增强能力",
+      "subtitle": "管理 AI 增强能力",
+      "manage": "管理",
+      "manageBackHome": "返回扩展主页",
+      "futureNote": "未来将支持 Plugins（插件生态）与 Connections（外部连接），当前仅开放 Skills。",
+      "skills": {
+        "sectionTitle": "Skills",
+        "sectionDesc": "浏览并查看 Skill 详情；在对话输入框 + 号开启，仅当前会话生效",
+        "scenarios": "适用场景",
+        "capabilities": "能力说明",
+        "install": "加入 Skill 库",
+        "installed": "已在 Skill 库",
+      "removeFromLibrary": "移出 Skill 库",
+        "enabled": "已在 Skill 库",
+        "disable": "移出 Skill 库",
+        "installedCount": "Skill 库 {{count}} / {{total}}",
+        "categoryCount": "{{count}} 个",
+        "moreInfo": "点击卡片查看详情",
+        "detail": "详情",
+        "usageNote": "Skill 在对话输入框的 + 号 → 调用 Skill 中开启，仅当前会话生效。"
+      },
+      "plugins": {
+        "sectionTitle": "Plugins",
+        "sectionDesc": "启用/停用决定该插件工具是否对 Agent 可见（停用后相关工具不再被调用）",
+        "inDev": "开发中",
+        "inDevPlaceholder": "插件运行时尚未接入完成，暂无真实工具能力。当前为开发中占位，即将支持真实工具插件。",
+        "softNote": "插件是真实可调用的工具集，启用后其工具对 Agent 可见。停用插件则相关工具不再被调用。",
+        "empty": "暂无插件",
+        "activeCount": "已启用 {{count}} / {{total}}",
+        "statusActive": "已启用",
+        "statusInstalled": "已安装",
+        "statusInactive": "未启用",
+        "statusError": "异常",
+        "enable": "启用",
+        "disable": "停用"
+      },
+      "skillDetail": {
+        "backToList": "返回 Skills 列表",
+        "notFound": "未找到该 Skill"
+      },
+      "skillList": {
+        "ppt": {
+          "name": "PPT 专家",
+          "summary": "帮助 Agent 规划演示结构、设计页面逻辑、优化表达方式。",
+          "scenarios": "需要制作或优化演示文稿时",
+          "capabilities": "演示结构规划、要点提炼、页面逻辑、表达润色"
+        },
+        "python": {
+          "name": "Python 专家",
+          "summary": "帮助 Agent 编写 Python 代码、调试问题、提供工程化建议。",
+          "scenarios": "需要编写、调试或重构 Python 代码时",
+          "capabilities": "脚本编写、调试诊断、工程实践、性能优化"
+        },
+        "research": {
+          "name": "深度研究助手",
+          "summary": "帮助 Agent 进行多轮检索、交叉验证、输出有据可查的研究报告。",
+          "scenarios": "需要主题调研、信息汇总、报告生成时",
+          "capabilities": "多轮检索、信息交叉、报告结构化、来源标注"
+        },
+        "ui": {
+          "name": "UI 设计专家",
+          "summary": "帮助 Agent 设计界面结构、视觉层级与组件复用。",
+          "scenarios": "需要设计或评审 UI 方案时",
+          "capabilities": "信息架构、视觉层级、组件复用、可访问性"
+        },
+        "security": {
+          "name": "安全审计专家",
+          "summary": "帮助 Agent 识别安全风险、给出修复建议并标注潜在影响。",
+          "scenarios": "需要审查代码安全、评估风险时",
+          "capabilities": "风险识别、修复建议、影响评估、合规提示"
+        }
+      }
+    },
+    "about": {
+      "title": "关于",
+      "version": "版本: v1.0.0",
+      "description": "专业的 AI 工作助手",
+      "aiMayError": "MfkAgent 可能会犯错，请核实重要信息"
+    }
+  },
+  "memory": {
+    "title": "长期记忆",
+    "selectAgent": "选择 Agent",
+    "selectProject": "选择项目",
+    "selectProjectPlaceholder": "选择一个项目...",
+    "scopeGlobal": "全局",
+    "scopeAgent": "Agent",
+    "scopeProject": "项目",
+    "addMemory": "添加记忆",
+    "inputPlaceholder": "例如：当前项目使用的是 Next.js 14",
+    "add": "添加",
+    "memoryList": "记忆列表",
+    "noMemories": "暂无记忆",
+    "noMemoriesDesc": "添加记忆让 AI 更了解你",
+    "delete": "删除",
+    "deleteConfirm": "确认删除？",
+    "scopeLabel": "作用域",
+    "createdAt": "创建于",
+    "manage": "管理",
+    "manageTitle": "记忆管理",
+    "manageDesc": "集中管理全部记忆：搜索、编辑、批量清理",
+    "searchPlaceholder": "搜索记忆内容...",
+    "back": "返回",
+    "totalCount": "共 {count} 条",
+    "selectedCount": "已选 {count} 条",
+    "batchDelete": "批量删除",
+    "confirmBatchDelete": "确认删除选中的 {count} 条记忆？",
+    "edit": "编辑",
+    "save": "保存",
+    "cancel": "取消",
+    "editContent": "编辑记忆内容",
+    "confirm": "置信度",
+    "type": "类型",
+    "noSearchResults": "未找到匹配的记忆",
+    "noSearchResultsDesc": "换个关键词试试"
+  },
+  "project": {
+    "title": "Project",
+    "openProject": "打开一个项目",
+    "openProjectDesc": "让AI帮助你工作"
+  },
+  "projects": {
+    "fileBrowser": "文件浏览",
+    "fileSearch": "文件搜索",
+    "fileContent": "文件内容",
+    "rootDirectory": "根目录",
+    "emptyDirectory": "空目录",
+    "emptyDirectoryDesc": "此目录下没有文件",
+    "searchPlaceholder": "搜索文件名...",
+    "searchHint": "输入关键词搜索文件",
+    "noResults": "未找到匹配的文件",
+    "noResultsDesc": "尝试其他关键词",
+    "selectFile": "请选择文件",
+    "searching": "搜索中...",
+    "loadingFile": "加载文件中..."
+  },
+  "tools": {
+    "title": "工具",
+    "parameters": "参数",
+    "execute": "执行",
+    "executing": "执行中...",
+    "result": "结果"
+  },
+  "todo": {
+    "title": "待办",
+    "empty": "暂无待办事项",
+    "placeholder": "添加待办事项...",
+    "complete": "标记完成",
+    "add": "新建待办事项",
+    "viewCompleted": "查看更多已完成",
+    "hideCompleted": "收起已完成",
+    "noCompleted": "暂无已完成的待办"
+  },
+  "time": {
+    "justNow": "刚刚",
+    "minutesAgo": "{n} 分钟前",
+    "hoursAgo": "{n} 小时前"
+  },
+  "terminal": {
+    "title": "终端",
+    "clear": "清屏",
+    "close": "关闭终端",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "resize": "拖拽调整宽度",
+    "requireApproval": "危险命令，确认执行",
+    "executeAnyway": "仍然执行",
+    "processExited": "[进程已退出]"
+  },
+  "artifact": {
+    "title": "产出物",
+    "preview": "点击预览",
+    "empty": "暂无产出物，Agent 生成文件后会出现在这里",
+    "selectHint": "点击工具输出中的文件路径即可预览",
+    "needProject": "预览该文件需要关联项目",
+    "loadFailed": "加载失败",
+    "unsupported": "该文件类型暂不支持内联预览",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏",
+    "close": "关闭"
+  },
+  "commandPalette": {
+    "placeholder": "搜索会话和项目...",
+    "noResults": "没有找到匹配的结果",
+    "startTyping": "输入关键词开始搜索",
+    "chats": "会话",
+    "projects": "项目",
+    "navigate": "↑↓ 导航",
+    "select": "↵ 选择"
+  }
+}
+
+
+

@@ -1,7 +1,7 @@
 """工具执行器 — 统一执行所有工具调用，从 model.py 迁移而来。
 
 负责：
-- 文件工具执行（read_file / write_file / list_files）
+- 文件工具执行（read_file / write_file / list_files / find_files / edit_file / apply_patch）
 - Git 工具执行
 - 搜索工具执行
 - 命令工具执行（run_command）
@@ -9,6 +9,7 @@
 - Plan 模式只读拦截
 - ToolCallCard 格式化
 - Phase 3 T3/T8: 统一 ExecutionDecision 决策链
+- Phase H: 工具结果 >8000 字符统一截断（head 6000 + tail 2000），防大输出撑爆上下文
 """
 
 import asyncio
@@ -21,6 +22,9 @@ from app.core.tools import execute_file_tool
 from app.core.git_tools import GIT_TOOLS, execute_git_tool
 from app.core.search_tools import SEARCH_TOOLS, execute_search_tool
 from app.core.command_tools import COMMAND_TOOLS, execute_command_tool
+from app.core.ui_probe_tools import UI_PROBE_TOOLS, execute_ui_probe_tool
+from app.core.image_gen_tools import IMAGE_GEN_TOOLS, execute_image_gen_tool
+from app.core.spec_check_tools import SPEC_CHECK_TOOLS, execute_spec_check_tool
 from app.services.tools import tool_registry
 from app.core.tool_runtime.events import make_tool_start, make_tool_result, make_tool_approval, make_choice_request
 from app.core.tool_runtime.risk_engine import (
@@ -29,8 +33,72 @@ from app.core.tool_runtime.risk_engine import (
 )
 from app.core.tool_runtime.approval import approval_registry
 from app.core.tool_runtime.choice import choice_registry, CUSTOM_TEXT_MAX
-from app.core.tool_runtime.approval_policy import get_approval_policy, ApprovalMode
+from app.core.tool_runtime.approval_policy import get_approval_policy, ApprovalPolicy, ApprovalMode
 from app.core.tool_runtime.notification import event_bus
+
+# Phase H: 工具结果截断（head + tail 拼接），防止单条工具结果撑爆上下文
+TOOL_RESULT_MAX_CHARS = 8000
+TOOL_RESULT_HEAD = 5900
+TOOL_RESULT_TAIL = 1900
+
+# 证据化：write_file 成功后平台自动执行的机器校验标记（不依赖模型自觉/自报）
+AUTO_SPEC_CHECK_MARKER = "[AutoSpecCheck]"
+
+
+def _resolve_approval_policy(ctx: Optional[dict]) -> "ApprovalPolicy":
+    """解析会话级审批策略。
+
+    会话级权限模式（chats.permission_mode）经 context_builder 注入 ctx.permission_mode，
+    运行时优先使用；ctx 缺失（兼容测试/纯执行路径）时回退全局单例。
+    """
+    mode_str = (ctx or {}).get("permission_mode")
+    if mode_str in ("safe", "standard", "autonomous"):
+        return ApprovalPolicy(ApprovalMode(mode_str))
+    return get_approval_policy()
+
+
+def _auto_post_write_check(project_path: str, relative_path: str) -> str:
+    """write_file 成功后自动执行的机器校验（证据化兜底，模型无法跳过）。
+
+    规则：目标文件必须存在、非空、可 UTF-8 解码；.html/.htm 必须含闭合标签 </html>。
+    返回 "[AutoSpecCheck] PASS|FAIL|ERROR ..." 文本，追加进工具结果供模型读取，
+    并发射 auto_spec_check 事件留档。
+    """
+    import re as _re
+    try:
+        from app.core.sandbox import resolve_sandbox_path
+
+        target = resolve_sandbox_path(relative_path, project_path)
+        if not os.path.isfile(target):
+            return f"{AUTO_SPEC_CHECK_MARKER} FAIL: 文件不存在 {relative_path}"
+        size = os.path.getsize(target)
+        if size == 0:
+            return f"{AUTO_SPEC_CHECK_MARKER} FAIL: 文件为空 {relative_path}"
+        with open(target, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read()
+        is_html = relative_path.lower().endswith((".html", ".htm"))
+        if is_html and not _re.search(r"</html\s*>", text, _re.IGNORECASE):
+            return f"{AUTO_SPEC_CHECK_MARKER} FAIL: HTML 未含闭合标签 </html> {relative_path}"
+        detail = "存在非空 UTF-8 可读"
+        if is_html:
+            detail += " HTML 已闭合"
+        return f"{AUTO_SPEC_CHECK_MARKER} PASS: {detail} ({size}B)"
+    except Exception as e:  # noqa: BLE001
+        return f"{AUTO_SPEC_CHECK_MARKER} ERROR: {e}"
+
+
+def _truncate_result(text: str, func_name: str = "") -> str:
+    """统一截断工具结果文本；截断时保留头尾并给出提示（read_file 提示分段读取）。"""
+    if len(text) <= TOOL_RESULT_MAX_CHARS:
+        return text
+    head = text[:TOOL_RESULT_HEAD]
+    tail = text[-TOOL_RESULT_TAIL:]
+    mid = len(text) - TOOL_RESULT_HEAD - TOOL_RESULT_TAIL
+    if func_name == "read_file":
+        hint = "\n[已截断] 输出过长，请用 read_file(offset=..., limit=...) 分段读取该文件。"
+    else:
+        hint = f"\n[已截断] 结果共 {len(text)} 字符，仅保留首尾各一部分（中间 {mid} 字符省略）。"
+    return head + hint + "\n" + tail
 
 
 async def execute_tool(
@@ -89,7 +157,9 @@ async def execute_tool(
         # 1. 风险判定（唯一执行闸）：命令走命令引擎，文件/git 等走工具策略。
         if func_name in COMMAND_TOOLS:
             command = str(func_args.get("command", "") or "")
-            if func_name == "execute_command":
+            if func_name == "run_outside_command":
+                decision = command_risk_engine.evaluate_outside(command, mode)
+            elif func_name == "execute_command":
                 decision = command_risk_engine.evaluate_execute(command, mode)
             else:
                 decision = command_risk_engine.evaluate(command, mode)
@@ -97,7 +167,7 @@ async def execute_tool(
             decision = evaluate_tool(func_name, mode)
 
         # 2. Phase 3 T3/T8: 统一决策链 — ApprovalPolicy 将 RiskDecision 转为 ExecutionDecision
-        policy = get_approval_policy()
+        policy = _resolve_approval_policy(ctx)
         exec_decision = policy.decide(decision)
 
         # 3. AgentRuntime 只消费 ExecutionDecision
@@ -126,7 +196,7 @@ async def execute_tool(
                     emit=emit,
                     start_time=_start_time,
                 )
-            result_text = await _run_tool(func_name, func_args, project_path, ctx)
+            result_text = await _run_tool(func_name, func_args, project_path, ctx, emit=emit)
     except Exception as e:  # noqa: BLE001
         result_text = f"错误: 工具执行异常: {e}"
 
@@ -173,31 +243,84 @@ async def _run_tool(
     func_args: Dict[str, Any],
     project_path: str | None,
     ctx: Dict[str, Any],
+    emit: Optional[Callable[[Dict], None]] = None,
 ) -> str:
     """执行通过风险判定后的工具调用（不重复判定）。
 
     统一承载文件 / Git / 搜索 / 命令 / 通用工具的实体内核。
+    Phase H: 统一出口截断，防止单条工具结果撑爆上下文。
     """
-    if func_name in ("write_file", "read_file", "list_files"):
-        if not project_path:
-            return "错误: 文件操作需要绑定项目"
-        return execute_file_tool(func_name, project_path=project_path, **func_args)
+    if func_name in ("write_file", "read_file", "list_files", "find_files", "edit_file", "apply_patch"):
+        # 只读工具（read_file / list_files / find_files）在无 project_path 时仍可安全执行（支持绝对路径/当前工作区）
+        is_read_only = func_name in ("read_file", "list_files", "find_files")
+        if not project_path and not is_read_only:
+            return "错误: 修改文件操作需要绑定项目"
+        result = _truncate_result(
+            execute_file_tool(func_name, project_path=project_path, **func_args), func_name
+        )
+        # 证据化：write_file 成功后自动机器校验（存在/非空/UTF-8/HTML闭合），
+        # 结果追加进工具结果并发射 auto_spec_check 事件——不依赖模型自觉。
+        if func_name == "write_file" and project_path and not result.startswith("错误"):
+            auto = _auto_post_write_check(project_path, str(func_args.get("relative_path", "")))
+            if auto:
+                if emit:
+                    try:
+                        emit({
+                            "type": "auto_spec_check",
+                            "tool": "write_file",
+                            "relative_path": str(func_args.get("relative_path", "")),
+                            "check": auto,
+                        })
+                    except Exception:
+                        pass
+                result = result + "\n" + auto
+        return result
 
     if func_name in GIT_TOOLS:
         if not project_path:
             return "错误: Git 操作需要绑定项目"
-        return execute_git_tool(func_name, project_path=project_path, **func_args)
+        return _truncate_result(execute_git_tool(func_name, project_path=project_path, **func_args), func_name)
 
     if func_name in SEARCH_TOOLS:
+        # search_files 工具支持无 project_path 搜索
+        return _truncate_result(execute_search_tool(func_name, project_path=project_path, **func_args), func_name)
+
+    if func_name in SPEC_CHECK_TOOLS:
         if not project_path:
-            return "错误: 搜索操作需要绑定项目"
-        return execute_search_tool(func_name, project_path=project_path, **func_args)
+            return "错误: 规格校验需要绑定项目"
+        return _truncate_result(execute_spec_check_tool(func_name, project_path=project_path, **func_args), func_name)
+
+    if func_name in UI_PROBE_TOOLS:
+        if not project_path:
+            return "错误: UI 自检需要绑定项目"
+        # playwright 为同步阻塞 API，放线程池避免卡住事件循环
+        return _truncate_result(
+            await asyncio.to_thread(
+                execute_ui_probe_tool, func_name, project_path=project_path, **func_args
+            ),
+            func_name,
+        )
+
+    if func_name in IMAGE_GEN_TOOLS:
+        # 文生图含同步轮询/下载，放线程池避免卡住事件循环；
+        # chat_id 用于生成图片的可访问代理 URL（前端渲染）
+        return _truncate_result(
+            await asyncio.to_thread(
+                execute_image_gen_tool, func_name, project_path=project_path or "",
+                chat_id=ctx.get("chat_id"), **func_args
+            ),
+            func_name,
+        )
 
     if func_name in COMMAND_TOOLS:
-        return execute_command_tool(func_name, project_path=project_path or "", **func_args)
+        return _truncate_result(
+            execute_command_tool(func_name, project_path=project_path or "", **func_args), func_name
+        )
 
-    r = await tool_registry.execute(func_name, **{**ctx, **func_args})
-    return r.output if r.success else f"Error: {r.error}"
+    # emit 以 _emit 键透传给 registry 工具（编排工具发射 sub_agent 事件用），
+    # 普通工具 execute(**kwargs) 会忽略未知键，零影响。
+    r = await tool_registry.execute(func_name, **{**ctx, **func_args, "_emit": emit})
+    return _truncate_result(r.output if r.success else f"Error: {r.error}", func_name)
 
 
 # ──── ask_user_choice：抉择工具（pending record 模式，对齐 approval）────
@@ -260,7 +383,13 @@ async def _dispatch_user_choice(
     chat_id = ctx.get("chat_id")
 
     # 自主模式：不挂起不弹卡，直接采纳推荐项
-    if get_approval_policy().mode == ApprovalMode.AUTONOMOUS:
+    mode_str = ctx.get("permission_mode")
+    autonomous = (
+        mode_str == "autonomous"
+        if mode_str in ("safe", "standard", "autonomous")
+        else get_approval_policy().mode == ApprovalMode.AUTONOMOUS
+    )
+    if autonomous:
         result_text = _format_choice_result(
             options, recommended, None, None,
             note="（自主模式：由 Agent 自行决定，已采纳推荐项）",
@@ -355,6 +484,9 @@ def _describe_tool_command(func_name: str, func_args: Dict[str, Any]) -> str:
         return str(func_args.get("command", "") or "")
     if func_name == "execute_command":
         return str(func_args.get("command", "") or "")
+    if func_name == "run_outside_command":
+        cwd = str(func_args.get("cwd", "") or "")
+        return f"[cwd: {cwd}] {func_args.get('command', '')}"
     if func_name == "write_file":
         return f"写入文件: {func_args.get('relative_path', '')}"
     if func_name in GIT_TOOLS:

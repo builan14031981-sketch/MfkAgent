@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PanelLeftOpen } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { CommandPalette } from "./CommandPalette";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { DockPanel } from "./panels/DockPanel";
 import { useDockStore, hydrateDockUI, DOCK_MIN, DOCK_MAX, DOCK_DEFAULT } from "@/lib/dockStore";
+import { useTabStore } from "@/lib/tabStore";
+import { ChatTabBar } from "./ChatTabBar";
 import { useChat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
 
@@ -30,7 +33,9 @@ function clampWidth(w: number, min: number, max: number): number {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // 挂载后读回收起态（不放在 useState 初始化器里，避免 SSR hydration mismatch）
@@ -40,6 +45,18 @@ export function AppLayout({ children }: AppLayoutProps) {
     } catch { /* localStorage 不可用时保持展开 */ }
     // 2026-08-14：恢复右侧面板 UI 状态（width / isOpen / isFullscreen / activeTab / tabs）
     hydrateDockUI();
+  }, []);
+
+  // 全局 Cmd+K / Ctrl+K 打开命令面板
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   // 面板：Ctrl+` 打开/关闭"终端"标签
@@ -54,6 +71,37 @@ export function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [toggleTab]);
+
+  // ── Ctrl+滚轮 内容缩放（V4 2026-08-19）──
+  // 对标豆包：框架固定，只缩放内容（侧边栏内容、消息列表、输入框）。
+  // 通过 CSS 变量 --app-content-zoom 控制，globals.css 中给指定容器加 zoom。
+  // 步长5%，范围0.75~1.5，持久化到 localStorage。
+  const ZOOM_KEY = "mfk_app_zoom";
+  const ZOOM_MIN = 0.75;
+  const ZOOM_MAX = 1.5;
+  const ZOOM_STEP = 0.05;
+
+  useEffect(() => {
+    // 恢复上次缩放比例
+    let zoom = 1;
+    try {
+      const saved = parseFloat(window.localStorage.getItem(ZOOM_KEY) || "");
+      if (Number.isFinite(saved)) zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, saved));
+    } catch { /* localStorage 不可用则用默认 1 */ }
+    document.documentElement.style.setProperty("--app-content-zoom", String(zoom));
+
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(zoom + delta).toFixed(2)));
+      document.documentElement.style.setProperty("--app-content-zoom", String(zoom));
+      try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
+    };
+    // passive:false 才能 preventDefault 阻止浏览器默认的 Ctrl+滚轮缩放
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, []);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => {
@@ -70,8 +118,120 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [pathname]);
 
   // 终端 cwd：取当前会话关联项目的本地路径，无则回退 null（后端用主目录）
-  const { chats } = useChat();
+  const { chats, createChat } = useChat();
   const { projects } = useProjects(1, 100);
+
+  // ── 多会话标签栏状态与快捷键 ──
+  const activeChatId = useTabStore((s) => s.activeChatId);
+  const closeTab = useTabStore((s) => s.closeTab);
+  const cycleTab = useTabStore((s) => s.cycleTab);
+  const cleanStaleTabs = useTabStore((s) => s.cleanStaleTabs);
+
+  // 自动激活当前路由会话
+  useEffect(() => {
+    if (currentChatId != null) {
+      useTabStore.getState().setActiveTab(currentChatId);
+    }
+  }, [currentChatId]);
+
+  // 会话列表加载后自动清理已删除的脏标签
+  useEffect(() => {
+    if (chats.length > 0) {
+      cleanStaleTabs(new Set(chats.map((c) => c.id)));
+    }
+  }, [chats, cleanStaleTabs]);
+
+  // 全局新建会话（继承当前活跃会话的 Agent 与项目上下文）
+  const handleGlobalNewChat = useCallback(async () => {
+    let agentId = "general";
+    let projectId: number | null = null;
+    if (currentChatId != null) {
+      const currentChat = chats.find((c) => c.id === currentChatId);
+      if (currentChat) {
+        agentId = currentChat.agent_id || "general";
+        projectId = currentChat.project_id ?? null;
+      }
+    }
+    try {
+      const chat = await createChat(
+        agentId,
+        "新对话",
+        projectId,
+        null,
+        [],
+        "build",
+        "standard"
+      );
+      router.push(`/chat/${chat.id}`);
+    } catch (err) {
+      console.error("Failed to create new chat tab:", err);
+      router.push("/");
+    }
+  }, [currentChatId, chats, createChat, router]);
+
+  // 全局标签快捷键（Ctrl+T/N 新建，Ctrl+W 关闭，Ctrl+Tab 切换，Alt+1~9 直达）
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+
+      // 1. 新建标签：Ctrl+T / Ctrl+N (Mac: Cmd+T / Cmd+N)
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "t" || e.key === "T" || e.key === "n" || e.key === "N")
+      ) {
+        e.preventDefault();
+        handleGlobalNewChat();
+        return;
+      }
+
+      // 2. 关闭当前标签：Ctrl+W / Cmd+W / Alt+W
+      if (
+        ((e.ctrlKey || e.metaKey) && (e.key === "w" || e.key === "W")) ||
+        (e.altKey && (e.key === "w" || e.key === "W"))
+      ) {
+        if (!isInput && activeChatId != null) {
+          e.preventDefault();
+          const nextId = closeTab(activeChatId);
+          if (nextId != null) {
+            router.push(`/chat/${nextId}`);
+          } else {
+            router.push("/");
+          }
+          return;
+        }
+      }
+
+      // 3. 标签左右轮转：Ctrl+Tab / Ctrl+Shift+Tab
+      if ((e.ctrlKey || e.metaKey) && e.key === "Tab") {
+        e.preventDefault();
+        const direction = e.shiftKey ? -1 : 1;
+        const nextId = cycleTab(direction);
+        if (nextId != null) {
+          router.push(`/chat/${nextId}`);
+        }
+        return;
+      }
+
+      // 4. 数字快捷键直达对应标签：Alt+1 ~ Alt+9
+      if (e.altKey && e.key >= "1" && e.key <= "9") {
+        const index = parseInt(e.key, 10) - 1;
+        const currentTabs = useTabStore.getState().tabs;
+        if (index < currentTabs.length) {
+          e.preventDefault();
+          router.push(`/chat/${currentTabs[index].chatId}`);
+          return;
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeChatId, closeTab, cycleTab, handleGlobalNewChat, router]);
   const terminalCwd = useMemo(() => {
     if (currentChatId == null) return null;
     const chat = chats.find((c) => c.id === currentChatId);
@@ -79,6 +239,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     const project = projects.find((p) => p.id === chat.project_id);
     return project?.path ?? null;
   }, [currentChatId, chats, projects]);
+
+  // 当前绑定的项目路径（供浏览器面板判断默认页）
+  const currentProjectPath = terminalCwd;
+
 
   // ── 侧边栏宽度 ──
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -201,8 +365,17 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, []);
 
   return (
-    <div
-      ref={layoutRef}
+    <>
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onSelectChat={(chatId) => router.push(`/chat/${chatId}`)}
+        onSelectProject={(projectId) => router.push(`/projects/${projectId}/files`)}
+        onNewChat={() => router.push("/")}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
+      <div
+        ref={layoutRef}
       style={{
         display: "flex",
         height: "100vh",
@@ -251,7 +424,11 @@ export function AppLayout({ children }: AppLayoutProps) {
         overflow: "hidden",
         minWidth: 0,
       }}>
-        {children}
+        {/* 多标签栏（浏览器式多会话切换） */}
+        <ChatTabBar onNewChat={handleGlobalNewChat} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+          {children}
+        </div>
       </main>
 
       {/* 右侧面板拖拽调宽条：面板打开且非全屏时显示（位于面板左侧） */}
@@ -271,8 +448,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         />
       )}
 
-      {/* 右侧面板（浏览器式标签：终端 / 产出物） */}
-      <DockPanel cwd={terminalCwd} />
+      {/* 右侧面板（浏览器式标签：终端 / 产出物 / 浏览器） */}
+      <DockPanel cwd={terminalCwd} chatId={currentChatId} projectPath={currentProjectPath} />
 
       {/* 收起后浮动展开按钮：玻璃质感，左侧边缘居中 */}
       {sidebarCollapsed && (
@@ -317,7 +494,12 @@ export function AppLayout({ children }: AppLayoutProps) {
         >
           <PanelLeftOpen size={16} />
         </button>
-      )}
-    </div>
+      )}</div>
+    </>
   );
 }
+
+
+
+
+

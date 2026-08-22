@@ -32,6 +32,13 @@ PLUGIN_TOOL_MAP: dict[str, Set[str]] = {
     "browser_ui": {"probe_ui", "capture_screenshot", "analyze_screenshot"},
     # 文生图（万相 API 外部付费服务，需审批）
     "image_generation": {"generate_image"},
+    # 飞书集成（多维表格读写 + IM 消息/图片/文件；发送类需审批）
+    "feishu": {
+        "feishu_list_bases", "feishu_query_records",
+        "feishu_write_records", "feishu_create_base",
+        "feishu_send_message", "feishu_send_image", "feishu_send_file",
+        "feishu_list_chats",
+    },
     "orchestration": {"delegate_sub_agent", "spawn_orchestration"},
     "core": {"ask_user_choice", "get_datetime", "format_json", "add_memory", "manage_todos"},
     # 外部插件（真实 MCP 能力）

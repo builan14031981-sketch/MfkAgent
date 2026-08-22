@@ -1,0 +1,126 @@
+{
+  "suite": "orchestration_phase_f",
+  "date": "2026-08-18 13:44:09",
+  "passed": 11,
+  "total": 11,
+  "failures": [],
+  "results": [
+    {
+      "name": "O1 角色目录",
+      "ok": true,
+      "detail": {
+        "count": 7,
+        "roles": [
+          "architecture",
+          "backend",
+          "frontend",
+          "testing",
+          "security",
+          "researcher",
+          "code_reviewer"
+        ],
+        "missing": []
+      },
+      "elapsed_ms": 580
+    },
+    {
+      "name": "O1b 角色模板映射",
+      "ok": true,
+      "detail": {
+        "role_count": 7,
+        "mapped_count": 7,
+        "bad_template_ids": [],
+        "unresolvable": []
+      },
+      "elapsed_ms": 6
+    },
+    {
+      "name": "O2 启发式兜底",
+      "ok": true,
+      "detail": {
+        "complex": "complex",
+        "simple": "simple",
+        "empty": "simple"
+      },
+      "elapsed_ms": 0
+    },
+    {
+      "name": "O3 JSON 解析",
+      "ok": true,
+      "detail": {
+        "plain": true,
+        "fence": true,
+        "invalid": null
+      },
+      "elapsed_ms": 0
+    },
+    {
+      "name": "O4 子任务过滤",
+      "ok": true,
+      "detail": {
+        "count": 2,
+        "roles": [
+          "architecture",
+          "backend"
+        ]
+      },
+      "elapsed_ms": 2
+    },
+    {
+      "name": "O5 报告渲染",
+      "ok": true,
+      "detail": {
+        "has_roles": true,
+        "has_status": true,
+        "has_synthesis": true,
+        "has_error": true,
+        "skip": true
+      },
+      "elapsed_ms": 0
+    },
+    {
+      "name": "O6 工具注册",
+      "ok": true,
+      "detail": {
+        "spawn_orchestration": true,
+        "delegate_sub_agent": true,
+        "spawn_schema": true
+      },
+      "elapsed_ms": 0
+    },
+    {
+      "name": "O7 权限目录",
+      "ok": true,
+      "detail": {
+        "in_dir": true
+      },
+      "elapsed_ms": 85
+    },
+    {
+      "name": "O8 默认值",
+      "ok": true,
+      "detail": {
+        "complexity": "simple",
+        "need": false
+      },
+      "elapsed_ms": 0
+    },
+    {
+      "name": "O9 并行上限",
+      "ok": true,
+      "detail": {
+        "max_concurrency": 4
+      },
+      "elapsed_ms": 0
+    },
+    {
+      "name": "O10 汇总合成",
+      "ok": true,
+      "detail": {
+        "has_counts": true,
+        "has_both": true
+      },
+      "elapsed_ms": 0
+    }
+  ]
+}

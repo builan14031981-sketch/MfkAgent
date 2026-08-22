@@ -146,7 +146,7 @@ export function ThemeSwitcher({
           display: "flex",
           alignItems: "center",
           gap: 6,
-          padding: "6px 10px",
+          padding: "4px 8px",
           borderRadius: "var(--radius-full)",
           border: `1px solid ${open ? "var(--color-primary)" : "var(--border-primary)"}`,
           background: open ? "var(--color-primary-light)" : "var(--bg-level-2)",
@@ -402,3 +402,4 @@ export function ThemeSwitcher({
     </>
   );
 }
+

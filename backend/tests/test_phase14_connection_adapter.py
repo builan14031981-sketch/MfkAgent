@@ -66,17 +66,19 @@ def test_model_config_error_call_once():
         # 所有模型都有 key，测一个不存在的 model_id
         no_key_model = "definitely-not-exist-model-12345"
 
-    try:
-        asyncio.run(svc.call_once(
-            model_id=no_key_model,
-            messages=[{"role": "user", "content": "hi"}],
-        ))
-        assert False, "应抛出 ModelConfigError"
-    except ModelConfigError as e:
-        assert "未配置 API Key" in str(e) or "未注册" in str(e), f"错误消息异常: {e}"
-        print(f"[PASS] test_model_config_error_call_once → ModelConfigError: {e}")
-    except ValueError as e:
-        assert False, f"不应再抛 ValueError，应为 ModelConfigError: {e}"
+    from unittest.mock import patch
+    with patch.object(svc, "_disabled_providers", set()):
+        try:
+            asyncio.run(svc.call_once(
+                model_id=no_key_model,
+                messages=[{"role": "user", "content": "hi"}],
+            ))
+            assert False, "应抛出 ModelConfigError"
+        except ModelConfigError as e:
+            assert "未配置 API Key" in str(e) or "未注册" in str(e), f"错误消息异常: {e}"
+            print(f"[PASS] test_model_config_error_call_once → ModelConfigError: {e}")
+        except ValueError as e:
+            assert False, f"不应再抛 ValueError，应为 ModelConfigError: {e}"
 
 
 def test_model_config_error_stream_once():
@@ -100,14 +102,16 @@ def test_model_config_error_stream_once():
         ):
             pass
 
-    try:
-        asyncio.run(_collect())
-        assert False, "应抛出 ModelConfigError"
-    except ModelConfigError as e:
-        assert "未配置 API Key" in str(e) or "未注册" in str(e), f"错误消息异常: {e}"
-        print(f"[PASS] test_model_config_error_stream_once → ModelConfigError: {e}")
-    except ValueError as e:
-        assert False, f"stream_once 不应再抛 ValueError: {e}"
+    from unittest.mock import patch
+    with patch.object(svc, "_disabled_providers", set()):
+        try:
+            asyncio.run(_collect())
+            assert False, "应抛出 ModelConfigError"
+        except ModelConfigError as e:
+            assert "未配置 API Key" in str(e) or "未注册" in str(e), f"错误消息异常: {e}"
+            print(f"[PASS] test_model_config_error_stream_once → ModelConfigError: {e}")
+        except ValueError as e:
+            assert False, f"stream_once 不应再抛 ValueError: {e}"
 
 
 def test_agent_catches_model_config_error():

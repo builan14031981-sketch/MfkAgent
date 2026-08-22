@@ -1,0 +1,23 @@
+Updated ExpressionKnowledge: natural_companion
+Updated ExpressionKnowledge: companion
+Updated ExpressionKnowledge: warm
+Updated ExpressionKnowledge: professional
+Updated ExpressionKnowledge: coder
+Updated ExpressionKnowledge: writer
+Updated ExpressionKnowledge: creative
+ExpressionKnowledge seed done.
+Updated PersonaTemplate: pianai
+Updated PersonaTemplate: general
+PersonaTemplate seed done.
+[migration] 待办已从 SQLite todos 表迁移到 data/todos.json
+Updated ExpressionKnowledge: natural_companion
+Updated ExpressionKnowledge: companion
+Updated ExpressionKnowledge: warm
+Updated ExpressionKnowledge: professional
+Updated ExpressionKnowledge: coder
+Updated ExpressionKnowledge: writer
+Updated ExpressionKnowledge: creative
+ExpressionKnowledge seed done.
+Updated PersonaTemplate: pianai
+Updated PersonaTemplate: general
+PersonaTemplate seed done.

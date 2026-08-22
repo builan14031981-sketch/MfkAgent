@@ -16,7 +16,7 @@ import {
   ghostPillHoverShadow,
 } from "./styles";
 
-/** Phase 3 T3/T8 权限模式：safe = 安全模式 / standard = 标准模式 / autonomous = 自主模式 */
+/** Phase 3 T3/T8 权限模式：safe = 安全模式 / standard = 标准模式 / autonomous = 自主模式（会话级，逐会话显式设置） */
 export type PermissionMode = "safe" | "standard" | "autonomous";
 
 interface PermissionSelectorProps {
@@ -27,7 +27,7 @@ interface PermissionSelectorProps {
   onClose: () => void;
 }
 
-/** 权限模式指示胶囊：显示当前全局安全模式，点击可切换（调用 Settings API 保存） */
+/** 权限模式指示胶囊：显示当前会话安全模式，点击可切换（调用 updateChat 写入会话 permission_mode） */
 export function PermissionSelector({ permissionMode, onPermissionChange, open, onToggle, onClose }: PermissionSelectorProps) {
   const { t } = useTranslation();
   const btnRef = useRef<HTMLButtonElement>(null);

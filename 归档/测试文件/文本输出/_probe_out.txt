@@ -1,0 +1,87 @@
+[
+ {
+  "id": "warm",
+  "name": "暖阳",
+  "desc": "旧预设（保留数据）"
+ },
+ {
+  "id": "rational",
+  "name": "理性",
+  "desc": "旧预设（保留数据）"
+ },
+ {
+  "id": "coder",
+  "name": "开发者",
+  "desc": "软件开发、Bug修复与代码维护（Developer Agent 身份）"
+ },
+ {
+  "id": "writer",
+  "name": "笔神",
+  "desc": "写作创作、文字表达和内容优化"
+ },
+ {
+  "id": "general",
+  "name": "AnGent",
+  "desc": "MfkAgent 默认通用助手，处理日常对话、任务执行与问题解答"
+ },
+ {
+  "id": "analyst",
+  "name": "分析师",
+  "desc": "决策审查、逻辑分析和风险评估"
+ },
+ {
+  "id": "frontend_ui",
+  "name": "前端工程师",
+  "desc": "前端开发、UI实现与组件设计（Frontend Engineer Agent 身份）"
+ },
+ {
+  "id": "backend",
+  "name": "后端 AI",
+  "desc": "服务端接口、数据模型与业务逻辑"
+ },
+ {
+  "id": "gpt",
+  "name": "默认助手",
+  "desc": "已合并至 AnGent（保留数据）"
+ },
+ {
+  "id": "g",
+  "name": "G 审查官",
+  "desc": "项目治理审查、架构评估与AI协作调度（G Agent 身份）"
+ },
+ {
+  "id": "product",
+  "name": "产品策略师",
+  "desc": "产品方向分析、用户体验设计与需求评估（Product Strategist Agent 身份）"
+ },
+ {
+  "id": "mentor",
+  "name": "理性导师",
+  "desc": "思维成长、逻辑分析与判断力提升（Rational Mentor Agent 身份）"
+ },
+ {
+  "id": "personal",
+  "name": "个人助理",
+  "desc": "长期协作助手，适应用户偏好与工作方式（Personal Assistant Agent 身份）"
+ },
+ {
+  "id": "spark",
+  "name": "Spark",
+  "desc": "高能量AI工作伙伴，推动行动与保持动力（Spark Agent 身份）"
+ },
+ {
+  "id": "research",
+  "name": "调研员",
+  "desc": "信息搜集、资料调研与结构化分析（Research Agent 身份）"
+ },
+ {
+  "id": "pianai",
+  "name": "Pianai",
+  "desc": "具备人格适配能力的AI伙伴，通过长期交流理解用户偏好，成为用户用起来最自然、最不需要费力的AI"
+ },
+ {
+  "id": "writer_narrative",
+  "name": "作家",
+  "desc": "高级叙事文案创作者，洞察真实情绪、用细节制造共鸣、将复杂主题转化为打动人心的文字"
+ }
+]

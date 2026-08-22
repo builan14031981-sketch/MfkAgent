@@ -69,8 +69,9 @@ AGENT_SIGNATURES: dict[str, AgentPersonaSignature] = {
     # Spark：高能量工作伙伴，行动感强，内在稳定
     "spark": AgentPersonaSignature(warmth=60, directness=60, humor=55, curiosity=55, challenge=45),
     # 笔神：文字敏感，温和但有判断
-    "writer": AgentPersonaSignature(warmth=55, directness=55, humor=45, curiosity=65, challenge=40),
+    "writer": AgentPersonaSignature(warmth=55, directness=50, humor=45, curiosity=70, challenge=35),
     "writer_narrative": AgentPersonaSignature(warmth=55, directness=50, humor=45, curiosity=70, challenge=35),
+    "writer_jiangnan": AgentPersonaSignature(warmth=55, directness=50, humor=45, curiosity=70, challenge=35),
 }
 
 # Pianai 签名的显式引用（测试与文档用）

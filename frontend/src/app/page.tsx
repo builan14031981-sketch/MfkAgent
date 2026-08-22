@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/lib/store";
 import { usePreferences } from "@/hooks/usePreferences";
 import { apiGet } from "@/lib/api";
 import { ChatComposer } from "@/components/ChatComposer";
+import { useSkills, type SkillInfo } from "@/hooks/useSkills";
 import type { ChatMode } from "@/components/ChatInput";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import { FileDropZone } from "@/components/FileDropZone";
@@ -22,6 +23,8 @@ import { HeroStage } from "@/components/hero/HeroStage";
 import type { QuoteCategory, QuoteItem } from "@/components/hero/QuoteMenu";
 import type { Project } from "@/hooks/useProjects";
 import { INTERACTIVE_HERO_THEME_IDS } from "@/themes/registry";
+import { uploadAttachment } from "@/hooks/useMessages";
+import type { ScreenshotItem } from "@/components/screenshot/ScreenshotPreviewBar";
 
 export default function Home() {
   const router = useRouter();
@@ -36,6 +39,7 @@ export default function Home() {
   const visibleModels = useVisibleModels(models);
   const { createChat } = useChat();
   const { createProject } = useProjects();
+  const { skills: allSkills } = useSkills();
   const { settings, updateSetting } = useSettingsStore();
   // Phase 1.5：模型/推理强度偏好三级回落（localStorage → /api/settings → 默认 qwen-flash）
   // 2026-08-11：传 visibleModels，让偏好 modelId 跟下拉可见性一致（移除 qwen-max 后回落为 qwen-flash）
@@ -47,12 +51,11 @@ export default function Home() {
   const [greetingFavorites, setGreetingFavorites] = useState<string[]>([]);
   const [pendingProject, setPendingProject] = useState<Project | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
+  // 首页会话级 Skill：选中后随 URL 带给新会话，仅新会话生效，不写全局
+  const [sessionSkills, setSessionSkills] = useState<SkillInfo[]>([]);
   // 初始值固定为 none（SSR/水合安全）；挂载后由下方初始化块按三级回落赋值
   const [reasoningEffort, setReasoningEffort] = useState<"none" | "high" | "max">("none");
-  const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => {
-    const def = settings?.agent_permission_mode;
-    return def === "safe" || def === "standard" || def === "autonomous" ? def : "standard";
-  });
+  const [permissionMode, setPermissionMode] = useState<PermissionMode>("standard");
   const [mode, setMode] = useState<ChatMode>("build");
   // 初始随机抽取标记：防止收藏变化触发重新抽取（避免主页台词频繁跳变）
   const initialQuotePickedRef = useRef(false);
@@ -141,7 +144,7 @@ export default function Home() {
     const key = quoteFavKey(catId, item);
     setGreetingFavorites((prev) => {
       const next = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key];
-      updateSetting("greeting_favorites", JSON.stringify(next));
+      updateSetting("greeting_favorites", JSON.stringify(next)).catch(() => {});
       return next;
     });
   }, [quoteFavKey, updateSetting]);
@@ -193,10 +196,14 @@ export default function Home() {
     if (agent) setSelectedAgent(agent);
   }, [activeAgents]);
 
-  const handleSend = async () => {
-    if (!input.trim() || !currentAgent || isCreating) return;
+  const handleSend = async (screenshots?: ScreenshotItem[]) => {
+    const hasScreenshots = Boolean(screenshots && screenshots.length > 0);
+    const hasText = Boolean(input.trim());
+    const hasPendingAttachments = pendingAttachments.length > 0;
 
-    const userMessage = input.trim();
+    if ((!hasText && !hasScreenshots && !hasPendingAttachments) || !currentAgent || isCreating) return;
+
+    const userMessage = input.trim() || (hasScreenshots ? "[图片]" : "你好");
     setIsCreating(true);
     setInput("");
 
@@ -207,11 +214,31 @@ export default function Home() {
         pendingProject?.id ?? null,
         currentModel?.id || settings?.default_model || null,
         pendingAttachments.map((a) => a.path || a.name),
-        mode
+        mode,
+        permissionMode
       );
 
+      // 上传首页截取的屏幕截图至新创建的 Chat
+      const allAttachments: Attachment[] = [...pendingAttachments];
+      if (hasScreenshots && screenshots) {
+        for (const item of screenshots) {
+          try {
+            const uploaded = await uploadAttachment(chat.id, item.file);
+            if (uploaded) {
+              allAttachments.push(uploaded);
+            }
+          } catch (uploadErr) {
+            console.error("[Homepage] Screenshot upload failed:", uploadErr);
+          }
+        }
+      }
+
       const encodedMessage = encodeURIComponent(userMessage);
-      router.push(`/chat/${chat.id}?message=${encodedMessage}`);
+      // 首页选中了会话级 Skill：把它随 URL 带给新会话（聊天页据 skills 参数恢复会话级启用）
+      const skillIds = sessionSkills.map((s) => s.id);
+      const skillParam = skillIds.length > 0 ? `&skills=${encodeURIComponent(JSON.stringify(skillIds))}` : "";
+      const attachParam = allAttachments.length > 0 ? `&attachments=${encodeURIComponent(JSON.stringify(allAttachments))}` : "";
+      router.push(`/chat/${chat.id}?message=${encodedMessage}${skillParam}${attachParam}`);
     } catch (err) {
       console.error("Failed to create chat:", err);
       setIsCreating(false);
@@ -241,6 +268,17 @@ export default function Home() {
   const handleClearDraft = useCallback(() => {
     setPendingAttachments([]);
     setPendingProject(null);
+    setSessionSkills([]);
+  }, []);
+
+  // 会话级启用 Skill（首页选中，随 URL 带给新会话）
+  const handleApplySkill = useCallback((skill: SkillInfo) => {
+    setSessionSkills((prev) => (prev.some((s) => s.id === skill.id) ? prev : [...prev, skill]));
+  }, []);
+
+  // 移除某个会话级 Skill
+  const handleRemoveSkill = useCallback((skillId: string) => {
+    setSessionSkills((prev) => prev.filter((s) => s.id !== skillId));
   }, []);
 
   const removePendingAttachment = useCallback((id: string) => {
@@ -286,49 +324,86 @@ export default function Home() {
         />
       </div>
 
-      {/* 快捷指令（非可交互主题时显示）：紧贴输入组合框上方，留轻微空隙 */}
-      {!interactiveTheme && quickStarts.length > 0 && (
-        <div style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "8px",
-          justifyContent: "center",
-          maxWidth: "768px",
+            {/* 底部输入区域容器：快捷指令 + 输入框 */}
+      <div
+        className="home-bottom-area"
+        onMouseEnter={(e) => {
+          const qs = e.currentTarget.querySelector('.home-quickstarts') as HTMLElement | null;
+          if (qs) { qs.style.opacity = '1'; qs.style.transform = 'translateY(0)'; qs.style.pointerEvents = 'auto'; }
+        }}
+        onMouseLeave={(e) => {
+          const qs = e.currentTarget.querySelector('.home-quickstarts') as HTMLElement | null;
+          if (qs) { qs.style.opacity = '0'; qs.style.transform = 'translateY(8px)'; qs.style.pointerEvents = 'none'; }
+        }}
+        style={{
           width: "100%",
+          // 2026-08-16：底部输入区随 ChatComposer 同步加宽，maxWidth 1400px，容器背景透明，仅输入卡片悬浮
+          maxWidth: "1400px",
           margin: "0 auto",
-          padding: "0 16px 6px",
-        }}>
-          {quickStarts.map((prompt, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setInput(prompt);
-              }}
-              style={{
-                padding: "8px 14px",
-                borderRadius: "var(--radius-full)",
-                border: "1px solid var(--border-primary)",
-                background: "var(--bg-level-2)",
-                cursor: "pointer",
-                fontSize: "12px",
-                color: "var(--text-level-2)",
-                transition: "all var(--transition-fast)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-primary)";
-                e.currentTarget.style.color = "var(--color-primary)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border-primary)";
-                e.currentTarget.style.color = "var(--text-level-2)";
-              }}
-            >{prompt}</button>
-          ))}
-        </div>
-      )}
+          position: "relative",
+        }}
+      >
+        {/* 快捷指令（非可交互主题时显示）：绝对定位在输入框上方，hover 时显示 */}
+        {!interactiveTheme && quickStarts.length > 0 && (
+          <div
+            className="home-quickstarts"
+            style={{
+              position: "absolute",
+              bottom: "100%",
+              left: 0,
+              right: 0,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "8px",
+              justifyContent: "center",
+              padding: "8px 16px 12px",
+              opacity: 0,
+              transform: "translateY(8px)",
+              pointerEvents: "none",
+              transition: "opacity 0.2s ease, transform 0.2s ease",
+            }}
+          >
+            {quickStarts.map((prompt, idx) => (
+              <button
+                key={idx}
+                onClick={() => setInput(prompt)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "var(--radius-full)",
+                  border: "1px solid var(--border-primary)",
+                  background: "var(--bg-level-2)",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  color: "var(--text-level-2)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-primary)";
+                  e.currentTarget.style.color = "var(--color-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-primary)";
+                  e.currentTarget.style.color = "var(--text-level-2)";
+                }}
+              >{prompt}</button>
+            ))}
+          </div>
+        )}
 
-      {/* 底部区域 - 贴底 ChatComposer（一级入口：允许 Agent 切换） */}
-      <ChatComposer
+        {/* 渐变遮罩：内容区到输入区的平滑过渡 */}
+        <div style={{
+          height: "48px",
+          background: "linear-gradient(to bottom, transparent, var(--bg-level-2))",
+          position: "relative",
+          marginTop: "-48px",
+          pointerEvents: "none",
+          zIndex: 1,
+        }} />
+
+        {/* 底部区域 - 贴底 ChatComposer（一级入口：允许 Agent 切换） */}
+        <div style={{ position: "relative", zIndex: 2 }}>
+          <ChatComposer
         value={input}
         onChange={setInput}
         onSend={handleSend}
@@ -358,15 +433,25 @@ export default function Home() {
         onUploadFile={handleAttachFile}
         onSelectDirectory={handleLinkProject}
         onClearContext={handleClearDraft}
-        hasContext={pendingAttachments.length > 0 || !!pendingProject}
+        hasContext={pendingAttachments.length > 0 || !!pendingProject || sessionSkills.length > 0}
         files={[]}
         onRemoveFile={() => {}}
         projectName={pendingProject?.name || null}
         onRemoveProject={() => setPendingProject(null)}
         attachments={pendingAttachments}
         onRemoveAttachment={removePendingAttachment}
+        skills={allSkills}
+        onApplySkill={handleApplySkill}
+        activeSkillIds={new Set(sessionSkills.map((s) => s.id))}
+        onRemoveSkill={handleRemoveSkill}
       />
+        </div>
+      </div>
       <FileDropZone onFilesDrop={handleFilesDrop} />
     </div>
   );
 }
+
+
+
+

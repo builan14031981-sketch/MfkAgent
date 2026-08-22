@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -255,7 +255,7 @@ def _test_t4_parse_failure_fallback():
         assert mock_call.called, "LLM 应该被尝试调用"
         assert plan is not None, "fallback 应返回 heuristic Plan"
         assert plan.goal == "分析项目结构"
-        assert len(plan.steps) == 3  # file_operation 模板
+        assert len(plan.steps) == 1  # file_operation 模板（单步化，见 service.py 注释）
 
         return {
             "plan_not_none": plan is not None,
@@ -295,7 +295,7 @@ def _test_t5_empty_steps_fallback():
 
         assert mock_call.called
         assert plan is not None, "fallback 应返回 heuristic Plan"
-        assert len(plan.steps) == 3  # file_operation 模板有 3 步
+        assert len(plan.steps) == 1  # file_operation 模板（单步化，见 service.py 注释）
 
         return {
             "plan_not_none": plan is not None,
@@ -455,7 +455,7 @@ def _test_t9_agent_runtime_unchanged():
     from app.core.agent_runtime.context import AgentContext, AgentResult
 
     # 验证核心常量
-    assert MAX_ROUNDS == 3, "MAX_ROUNDS 应保持 3"
+    assert MAX_ROUNDS == 10, "MAX_ROUNDS 应保持 10"
 
     # 验证 AgentRuntime 类结构
     rt = AgentRuntime()

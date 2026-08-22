@@ -69,14 +69,14 @@ def _search_dir(base: str, query_lower: str, max_results: int) -> List[str]:
     return hits
 
 
-def search_files(project_path: str, query: str, relative_path: str = ".", max_results: int = MAX_RESULTS) -> str:
-    """在项目内搜索关键字（大小写不敏感），返回 文件:行号: 内容 列表。"""
+def search_files(project_path: Optional[str], query: str, relative_path: str = ".", max_results: int = MAX_RESULTS) -> str:
+    """在项目或指定目录内搜索关键字（大小写不敏感），返回 文件:行号: 内容 列表。"""
     query = (query or "").strip()
     if not query:
         return "错误: query 不能为空"
     try:
-        target = resolve_sandbox_path(relative_path, project_path)
-    except (ToolExecutionError, PermissionError) as e:
+        target = resolve_sandbox_path(relative_path, project_path, allow_outside=True)
+    except (ToolExecutionError, PermissionError, Exception) as e:
         return f"错误: {e}"
     if not os.path.isdir(target):
         return f"错误: 目录不存在: {relative_path}"

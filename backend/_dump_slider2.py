@@ -1,0 +1,8 @@
+import re
+s = open(r'E:\智慧项目\portfolio-mfkagent\index.html', encoding='utf-8').read()
+starts = [m.start() for m in re.finditer(r'<script>', s)]
+seg = '\n'.join(s[a:s.find('</script>', a)] for a in starts)
+print('total JS:', len(seg))
+i = seg.find('slider')
+print('--- slider JS ---')
+print(seg[max(0, i-150):i+2600])

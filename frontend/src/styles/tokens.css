@@ -24,10 +24,10 @@
  * ------------------------------------------------------------ */
 :root,
 html[data-theme="studio-graphite"] {
-  /* 用户气泡（官方=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 20%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   /* ── V2 语义 Token ── */
   --mf-bg-app: #ffffff;
   --mf-bg-surface: #f6f6f8;
@@ -65,13 +65,12 @@ html[data-theme="studio-graphite"] {
   --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
   --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
 
-  --mf-motion-fast: 0.12s ease;      /* 微交互 */
-  --mf-motion-base: 0.2s ease;       /* 面板 */
-  --mf-motion-slow: 0.3s ease;       /* 页面级 */
-
   --mf-glass-bg: rgba(255, 255, 255, 0.72);
   --mf-glass-border: rgba(255, 255, 255, 0.5);
   --mf-overlay-modal: rgba(0, 0, 0, 0.32);
+
+  /* Focus ring */
+  --focus-ring: rgba(38, 40, 45, 0.32);
   --mf-shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -113,10 +112,6 @@ html[data-theme="obsidian"] {
   --mf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --mf-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.32);
   --mf-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.42);
-
-  --mf-motion-fast: 0.12s ease;      /* 微交互 */
-  --mf-motion-base: 0.2s ease;       /* 面板 */
-  --mf-motion-slow: 0.3s ease;       /* 页面级 */
 
   /* ── 旧名兼容别名（存量组件继续可用） ── */
   --bg-level-1: var(--mf-bg-surface);
@@ -357,6 +352,11 @@ html[data-theme="terminal"] {
 
   --overlay-modal: var(--mf-overlay-modal);
   --shadow-composer: var(--mf-shadow-composer);
+
+  /* 动效 Token -> 引用 globals.css 的 --transition-* 为唯一来源（2026-08-18 统一） */
+  --mf-motion-fast: var(--transition-fast);
+  --mf-motion-base: var(--transition-normal);
+  --mf-motion-slow: var(--transition-slow);
 }
 
 /* ============================================================
@@ -367,10 +367,10 @@ html[data-theme="terminal"] {
 
 /* Exp-1：Titanium —— 钛金属冷灰（浅色） */
 html[data-theme="titanium"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 10%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #e1e3e6;
   --mf-bg-surface: #d6d9dd;
   --mf-bg-card: #edeff1;
@@ -414,10 +414,10 @@ html[data-theme="titanium"] {
 
 /* Exp-2：Paper Studio —— 纸面工作室（暖浅色，赭朱 accent） */
 html[data-theme="paper"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #f4f1ea;
   --mf-bg-surface: #ece8de;
   --mf-bg-card: #faf7f0;
@@ -461,10 +461,10 @@ html[data-theme="paper"] {
 
 /* Exp-3：Midnight —— 午夜深蓝（深色） */
 html[data-theme="midnight"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 14%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 25%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #0b0e14;
   --mf-bg-surface: #10141d;
   --mf-bg-card: #161b26;
@@ -508,10 +508,10 @@ html[data-theme="midnight"] {
 
 /* Exp-4：Mono —— 纯单色（深色，零彩度，反白 accent） */
 html[data-theme="mono"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 25%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #111112;
   --mf-bg-surface: #171718;
   --mf-bg-card: #1d1d1f;
@@ -555,10 +555,10 @@ html[data-theme="mono"] {
 
 /* Exp-5：Warm Minimal —— 暖调极简（浅色，焦糖 accent） */
 html[data-theme="warm-minimal"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 8%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 22%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #faf8f5;
   --mf-bg-surface: #f2eee9;
   --mf-bg-card: #f5f1ec;
@@ -602,10 +602,10 @@ html[data-theme="warm-minimal"] {
 
 /* Exp-6：Aurora —— 极光青绿（深色，低饱和，非霓虹） */
 html[data-theme="aurora"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 12%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 25%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #0d1210;
   --mf-bg-surface: #121815;
   --mf-bg-card: #18201c;
@@ -650,10 +650,10 @@ html[data-theme="aurora"] {
 /* Exp：Clay —— Studio 陶土（2026-08-13 第三方候选，Claude/Anthropic 式）
  * 暖白纸感浅色，陶土橙强调，反技术冷蓝。 */
 html[data-theme="clay"] {
-  /* 用户气泡（实验=方案B：低饱和 tint） */
-  --mf-bubble-user-bg: color-mix(in srgb, var(--mf-accent) 10%, var(--mf-bg-card));
+  /* 用户气泡（方案A：中性面，零色相噪音） */
+  --mf-bubble-user-bg: var(--mf-bg-elevated);
   --mf-bubble-user-fg: var(--mf-text-1);
-  --mf-bubble-user-border: color-mix(in srgb, var(--mf-accent) 24%, transparent);
+  --mf-bubble-user-border: var(--mf-border-1);
   --mf-bg-app: #f5f4ed;                 /* 暖纸底（parchment） */
   --mf-bg-surface: #ece9df;             /* 侧边栏温暖 */
   --mf-bg-card: #faf9f5;                /* 象牙卡片 */
@@ -897,3 +897,4 @@ svg.lucide {
 @media (prefers-reduced-motion: reduce) {
   .mf-focus-chip { animation: none; }
 }
+

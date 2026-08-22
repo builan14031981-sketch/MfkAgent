@@ -32,13 +32,13 @@ MAX_PORT = 65535
 def _is_port_available(port: int, host: str = "127.0.0.1") -> bool:
     """检测指定端口是否可用（通过尝试绑定 socket 判断）。
 
-    使用 SO_REUSEADDR 避免 TIME_WAIT 残留干扰。
+    Windows 下不使用 SO_REUSEADDR，以确保端口未被任何其他进程占用。
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if os.name != "nt":
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         sock.bind((host, port))
-        sock.listen(1)
         return True
     except OSError:
         return False

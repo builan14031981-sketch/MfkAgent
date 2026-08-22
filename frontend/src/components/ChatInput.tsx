@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
-import { Send, Folder, X, FileUp, Square } from "lucide-react";
+import { Send, Folder, X, FileUp, Square, Sparkles } from "lucide-react";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { FilePill, AttachmentChipList } from "@/components/FileDropZone";
 import type { Attachment } from "@/components/FileDropZone";
@@ -12,11 +12,18 @@ import { ReasoningSelector } from "@/components/chat-input/ReasoningSelector";
 import { PermissionSelector } from "@/components/chat-input/PermissionSelector";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
 import { UploadMenu } from "@/components/chat-input/UploadMenu";
+import { ScreenshotPreviewBar } from "@/components/screenshot/ScreenshotPreviewBar";
+import type { ScreenshotItem } from "@/components/screenshot/ScreenshotPreviewBar";
+import { ScreenshotLightbox } from "@/components/screenshot/ScreenshotLightbox";
+import type { SkillInfo } from "@/hooks/useSkills";
 import type { Model } from "@/hooks/useModels";
 import type { Project } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
 import { VoiceOrb2D } from "@/components/VoiceOrb2D";
 import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
+import { useAgents, type Agent } from "@/hooks/useAgents";
+import { useMention } from "@/components/chat-input/useMention";
+import { MentionPopover } from "@/components/chat-input/MentionPopover";
 
 export type ReasoningEffort = "none" | "high" | "max";
 /** 会话工作模式：build（可写）/ plan（只读） */
@@ -26,7 +33,7 @@ export type { PermissionMode };
 export interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (screenshots?: ScreenshotItem[]) => void;
   isSending: boolean;
   placeholder: string;
   disabled?: boolean;
@@ -70,6 +77,17 @@ export interface ChatInputProps {
   /** 从已有项目列表中选择一个 */
   onSelectExistingProject?: (projectId: number) => void;
 
+  /** 已启用的 Skill 列表（供加号菜单「添加 Skill」会话级注入） */
+  skills?: SkillInfo[];
+  /** 会话级启用某个 Skill（把其 prompt 作为文档喂给当前会话） */
+  onApplySkill?: (skill: SkillInfo) => void;
+  /** 当前会话已启用的 Skill id 集合 */
+  activeSkillIds?: Set<string>;
+  /** 移除某个会话级 Skill */
+  onRemoveSkill?: (skillId: string) => void;
+  /** 粘贴剪贴板（文本/图片）到输入框 */
+  onPasteClipboard?: () => void;
+
   files: string[];
   onRemoveFile: (path: string) => void;
   projectName?: string | null;
@@ -85,6 +103,9 @@ export interface ChatInputProps {
    * 不提供则隐藏语音小球。
    */
   onVoicePrompt?: (text: string) => void;
+
+  /** 当前会话在场的参会 Agent 席位列表（圆桌模式下置顶候选） */
+  roundtableAttendees?: Agent[];
 }
 
 /**
@@ -124,6 +145,11 @@ export const ChatInput = memo(function ChatInput({
   hasContext,
   projects,
   onSelectExistingProject,
+  skills,
+  onApplySkill,
+  activeSkillIds,
+  onRemoveSkill,
+  onPasteClipboard,
   files,
   onRemoveFile,
   projectName,
@@ -131,8 +157,29 @@ export const ChatInput = memo(function ChatInput({
   attachments,
   onRemoveAttachment,
   onVoicePrompt,
+  roundtableAttendees,
 }: ChatInputProps) {
   const { t } = useTranslation();
+  const { agents: allAgents } = useAgents();
+
+  // 艾特候选名单：若提供圆桌席位列表则以圆桌为主，否则使用全部可用 Agent
+  const mentionCandidates = roundtableAttendees && roundtableAttendees.length > 0
+    ? roundtableAttendees
+    : allAgents.filter((a) => a.status === "active" && !a.id.startsWith("sub_"));
+
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalTextareaRef ?? internalTextareaRef;
+
+  // ── @ 艾特成员联想 Hook ──
+  const {
+    mentionState,
+    filteredCandidates,
+    checkMentionTrigger,
+    insertMention,
+    handleMentionKeyDown,
+    closeMention,
+  } = useMention(value, onChange, textareaRef, mentionCandidates);
+
   // 互斥规则：同一时刻只允许一个下拉展开，展开新胶囊自动关闭旧胶囊
   const [activePop, setActivePop] = useState<string | null>(null);
   // Ghost UI：底栏整组控件默认低存在感，鼠标移入底栏时平滑显现
@@ -140,10 +187,11 @@ export const ChatInput = memo(function ChatInput({
   // 文件/图片拖拽：拖入输入卡时边框高亮 + 内嵌提示（dragDepth 计数防抖，避免子元素闪烁）
   const [isDragOver, setIsDragOver] = useState(false);
   const dragDepthRef = useRef(0);
-
+  // 截图预览：本地维护的截图列表（含 dataUrl 缩略图 + File），发送时才上传
+  const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
+  // 放大预览：当前点击放大的截图
+  const [previewScreenshot, setPreviewScreenshot] = useState<ScreenshotItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const textareaRef = externalTextareaRef ?? internalTextareaRef;
 
   // ── 语音录制 + 意图转写（仅当 onVoicePrompt 提供时启用）──
   const voice = useVoiceRecorder();
@@ -273,20 +321,75 @@ export const ChatInput = memo(function ChatInput({
     fileInputRef.current?.click();
   };
 
+  // 截图：调用 Electron 自定义区域截图工具，截图完成后转为 File 对象上传
+  const handleScreenshot = async () => {
+    closePop();
+    try {
+      // 检查是否在 Electron 环境中
+      const electronAPI = (window as any).electronAPI;
+      if (!electronAPI?.startScreenshot) {
+        console.warn("[Screenshot] electronAPI.startScreenshot not available");
+        return;
+      }
+      const result = await electronAPI.startScreenshot();
+      if (!result?.success || result.cancelled) {
+        if (result?.cancelled) console.log("[Screenshot] cancelled by user");
+        return;
+      }
+      // 性能优化：利用 Chromium 原生 C++ fetch(dataUrl) 瞬时创建 Blob，避免 JS 主线程 atob 循环卡顿
+      const dataUrl: string = result.dataUrl;
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `screenshot_${Date.now()}.png`, { type: blob.type || "image/png" });
+
+      // 瞬时添加到本地截图预览列表
+      const newItem: ScreenshotItem = {
+        id: `screenshot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        dataUrl,
+        file,
+      };
+      setScreenshots((prev) => [...prev, newItem]);
+    } catch (err) {
+      console.error("[Screenshot] handleScreenshot failed:", err);
+    }
+  };
+
+  // 删除某个截图
+  const handleRemoveScreenshot = useCallback((id: string) => {
+    setScreenshots((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  // 有文字或有截图时都能发送
+  const canSend = (value.trim().length > 0 || screenshots.length > 0) && !isSending && !disabled;
+
+  // 统一发送：把 screenshots 传给父组件，由父组件统一上传和发送
+  const handleSend = useCallback(() => {
+    if (!canSend) return;
+
+    // 把 screenshots 传给父组件（父组件 handleSend 会先上传截图再发送消息）
+    const screenshotsToSend = screenshots.length > 0 ? [...screenshots] : undefined;
+    setScreenshots([]);
+    clearDraft();
+    onSend(screenshotsToSend);
+  }, [canSend, screenshots, clearDraft, onSend]);
+
   const handlePickDirectory = async () => {
     closePop();
     const dir = await selectDirectory();
     if (dir) onSelectDirectory(dir);
   };
 
-  const canSend = value.trim().length > 0 && !isSending && !disabled;
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 1. 如果当前处于 @ 成员选择浮层状态，优先由 handleMentionKeyDown 消费方向键/Enter/Esc
+    if (handleMentionKeyDown(e)) {
+      return;
+    }
+
+    // 2. 正常回车发送
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (canSend) {
-        clearDraft();
-        onSend();
+        handleSend();
       }
     }
   };
@@ -322,6 +425,9 @@ export const ChatInput = memo(function ChatInput({
     for (const file of files) onUploadFile(file);
   };
 
+  // 当前会话已启用的 Skill：在输入组合框内以胶囊显示，用户可随时移出
+  const activeSkills = (skills ?? []).filter((s) => activeSkillIds?.has(s.id) ?? false);
+
   return (
     <div
       data-mfk-dropzone="input"
@@ -336,8 +442,10 @@ export const ChatInput = memo(function ChatInput({
           : "1px solid var(--border-primary)",
         borderRadius: "var(--radius-2xl)",
         background: isDragOver
-          ? "color-mix(in srgb, var(--color-primary-light) 25%, var(--bg-level-2))"
-          : "var(--bg-level-2)",
+          ? "color-mix(in srgb, var(--color-primary-light) 25%, var(--bg-level-3))"
+          : "var(--bg-level-3)",
+        backgroundClip: "padding-box",
+        WebkitBackgroundClip: "padding-box",
         boxShadow: isDragOver
           ? "0 0 0 4px var(--color-primary-light)"
           : "0 8px 32px rgba(0,0,0,0.06)",
@@ -345,14 +453,56 @@ export const ChatInput = memo(function ChatInput({
           "border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast)",
       }}
     >
-      {/* 草稿 Pills（文件 + 项目） */}
-      {(files.length > 0 || (projectName && onRemoveProject) || (attachments && attachments.length > 0)) && (
+      {/* 草稿 Pills（文件 + 项目 + 截图） */}
+      {(files.length > 0 || (projectName && onRemoveProject) || (attachments && attachments.length > 0) || activeSkills.length > 0 || screenshots.length > 0) && (
         <div style={{
           display: "flex",
           flexWrap: "wrap",
           gap: "4px",
           padding: "10px 12px 0 12px",
         }}>
+          {activeSkills.map((s) => (
+            <span key={s.id} style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "3px 6px 3px 10px",
+              borderRadius: "var(--radius-full)",
+              background: "var(--color-primary-lighter)",
+              border: "1px solid var(--color-primary-light)",
+              fontSize: "12px",
+              color: "var(--color-primary)",
+              maxWidth: "220px",
+            }}>
+              <Sparkles style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+              <span style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>{s.name}</span>
+              <button
+                onClick={() => onRemoveSkill?.(s.id)}
+                title={t("chat.menu.removeSkill")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "16px",
+                  height: "16px",
+                  borderRadius: "var(--radius-full)",
+                  border: "none",
+                  background: "transparent",
+                  cursor: "pointer",
+                  color: "var(--color-primary)",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--color-primary-light)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <X style={{ width: "10px", height: "10px" }} />
+              </button>
+            </span>
+          ))}
           {projectName && onRemoveProject && (
             <span style={{
               display: "inline-flex",
@@ -400,6 +550,14 @@ export const ChatInput = memo(function ChatInput({
           {attachments && onRemoveAttachment && attachments.length > 0 && (
             <AttachmentChipList attachments={attachments} onRemove={onRemoveAttachment} />
           )}
+          {/* 截图缩略图预览条 */}
+          {screenshots.length > 0 && (
+            <ScreenshotPreviewBar
+              screenshots={screenshots}
+              onRemove={handleRemoveScreenshot}
+              onPreview={setPreviewScreenshot}
+            />
+          )}
         </div>
       )}
 
@@ -443,10 +601,30 @@ export const ChatInput = memo(function ChatInput({
             textOverflow: "ellipsis",
           }}>{voice.error}</div>
         )}
+        {/* @ 成员联想悬浮卡片 */}
+        {mentionState.isOpen && (
+          <MentionPopover
+            candidates={filteredCandidates}
+            selectedIndex={mentionState.selectedIndex}
+            onSelect={insertMention}
+            isRoundtable={Boolean(roundtableAttendees && roundtableAttendees.length > 0)}
+          />
+        )}
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            checkMentionTrigger(e.target.value, e.target.selectionStart || 0);
+          }}
+          onClick={(e) => {
+            checkMentionTrigger(value, (e.target as HTMLTextAreaElement).selectionStart || 0);
+          }}
+          onKeyUp={(e) => {
+            if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
+              checkMentionTrigger(value, (e.target as HTMLTextAreaElement).selectionStart || 0);
+            }
+          }}
           onKeyDown={handleKeyDown}
           onPaste={(e) => {
             // 剪贴板图片一键粘贴：捕获 Ctrl+V 中的图片数据（Win+Shift+S 截图后粘贴）
@@ -482,6 +660,7 @@ export const ChatInput = memo(function ChatInput({
             background: "transparent",
             border: "none",
             outline: "none",
+            transition: "box-shadow 0.2s ease",
             resize: "none",
             fontSize: "14px",
             lineHeight: "var(--line-height-normal)",
@@ -526,14 +705,17 @@ export const ChatInput = memo(function ChatInput({
             onToggle={() => togglePop("menu")}
             onClose={closePop}
             onPickFile={handlePickFile}
-            onPickDirectory={handlePickDirectory}
             onClearContext={() => {
               closePop();
               onClearContext();
             }}
             hasContext={hasContext}
-            projects={projects}
-            onSelectExistingProject={onSelectExistingProject}
+            skills={skills}
+            onApplySkill={onApplySkill}
+            activeSkillIds={activeSkillIds}
+            onRemoveSkill={onRemoveSkill}
+            onPasteClipboard={onPasteClipboard}
+            onScreenshot={handleScreenshot}
           />
 
           {/* 隐藏的文件选择 input */}
@@ -646,8 +828,7 @@ export const ChatInput = memo(function ChatInput({
         ) : (
         <button
           onClick={() => {
-            clearDraft();
-            onSend();
+            handleSend();
           }}
           disabled={!canSend}
           style={{
@@ -718,6 +899,17 @@ export const ChatInput = memo(function ChatInput({
           </span>
         </div>
       )}
+
+      {/* 截图放大预览（Lightbox） */}
+      {previewScreenshot && (
+        <ScreenshotLightbox
+          dataUrl={previewScreenshot.dataUrl}
+          onClose={() => setPreviewScreenshot(null)}
+        />
+      )}
     </div>
   );
 });
+
+
+

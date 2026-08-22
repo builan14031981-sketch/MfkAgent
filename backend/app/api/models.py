@@ -3,12 +3,21 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from app.services.model import model_service, Message
-from app.core.model_providers import PROVIDERS, PROVIDER_MAP
+import app.core.model_providers as _mp
 import json
 import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _mask_key(key: str) -> str:
+    """API Key 脱敏：短 Key 全掩码，长 Key 保留首3+尾4（与 settings._mask_key 一致）。"""
+    if not key:
+        return ""
+    if len(key) <= 8:
+        return "****"
+    return key[:3] + "****" + key[-4:]
 
 class ModelInfo(BaseModel):
     id: str
@@ -42,7 +51,7 @@ class FetchRemoteRequest(BaseModel):
 
     - api_key: 可选，为空时按 provider_id 从 settings 读取已存 key（支持"一键拉取"）
     - api_base: 可选，为空时按 provider_id 取默认端点；若 provider_id 也缺省则视为非法
-    - provider_id: 可选，用于在 api_key/api_base 为空时回退到 PROVIDERS 默认配置
+    - provider_id: 可选，用于在 api_key/api_base 为空时回退到 _mp.PROVIDERS 默认配置
     - filter_vision: 可选，为 True 时只返回多模态模型（名称含 vl/vision/ocr）
     """
     api_key: Optional[str] = None
@@ -73,6 +82,7 @@ class CustomModelCreate(BaseModel):
     api_key: Optional[str] = ""
     max_tokens: int = 4096
     temperature: float = 0.7
+    context_window: int = 131072
     enabled: bool = True
     supports_vision: bool = False
 
@@ -84,6 +94,7 @@ class CustomModelUpdate(BaseModel):
     api_key: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
+    context_window: Optional[int] = None
     enabled: Optional[bool] = None
     supports_vision: Optional[bool] = None
 
@@ -186,7 +197,7 @@ async def chat_stream(request: ChatRequest):
 async def list_providers():
     """获取所有模型提供商列表（数据驱动，含免费标识与 Key 配置状态）"""
     providers = []
-    for p in PROVIDERS:
+    for p in _mp.PROVIDERS:
         from app.core.config import settings as _settings
         has_key = bool(model_service._get_api_key(
             getattr(_settings, p.env_key, ""), f"api_key_{p.id}"
@@ -197,6 +208,7 @@ async def list_providers():
             "description": p.description,
             "free": p.free,
             "website": p.website,
+            "category": p.category,
             "has_key": has_key,
             "api_base_override": bool(_get_setting(f"api_base_{p.id}")),
             "models": [{"id": m.id, "name": m.display_name or m.id} for m in p.models],
@@ -209,7 +221,7 @@ async def get_config():
     """获取各 provider 的配置状态（Key 脱敏返回）"""
     from app.core.config import settings as _settings
     configs = []
-    for p in PROVIDERS:
+    for p in _mp.PROVIDERS:
         api_key = model_service._get_api_key(
             getattr(_settings, p.env_key, ""), f"api_key_{p.id}"
         )
@@ -219,13 +231,39 @@ async def get_config():
             "name": p.name,
             "free": p.free,
             "website": p.website,
-            "api_key_masked": api_key,
+            "category": p.category,
+            "api_key_masked": _mask_key(api_key),
             "has_key": bool(api_key),
             "api_base": api_base,
             "api_base_override": bool(_get_setting(f"api_base_{p.id}")),
             "models": [{"id": m.id, "name": m.display_name or m.id} for m in p.models],
         })
     return {"configs": configs}
+
+
+@router.get("/provider-key/{provider_id}")
+async def get_provider_key(provider_id: str):
+    """获取指定 provider 的真实 API Key（明文）。
+
+    用于编辑模式下回填真实 Key 到输入框，让用户可查看/复制已保存的完整 Key。
+    本地应用场景，用户已通过本地运行身份验证，返回明文是安全的。
+    支持官方 provider 和自定义 provider（custom_xxx）。
+    """
+    p = _mp.PROVIDER_MAP.get(provider_id)
+    if p:
+        # 官方 provider
+        from app.core.config import settings as _settings
+        api_key = model_service._get_api_key(
+            getattr(_settings, p.env_key, ""), f"api_key_{p.id}"
+        )
+        return {"provider_id": p.id, "api_key": api_key or ""}
+
+    # 自定义 provider（custom_xxx）：直接从 settings 表读
+    if provider_id.startswith("custom_"):
+        api_key = _get_setting(f"api_key_{provider_id}")
+        return {"provider_id": provider_id, "api_key": api_key or ""}
+
+    raise HTTPException(status_code=404, detail=f"未知 provider: {provider_id}")
 
 
 @router.post("/provider-key")
@@ -235,25 +273,30 @@ async def update_provider_key(body: ProviderKeyUpdate):
     api_key / api_base 为空字符串时删除对应配置（恢复默认端点）。
     加固规则：当 api_key 被显式置空（清除 Key）时，连带清理 api_base 覆盖、
     以及该 provider 下所有自定义模型（enabled_models），避免脏数据残留。
+    支持官方 provider 和自定义 provider（custom_xxx）。
     """
-    p = PROVIDER_MAP.get(body.provider_id)
-    if not p:
+    p = _mp.PROVIDER_MAP.get(body.provider_id)
+    is_custom = body.provider_id.startswith("custom_")
+
+    if not p and not is_custom:
         raise HTTPException(status_code=404, detail=f"未知 provider: {body.provider_id}")
 
     # 判定是否为"清除 Key"动作：api_key 显式传入且为空字符串
     is_clearing_key = body.api_key is not None and not body.api_key.strip()
 
-    if body.api_key is not None:
-        _set_setting(f"api_key_{p.id}", body.api_key.strip())
-    if body.api_base is not None:
-        _set_setting(f"api_base_{p.id}", body.api_base.strip())
+    target_id = p.id if p else body.provider_id
 
-    # 清除 Key 时同步抹除关联数据
-    if is_clearing_key:
+    if body.api_key is not None:
+        _set_setting(f"api_key_{target_id}", body.api_key.strip())
+    if body.api_base is not None:
+        _set_setting(f"api_base_{target_id}", body.api_base.strip())
+
+    # 清除 Key 时同步抹除关联数据（仅官方 provider 有 _purge_provider_associated）
+    if is_clearing_key and p:
         _purge_provider_associated(p.id)
 
     model_service.reload_models()
-    return {"status": "updated", "provider": p.id, "purged": is_clearing_key}
+    return {"status": "updated", "provider": target_id, "purged": is_clearing_key}
 
 
 def _purge_provider_associated(provider_id: str) -> int:
@@ -318,8 +361,12 @@ _CONTEXT_WINDOW_HEURISTICS: list[tuple[list[str], int]] = [
     (["glm"], 128_000),
     (["gpt-4"], 128_000),
     (["gpt-3.5"], 16_385),
-    (["claude", "3.5"], 200_000),
-    (["claude", "3"], 200_000),
+    (["claude", "4"], 1_048_576),  # Claude 4 系列：1M 上下文
+    (["claude", "3.7"], 1_048_576),  # Claude 3.7：1M 上下文
+    (["claude", "3.5"], 200_000),  # Claude 3.5 Sonnet：200K
+    (["claude", "3"], 200_000),  # Claude 3 系列：200K
+    (["claude", "sonnet", "4"], 1_048_576),
+    (["claude", "opus", "4"], 1_048_576),
     (["claude"], 200_000),
     (["llama", "70b"], 131_072),
     (["llama", "405b"], 131_072),
@@ -421,7 +468,7 @@ async def fetch_remote_models(body: FetchRemoteRequest):
     if not api_base:
         if not body.provider_id:
             raise HTTPException(status_code=400, detail="api_base 和 provider_id 不能同时为空")
-        p = PROVIDER_MAP.get(body.provider_id)
+        p = _mp.PROVIDER_MAP.get(body.provider_id)
         if not p:
             raise HTTPException(status_code=400, detail=f"未知 provider: {body.provider_id}")
         api_base = _get_setting(f"api_base_{body.provider_id}") or p.default_api_base
@@ -578,7 +625,7 @@ async def test_connection(body: TestConnectionRequest):
     import httpx
     import time as _time
 
-    p = PROVIDER_MAP.get(body.provider_id)
+    p = _mp.PROVIDER_MAP.get(body.provider_id)
     if not p:
         raise HTTPException(status_code=404, detail=f"未知 provider: {body.provider_id}")
 
@@ -600,17 +647,29 @@ async def test_connection(body: TestConnectionRequest):
         api_base = adapter.resolve_api_base(p)
     api_base = api_base.rstrip("/")
 
-    # 解析测试用 model_id：前端传值优先，否则取 provider 首个模型
+    # 解析测试用 model_id：前端传值优先，否则取 provider 首个模型；自定义端点从 enabled_models 取
     test_model = body.model_id
     if not test_model:
         if p.models:
             test_model = p.models[0].upstream
         else:
-            return {
-                "ok": False,
-                "latency_ms": 0,
-                "detail": f"provider {body.provider_id} 无可用模型用于测试",
-            }
+            # 自定义端点：p.models 为空，从 enabled_models 取第一个已启用模型
+            import json as _json
+            try:
+                raw = _get_setting("enabled_models")
+                if raw:
+                    em = _json.loads(raw)
+                    provider_models = em.get(body.provider_id, [])
+                    if provider_models:
+                        test_model = provider_models[0]
+            except Exception:
+                pass
+            if not test_model:
+                return {
+                    "ok": False,
+                    "latency_ms": 0,
+                    "detail": f"provider {body.provider_id} 无可用模型用于测试，请先在候选池添加模型",
+                }
 
     t0 = _time.perf_counter()
 
@@ -763,10 +822,12 @@ async def list_custom_models():
             "provider": r.provider,
             "model_name": r.model_name,
             "api_base": r.api_base,
-            "api_key_masked": r.api_key,
+            "api_key": r.api_key or "",  # 本地应用直接返回明文，避免编辑时脱敏值回填的bug
+            "api_key_masked": _mask_key(r.api_key or ""),
             "has_key": bool(r.api_key),
             "max_tokens": r.max_tokens,
             "temperature": r.temperature,
+            "context_window": getattr(r, "context_window", 131072) or 131072,
             "enabled": r.enabled,
             "supports_vision": bool(r.supports_vision),
             "source": getattr(r, "source", None) or "manual",
@@ -782,7 +843,7 @@ async def create_custom_model(body: CustomModelCreate):
     from app.models.agent import CustomModel
     if not body.model_id.strip() or not body.model_name.strip() or not body.api_base.strip():
         raise HTTPException(status_code=400, detail="model_id / model_name / api_base 不能为空")
-    if body.provider not in PROVIDER_MAP and body.provider != "openai":
+    if body.provider not in _mp.PROVIDER_MAP and body.provider != "openai":
         raise HTTPException(status_code=400, detail=f"未知 provider: {body.provider}")
     db = SessionLocal()
     try:
@@ -798,6 +859,7 @@ async def create_custom_model(body: CustomModelCreate):
             api_key=body.api_key or "",
             max_tokens=body.max_tokens,
             temperature=body.temperature,
+            context_window=body.context_window,
             enabled=body.enabled,
             supports_vision=body.supports_vision,
             source="manual",  # 2026-08-11：用户手动创建的第三方接入，sync 逻辑绝不触碰
@@ -856,3 +918,136 @@ async def reload_models():
     """重新加载模型配置（当API Key更新后调用）"""
     model_service.reload_models()
     return {"status": "reloaded", "models": len(model_service.get_available_models())}
+
+
+# ── 自定义端点（custom_providers）CRUD ──────────────────────────────
+
+class CustomProviderCreate(BaseModel):
+    name: str
+    default_api_base: str
+    description: str = ""
+
+
+class CustomProviderUpdate(BaseModel):
+    name: Optional[str] = None
+    default_api_base: Optional[str] = None
+    description: Optional[str] = None
+
+
+@router.get("/custom-providers")
+async def list_custom_providers():
+    """列出所有自定义端点"""
+    from app.core.database import SessionLocal
+    from app.models.agent import CustomProvider
+    db = SessionLocal()
+    try:
+        rows = db.query(CustomProvider).order_by(CustomProvider.id.asc()).all()
+        return [{
+            "id": r.id,
+            "provider_id": f"custom_{r.id}",
+            "name": r.name,
+            "default_api_base": r.default_api_base,
+            "description": r.description,
+            "is_builtin": r.is_builtin,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        } for r in rows]
+    finally:
+        db.close()
+
+
+@router.post("/custom-providers")
+async def create_custom_provider(body: CustomProviderCreate):
+    """创建自定义端点"""
+    from app.core.database import SessionLocal
+    from app.models.agent import CustomProvider
+    from app.core.model_providers import reload_custom_providers
+    if not body.name.strip() or not body.default_api_base.strip():
+        raise HTTPException(status_code=400, detail="name 和 default_api_base 不能为空")
+    db = SessionLocal()
+    try:
+        row = CustomProvider(
+            name=body.name.strip(),
+            default_api_base=body.default_api_base.strip(),
+            description=body.description.strip(),
+            is_builtin=False,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        reload_custom_providers()
+        model_service.reload_models()
+        return {"status": "ok", "id": row.id, "provider_id": f"custom_{row.id}"}
+    finally:
+        db.close()
+
+
+@router.put("/custom-providers/{provider_id}")
+async def update_custom_provider(provider_id: int, body: CustomProviderUpdate):
+    """更新自定义端点"""
+    from app.core.database import SessionLocal
+    from app.models.agent import CustomProvider
+    from app.core.model_providers import reload_custom_providers
+    db = SessionLocal()
+    try:
+        row = db.query(CustomProvider).filter(CustomProvider.id == provider_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="自定义端点不存在")
+        if body.name is not None:
+            row.name = body.name.strip()
+        if body.default_api_base is not None:
+            row.default_api_base = body.default_api_base.strip()
+        if body.description is not None:
+            row.description = body.description.strip()
+        db.commit()
+        reload_custom_providers()
+        model_service.reload_models()
+        return {"status": "ok"}
+    finally:
+        db.close()
+
+
+@router.delete("/custom-providers/{provider_id}")
+async def delete_custom_provider(provider_id: int):
+    """删除自定义端点（同时清理 settings 里的 api_key / api_base / enabled_models / provider_disabled）"""
+    from app.core.database import SessionLocal
+    from app.models.agent import CustomProvider, Setting
+    from app.core.model_providers import reload_custom_providers
+    import json
+    pid = f"custom_{provider_id}"
+    db = SessionLocal()
+    try:
+        row = db.query(CustomProvider).filter(CustomProvider.id == provider_id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="自定义端点不存在")
+        if row.is_builtin:
+            raise HTTPException(status_code=400, detail="内置端点不可删除")
+        # 清理 settings 表相关 key
+        for key in [f"api_key_{pid}", f"api_base_{pid}"]:
+            db.query(Setting).filter(Setting.key == key).delete()
+        # 从 enabled_models JSON 中移除该 provider 的分组
+        em_row = db.query(Setting).filter(Setting.key == "enabled_models").first()
+        if em_row and em_row.value:
+            try:
+                em = json.loads(em_row.value)
+                if pid in em:
+                    del em[pid]
+                    em_row.value = json.dumps(em)
+            except Exception:
+                pass
+        # 从 provider_disabled JSON 中移除
+        pd_row = db.query(Setting).filter(Setting.key == "provider_disabled").first()
+        if pd_row and pd_row.value:
+            try:
+                pd = json.loads(pd_row.value)
+                if pid in pd:
+                    del pd[pid]
+                    pd_row.value = json.dumps(pd)
+            except Exception:
+                pass
+        db.delete(row)
+        db.commit()
+        reload_custom_providers()
+        model_service.reload_models()
+        return {"status": "ok"}
+    finally:
+        db.close()

@@ -32,7 +32,7 @@ import tempfile
 import time
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -265,6 +265,7 @@ def _test_runtime_closed_loop() -> dict:
     install_fake_llm([
         tool_round("run_command", {"command": "whoami"}, "call_audit_1"),
         text_round("whoami 执行成功，验证通过，闭环成立。"),
+        text_round("自查完成，闭环成立。"),
     ])
     events = stream_send(cid, "执行 whoami 并汇报")
 

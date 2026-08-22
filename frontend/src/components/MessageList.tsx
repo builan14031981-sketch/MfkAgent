@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDown, AlertTriangle, RotateCw, Package, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message } from "@/hooks/useMessages";
-import { ChatMessage, ThinkingPanel, StreamingThinkingPanel, MemorySavedNotice } from "@/components/ChatMessage";
+import { ChatMessage, ThinkingPanel, StreamingThinkingPanel, MemorySavedNotice, SubAgentProgressCard } from "@/components/ChatMessage";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { AgentIcon } from "@/components/AgentIcon";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
@@ -13,6 +14,7 @@ import { UserChoiceCard } from "@/components/UserChoiceCard";
 import type { RuntimeEvent } from "@/types/runtime";
 import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useSettingsStore } from "@/lib/store";
 
 interface MessageListProps {
   messages: Message[];
@@ -150,11 +152,25 @@ function CompressionNodeCard({ content }: { content: string }) {
  */
 export const MessageList = memo(function MessageList({ messages, timeline, streamingError, isStreaming, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onSelectChoice, onChoiceCustomText, onSkipChoice, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
+  const showReasoning = useSettingsStore((s) => s.settings?.show_reasoning !== "false");
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
   const lastActiveRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Phase H: 消息列表虚拟化（@tanstack/react-virtual）——
+  // 超长会话（数百条）时只渲染视口窗口 ± overscan，大幅降低 Markdown 渲染开销。
+  // 行高动态测量（measureElement），默认估高 140px。
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 140,
+    overscan: 8,
+    useFlushSync: false,
+  });
+  const virtualItems = virtualizer.getVirtualItems();
+  const totalSize = virtualizer.getTotalSize();
 
   // ──── 图片预览 Lightbox 状态（全局唯一实例） ────
   const [lightboxState, setLightboxState] = useState<{ urls: string[]; index: number } | null>(null);
@@ -174,7 +190,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
   // ---- 用户消息浮动焦点锚（V3 单锚点：全列表零 sticky） ----
   // 已滚出滚动区顶部视线的用户消息 id 集合；锚点 = 其中位置最深的一条，
   // 由唯一的浮动焦点条呈现。滚回原位（行重新可见）→ 锚点解除 → 焦点条消失。
-  const stuckUserIdsRef = useRef<Set<number>>(new Set());
+  // 虚拟化后由 computeActiveUserMessage 派生（active 之前最近的非压缩 user 消息）。
   const [focusAnchorId, setFocusAnchorId] = useState<number | null>(null);
 
   // 滚动位置持久化：提交 active 时写入 localStorage（退出/切换会话时即时 flush）
@@ -205,26 +221,23 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     submitTimerRef.current = setTimeout(() => commitActive(), 300);
   }, [commitActive]);
 
-  // 计算当前视口对应的用户消息：二分找第一条位于容器视口顶部的 user 消息；滚到底则取最后一条
-  // 二分前提：消息 DOM 顺序与 userMessageIds 一致，getBoundingClientRect().top 单调递增
-  // 注意：此处只更新 lastActiveRef（读缓存布局），不触发任何 setState / DOM 修改
+  // 计算当前视口对应的用户消息：遍历虚拟窗口内的可见行（已覆盖视口 ± overscan），
+  // 取第一条位于容器视口顶部的 user 消息；若视口内没有 user 消息则取可见的最后一条。
+  // 同时派生浮动锚点 = 滚出视口最深的一条 user 消息（active 之前最近的非压缩 user 消息）。
+  // 注意：此处只更新 refs 与锚点 state，不做 DOM 修改。
   const computeActiveUserMessage = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     const containerTop = container.getBoundingClientRect().top;
-    let lo = 0;
-    let hi = userMessageIds.length - 1;
     let active: number | null = null;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const el = container.querySelector<HTMLElement>(`[id="msg-${userMessageIds[mid]}"]`);
-      const top = el ? el.getBoundingClientRect().top : Infinity;
-      if (top >= containerTop) {
-        active = userMessageIds[mid];
-        hi = mid - 1;
-      } else {
-        lo = mid + 1;
-      }
+    for (const vi of virtualItems) {
+      const msg = messages[vi.index];
+      if (msg.role !== "user" || isCompressionNode(msg)) continue;
+      const el = document.getElementById(`msg-${msg.id}`);
+      if (!el) continue;
+      const top = el.getBoundingClientRect().top;
+      active = msg.id;
+      if (top >= containerTop) break;
     }
     if (active === null && userMessageIds.length > 0) {
       active = userMessageIds[userMessageIds.length - 1];
@@ -233,7 +246,21 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
       lastActiveRef.current = active;
       scheduleCommit();
     }
-  }, [userMessageIds, scheduleCommit]);
+    // 锚点 = active 之前最近的一条非压缩 user 消息（滚出视口最深的一条）
+    let anchor: number | null = null;
+    if (active != null) {
+      const idx = userMessageIds.indexOf(active);
+      for (let i = idx - 1; i >= 0; i--) {
+        const id = userMessageIds[i];
+        const m = messages.find((mm) => mm.id === id);
+        if (m && !isCompressionNode(m)) {
+          anchor = id;
+          break;
+        }
+      }
+    }
+    setFocusAnchorId((prev) => (prev === anchor ? prev : anchor));
+  }, [virtualItems, messages, userMessageIds, scheduleCommit]);
 
   // rAF 节流：scroll 高频触发时每帧最多计算一次，避免平滑滚动期间反复同步布局
   const activeRafRef = useRef<number | null>(null);
@@ -267,14 +294,17 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     }
     if (saved) {
       const id = Number(saved);
-      const el = document.getElementById(`msg-${id}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "auto", block: "center" });
+      const idx = messages.findIndex((m) => m.id === id);
+      if (idx >= 0) {
+        const raf = requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(idx, { align: "center" });
+        });
         isNearBottomRef.current = false;
         restoredRef.current = true;
+        return () => cancelAnimationFrame(raf);
       }
     }
-  }, [messages, scrollPersistenceKey]);
+  }, [messages, scrollPersistenceKey, virtualizer]);
 
   // 挂载 / 消息增删时重算一次（滚动时由 handleScroll 驱动），挂载时立即提交一次 active
   useEffect(() => {
@@ -346,7 +376,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
       });
       return () => cancelAnimationFrame(raf);
     }
-  }, [isActive, updateJumpButton]);
+  }, [isActive, updateJumpButton, messages]);
 
   // 用户主动滚回最新
   const jumpToLatest = useCallback(() => {
@@ -357,45 +387,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [updateJumpButton]);
 
-  // 锚点观测：判定法只用于"是否已滚出顶部"（!isIntersecting && top < rootTop），
-  // 浮动元素本身不做 sticky，不存在释放边界/多锚交接问题。
-  // 压缩摘要节点不是真实气泡，不参与锚点。
-  const anchorableIds = useMemo(
-    () => messages.filter((m) => m.role === "user" && !isCompressionNode(m)).map((m) => m.id),
-    [messages]
-  );
-
-  useEffect(() => {
-    const root = containerRef.current;
-    if (!root || anchorableIds.length === 0) return;
-    stuckUserIdsRef.current.clear();
-    const io = new IntersectionObserver(
-      (entries) => {
-        const rootTop = root.getBoundingClientRect().top;
-        for (const entry of entries) {
-          const id = Number((entry.target as HTMLElement).id.replace(/^msg-/, ""));
-          if (!Number.isFinite(id)) continue;
-          const stuck = !entry.isIntersecting && entry.boundingClientRect.top < rootTop;
-          if (stuck) stuckUserIdsRef.current.add(id);
-          else stuckUserIdsRef.current.delete(id);
-        }
-        let anchor: number | null = null;
-        for (let i = anchorableIds.length - 1; i >= 0; i--) {
-          if (stuckUserIdsRef.current.has(anchorableIds[i])) {
-            anchor = anchorableIds[i];
-            break;
-          }
-        }
-        setFocusAnchorId((prev) => (prev === anchor ? prev : anchor));
-      },
-      { root, rootMargin: "-1px 0px 0px 0px", threshold: 0 }
-    );
-    anchorableIds.forEach((id) => {
-      const el = document.getElementById(`msg-${id}`);
-      if (el) io.observe(el);
-    });
-    return () => io.disconnect();
-  }, [anchorableIds]);
+  // 锚点判定（虚拟化派生）：由 computeActiveUserMessage 滚动驱动计算，见上方实现。
 
   const focusAnchorMessage = useMemo(
     () => (focusAnchorId == null ? null : messages.find((m) => m.id === focusAnchorId) ?? null),
@@ -418,11 +410,41 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
     const root = containerRef.current;
     if (!root || focusAnchorId == null) return;
     const row = document.getElementById(`msg-${focusAnchorId}`);
-    if (!row) return;
+    if (!row) {
+      const idx = messages.findIndex((m) => m.id === focusAnchorId);
+      if (idx >= 0) virtualizer.scrollToIndex(idx, { align: "start" });
+      return;
+    }
     const delta = row.getBoundingClientRect().top - root.getBoundingClientRect().top - 6;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     root.scrollBy({ top: delta, behavior: reduce ? "auto" : "smooth" });
-  }, [focusAnchorId]);
+  }, [focusAnchorId, messages, virtualizer]);
+
+  // 大纲跳转请求（MessageOutline 不再直接依赖 DOM 元素，虚拟化后目标行可能未渲染）：
+  // 收到 msg:jump 事件 → scrollToIndex 定位 → 对目标行做高亮闪烁动画
+  useEffect(() => {
+    const onJump = (evt: Event) => {
+      const id = (evt as CustomEvent<{ id: number }>).detail?.id;
+      if (id == null || !Number.isFinite(id)) return;
+      const idx = messages.findIndex((m) => m.id === id);
+      if (idx < 0) return;
+      virtualizer.scrollToIndex(idx, { align: "center" });
+      // 行渲染后闪烁（scrollToIndex 后首帧行已挂载）
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`msg-${id}`);
+        if (!el) return;
+        el.animate(
+          [
+            { backgroundColor: "rgba(76, 154, 255, 0.16)" },
+            { backgroundColor: "rgba(76, 154, 255, 0)" },
+          ],
+          { duration: 1600, easing: "ease-out" }
+        );
+      });
+    };
+    window.addEventListener("msg:jump", onJump);
+    return () => window.removeEventListener("msg:jump", onJump);
+  }, [messages, virtualizer]);
 
   // 流式 timeline：连续工具段合并为组（中间无 text/thinking/memory 则归一组），渲染层计算
   const toolBlocks = useMemo(
@@ -440,7 +462,10 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "16px 24px 8px 24px",
+          maxWidth: "1400px",
+          margin: "0 auto",
+          padding: "16px 100px 8px 100px",
+          width: "100%",
         }}
       >
         {isEmptyState ? (
@@ -461,26 +486,52 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
             </p>
           </div>
         ) : (
-          <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-            {messages.map((message, idx) => (
-              <div key={message.id} id={`msg-${message.id}`} style={{ marginBottom: "8px" }}>
-                {isCompressionNode(message) ? (
-                  <CompressionNodeCard content={message.content} />
-                ) : (
-                  <ChatMessage
-                    message={message}
-                    currentAgent={currentAgent}
-                    durationMs={computeAssistantDuration(message, messages, idx)}
-                    onQuote={onQuote}
-                    onRegenerate={onRegenerate}
-                    onEdit={onEdit}
-                    onImageClick={handleImageClick}
-                  />
-                )}
-              </div>
-            ))}
+          <>
+            <div
+              style={{
+                height: totalSize,
+                position: "relative",
+                maxWidth: "100%",
+                margin: "0",
+              }}
+            >
+              {virtualItems.map((vi) => {
+                const message = messages[vi.index];
+                return (
+                  <div
+                    key={vi.key}
+                    data-index={vi.index}
+                    ref={virtualizer.measureElement}
+                    id={`msg-${message.id}`}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${vi.start}px)`,
+                    }}
+                  >
+                    <div style={{ marginBottom: message.role === "user" ? "24px" : "16px" }}>
+                      {isCompressionNode(message) ? (
+                        <CompressionNodeCard content={message.content} />
+                      ) : (
+                        <ChatMessage
+                          message={message}
+                          currentAgent={currentAgent}
+                          durationMs={computeAssistantDuration(message, messages, vi.index)}
+                          onQuote={onQuote}
+                          onRegenerate={onRegenerate}
+                          onEdit={onEdit}
+                          onImageClick={handleImageClick}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
             {timeline.length > 0 && (
-              <div style={{ marginBottom: "12px" }}>
+              <div style={{ maxWidth: "800px", margin: "0", marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
                   {/* 2026-08-12：去除流式期间 AgentOrb 动画，思考状态由思考面板 Loader2 唯一表达，避免双动画 */}
                   {currentAgent ? (
@@ -504,9 +555,9 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                   const seg = block.seg;
                   switch (seg.type) {
                     case "thinking":
-                      return <ThinkingPanel key={seg.id} thinking={seg.content} />;
+                      return showReasoning ? <ThinkingPanel key={seg.id} thinking={seg.content} /> : null;
                     case "thinking_indicator":
-                      return <StreamingThinkingPanel key={seg.id} content={seg.content} isActive={reasoningActive ?? false} />;
+                      return showReasoning ? <StreamingThinkingPanel key={seg.id} content={seg.content} isActive={reasoningActive ?? false} /> : null;
                     case "approval":
                       return (
                         <div key={seg.id} style={{ marginTop: "8px" }}>
@@ -536,6 +587,8 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                           <MemorySavedNotice count={seg.count} items={seg.items} />
                         </div>
                       );
+                    case "sub_agent":
+                      return <SubAgentProgressCard key={seg.id} role={seg.role} title={seg.title} status={seg.status} content={seg.content} />;
                     // task_* 事件不进入 timeline 渲染（由独立 tasks 状态 + TaskProgressCard 处理）
                     case "task_started":
                     case "task_completed":
@@ -628,7 +681,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                         cursor: "pointer",
                         fontSize: "13px",
                         fontWeight: 500,
-                        transition: "background 0.2s ease",
+                        transition: "background var(--transition-fast)",
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-primary-hover)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "var(--color-primary)")}
@@ -640,7 +693,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                 )}
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 
@@ -720,3 +773,6 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
   </>
   );
 });
+
+
+

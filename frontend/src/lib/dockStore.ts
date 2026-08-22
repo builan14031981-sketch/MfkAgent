@@ -12,11 +12,11 @@ export const DOCK_MIN = 260;
 export const DOCK_MAX = 720;
 export const DOCK_DEFAULT = 480;
 
-/** 面板标签：终端 / 产出物 */
-export type DockTabId = "terminal" | "artifacts";
+/** 面板标签：终端 / 产出物 / 浏览器 */
+export type DockTabId = "terminal" | "artifacts" | "browser";
 
 /** 标签顺序（决定标签栏排列） */
-export const DOCK_TAB_ORDER: DockTabId[] = ["terminal", "artifacts"];
+export const DOCK_TAB_ORDER: DockTabId[] = ["terminal", "artifacts", "browser"];
 
 function readLocal(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -57,13 +57,14 @@ export const useDockStore = create<DockUIState>((set, get) => ({
   width: DOCK_DEFAULT,
   isFullscreen: false,
   activeTab: "terminal",
-  tabs: { terminal: true, artifacts: false },
+  tabs: { terminal: true, artifacts: false, browser: false },
   openTab: (tab) => {
     const tabs = { ...get().tabs, [tab]: true };
     writeLocal(DOCK_OPEN_KEY, "1");
     writeLocal(DOCK_ACTIVE_TAB_KEY, tab);
     writeLocal(DOCK_TABS_KEY, DOCK_TAB_ORDER.filter((id) => tabs[id]).join(","));
-    set({ isOpen: true, activeTab: tab, tabs });
+    writeLocal(DOCK_FULLSCREEN_KEY, "0");
+    set({ isOpen: true, activeTab: tab, tabs, isFullscreen: false });
   },
   closeTab: (tab) => {
     const tabs = { ...get().tabs, [tab]: false };
@@ -107,7 +108,7 @@ export const useDockStore = create<DockUIState>((set, get) => ({
   close: () => {
     writeLocal(DOCK_OPEN_KEY, "0");
     writeLocal(DOCK_TABS_KEY, "");
-    set({ isOpen: false, tabs: { terminal: false, artifacts: false } });
+    set({ isOpen: false, tabs: { terminal: false, artifacts: false, browser: false } });
   },
 }));
 
@@ -124,11 +125,13 @@ export function hydrateDockUI() {
   const tabs = {
     terminal: tabsVal ? tabsVal.split(",").includes("terminal") : openVal === "1",
     artifacts: tabsVal ? tabsVal.split(",").includes("artifacts") : false,
+    browser: tabsVal ? tabsVal.split(",").includes("browser") : false,
   };
   // 不变量：isOpen ⟺ 任一标签在标签栏中
-  const isOpen = tabs.terminal || tabs.artifacts;
+  const isOpen = tabs.terminal || tabs.artifacts || tabs.browser;
   const activeTab = DOCK_TAB_ORDER.includes(activeVal as DockTabId) && tabs[activeVal as DockTabId]
     ? (activeVal as DockTabId)
     : (DOCK_TAB_ORDER.find((id) => tabs[id]) ?? "terminal");
-  useDockStore.setState({ isOpen, width, isFullscreen: fsVal === "1", activeTab, tabs });
+  useDockStore.setState({ isOpen, width, isFullscreen: false, activeTab, tabs });
 }
+

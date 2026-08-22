@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目周报</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --fg: #f0f0f0;
+            --accent: #ff2d20;
+            --grid-color: rgba(255, 255, 255, 0.05);
+            --font-main: 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: var(--font-main);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Slide Container */
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            position: relative;
+            padding: 8vh 10vw;
+            border-bottom: 1px solid var(--grid-color);
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Swiss Style Typography & Layout */
+        .slide-number {
+            position: absolute;
+            top: 8vh;
+            right: 10vw;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        .slide-title {
+            font-size: clamp(2.5rem, 5vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 6vh;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            position: relative;
+            padding-left: 3vw;
+            border-left: 8px solid var(--accent);
+        }
+
+        .content-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4vh;
+        }
+
+        .content-list li {
+            font-size: clamp(1.2rem, 2vw, 1.8rem);
+            font-weight: 300;
+            line-height: 1.4;
+            display: flex;
+            align-items: baseline;
+            gap: 2vw;
+        }
+
+        .content-list li::before {
+            content: "►";
+            color: var(--accent);
+            font-size: 0.8em;
+            flex-shrink: 0;
+        }
+
+        .highlight {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* Diagonal Accent for Cover */
+        .cover-accent {
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 60vw;
+            height: 200vh;
+            background: var(--accent);
+            transform: rotate(25deg);
+            z-index: -1;
+            opacity: 0.9;
+        }
+
+        .cover-title {
+            font-size: clamp(4rem, 8vw, 8rem);
+            font-weight: 900;
+            line-height: 0.9;
+            letter-spacing: -4px;
+            text-transform: uppercase;
+        }
+
+        .cover-subtitle {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            font-weight: 300;
+            margin-top: 4vh;
+            opacity: 0.8;
+        }
+
+        /* Index Overlay */
+        #index-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(10, 10, 10, 0.95);
+            z-index: 100;
+            display: none;
+            padding: 10vh 10vw;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        #index-overlay.show {
+            display: flex;
+        }
+
+        .index-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5vh;
+            color: var(--accent);
+        }
+
+        .index-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 3vh;
+        }
+
+        .index-list li {
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .index-list li:hover {
+            color: var(--accent);
+        }
+
+        /* Navigation Hint */
+        .nav-hint {
+            position: fixed;
+            bottom: 3vh;
+            right: 5vw;
+            font-size: 0.9rem;
+            opacity: 0.3;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                overflow: visible;
+            }
+            .slide {
+                display: block !important;
+                page-break-after: always;
+                width: 100%;
+                height: 100vh;
+                box-sizing: border-box;
+            }
+            .nav-hint, #index-overlay {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Cover -->
+    <section class="slide active" id="slide-1">
+        <div class="cover-accent"></div>
+        <div class="cover-title">项目<br>周报</div>
+        <div class="cover-subtitle">PROJECT WEEKLY REPORT</div>
+    </section>
+
+    <!-- Slide 2: This Week -->
+    <section class="slide" id="slide-2">
+        <div class="slide-number">01</div>
+        <h1 class="slide-title">本周完成</h1>
+        <ul class="content-list">
+            <li>用户登录模块重构，支持 OAuth2.0</li>
+            <li>数据库迁移脚本编写（MySQL → PostgreSQL）</li>
+            <li>前端页面性能优化，LCP 从 3.2s 降到 <span class="highlight">1.1s</span></li>
+        </ul>
+    </section>
+
+    <!-- Slide 3: Next Week -->
+    <section class="slide" id="slide-3">
+        <div class="slide-number">02</div>
+        <h1 class="slide-title">下周计划</h1>
+        <ul class="content-list">
+            <li>支付接口对接</li>
+            <li>部署 CI/CD 流水线</li>
+            <li>编写单元测试</li>
+        </ul>
+    </section>
+
+    <!-- Index Overlay -->
+    <div id="index-overlay">
+        <div class="index-title">目录 INDEX</div>
+        <ul class="index-list">
+            <li onclick="goToSlide(0)">01 - 项目周报</li>
+            <li onclick="goToSlide(1)">02 - 本周完成</li>
+            <li onclick="goToSlide(2)">03 - 下周计划</li>
+        </ul>
+    </div>
+
+    <div class="nav-hint">← → 翻页 | ESC 目录</div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const overlay = document.getElementById('index-overlay');
+        let isOverlayShowing = false;
+
+        function showSlide(index) {
+            slides.forEach(s => s.classList.remove('active'));
+            slides[index].classList.add('active');
+            currentSlide = index;
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides - 1) showSlide(currentSlide + 1);
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) showSlide(currentSlide - 1);
+        }
+
+        function goToSlide(index) {
+            toggleOverlay(false);
+            showSlide(index);
+        }
+
+        function toggleOverlay(show) {
+            isOverlayShowing = (show !== undefined) ? show : !isOverlayShowing;
+            overlay.classList.toggle('show', isOverlayShowing);
+        }
+
+        // Keyboard Navigation
+        document.addEventListener('keydown', (e) => {
+            if (isOverlayShowing && e.key !== 'Escape') return;
+            
+            switch(e.key) {
+                case 'ArrowRight':
+                case 'ArrowDown':
+                    nextSlide();
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowUp':
+                    prevSlide();
+                    break;
+                case 'Escape':
+                    toggleOverlay();
+                    break;
+            }
+        });
+
+        // Mouse Wheel Navigation
+        let wheelTimeout;
+        document.addEventListener('wheel', (e) => {
+            if (isOverlayShowing) return;
+            clearTimeout(wheelTimeout);
+            wheelTimeout = setTimeout(() => {
+                if (e.deltaY > 0) nextSlide();
+                else if (e.deltaY < 0) prevSlide();
+            }, 50);
+        }, { passive: true });
+
+        // Touch Navigation
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            if (isOverlayShowing) return;
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextSlide();
+                else prevSlide();
+            }
+        }, { passive: true });
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # MfkAgent Plan / Build 权限模型修正 — Phase E5 测试报告
 
-- 时间: 2026-08-10 21:38:18
+- 时间: 2026-08-18 14:31:32
 
 ## 修正前：Plan 权限实际行为
 
@@ -49,13 +49,13 @@
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | evaluate_tool 三态矩阵 | ✅ PASS | 15ms |
+| 1 | evaluate_tool 三态矩阵 | ✅ PASS | 0ms |
 | 2 | 命令引擎 Plan 只读约束 | ✅ PASS | 0ms |
-| 3 | 权限目录 + 单一事实来源 | ✅ PASS | 0ms |
-| 4 | E2E: plan 只读 read_file 放行 | ✅ PASS | 657ms |
-| 5 | E2E: plan write_file 拒绝 | ✅ PASS | 375ms |
-| 6 | E2E: plan add_memory 拒绝(写库) | ✅ PASS | 531ms |
-| 7 | E2E: build add_memory 放行 | ✅ PASS | 547ms |
+| 3 | 权限目录 + 单一事实来源 | ✅ PASS | 2ms |
+| 4 | E2E: plan 只读 read_file 放行 | ✅ PASS | 334ms |
+| 5 | E2E: plan write_file 拒绝 | ✅ PASS | 173ms |
+| 6 | E2E: plan add_memory 拒绝(写库) | ✅ PASS | 262ms |
+| 7 | E2E: build add_memory 放行 | ✅ PASS | 329ms |
 | 8 | 审批注册表无残留 | ✅ PASS | 0ms |
 
 **通过率: 8/8**
@@ -72,7 +72,7 @@
 
 ### 3. 权限目录 + 单一事实来源
 
-- cases: [{'case': '目录过滤与风险引擎清单同步', 'ok': True, 'plan_forbidden': ['add_memory', 'delete_file', 'git_add', 'git_clean', 'git_clone', 'git_commit', 'git_pull', 'git_push', 'git_reset', 'git_restore', 'git_revert', 'github_create_pr', 'manage_todos', 'rename_file', 'write_file']}, {'case': 'build+项目 = 基础全集', 'ok': True, 'diff': []}, {'case': 'plan 保留只读工具', 'ok': True, 'missing': []}, {'case': 'plan 移除写入工具', 'ok': True, 'leak': []}]
+- cases: [{'case': '目录过滤与风险引擎清单同步', 'ok': True, 'plan_forbidden': ['add_memory', 'apply_patch', 'delete_file', 'edit_file', 'generate_image', 'git_add', 'git_clean', 'git_clone', 'git_commit', 'git_pull', 'git_push', 'git_reset', 'git_restore', 'git_revert', 'github_create_pr', 'manage_todos', 'rename_file', 'write_file']}, {'case': 'build+项目 = 基础全集', 'ok': True, 'diff': []}, {'case': 'plan 保留只读工具', 'ok': True, 'missing': []}, {'case': 'plan 移除写入工具', 'ok': True, 'leak': []}]
 
 ### 4. E2E: plan 只读 read_file 放行
 

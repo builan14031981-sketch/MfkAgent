@@ -1,0 +1,1357 @@
+"use client";
+
+/**
+ * ModelAdvancedFields —— 模型高级深水区参数（归属 AdvancedSettingsView）
+ * 含：备用识图 + Provider Base URL 覆盖 + 自定义模型表单。
+ * 从 ModelConfigSection.tsx 拆分，逻辑与行为零变化。
+ */
+import { useEffect, useState } from "react";
+import { ChevronRight, Globe, Loader2, Pencil, Plus, Trash2, Zap } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useProviderConfig, type CustomModel, type CustomModelPayload, type RemoteModelInfo } from "@/hooks/useProviderConfig";
+import { ApiKeyInput } from "@/components/ApiKeyInput";
+import { RemoteModelPicker } from "@/components/RemoteModelPicker";
+import { SwitchButton } from "@/components/SwitchButton";
+import { VisionConfigSection } from "../VisionConfigSection";
+import { TattooImageConfigSection } from "../TattooImageConfigSection";
+import { iconBtn, inputStyle, primaryBtn, secondaryBtn } from "./constants";
+import { useSettingsToast, errorMessage } from "@/lib/toastStore";
+interface FormState {
+  model_id: string;
+  name: string;
+  provider: string;
+  model_name: string;
+  api_base: string;
+  api_key: string;
+  max_tokens: string;
+  temperature: string;
+  context_window: string;
+  supports_vision: boolean;
+}
+
+const emptyForm: FormState = {
+  model_id: "",
+  name: "",
+  provider: "openai",
+  model_name: "",
+  api_base: "",
+  api_key: "",
+  max_tokens: "8192",
+  temperature: "0.7",
+  context_window: "200000",
+  supports_vision: false,
+};
+
+/**
+ * ProviderBaseUrlOverride —— Provider Base URL 覆盖独立配置（高级区专用）
+ *
+ * 字段级边界契约：
+ * - 每个 Provider 一个 Base URL 输入框 + 保存/清除按钮
+ * - 独立于 ProviderCard 的 editing 表单，state 自管
+ * - 保存：saveProviderKey(pId, undefined, baseInput) —— 只改 base，不碰 key
+ * - 清除：saveProviderKey(pId, undefined, "") —— 清除 override 恢复默认
+ */
+function ProviderBaseUrlOverride() {
+  const { t } = useTranslation();
+  const { configs, saveProviderKey } = useProviderConfig();
+  const { showToast } = useSettingsToast();
+
+  // 默认折叠（99% 用户用不到）；2026-08-11：折叠态持久化（此前纯内存，刷新即丢）
+  const [collapsed, setCollapsed] = useState(true);
+  useEffect(() => {
+    try {
+      // 未写过（null）保持默认折叠；"0" = 用户展开过
+      setCollapsed(localStorage.getItem("mfk_baseurl_collapsed") !== "0");
+    } catch { /* localStorage 不可用时保持折叠 */ }
+  }, []);
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_baseurl_collapsed", next ? "1" : "0"); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  // 每个 provider 的 baseInput 草稿（id -> value）
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  const getDraft = (p: { id: string; api_base: string; api_base_override: boolean }) =>
+    drafts[p.id] !== undefined ? drafts[p.id] : (p.api_base_override ? p.api_base : "");
+
+  const handleSave = async (pId: string) => {
+    const val = (drafts[pId] ?? "").trim();
+    setSaving(pId);
+    try {
+      // 只保存 base，不碰 key（apiKey 传 undefined）
+      await saveProviderKey(pId, undefined, val || "");
+      setSaved(pId);
+      setTimeout(() => setSaved(null), 2000);
+    } catch (err) {
+      console.error("Failed to save base url override:", err);
+      showToast(errorMessage(err) || "保存失败", "error");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleClear = async (pId: string) => {
+    setSaving(pId);
+    try {
+      await saveProviderKey(pId, undefined, "");
+      setDrafts((d) => ({ ...d, [pId]: "" }));
+      setSaved(pId);
+      setTimeout(() => setSaved(null), 2000);
+    } catch (err) {
+      console.error("Failed to clear base url override:", err);
+      showToast(errorMessage(err) || "清除失败", "error");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div>
+      {/* 可折叠标题 */}
+      <div
+        onClick={toggleCollapsed}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          cursor: "pointer",
+          padding: "4px 0",
+          userSelect: "none",
+        }}
+      >
+        <ChevronRight
+          style={{
+            width: "14px",
+            height: "14px",
+            color: "var(--text-level-3)",
+            transition: "transform 0.2s",
+            transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
+          }}
+        />
+        <Globe style={{ width: "14px", height: "14px", color: "var(--text-level-2)" }} />
+        <h3 style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-2)", margin: 0 }}>
+          {t("settings.model.providers.baseUrlOverrideTitle")}
+        </h3>
+        <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+          {collapsed ? t("settings.model.providers.baseUrlCollapsed") : t("settings.model.providers.baseUrlExpanded")}
+        </span>
+      </div>
+
+      {/* 折叠内容 */}
+      {!collapsed && (
+        <>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 12px 20px" }}>
+            {t("settings.model.providers.baseUrlOverrideDesc")}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+        {configs.map((p) => (
+          <div
+            key={p.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 12px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border-primary)",
+              background: "var(--bg-level-2)",
+            }}
+          >
+            <div style={{ minWidth: "80px", flexShrink: 0 }}>
+              <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)" }}>
+                {p.name}
+              </div>
+              {p.api_base_override ? (
+                <span style={{ fontSize: "10px", color: "var(--color-primary)" }}>
+                  {t("settings.model.providers.overrideActive")}
+                </span>
+              ) : (
+                <span style={{ fontSize: "10px", color: "var(--text-level-4)" }}>
+                  {t("settings.model.providers.defaultEndpoint")}
+                </span>
+              )}
+            </div>
+            <input
+              type="text"
+              value={getDraft(p)}
+              onChange={(e) => setDrafts((d) => ({ ...d, [p.id]: e.target.value }))}
+              placeholder={p.api_base}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: "6px 10px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-1)",
+                fontSize: "12px",
+                color: "var(--text-level-2)",
+                outline: "none",
+                fontFamily: "monospace",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => handleSave(p.id)}
+              disabled={saving === p.id}
+              style={{
+                padding: "5px 12px",
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "var(--color-primary)",
+                color: "#fff",
+                cursor: saving === p.id ? "not-allowed" : "pointer",
+                fontSize: "12px",
+                fontWeight: "500",
+                opacity: saving === p.id ? 0.7 : 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("common.save")}
+            </button>
+            {p.api_base_override && (
+              <button
+                type="button"
+                onClick={() => handleClear(p.id)}
+                disabled={saving === p.id}
+                style={{
+                  padding: "5px 10px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid transparent",
+                  background: "transparent",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  color: "var(--color-danger, #ef4444)",
+                  opacity: saving === p.id ? 0.5 : 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {t("settings.model.providers.resetBase")}
+              </button>
+            )}
+            {saved === p.id && (
+              <span style={{ fontSize: "11px", color: "var(--color-success)" }}>
+                {t("common.saved")}
+              </span>
+            )}
+          </div>
+        ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ModelAdvancedFields —— 模型高级深水区参数（归属 AdvancedSettingsView）
+ *
+ * 字段级边界契约：
+ * - 渲染：备用识图(VisionConfigSection) + Provider Base URL 覆盖 + 自定义模型表单
+ * - 自定义模型表单含 model_id / api_base / temperature / max_tokens 等深水区参数
+ * - 不渲染：Provider 卡片的 Key 配置和模型 Chip（这些在基础区 ModelProvidersBasic）
+ */
+export function ModelAdvancedFields() {
+  const { t } = useTranslation();
+  const { showToast } = useSettingsToast();
+  const {
+    configs,
+    customModels,
+    loading,
+    refresh,
+    createCustomModel,
+    updateCustomModel,
+    deleteCustomModel,
+    fetchRemoteModelsDirect,
+    saveProviderKey,
+    fetchProviderKey,
+    clearProviderKey,
+    setProviderDisabled,
+    isProviderDisabled,
+    testConnection,
+  } = useProviderConfig();
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingCustom, setEditingCustom] = useState<CustomModel | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [busy, setBusy] = useState(false);
+  // ── 自定义模型表单内"拉取模型"状态 ──
+  const [customPickerOpen, setCustomPickerOpen] = useState(false);
+  const [customRemoteModels, setCustomRemoteModels] = useState<RemoteModelInfo[]>([]);
+  const [customRemoteLoading, setCustomRemoteLoading] = useState(false);
+  const [customRemoteError, setCustomRemoteError] = useState<string | null>(null);
+  // 记录编辑时的初始 Key（明文），用于保存时区分"未变/修改/清除"三种语义
+  const [initialApiKey, setInitialApiKey] = useState("");
+
+  // ── 快速接入第三方端点（和供应商卡片一样的体验：填Key+BaseURL → 拉取模型 → 多选批量添加）──
+  const [quickApiKey, setQuickApiKey] = useState("");
+  const [quickApiBase, setQuickApiBase] = useState("");
+  const [quickPickerOpen, setQuickPickerOpen] = useState(false);
+  const [quickModels, setQuickModels] = useState<RemoteModelInfo[]>([]);
+  const [quickLoading, setQuickLoading] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
+  const [quickSelected, setQuickSelected] = useState<Set<string>>(new Set());
+  const [quickAdding, setQuickAdding] = useState(false);
+
+  // ── 自定义模型卡片：内联展开编辑状态（一次只展开一个）──
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<FormState>(emptyForm);
+  const [editInitialKey, setEditInitialKey] = useState("");
+  const [editRemoteOpen, setEditRemoteOpen] = useState(false);
+  const [editRemoteModels, setEditRemoteModels] = useState<RemoteModelInfo[]>([]);
+  const [editRemoteLoading, setEditRemoteLoading] = useState(false);
+  const [editRemoteError, setEditRemoteError] = useState<string | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+
+  // 2026-08-11 自定义模型治理：此区只展示手动创建的第三方接入（source='manual'）。
+  // 候选池自动同步的记录（source='sync'）完全隐藏，其生命周期由上方 Provider 卡片的候选池接管，
+  // 避免"已配置的 provider 模型重复出现在自定义区"的困惑。旧后端无 source 字段时按 manual 降级。
+  const manualModels = customModels.filter((cm) => (cm.source ?? "manual") === "manual");
+
+  // custom 类供应商（如本地网关 FreeLLMAPI）：从基础区移到高级区自定义模型
+  const customProviders = configs.filter((c) => c.category === "custom");
+
+  // 自定义模型区域折叠（默认折叠，持久化 localStorage）
+  const [customCollapsed, setCustomCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("mfk_custom_models_collapsed") !== "false";
+    } catch { return true; }
+  });
+  const toggleCustomCollapsed = () => {
+    setCustomCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_custom_models_collapsed", String(next)); } catch {}
+      return next;
+    });
+  };
+
+  // custom 供应商配置状态
+  const [customProvEditing, setCustomProvEditing] = useState<string | null>(null);
+  const [customProvKey, setCustomProvKey] = useState("");
+  const [customProvSaving, setCustomProvSaving] = useState<string | null>(null);
+
+  if (loading) {
+    return (
+      <p style={{ color: "var(--text-level-3)", fontSize: "13px" }}>
+        {t("common.loading")}
+      </p>
+    );
+  }
+
+  const openCreateForm = () => {
+    setEditingCustom(null);
+    setForm(emptyForm);
+    setInitialApiKey("");
+    setCustomPickerOpen?.(false);
+    setFormOpen(true);
+  };
+
+  const openEditForm = (cm: CustomModel) => {
+    setEditingCustom(cm);
+    // 后端 GET /custom 直接返回明文 api_key，直接回填即可
+    const plainKey = cm.api_key || "";
+    setInitialApiKey(plainKey);
+    setForm({
+      model_id: cm.model_id,
+      name: cm.name,
+      provider: cm.provider,
+      model_name: cm.model_name,
+      api_base: cm.api_base,
+      api_key: plainKey,
+      max_tokens: String(cm.max_tokens),
+      temperature: String(cm.temperature),
+      context_window: String(cm.context_window || 131072),
+      supports_vision: cm.supports_vision || false,
+    });
+    setCustomPickerOpen?.(false);
+    setFormOpen(true);
+  };
+
+  const handleSaveCustom = async () => {
+    setBusy(true);
+    // 记录当前滚动位置，保存后恢复（避免每次添加都跳回顶部）
+    const scrollY = window.scrollY;
+    const scrollContainer = document.querySelector('[class*="scroll"]') || document.documentElement;
+    const containerScrollTop = scrollContainer instanceof HTMLElement ? scrollContainer.scrollTop : 0;
+    try {
+      const payload: CustomModelPayload = {
+        model_id: form.model_id.trim(),
+        name: form.name.trim(),
+        provider: form.provider,
+        model_name: form.model_name.trim(),
+        api_base: form.api_base.trim(),
+        api_key: form.api_key,
+        max_tokens: Number(form.max_tokens) || 8192,
+        temperature: Number(form.temperature) || 0.7,
+        context_window: Number(form.context_window) || 131072,
+        enabled: true,
+        supports_vision: form.supports_vision,
+      };
+      if (editingCustom) {
+        const patch: Partial<CustomModelPayload> = { ...payload } as Partial<CustomModelPayload>;
+        // 明文回填后的保存语义（三态）：
+        // - api_key === initialApiKey：未变，不传（避免重复写入相同 Key）
+        // - api_key === ""：用户主动清空，传 "" 清除已存 Key
+        // - api_key !== initialApiKey 且非空：传新值更新
+        if (form.api_key === initialApiKey) delete patch.api_key;
+        delete patch.model_id;
+        delete patch.enabled;
+        await updateCustomModel(editingCustom.id, patch);
+      } else {
+        await createCustomModel(payload);
+      }
+      setFormOpen(false);
+      setCustomPickerOpen?.(false);
+      // 恢复滚动位置（等待 refresh 重新渲染后）
+      setTimeout(() => {
+        window.scrollTo(0, scrollY);
+        if (scrollContainer instanceof HTMLElement) scrollContainer.scrollTop = containerScrollTop;
+      }, 100);
+    } catch (err) {
+      console.error("Failed to save custom model:", err);
+      showToast(errorMessage(err) || "保存失败", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── 快速接入：拉取模型列表 ──
+  const handleQuickFetch = async () => {
+    if (!quickApiKey.trim() || !quickApiBase.trim()) {
+      showToast("请先填写 API Key 和端点地址", "error");
+      return;
+    }
+    setQuickPickerOpen(true);
+    setQuickModels([]);
+    setQuickError(null);
+    setQuickSelected(new Set());
+    setQuickLoading(true);
+    try {
+      const list = await fetchRemoteModelsDirect(quickApiKey.trim(), quickApiBase.trim());
+      setQuickModels(list);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "拉取失败，请检查 API Key 与端点";
+      try {
+        const body = err as unknown as { detail?: string };
+        setQuickError(body?.detail || msg);
+      } catch {
+        setQuickError(msg);
+      }
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
+  // ── 快速接入：多选/取消选择模型 ──
+  const handleQuickToggleSelect = (modelId: string) => {
+    setQuickSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  };
+
+  // ── 快速接入：批量添加选中的模型 ──
+  const handleQuickAddSelected = async () => {
+    if (quickSelected.size === 0) {
+      showToast("请至少选择一个模型", "error");
+      return;
+    }
+    setQuickAdding(true);
+    let success = 0;
+    let failed = 0;
+    for (const modelId of quickSelected) {
+      try {
+        const modelInfo = quickModels.find((m) => m.id === modelId);
+        const payload: CustomModelPayload = {
+          model_id: `custom-${modelId}`,
+          name: modelId,
+          provider: "openai",
+          model_name: modelId,
+          api_base: quickApiBase.trim(),
+          api_key: quickApiKey.trim(),
+          max_tokens: 8192,
+          temperature: 0.7,
+          context_window: modelInfo?.context_window || 131072,
+          enabled: true,
+          supports_vision: false,
+        };
+        await createCustomModel(payload);
+        success++;
+      } catch (err) {
+        console.error(`添加模型 ${modelId} 失败:`, err);
+        failed++;
+      }
+    }
+    setQuickAdding(false);
+    setQuickPickerOpen(false);
+    setQuickSelected(new Set());
+    await refresh();  // 刷新列表
+    if (failed === 0) {
+      showToast(`成功添加 ${success} 个模型`, "success");
+    } else {
+      showToast(`添加完成：成功 ${success} 个，失败 ${failed} 个`, "error");
+    }
+  };
+
+  // ── 自定义模型卡片：内联展开编辑 ──
+  const handleExpandEdit = (cm: CustomModel) => {
+    if (expandedId === cm.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(cm.id);
+    setEditForm({
+      model_id: cm.model_id,
+      name: cm.name,
+      provider: cm.provider,
+      model_name: cm.model_name,
+      api_base: cm.api_base,
+      api_key: cm.api_key || "",
+      max_tokens: String(cm.max_tokens),
+      temperature: String(cm.temperature),
+      context_window: String(cm.context_window || 131072),
+      supports_vision: cm.supports_vision || false,
+    });
+    setEditInitialKey(cm.api_key || "");
+    setEditRemoteOpen(false);
+    setEditRemoteModels([]);
+    setEditRemoteError(null);
+  };
+
+  const handleEditFetchRemote = async () => {
+    if (!editForm.api_key.trim() || !editForm.api_base.trim()) {
+      showToast("请先填写 API Key 和端点地址", "error");
+      return;
+    }
+    setEditRemoteOpen(true);
+    setEditRemoteModels([]);
+    setEditRemoteError(null);
+    setEditRemoteLoading(true);
+    try {
+      const list = await fetchRemoteModelsDirect(editForm.api_key.trim(), editForm.api_base.trim());
+      setEditRemoteModels(list);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "拉取失败";
+      try {
+        const body = err as unknown as { detail?: string };
+        setEditRemoteError(body?.detail || msg);
+      } catch { setEditRemoteError(msg); }
+    } finally {
+      setEditRemoteLoading(false);
+    }
+  };
+
+  const handleEditAddModel = async (modelId: string, contextWindow?: number) => {
+    try {
+      const payload: CustomModelPayload = {
+        model_id: `custom-${modelId}`,
+        name: modelId,
+        provider: "openai",
+        model_name: modelId,
+        api_base: editForm.api_base.trim(),
+        api_key: editForm.api_key.trim(),
+        max_tokens: 8192,
+        temperature: 0.7,
+        context_window: contextWindow || 131072,
+        enabled: true,
+        supports_vision: false,
+      };
+      await createCustomModel(payload);
+      showToast(`已添加模型 ${modelId}`, "success");
+      await refresh();  // 刷新列表
+    } catch (err) {
+      console.error("添加模型失败:", err);
+      showToast(errorMessage(err) || "添加失败", "error");
+    }
+  };
+
+  const handleEditSave = async () => {
+    if (!expandedId) return;
+    setEditSaving(true);
+    try {
+      const patch: Partial<CustomModelPayload> = {
+        name: editForm.name.trim(),
+        provider: editForm.provider,
+        model_name: editForm.model_name.trim(),
+        api_base: editForm.api_base.trim(),
+        max_tokens: Number(editForm.max_tokens) || 8192,
+        temperature: Number(editForm.temperature) || 0.7,
+        context_window: Number(editForm.context_window) || 131072,
+        supports_vision: editForm.supports_vision,
+      };
+      // API Key 三态语义
+      if (editForm.api_key === editInitialKey) {
+        // 未变，不传
+      } else if (editForm.api_key === "") {
+        patch.api_key = ""; // 主动清空
+      } else {
+        patch.api_key = editForm.api_key; // 新值
+      }
+      await updateCustomModel(expandedId, patch);
+      showToast("保存成功", "success");
+      setExpandedId(null);
+      await refresh();  // 保存后刷新，确保 customModels 包含最新的 api_key 等字段
+    } catch (err) {
+      console.error("保存失败:", err);
+      showToast(errorMessage(err) || "保存失败", "error");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleFetchCustomRemote = async () => {
+    if (!form.api_key.trim() || !form.api_base.trim()) return;
+    setCustomPickerOpen?.(true);
+    setCustomRemoteModels?.([]);
+    setCustomRemoteError?.(null);
+    setCustomRemoteLoading?.(true);
+    try {
+      const list = await fetchRemoteModelsDirect(form.api_key.trim(), form.api_base.trim());
+      setCustomRemoteModels?.(list);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "拉取失败，请检查 API Key 与端点";
+      try {
+        const body = err as unknown as { detail?: string };
+        setCustomRemoteError?.(body?.detail || msg);
+      } catch {
+        setCustomRemoteError?.(msg);
+      }
+    } finally {
+      setCustomRemoteLoading?.(false);
+    }
+  };
+
+  /** 从拉取结果中选择一个模型，自动填充表单 */
+  const handleSelectCustomRemoteModel = (modelId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      model_name: modelId,
+      model_id: prev.model_id || `custom-${modelId}`,
+      name: prev.name || modelId,
+    }));
+    setCustomPickerOpen?.(false);
+  };
+
+  const handleDeleteCustom = async (cm: CustomModel) => {
+    if (!confirm(t("settings.model.custom.confirmDelete"))) return;
+    setBusy(true);
+    try {
+      await deleteCustomModel(cm.id);
+    } catch (err) {
+      console.error("Failed to delete custom model:", err);
+      showToast(errorMessage(err) || "删除失败", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleToggleCustom = async (cm: CustomModel) => {
+    try {
+      await updateCustomModel(cm.id, { enabled: !cm.enabled });
+    } catch (err) {
+      console.error("Failed to toggle custom model:", err);
+      showToast(errorMessage(err) || "切换失败", "error");
+    }
+  };
+
+  // ── custom 供应商（本地网关）配置 ──
+  const openCustomProvider = async (pId: string) => {
+    setCustomProvEditing(pId);
+    try {
+      const realKey = await fetchProviderKey(pId);
+      setCustomProvKey(realKey);
+    } catch {
+      const p = configs.find((c) => c.id === pId);
+      setCustomProvKey(p?.api_key_masked || "");
+    }
+  };
+
+  const handleSaveCustomProvider = async (pId: string) => {
+    setCustomProvSaving(pId);
+    try {
+      await saveProviderKey(pId, customProvKey || undefined, undefined);
+      setCustomProvEditing(null);
+      await refresh();
+    } catch (err) {
+      showToast(errorMessage(err) || "保存失败", "error");
+    } finally {
+      setCustomProvSaving(null);
+    }
+  };
+
+  const handleClearCustomProvider = async (pId: string) => {
+    setCustomProvSaving(pId);
+    try {
+      await clearProviderKey(pId);
+      setCustomProvKey("");
+      await refresh();
+    } catch (err) {
+      showToast(errorMessage(err) || "清除失败", "error");
+    } finally {
+      setCustomProvSaving(null);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+      {/* 自定义模型（可折叠，含 custom 类供应商如本地网关） */}
+      <div>
+        {/* 可折叠标题栏 */}
+        <div
+          onClick={toggleCustomCollapsed}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: customCollapsed ? 0 : "12px",
+            cursor: "pointer",
+            padding: "8px 10px",
+            borderRadius: "var(--radius-md)",
+            background: customCollapsed ? "var(--bg-level-2)" : "transparent",
+            userSelect: "none",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <ChevronRight style={{
+              width: "14px", height: "14px", color: "var(--text-level-3)",
+              transition: "transform 0.2s",
+              transform: customCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+            }} />
+            <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
+              {t("settings.model.custom.title")}
+            </h3>
+            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>
+              {manualModels.length} 个模型{customProviders.length > 0 && ` · ${customProviders.length} 个端点`}
+            </span>
+          </div>
+          {!customCollapsed && (
+            <button
+              onClick={(e) => { e.stopPropagation(); openCreateForm(); }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "5px 12px",
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "var(--color-primary)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: "500",
+              }}
+            >
+              <Plus style={{ width: "12px", height: "12px" }} />
+              {t("settings.model.custom.add")}
+            </button>
+          )}
+        </div>
+
+        {!customCollapsed && (
+        <>
+          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 8px 22px" }}>
+            {t("settings.model.custom.desc")}
+          </p>
+          <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "0 0 12px 22px" }}>
+            {t("settings.model.custom.syncHidden")}
+          </p>
+
+          {/* custom 类供应商（本地网关等预配置端点） */}
+          {customProviders.length > 0 && (
+            <div style={{ marginBottom: "12px", paddingLeft: "22px" }}>
+              <div style={{ fontSize: "12px", fontWeight: "500", color: "var(--text-level-2)", marginBottom: "8px" }}>
+                预配置端点
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {customProviders.map((p) => {
+                  const isEditing = customProvEditing === p.id;
+                  const isDisabled = isProviderDisabled(p.id);
+                  return (
+                    <div key={p.id} style={{
+                      padding: "10px 12px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--border-primary)",
+                      background: "var(--bg-level-2)",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)" }}>
+                            {p.name}
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginTop: "2px" }}>
+                            {p.description}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: "11px", color: p.has_key ? "var(--color-success)" : "var(--text-level-4)" }}>
+                          {p.has_key ? "已配置" : "未配置"}
+                        </span>
+                        <button
+                          onClick={() => setProviderDisabled(p.id, !isDisabled)}
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: "var(--radius-sm)",
+                            border: "1px solid var(--border-primary)",
+                            background: isDisabled ? "var(--bg-level-3)" : "var(--color-primary-lighter)",
+                            color: isDisabled ? "var(--text-level-3)" : "var(--color-primary)",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {isDisabled ? "已禁用" : "已启用"}
+                        </button>
+                        <button
+                          onClick={() => isEditing ? setCustomProvEditing(null) : openCustomProvider(p.id)}
+                          style={{
+                            padding: "3px 10px",
+                            borderRadius: "var(--radius-sm)",
+                            border: "1px solid var(--border-primary)",
+                            background: "var(--bg-level-1)",
+                            color: "var(--text-level-2)",
+                            cursor: "pointer",
+                            fontSize: "11px",
+                          }}
+                        >
+                          {isEditing ? "取消" : "配置"}
+                        </button>
+                      </div>
+                      {isEditing && (
+                        <div style={{ marginTop: "10px", display: "flex", gap: "8px", alignItems: "flex-end" }}>
+                          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <label style={{ fontSize: "11px", color: "var(--text-level-2)" }}>API Key</label>
+                            <ApiKeyInput
+                              value={customProvKey}
+                              onChange={setCustomProvKey}
+                              placeholder="sk-..."
+                              showIcon={false}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleSaveCustomProvider(p.id)}
+                            disabled={customProvSaving === p.id}
+                            style={{
+                              padding: "6px 14px",
+                              borderRadius: "var(--radius-sm)",
+                              border: "none",
+                              background: "var(--color-primary)",
+                              color: "#fff",
+                              cursor: "pointer",
+                              fontSize: "12px",
+                              fontWeight: "500",
+                              opacity: customProvSaving === p.id ? 0.6 : 1,
+                            }}
+                          >
+                            保存
+                          </button>
+                          {p.has_key && (
+                            <button
+                              onClick={() => handleClearCustomProvider(p.id)}
+                              disabled={customProvSaving === p.id}
+                              style={{
+                                padding: "6px 10px",
+                                borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--color-danger, #ef4444)",
+                                background: "transparent",
+                                color: "var(--color-danger, #ef4444)",
+                                cursor: "pointer",
+                                fontSize: "12px",
+                              }}
+                            >
+                              清除
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        {/* 快速接入第三方端点（和供应商卡片一样的体验） */}
+        <div style={{
+          padding: "14px",
+          borderRadius: "var(--radius-md)",
+          border: "1px solid var(--border-primary)",
+          background: "var(--bg-level-2)",
+          marginBottom: "12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+            <Zap style={{ width: "14px", height: "14px", color: "var(--color-primary)" }} />
+            <span style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)" }}>快速接入第三方端点</span>
+            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>填入 Key 和端点，拉取模型列表后多选批量添加</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "10px", alignItems: "flex-end" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>API Key</label>
+              <ApiKeyInput
+                value={quickApiKey}
+                onChange={setQuickApiKey}
+                placeholder="sk-..."
+                showIcon={false}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>端点地址 (Base URL)</label>
+              <input
+                value={quickApiBase}
+                onChange={(e) => setQuickApiBase(e.target.value)}
+                placeholder="http://127.0.0.1:8317/v1"
+                style={inputStyle}
+              />
+            </div>
+            <button
+              onClick={handleQuickFetch}
+              disabled={quickLoading}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 16px",
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "var(--color-primary)",
+                color: "#fff",
+                cursor: quickLoading ? "not-allowed" : "pointer",
+                fontSize: "13px",
+                fontWeight: "500",
+                opacity: quickLoading ? 0.6 : 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {quickLoading ? <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} /> : <Globe style={{ width: "14px", height: "14px" }} />}
+              {quickLoading ? "拉取中..." : "拉取模型列表"}
+            </button>
+          </div>
+        </div>
+
+        {/* 快速接入：模型选择器弹窗（多选） */}
+        {quickPickerOpen && (
+          <div style={{
+            position: "fixed",
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }} onClick={() => !quickAdding && setQuickPickerOpen(false)}>
+            <div style={{
+              background: "var(--bg-level-1)",
+              borderRadius: "var(--radius-lg)",
+              padding: "20px",
+              width: "90%",
+              maxWidth: "520px",
+              maxHeight: "70vh",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+            }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h4 style={{ margin: 0, fontSize: "15px", fontWeight: "600", color: "var(--text-level-1)" }}>
+                  选择要添加的模型 {quickSelected.size > 0 && <span style={{ color: "var(--color-primary)", fontSize: "13px" }}>(已选 {quickSelected.size})</span>}
+                </h4>
+                <button onClick={() => !quickAdding && setQuickPickerOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-level-3)", fontSize: "18px" }}>×</button>
+              </div>
+              {quickLoading && (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "20px", color: "var(--text-level-3)" }}>
+                  <Loader2 style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite" }} />
+                  正在拉取模型列表...
+                </div>
+              )}
+              {quickError && (
+                <div style={{ padding: "12px", background: "rgba(239,68,68,0.1)", borderRadius: "var(--radius-sm)", color: "var(--color-error)", fontSize: "13px" }}>
+                  {quickError}
+                </div>
+              )}
+              {!quickLoading && !quickError && quickModels.length > 0 && (
+                <div style={{ flex: 1, overflowY: "auto", border: "1px solid var(--border-primary)", borderRadius: "var(--radius-sm)" }}>
+                  {quickModels.map((m) => (
+                    <div
+                      key={m.id}
+                      onClick={() => handleQuickToggleSelect(m.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        padding: "10px 14px",
+                        borderBottom: "1px solid var(--border-primary)",
+                        cursor: "pointer",
+                        background: quickSelected.has(m.id) ? "rgba(99,102,241,0.08)" : "transparent",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{
+                          width: "18px", height: "18px",
+                          borderRadius: "4px",
+                          border: "2px solid",
+                          borderColor: quickSelected.has(m.id) ? "var(--color-primary)" : "var(--border-primary)",
+                          background: quickSelected.has(m.id) ? "var(--color-primary)" : "transparent",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "#fff", fontSize: "12px",
+                        }}>
+                          {quickSelected.has(m.id) && "✓"}
+                        </div>
+                        <span style={{ fontSize: "13px", color: "var(--text-level-1)" }}>{m.id}</span>
+                      </div>
+                      {m.context_window && (
+                        <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>{(m.context_window / 1000).toFixed(0)}K 上下文</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!quickLoading && !quickError && quickModels.length === 0 && (
+                <div style={{ padding: "20px", textAlign: "center", color: "var(--text-level-4)", fontSize: "13px" }}>未找到模型</div>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "4px" }}>
+                <button
+                  onClick={() => !quickAdding && setQuickPickerOpen(false)}
+                  disabled={quickAdding}
+                  style={secondaryBtn}
+                >取消</button>
+                <button
+                  onClick={handleQuickAddSelected}
+                  disabled={quickAdding || quickSelected.size === 0}
+                  style={{
+                    ...primaryBtn,
+                    opacity: quickAdding || quickSelected.size === 0 ? 0.5 : 1,
+                    cursor: quickAdding || quickSelected.size === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {quickAdding ? `添加中 (${quickSelected.size})...` : `添加选中的 ${quickSelected.size} 个模型`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {formOpen && (
+          <div style={{
+            padding: "14px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--border-primary)",
+            background: "var(--bg-level-2)",
+            marginBottom: "12px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.name")}</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder={t("settings.model.custom.name")}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.modelId")}</label>
+                <input
+                  value={form.model_id}
+                  onChange={(e) => setForm({ ...form, model_id: e.target.value })}
+                  placeholder="custom-model-id"
+                  disabled={!!editingCustom}
+                  style={{ ...inputStyle, opacity: editingCustom ? 0.6 : 1 }}
+                />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.provider")}</label>
+                <select
+                  value={form.provider}
+                  onChange={(e) => setForm({ ...form, provider: e.target.value })}
+                  style={inputStyle}
+                >
+                  <option value="openai">OpenAI 兼容</option>
+                  {configs.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.modelName")}</label>
+                <input
+                  value={form.model_name}
+                  onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                  placeholder="upstream-model-name"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.apiBase")}</label>
+              <input
+                value={form.api_base}
+                onChange={(e) => setForm({ ...form, api_base: e.target.value })}
+                placeholder="https://..."
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.apiKey")}</label>
+              <ApiKeyInput
+                value={form.api_key}
+                onChange={(v) => setForm({ ...form, api_key: v })}
+                placeholder="sk-..."
+                showIcon={false}
+              />
+            </div>
+            {/* 一键拉取模型列表按钮 */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                type="button"
+                onClick={handleFetchCustomRemote}
+                disabled={customRemoteLoading || !form.api_key.trim() || !form.api_base.trim()}
+                style={{
+                  ...secondaryBtn,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  opacity: (!form.api_key.trim() || !form.api_base.trim()) ? 0.5 : 1,
+                  cursor: (!form.api_key.trim() || !form.api_base.trim()) ? "not-allowed" : "pointer",
+                }}
+              >
+                {customRemoteLoading ? (
+                  <Loader2 style={{ width: "12px", height: "12px", animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <Zap style={{ width: "12px", height: "12px" }} />
+                )}
+                {t("settings.model.custom.fetchModels")}
+              </button>
+              {customRemoteError && (
+                <span style={{ fontSize: "11px", color: "var(--color-error)" }}>{customRemoteError}</span>
+              )}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.maxTokens")}</label>
+                <input
+                  value={form.max_tokens}
+                  onChange={(e) => setForm({ ...form, max_tokens: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>{t("settings.model.custom.temperature")}</label>
+                <input
+                  value={form.temperature}
+                  onChange={(e) => setForm({ ...form, temperature: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>上下文窗口 (token)</label>
+                <input
+                  value={form.context_window}
+                  onChange={(e) => setForm({ ...form, context_window: e.target.value })}
+                  placeholder="131072"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <SwitchButton
+                checked={form.supports_vision}
+                onChange={() => setForm({ ...form, supports_vision: !form.supports_vision })}
+              />
+              <span style={{ fontSize: "12px", color: "var(--text-level-2)" }}>
+                {t("settings.model.custom.supportsVision")}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button
+                onClick={() => setFormOpen(false)}
+                style={secondaryBtn}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleSaveCustom}
+                disabled={busy}
+                style={{
+                  ...primaryBtn,
+                  opacity: busy ? 0.7 : 1,
+                }}
+              >
+                {t("common.save")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 一键拉取的模型选择器 */}
+        {customPickerOpen && (
+          <RemoteModelPicker
+            providerId="custom"
+            models={customRemoteModels}
+            enabledSet={new Set<string>()}
+            onAdd={handleSelectCustomRemoteModel}
+            onClose={() => setCustomPickerOpen(false)}
+            loading={customRemoteLoading}
+            error={customRemoteError}
+          />
+        )}
+
+        {manualModels.length === 0 && !formOpen ? (
+          <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
+            {t("settings.model.custom.noCustom")}
+          </p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {manualModels.map((cm) => {
+              const isExpanded = expandedId === cm.id;
+              const existingModelNames = new Set(manualModels.map((m) => m.model_name));
+              return (
+              <div
+                key={cm.id}
+                style={{
+                  borderRadius: "var(--radius-md)",
+                  border: `1px solid ${isExpanded ? "var(--color-primary)" : "var(--border-primary)"}`,
+                  background: "var(--bg-level-2)",
+                  opacity: cm.enabled ? 1 : 0.55,
+                  overflow: "hidden",
+                }}
+              >
+                {/* 卡片头部 */}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 14px" }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "13px", fontWeight: "500", color: "var(--text-level-1)" }}>
+                        {cm.name}
+                      </span>
+                      <span style={{ fontSize: "11px", fontFamily: "monospace", color: "var(--text-level-4)" }}>
+                        {cm.model_id}
+                      </span>
+                      {cm.supports_vision && (
+                        <span style={{
+                          fontSize: "10px", padding: "1px 6px", borderRadius: "999px",
+                          background: "rgba(139,92,246,0.12)", color: "var(--color-primary, #8b5cf6)", lineHeight: 1.4,
+                        }}>Vision</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "var(--text-level-3)", marginTop: "2px" }}>
+                      {cm.provider} · {cm.model_name} · {cm.api_base}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: "11px", color: cm.has_key ? "var(--color-success)" : "var(--text-level-4)" }}>
+                    {cm.has_key ? "Key ✓" : "no key"}
+                  </span>
+                  <button onClick={() => handleToggleCustom(cm)} style={iconBtn} title={t("settings.model.custom.enabled")}>
+                    {cm.enabled ? "ON" : "OFF"}
+                  </button>
+                  <button onClick={() => handleExpandEdit(cm)} style={{ ...iconBtn, background: isExpanded ? "rgba(99,102,241,0.1)" : "transparent" }} title="展开编辑">
+                    {isExpanded ? <ChevronRight style={{ width: "14px", height: "14px", transform: "rotate(90deg)" }} /> : <Pencil style={{ width: "14px", height: "14px" }} />}
+                  </button>
+                  <button onClick={() => handleDeleteCustom(cm)} style={iconBtn} title={t("settings.model.custom.delete")}>
+                    <Trash2 style={{ width: "14px", height: "14px", color: "var(--color-danger, #ef4444)" }} />
+                  </button>
+                </div>
+
+                {/* 内联展开编辑区域 */}
+                {isExpanded && (
+                  <div style={{ padding: "14px", borderTop: "1px solid var(--border-primary)", background: "var(--bg-level-1)", display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {/* API Key + Base URL + 拉取按钮 */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "10px", alignItems: "flex-end" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>API Key</label>
+                        <ApiKeyInput value={editForm.api_key} onChange={(v) => setEditForm({ ...editForm, api_key: v })} placeholder="sk-..." showIcon={false} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>端点地址 (Base URL)</label>
+                        <input value={editForm.api_base} onChange={(e) => setEditForm({ ...editForm, api_base: e.target.value })} placeholder="http://127.0.0.1:8317/v1" style={inputStyle} />
+                      </div>
+                      <button onClick={handleEditFetchRemote} disabled={editRemoteLoading} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "var(--radius-sm)", border: "none", background: "var(--color-primary)", color: "#fff", cursor: editRemoteLoading ? "not-allowed" : "pointer", fontSize: "12px", fontWeight: "500", opacity: editRemoteLoading ? 0.6 : 1, whiteSpace: "nowrap" }}>
+                        {editRemoteLoading ? <Loader2 style={{ width: "14px", height: "14px", animation: "spin 1s linear infinite" }} /> : <Globe style={{ width: "14px", height: "14px" }} />}
+                        拉取模型列表
+                      </button>
+                    </div>
+
+                    {/* 拉取的模型列表 */}
+                    {editRemoteOpen && (
+                      <div style={{ border: "1px solid var(--border-primary)", borderRadius: "var(--radius-sm)", maxHeight: "200px", overflowY: "auto" }}>
+                        {editRemoteLoading && <div style={{ padding: "16px", textAlign: "center", color: "var(--text-level-3)", fontSize: "13px" }}><Loader2 style={{ width: "16px", height: "16px", animation: "spin 1s linear infinite", display: "inline-block", marginRight: "8px" }} />正在拉取...</div>}
+                        {editRemoteError && <div style={{ padding: "12px", color: "var(--color-error)", fontSize: "13px" }}>{editRemoteError}</div>}
+                        {!editRemoteLoading && !editRemoteError && editRemoteModels.map((m) => {
+                          const alreadyAdded = existingModelNames.has(m.id);
+                          return (
+                            <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid var(--border-primary)" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <span style={{ fontSize: "13px", color: "var(--text-level-1)" }}>{m.id}</span>
+                                {m.context_window && <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>{(m.context_window / 1000).toFixed(0)}K</span>}
+                              </div>
+                              {alreadyAdded ? (
+                                <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>已添加</span>
+                              ) : (
+                                <button onClick={() => handleEditAddModel(m.id, m.context_window || undefined)} style={{ padding: "4px 10px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-primary)", background: "transparent", color: "var(--color-primary)", cursor: "pointer", fontSize: "11px" }}>添加</button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* 当前模型高级参数 */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>最大 Token</label>
+                        <input value={editForm.max_tokens} onChange={(e) => setEditForm({ ...editForm, max_tokens: e.target.value })} style={inputStyle} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>温度</label>
+                        <input value={editForm.temperature} onChange={(e) => setEditForm({ ...editForm, temperature: e.target.value })} style={inputStyle} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                        <label style={{ fontSize: "12px", color: "var(--text-level-2)" }}>上下文窗口</label>
+                        <input value={editForm.context_window} onChange={(e) => setEditForm({ ...editForm, context_window: e.target.value })} style={inputStyle} />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <SwitchButton checked={editForm.supports_vision} onChange={() => setEditForm({ ...editForm, supports_vision: !editForm.supports_vision })} />
+                      <span style={{ fontSize: "12px", color: "var(--text-level-2)" }}>支持多模态识图 (Vision)</span>
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                      <button onClick={() => setExpandedId(null)} disabled={editSaving} style={secondaryBtn}>取消</button>
+                      <button onClick={handleEditSave} disabled={editSaving} style={{ ...primaryBtn, opacity: editSaving ? 0.6 : 1, cursor: editSaving ? "not-allowed" : "pointer" }}>
+                        {editSaving ? "保存中..." : "保存"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              );
+            })}
+          </div>
+        )}
+        </>
+        )}
+      </div>
+
+      {/* 纹身图模型（生图专用 BYOK） */}
+      <TattooImageConfigSection />
+
+      {/* 备用识图模型（双轨 BYOK） */}
+      <VisionConfigSection />
+
+      {/* Provider Base URL 覆盖（深水区端点配置） */}
+      <ProviderBaseUrlOverride />
+    </div>
+  );
+}

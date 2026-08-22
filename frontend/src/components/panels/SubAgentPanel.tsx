@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * SubAgentPanel —— 子代理（Sub-Agent）管理视图
+ * SubAgentPanel —— 子代理（角色模板）管理视图
  *
- * 子代理即工具：主 Agent 通过 delegate_sub_agent 工具委派子任务给专门化子代理。
- * 本面板提供子代理的列表 / 编辑 / 新建，供专业用户配置子代理的
+ * 子代理即角色模板：身份提示词 + 工具白名单，持久化于 agents 表。
+ * 主 Agent 通过 delegate_sub_agent 委派子任务，编排按模板 spawn 用完即弃实例。
+ * 本面板提供角色模板的列表 / 编辑 / 新建，供专业用户配置模板的
  * 身份提示词与工具白名单（allowed_tools）。
  *
  * 视觉规范复用 AgentListPanel（紧凑卡片、小字号、无大间隙）。
@@ -23,7 +24,7 @@ import {
 import { AgentIcon } from "../AgentIcon";
 
 interface SubAgentPanelProps {
-  /** 当前编辑中的子代理 id；null = 列表；"__create__" = 新建 */
+  /** 当前编辑中的角色模板 id；null = 列表；"__create__" = 新建 */
   editingId: string | null;
   onSelect: (id: string) => void;
   onBackToSettings: () => void;
@@ -158,7 +159,7 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(`确定删除子代理「${subAgents.find((s) => s.id === id)?.name ?? id}」？`)) return;
+    if (!window.confirm(`确定删除角色模板「${subAgents.find((s) => s.id === id)?.name ?? id}」？`)) return;
     try {
       await deleteSubAgent(id);
       await loadSubAgents();
@@ -184,7 +185,7 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
             style={{ ...primaryBtn, display: "flex", alignItems: "center", gap: "5px" }}
           >
             <Plus style={{ width: "13px", height: "13px" }} />
-            新建子代理
+            新建角色模板
           </button>
         )}
       </div>
@@ -202,7 +203,7 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
         ) : subAgents.length === 0 ? (
           <div style={{ padding: "16px", borderRadius: "var(--radius-md)", background: "var(--bg-level-2)", border: "1px solid var(--border-primary)" }}>
             <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: 0 }}>
-              暂无子代理。点击右上角「新建子代理」创建，主 Agent 即可通过 delegate_sub_agent 工具委派任务。
+              暂无角色模板。点击右上角「新建角色模板」创建，主 Agent 即可通过 delegate_sub_agent 工具按模板 spawn 执行子任务。
             </p>
           </div>
         ) : (
@@ -286,14 +287,14 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
               )}
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <label style={{ fontSize: "12px", color: "var(--text-level-3)", width: 70, flexShrink: 0 }}>名称</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="子代理名称" style={{ ...inputStyle, flex: 1 }} />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="角色模板名称" style={{ ...inputStyle, flex: 1 }} />
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <label style={{ fontSize: "12px", color: "var(--text-level-3)", width: 70, flexShrink: 0 }}>描述</label>
                 <input
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="一句话说明子代理职责"
+                  placeholder="一句话说明角色模板职责"
                   style={{ ...inputStyle, flex: 1 }}
                 />
               </div>
@@ -309,7 +310,7 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
             <textarea
               value={identity}
               onChange={(e) => setIdentity(e.target.value)}
-              placeholder="定义子代理的角色、职责、行为约束与输出格式。子代理仅看到此提示词与委派任务，看不到主会话历史，请写得自包含。"
+              placeholder="定义角色模板的身份、职责、行为约束与输出格式。实例仅看到此提示词与委派任务，看不到主会话历史，请写得自包含。"
               rows={6}
               style={{
                 ...inputStyle,
@@ -362,7 +363,7 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
               </div>
             )}
             <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "8px 0 0 0" }}>
-              子代理仅能使用白名单内的工具。留空 = 不限制（继承主会话工具目录）。
+              实例仅能使用白名单内的工具。留空 = 不限制（继承主会话工具目录）。
             </p>
           </div>
 

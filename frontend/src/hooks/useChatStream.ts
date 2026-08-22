@@ -756,6 +756,18 @@ export function useChatStream({
               }],
             }));
           },
+          // onSubAgent：子代理编排进度（按 id 原地更新：running → completed / failed）
+          (sub) => {
+            store.updateSession(targetChatId, (prev) => {
+              const idx = prev.timeline.findIndex((s) => s.type === "sub_agent" && s.id === sub.id);
+              if (idx >= 0) {
+                const next = prev.timeline.slice();
+                next[idx] = { ...sub, id: sub.id };
+                return { timeline: next };
+              }
+              return { timeline: [...prev.timeline, sub] };
+            });
+          },
           // onComplete
           appendAssistant,
           // 附件

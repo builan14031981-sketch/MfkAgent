@@ -217,13 +217,30 @@ export type TaskEvent =
  * 具体字段在对应功能落地时按 type 细化。
  */
 export interface ExtensionEvent extends RuntimeEventBase {
-  type: "verification" | "sub_agent" | "vision" | "memory";
+  /** 注意：sub_agent 已有专用 SubAgentEvent 类型，此处不再包含 */
+  type: "verification" | "vision" | "memory";
   /** 通用负载（未来扩展时按 type 细化为强类型） */
   payload?: unknown;
   /** 通用标题（渲染占位卡片用） */
   title?: string;
   /** 通用内容摘要（渲染占位卡片用） */
   content?: string;
+}
+
+/**
+ * 子代理编排事件（spawn_orchestration 工具编排过程中的进度事件）。
+ * 由后端在工具执行时发射，前端按 id 原地更新：running → completed / failed。
+ */
+export interface SubAgentEvent extends RuntimeEventBase {
+  type: "sub_agent";
+  /** 角色 id（如 architecture / backend） */
+  role: string;
+  /** 角色展示名（如 架构师） */
+  title: string;
+  /** 当前状态：running=编排中 / completed=完成 / failed=失败 */
+  status: "running" | "completed" | "failed";
+  /** 进度摘要文本 */
+  content: string;
 }
 
 /** Runtime Event 判别联合：渲染层按 type 分发 */
@@ -239,4 +256,5 @@ export type RuntimeEvent =
   | TaskCompletedEvent
   | TaskFailedEvent
   | TaskSkippedEvent
+  | SubAgentEvent
   | ExtensionEvent;

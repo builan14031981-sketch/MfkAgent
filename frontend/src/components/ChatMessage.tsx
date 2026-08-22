@@ -1,12 +1,14 @@
 "use client";
 
 import { memo, useState, useRef, useCallback, useMemo, useEffect } from "react";
-import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain, Loader2, Image } from "lucide-react";
+import { useSettingsStore } from "@/lib/store";
+import { Copy, Check, Quote, RefreshCw, Edit2, ChevronDown, ChevronUp, Brain, Loader2, Image, ListChecks } from "lucide-react";
 import type { Message, TimelineEvent } from "@/hooks/useMessages";
 import { ToolCallGroup, groupToolCalls } from "@/components/ToolCallGroup";
 import type { ToolCall } from "@/components/ToolCallCard";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
+import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
 import { getAttachmentImageUrl } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
@@ -83,6 +85,24 @@ function extractGeneratedImages(message: Message): Array<{ src: string; alt: str
   collect(message.content);
 
   return results;
+}
+
+/**
+ * 从文本中移除 generate_image 生成的 markdown 图片引用，避免与 generatedImages 定制渲染重复。
+ * 用于 text segment 渲染前的预处理：MarkdownRenderer 不再渲染原始图片引用，
+ * 统一由下方 generatedImages 区块用圆角缩略+点击放大样式展示。
+ */
+function stripGeneratedImages(content: string, imageSrcs: string[]): string {
+  if (!content || imageSrcs.length === 0) return content;
+  let result = content;
+  for (const src of imageSrcs) {
+    const escapedSrc = src.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`!\\[[^\\]]*\\]\\(${escapedSrc}\\)`, "g");
+    result = result.replace(regex, "");
+  }
+  // 清理移除图片引用后可能留下的多余空行
+  result = result.replace(/\n{3,}/g, "\n\n");
+  return result.trim();
 }
 
 /** 按 message.timeline 时序重建的可渲染片段 */
@@ -717,6 +737,20 @@ function ImageThumbnail({ url, alt, isSingle, onClick }: {
  */
 export const ChatMessage = memo(function ChatMessage({ message, currentAgent, durationMs, onQuote, onRegenerate, onEdit, onImageClick }: ChatMessageProps) {
   const { t } = useTranslation();
+  const { agents } = useAgents();
+  const showReasoning = useSettingsStore((s) => s.settings?.show_reasoning !== "false");
+
+  // 圆桌模式：根据 message.agent_id 查找对应的 Agent
+  const roundtableAgent = message.agent_id
+    ? agents.find((a) => a.id === message.agent_id) ?? null
+    : null;
+  // 圆桌任务清单消息（agent_id="roundtable"）
+  const isRoundtableTask = message.agent_id === "roundtable";
+  // 圆桌模式下显示的 Agent 名称和头像
+  const displayAgent = roundtableAgent ?? currentAgent;
+  const displayAgentName = isRoundtableTask
+    ? "圆桌任务清单"
+    : roundtableAgent?.name ?? currentAgent?.name ?? "AI";
   // 优先使用独立的 thinking 字段（流式/后端持久化）；老会话 thinking 内嵌在 content
   // 的 think 标签中时回退用 parseThinkBlock 从正文剥离，保证历史消息仍能展示思考块。
   const { thinking, body } = useMemo(
@@ -765,7 +799,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
   const timeSpanStyle = { fontSize: "11px", color: "var(--text-level-4)", alignSelf: "center" };
 
   if (message.role === "user") {
-    const imageAtts = message.attachments?.filter((a) => a.kind === "image") ?? [];
+    const imageAtts = message.attachments?.filter((a) => a.kind === "image" || (a.mime && a.mime.startsWith("image/")) || (a.name && /\.(png|jpg|jpeg|webp|gif|bmp)$/i.test(a.name))) ?? [];
     // 预计算所有图片 URL（点击预览 + img src 共用）
     const imageUrls = imageAtts.map((att) => att.path ? getAttachmentImageUrl(message.chat_id, att.path) : null);
 
@@ -832,13 +866,50 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
 
   return (
     <div className="mf-msg-row">
-      {/* AI 标识 */}
+      {/* AI 标识（圆桌模式下显示发言 Agent） */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-        {currentAgent && <AgentIcon id={currentAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />}
-        <span style={{ fontSize: "13px", fontWeight: 500, lineHeight: 1.25, color: "var(--text-level-3)" }}>
-          {currentAgent?.name || "AI"}
+        {isRoundtableTask ? (
+          <div style={{
+            width: "20px", height: "20px", borderRadius: "6px",
+            background: "linear-gradient(135deg, var(--color-primary), #7c3aed)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <ListChecks size={12} color="white" />
+          </div>
+        ) : (
+          displayAgent && <AgentIcon id={displayAgent.id} size={16} style={{ color: "var(--text-level-3)" }} />
+        )}
+        <span style={{
+          fontSize: "13px", fontWeight: 500, lineHeight: 1.25,
+          color: isRoundtableTask ? "var(--color-primary)" : "var(--text-level-3)",
+        }}>
+          {displayAgentName}
         </span>
+        {message.agent_id && (
+          <span style={{
+            fontSize: "10px",
+            padding: "1px 6px",
+            borderRadius: "4px",
+            background: isRoundtableTask ? "color-mix(in srgb, var(--color-primary) 15%, transparent)" : "var(--bg-level-3)",
+            color: isRoundtableTask ? "var(--color-primary)" : "var(--text-level-3)",
+            fontWeight: 400,
+          }}>
+            {isRoundtableTask ? "任务清单" : "圆桌"}
+          </span>
+        )}
       </div>
+      {/* 任务清单消息：特殊背景容器；普通 AI 消息限制最大宽度避免过宽 */}
+      <div style={{
+        maxWidth: "800px",
+        ...(isRoundtableTask ? {
+          background: "color-mix(in srgb, var(--color-primary) 5%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)",
+          borderRadius: "10px",
+          padding: "12px 14px",
+          marginTop: "4px",
+        } : {}),
+      }}>
       {/* 时序渲染：thinking/tool/text 按 SSE 真实到达顺序交错展示 */}
       {segBlocks ? (
         segBlocks.map((block, i) => {
@@ -855,9 +926,12 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
           const seg = block.seg;
           switch (seg.kind) {
             case "thinking":
-              return <ThinkingPanel key={`think-${i}`} thinking={seg.content} persistKey={`mfk_think_${message.id}_${i}`} />;
-            case "text":
-              return <MarkdownRenderer key={`text-${i}`} content={seg.content} />;
+              return showReasoning ? <ThinkingPanel key={`think-${i}`} thinking={seg.content} persistKey={`mfk_think_${message.id}_${i}`} /> : null;
+            case "text": {
+              // 预处理：移除 generate_image 生成的 markdown 图片引用，避免与下方 generatedImages 定制渲染重复
+              const cleanedContent = stripGeneratedImages(seg.content, generatedImages.map((g) => g.src));
+              return <MarkdownRenderer key={`text-${i}`} content={cleanedContent} />;
+            }
             case "memory":
               return (
                 <MemorySavedNotice
@@ -874,15 +948,15 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
           {message.tool_calls && message.tool_calls.length > 0 && (
             <ToolCallGroup tools={message.tool_calls} streaming={false} />
           )}
-          {/* 思考过程（<think> 标签内容）折叠面板 */}
-          {thinking && <ThinkingPanel thinking={thinking} persistKey={"mfk_think_" + message.id} />}
-          {/* 正文：Markdown 渲染（含代码块折叠） */}
-          <MarkdownRenderer content={body} />
+          {/* 思考过程（ thinking 标签内容）折叠面板 */}
+          {showReasoning && thinking && <ThinkingPanel thinking={thinking} persistKey={"mfk_think_" + message.id} />}
+          {/* 正文：Markdown 渲染（含代码块折叠），预处理移除 generate_image 图片引用避免重复 */}
+          <MarkdownRenderer content={stripGeneratedImages(body, generatedImages.map((g) => g.src))} />
         </>
       )}
       {/* 防御：timeline 中无 text 事件但正文存在（如录制不全）→ 补渲染正文，避免内容丢失 */}
       {timelineSegments && !timelineSegments.some((s) => s.kind === "text") && body && (
-        <MarkdownRenderer content={body} />
+        <MarkdownRenderer content={stripGeneratedImages(body, generatedImages.map((g) => g.src))} />
       )}
       {/* 文生图产物：直接展示生成的图片，圆角缩略，点击放大，尺寸完整 */}
       {generatedImages.length > 0 && (
@@ -931,6 +1005,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
           })}
         </div>
       )}
+      </div>
       {/* AI 消息悬浮操作栏：时间 + 用时 + 复制 / 引用 / 重生成 */}
       <div className="mf-bubble-actions" style={actionBarStyle(false)}>
         {message.created_at && (

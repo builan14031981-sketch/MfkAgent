@@ -17,9 +17,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatInputProps) {
   return (
     <div style={{
       width: "100%",
-      maxWidth: "768px",
+      position: "relative",
+      // 2026-08-16：输入区层级透明、仅卡片悬浮。maxWidth 1400px 防拉过长；
+      // 左右 padding 100px：输入框卡片两侧各留足空隙并透出底层，绝不顶满两头。
+      maxWidth: "1400px",
       margin: "0 auto",
-      padding: "8px 16px",
+      padding: "0 100px 4px 100px",
     }}>
       <ChatInput {...props} />
       <p style={{
@@ -29,9 +32,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatInputProps) {
         color: "var(--text-level-4)",
         margin: 0,
         paddingTop: "4px",
-        paddingBottom: "4px",
+        paddingBottom: "3px",
         pointerEvents: "none",
       }}>{t("chat.aiMayError")}</p>
     </div>
   );
 });
+
+
+

@@ -1,4 +1,4 @@
-﻿"""MfkAgent Session Compression — Phase G6-B 单元测试。
+"""MfkAgent Session Compression — Phase G6-B 单元测试。
 
 覆盖：
   T1.  三段式拆分：System 头 / 中间 / 最近 keep_recent 条，摘要节点位置正确
@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 

@@ -1,4 +1,4 @@
-"""从 文案素材/ 提取欢迎语，生成 backend/app/data/greetings.json（类目分组）。
+"""从 资产库/文案素材/ 提取欢迎语，生成 backend/app/data/greetings.json（类目分组）。
 
 用法（在仓库根目录执行）：
     python scripts/build_greetings.py
@@ -16,7 +16,7 @@ import sys
 from typing import Dict, List, Optional
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SOURCE_DIR = os.path.join(REPO_ROOT, "文案素材")
+SOURCE_DIR = os.path.join(REPO_ROOT, "资产库", "文案素材")
 OUTPUT_PATH = os.path.join(REPO_ROOT, "backend", "app", "data", "greetings.json")
 
 # 文案源文件 → 类目（与运行时 greetings.py 的 _CATEGORY_ORDER 保持一致）

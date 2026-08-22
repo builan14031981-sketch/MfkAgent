@@ -40,6 +40,8 @@ export interface ProviderConfig {
   description?: string;
   free: boolean;
   website?: string;
+  /** "official"=官方供应商（基础区展示） / "custom"=自定义端点（高级区展示） */
+  category?: string;
   /** 后端明文下发：完整 API Key（本地化工具，用户可随时查看）；空串表示未配置 */
   api_key_masked: string;
   has_key: boolean;
@@ -55,16 +57,29 @@ export interface CustomModel {
   provider: string;
   model_name: string;
   api_base: string;
-  /** 后端明文下发：完整 API Key */
+  /** 后端明文下发：完整 API Key（本地应用，直接返回明文） */
+  api_key: string;
   api_key_masked: string;
   has_key: boolean;
   max_tokens: number;
   temperature: number;
+  context_window: number;
   enabled: boolean;
   supports_vision: boolean;
   /** 2026-08-11 新增：来源。sync=候选池自动同步（生命周期由候选池接管）；manual=用户手动创建。
    *  旧后端不返回此字段时为 undefined，前端按 manual 降级处理。 */
   source?: "sync" | "manual";
+}
+
+/** 自定义端点（custom_providers 表）：用户动态添加的 OpenAI 兼容供应商 */
+export interface CustomProviderInfo {
+  id: number;
+  provider_id: string; // "custom_<id>"
+  name: string;
+  default_api_base: string;
+  description: string;
+  is_builtin: boolean;
+  created_at: string | null;
 }
 
 export interface CustomModelPayload {
@@ -76,6 +91,7 @@ export interface CustomModelPayload {
   api_key?: string;
   max_tokens?: number;
   temperature?: number;
+  context_window?: number;
   enabled?: boolean;
   supports_vision?: boolean;
 }
@@ -137,6 +153,8 @@ export interface UseProviderConfigResult {
   refresh: () => Promise<void>;
 
   // ── Provider Key 管理 ──
+  /** 获取 provider 真实 API Key（明文），用于编辑模式回填输入框 */
+  fetchProviderKey: (providerId: string) => Promise<string>;
   /** 保存 provider key/base（apiKey 为 undefined 表示不修改；为空串表示清除） */
   saveProviderKey: (providerId: string, apiKey?: string, apiBase?: string) => Promise<void>;
   /** 彻底清除 provider Key：后端 purge 关联数据 + 前端 enabled_models 同步清空 */
@@ -146,6 +164,13 @@ export interface UseProviderConfigResult {
   createCustomModel: (data: CustomModelPayload) => Promise<void>;
   updateCustomModel: (id: number, data: Partial<CustomModelPayload>) => Promise<void>;
   deleteCustomModel: (id: number) => Promise<void>;
+
+  // ── 自定义端点（custom_providers）CRUD ──
+  customProviders: CustomProviderInfo[];
+  createCustomProvider: (name: string, apiBase: string, description?: string) => Promise<void>;
+  updateCustomProvider: (id: number, data: { name?: string; default_api_base?: string; description?: string }) => Promise<void>;
+  deleteCustomProvider: (id: number) => Promise<void>;
+  refreshCustomProviders: () => Promise<void>;
 
   // ── 远程模型拉取 ──
   /** 拉取上游官方模型列表（含上下文窗口元数据）。返回 RemoteModelInfo[]。 */
@@ -234,19 +259,22 @@ export function useProviderConfig(): UseProviderConfigResult {
 
   const [configs, setConfigs] = useState<ProviderConfig[]>([]);
   const [customModels, setCustomModels] = useState<CustomModel[]>([]);
+  const [customProviders, setCustomProviders] = useState<CustomProviderInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ── 权威数据拉取：provider 配置 + 自定义模型 ──
+  // ── 权威数据拉取：provider 配置 + 自定义模型 + 自定义端点 ──
   const refresh = useCallback(async () => {
     try {
       setLoading(true);
-      const [configData, customData] = await Promise.all([
+      const [configData, customData, customProvData] = await Promise.all([
         apiGet<{ configs: ProviderConfig[] }>("/api/models/config"),
         apiGet<CustomModel[]>("/api/models/custom"),
+        apiGet<CustomProviderInfo[]>("/api/models/custom-providers"),
       ]);
       setConfigs(configData.configs);
       setCustomModels(customData);
+      setCustomProviders(customProvData);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -286,6 +314,17 @@ export function useProviderConfig(): UseProviderConfigResult {
       }
     },
     [updateSetting]
+  );
+
+  // ── Provider Key 真实明文获取（编辑模式下回填输入框，让小眼睛/复制真正可用）──
+  const fetchProviderKey = useCallback(
+    async (providerId: string): Promise<string> => {
+      const data = await apiGet<{ provider_id: string; api_key: string }>(
+        `/api/models/provider-key/${providerId}`
+      );
+      return data?.api_key || "";
+    },
+    []
   );
 
   // ── Provider Key 保存（apiKey 为空串 = 清除，触发后端 _purge_provider_associated）──
@@ -343,6 +382,39 @@ export function useProviderConfig(): UseProviderConfigResult {
   const deleteCustomModel = useCallback(
     async (id: number) => {
       await apiDelete(`/api/models/custom/${id}`);
+      await refresh();
+      triggerModelsRefresh();
+    },
+    [refresh]
+  );
+
+  // ── 自定义端点（custom_providers）CRUD ──
+  const refreshCustomProviders = useCallback(async () => {
+    const data = await apiGet<CustomProviderInfo[]>("/api/models/custom-providers");
+    setCustomProviders(data);
+  }, []);
+
+  const createCustomProvider = useCallback(
+    async (name: string, apiBase: string, description = "") => {
+      await apiPost("/api/models/custom-providers", { name, default_api_base: apiBase, description });
+      await refresh();
+      triggerModelsRefresh();
+    },
+    [refresh]
+  );
+
+  const updateCustomProvider = useCallback(
+    async (id: number, data: { name?: string; default_api_base?: string; description?: string }) => {
+      await apiPut(`/api/models/custom-providers/${id}`, data);
+      await refresh();
+      triggerModelsRefresh();
+    },
+    [refresh]
+  );
+
+  const deleteCustomProvider = useCallback(
+    async (id: number) => {
+      await apiDelete(`/api/models/custom-providers/${id}`);
       await refresh();
       triggerModelsRefresh();
     },
@@ -497,11 +569,17 @@ export function useProviderConfig(): UseProviderConfigResult {
     loading,
     error,
     refresh,
+    fetchProviderKey,
     saveProviderKey,
     clearProviderKey,
     createCustomModel,
     updateCustomModel,
     deleteCustomModel,
+    customProviders,
+    createCustomProvider,
+    updateCustomProvider,
+    deleteCustomProvider,
+    refreshCustomProviders,
     fetchRemoteModels,
     fetchRemoteModelsDirect,
     testConnection,

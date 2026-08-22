@@ -35,9 +35,9 @@ class ToolVerification(CompletionVerifier):
     def __init__(self, verifier=None):
         self._verifier = verifier or get_verifier()
 
-    # run_command / execute_command 同属命令执行族，聚合时按族取最后一次
+    # run_command / execute_command / run_outside_command 同属命令执行族，聚合时按族取最后一次
     _COMMAND_FAMILY = "command"
-    _COMMAND_TOOLS = ("run_command", "execute_command")
+    _COMMAND_TOOLS = ("run_command", "execute_command", "run_outside_command")
     # risk_engine / Strategy Layer 拦截文本前缀（命令从未真正运行，无副作用）
     _CMD_INTERCEPT_PREFIXES = ("错误:", "策略阻止:")
 

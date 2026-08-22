@@ -1,0 +1,71 @@
+{
+  "suite": "role_template_phase",
+  "date": "2026-08-18 14:31:36",
+  "passed": 5,
+  "total": 5,
+  "failures": [],
+  "results": [
+    {
+      "name": "R1 模板映射完整性",
+      "ok": true,
+      "detail": {
+        "role_count": 7,
+        "mapped_count": 7,
+        "bad_ids": [],
+        "missing_identity": []
+      },
+      "elapsed_ms": 13
+    },
+    {
+      "name": "R2 DB 优先加载",
+      "ok": true,
+      "detail": {
+        "got": "【DB模板】你是自定义架构师（DB优先加载验证）。",
+        "expected": "【DB模板】你是自定义架构师（DB优先加载验证）。",
+        "db_name": "架构师-DB",
+        "tools": [
+          "read_file",
+          "list_files",
+          "search_files"
+        ]
+      },
+      "elapsed_ms": 563
+    },
+    {
+      "name": "R3 内存兜底",
+      "ok": true,
+      "detail": {
+        "name": "后端工程师",
+        "identity_prefix": "你是资深后端工程师子代理。\n职责：实现或分析后端服务，关注接",
+        "has_tools": true
+      },
+      "elapsed_ms": 16
+    },
+    {
+      "name": "R4 全部角色可解析",
+      "ok": true,
+      "detail": {
+        "roles": {
+          "architecture": "memory",
+          "backend": "DB",
+          "frontend": "memory",
+          "testing": "memory",
+          "security": "memory",
+          "researcher": "DB",
+          "code_reviewer": "memory"
+        }
+      },
+      "elapsed_ms": 17
+    },
+    {
+      "name": "R5 用完即弃隔离",
+      "ok": true,
+      "detail": {
+        "spawn_count": 2,
+        "s1": "审查结论：无严重问题。",
+        "s2": "审查结论：无严重问题。"
+      },
+      "elapsed_ms": 244
+    }
+  ]
+}

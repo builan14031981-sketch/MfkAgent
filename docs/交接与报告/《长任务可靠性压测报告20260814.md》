@@ -1,0 +1,116 @@
+# 长任务可靠性压测报告（2026-08-14）
+
+> 目标：验证平台能否扛住大型长任务 —— 上下文能否滚得动、每轮延迟是否爬升、SSE 是否稳定、断连是否丢数据。
+> 方式：真实 API（kimi-k2.5，dashscope compatible-mode）+ 现有后端（8001）+ scratch 会话。
+> 原始数据：`_backup/longtask_probe_20260814/` 下全部脚本与事件 JSONL。
+
+---
+
+## 一、模型通道打通记录（动态压测的前置战役）
+
+**问题**：平台内置 19 个模型（dashscope 全系）直连全部 403 `Free quota exhausted`，siliconflow / mimo 同样 403，freellm 网关 127.0.0.1:31415 未监听且不属本仓库 —— 当时平台无一条可用通道。
+
+**破解**：
+1. dashscope 直连 `GET /compatible-mode/v1/models` 返回 237 个模型；直连探测 `kimi-k2.5 / kimi-k2.6 / kimi-k2-thinking` 均 **200 OK**。
+2. 用户预配了自定义模型 `kimi-k2.5`（id=28）、`kimi-k2.6`（id=30）等（src=sync, provider=qwen）；但平台 send 带 `kimi-k2.5` 仍 403，且日志显示实际发出的是 `qwen-flash`。
+3. **根因定位**：`send/stream` 使用**会话 model**（chat 创建时默认 `qwen-flash`），`request.model` 只作为未显式指定时的回退（chat.py:176/239 等处 `chat.model`）。把会话 model `PATCH /api/chat/{id}`（注意：**PATCH 而非 PUT**，PUT 返回 405）切成 `kimi-k2.5` 后立即打通。
+4. 模型注册表支持 `/api/models/reload` 热刷（reload 后 20 个模型）。
+
+**结论**：当前唯一可用通道 = dashscope compatible-mode + qwen 系 key + `kimi-k2.5`（100 万 token 配额）。压测全部基于该通道。
+
+---
+
+## 二、T1 · 上下文增长曲线（12 轮阶梯，纯对话）
+
+同一会话连续 12 轮，每轮全量重发历史（`context_builder.py:911-920`：**全量加载 + 仅 thought 裁剪，无 token budget / compression / window**）。
+
+| round | prompt_tokens | watermark% | round_sec |
+|------:|--------------:|-----------:|----------:|
+| 1 | 4,219 | 1.73 | 6.6 |
+| 2 | 4,468 | 1.85 | 8.1 |
+| 3 | 4,780 | 1.98 | 8.9 |
+| 4 | 5,112 | 2.12 | 9.4 |
+| 5 | 5,464 | 2.26 | 10.3 |
+| 6 | 5,835 | 2.40 | 9.6 |
+| 7 | 6,164 | 2.52 | 6.8 |
+| 8 | 6,535 | 2.68 | 7.5 |
+| 9 | 6,907 | 2.83 | 12.1 |
+| 10 | 7,597 | 3.12 | 12.0 |
+| 11 | 8,093 | 3.29 | 11.1 |
+| 12 | 8,554 | 3.49 | 10.4 |
+
+- **单调无界增长**：每轮 ≈ +360 tokens，12 轮共 +4.3K，**运行中无任何自动压缩**（`compress_history` 只被手动 `/api/chat/{id}/compress` 触发）。
+- 延迟轻微爬升：6.6s → 12s（12 轮数据量尚小，趋势可见）。
+- 纯对话下外推：按 +360/轮 *、256K 窗口，约 **700 轮**才会顶爆窗口 —— 看似够用，但见 T2b：**工具型任务一轮就能 +62.7K**，才是真正的杀手。
+
+## 三、T2 · TaskGraph 工具长任务贯通（planning_level=2）
+
+### T2a（对照：绑定了空的 scratch 目录 project 50）—— 暴露真实隐患
+- 耗时 **628s**，247 事件，但 `task_failed`（完成验证重试 0→3 耗尽后优雅失败），**目标文件未产出**。
+- 两次 **303s 纯空闲缺口**（事件流零字节、无 LLM、无文本）＝ 审批闸 `APPROVAL_TIMEOUT = 300s`（`tool_runtime/approval.py:20`）无人响应自动拒绝（`获取超时:已超过300s，自动拒绝`）。
+- **Windows 命令错配**：模型发 `find . -type f -name "*.py" 2>/dev/null`（含 `2>/dev/null` 被元字符守卫拦截）、`find`、`ls -la`；`run_command` 走 subprocess 无 shell（`command_tools.py`），Unix 语法在 Windows 全部失败 → 白烧轮次。
+- **后台韧性反而成了亮点**：628s 任务爬完，45 条消息完整落库。
+
+### T2b（绑定真实仓库 E:\智慧项目\Mfkagent，project 51 / chat 262）—— 成功的标杆跑
+- **52.5s 完成**：5 个任务全 `task_completed`、31 次工具调用（29 `read_file` + 1 `list_files` + 1 `write_file`）全 `verify passed`、最终 `finish` 正常。
+- **报告真实落盘**：`t2_scan_report.txt` 存在（如 skill_catalog.py 1093 行 / persona_engine.py 1014 行）。
+- 工具调用并行且极快：29 次 read_file 同批 2-3ms 完成。
+- **上下文爆炸实锤**：prompt 从 7,687 → 70,479（**单轮 +62.7K tokens，水位 3.0% → 27.7%**），最终 72,031 / 28.17%。一轮 29 文件读取即吃掉 1/4 窗口。
+- TTFT 随上下文抬升：处理 62K 上下文时单轮 ~13s。DB 只 2 条消息（工具调用打包进单条 assistant 消息），存储模型高效，但消息体巨大。
+
+### T2 对照结论
+同一任务，空目录 = 628s 烂尾；真实目录 = 52.5s 完美收官。**长任务可靠性的真正变量不在流式/落库，而在「上下文膨胀」与「工具回合的正确性/审批等待」**。
+
+## 四、T3 · SSE 断连韧性 + 空闲期与超时
+
+### T3a（动态）：断连不杀任务 —— 通过
+`t3_drop_resilience.py`：5.8s 读到 6 块后**硬断连接**。结果：
+- 日志 `chat.py:1100 [INFO] SSE consumer disconnected: chat_id=263 (background task continues)`。
+- 轮询确认：任务继续跑完，最终 assistant 回答（369 字符 Markdown 表格）**完整落库**（2 条消息）。
+- 静态依据：`send_message_stream` 启动独立 `asyncio.Task`（chat.py:843-1053），HTTP 生命周期与任务解耦。
+
+### T3b（动态）：审批闸空闲期 —— 确认风险
+- 无 keepalive/心跳（SSE 仅 20ms/200 字符文本攒批）。T2a 实测两次 303s 零字节空闲，本地联调能扛，**经代理/网关必被掐断**（如 Nginx 默认 proxy_read_timeout 60s）。
+
+### T3c（静态）：超时护栏盘点
+- 单轮 LLM：`stream_once` 120s（model.py:926）、`call_once` 60s（model.py:787）。
+- 工具：`run_command` ≤120s、`execute` ≤300s（command_tools.py:105,272）。
+- 审批等待：300s 自动拒绝（approval.py:20）。
+- 注意：审批空闲不触发 keepalive，是长任务链路中最容易烂的空档。
+
+## 五、T4 · 前端渲染负担（streamStore 全量内存态 + MessageList 无虚拟化）
+
+- 静态：`MessageList.tsx:465` `messages.map(...)` 全量渲染、`useMessages` 拉全量消息、`streamStore` 按 chatId 内存态全量 timeline —— **无 windowing / 无虚拟化 / 无上限**。
+- 动态基准（真实 `resolveToolMeta` 纯函数，`t4_frontend_render.mjs`）：
+
+| timeline 段数 | 处理耗时 | DOM 节点估算 |
+|--------:|--------:|-----------:|
+| 250（≈T2b 一场任务） | 0.53ms | ≈3.5k |
+| 1,000 | 0.65ms | ≈14k |
+| 5,000 | 1.24ms | ≈71k |
+
+- **JS 处理不是瓶颈**（ns 级/段），瓶颈在 **DOM 无虚拟化**：5,000 段 ≈ 71k DOM 节点，浏览器 re-render 明显掉帧；长会话无限累积无回收。定级为「会慢会卡但不崩」。
+
+---
+
+## 六、风险矩阵与加固建议
+
+| # | 风险 | 级别 | 动态证据 | 建议 |
+|---|------|------|----------|------|
+| R1 | 上下文全量无压缩/无窗口 | **P0** | T1 单调增长 +360/轮；T2b 单轮 +62.7K（27.7%） | `context_builder.py:911` 引入 token budget：工具结果摘要化 / 早期消息压缩 / 超限触发自动 compress_chat。`compress_history` 目前只被手动触发，需接入运行中自动调用 |
+| R2 | 审批闸 300s 无人响应自动拒绝 | **P0** | T2a 两次 303s 空闲 + 任务烂尾 628s | 跑批/无人值守场景该走 `autonomous` 审批模式或工具白名单；审批等待期间发 SSE keepalive 心跳 |
+| R3 | 无 SSE keepalive/心跳 | P1 | T2a 303s 零字节；静态 chat.py:1056-1096 | 空闲期发 `: ping` 注释帧（SSE spec 内保持连接）；或前端 `EventSource` 重连策略 |
+| R4 | Windows/Unix 命令错配 | P1 | T2a `find`/`ls`/`2>/dev/null` 全败 | system prompt 声明 OS 与 shell 约束，注入 Windows 幂等命令模板；`run_command` 透传 Windows 上下文 |
+| R5 | 单轮 LLM 120s 硬超时 | P1 | 静态 model.py:926 | 长推理模型（kimi-k2-thinking 等）需可配置超时/分块策略 |
+| R6 | 前端全量渲染无虚拟化 | P2 | T4：5,000 段 ≈ 71k DOM | `MessageList` 引入 `react-window`/增量渲染；timeline 超过阈值折叠为摘要 |
+
+## 七、保留数据清单（`_backup/longtask_probe_20260814/`）
+
+- `sse_probe.py`（SSE 探针；读 `..._chatid.txt` 需 `utf-8-sig`；`s.sse_send(text, model=...)`）
+- `t1_context_growth.py` / `t1_context_growth.csv`（T1 原始曲线）
+- `t2_probe.py` + `t2_raw_events.jsonl`（T2a 空目录对照）
+- `t2b_probe.py` + `t2b_raw_events.jsonl` + `t2_scan_report.txt`（T2b 真实仓库成功跑产物）
+- `t3_drop_resilience.py`（T3a 断连韧性）
+- `t4_frontend_render.mjs`（T4 纯函数基准）
+- 会话：chat 261（T1/T2a，project 50）/ chat 262（T2b，project 51）/ chat 263（T3a，project 51）
+- 后端日志佐证：`backend/logs/app.log` —— `chat.py:1100 SSE consumer disconnected: chat_id=263 (background task continues)`、多笔 403 记录

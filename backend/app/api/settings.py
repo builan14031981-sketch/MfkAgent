@@ -32,6 +32,7 @@ DEFAULT_SETTINGS = {
     "default_agent": "general",
     "default_personality": "50",
     "default_reasoning_effort": "none",
+    "show_reasoning": "true",
     # 记忆三开关（2026-08-13 记忆可见化治理）：
     # - memory_read_enabled：读闸，false 时 AI 完全不读已存记忆（记忆保留在库，前端仍可管理）
     # - memory_write_enabled：写闸，false 时完全不自动提取/沉淀新记忆
@@ -53,6 +54,21 @@ DEFAULT_SETTINGS = {
     "vision_api_key": "",
     "vision_model": "",
     "vision_base_url": "",
+    # 纹身图模型 BYOK 配置（生图专用，独立于通用文生图 image_gen_model）
+    "tattoo_provider": "",
+    "tattoo_api_key": "",
+    "tattoo_model": "",
+    "tattoo_base_url": "",
+    # TTS 语音朗读配置（支持双引擎：edge 微软 / volcengine 火山引擎）
+    "tts_enabled": "false",
+    "tts_engine": "volcengine",
+    "tts_voice": "zh-CN-YunxiNeural",
+    "tts_rate": "+0%",
+    "tts_auto_play": "false",
+    # 火山引擎 TTS 配置（字节跳动，国内直连，低时延）
+    "volcengine_appid": "",
+    "volcengine_access_token": "",
+    "volcengine_voice": "zh_female_cancan_mars_bigtts",
     # 语音转写 BYOK 配置（OpenAI 兼容 /audio/transcriptions 端点）
     "stt_provider": "",
     "stt_api_key": "",
@@ -83,10 +99,10 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
       - source='manual' 的行：绝不触碰（不覆盖、不禁用、不删除）——用户手动创建的第三方接入
       - source='sync' 且已从 enabled_models 移除 → 直接删除（避免幽灵残留；
         字段均可从 provider 重新派生，删除零数据损失；再次入池会自动重建）
-      - 内置 Provider 模型（model_id 在 PROVIDERS 中）→ 不创建 CustomModel
+      - 内置 Provider 模型（model_id 在 _mp.PROVIDERS 中）→ 不创建 CustomModel
     """
     from app.models.agent import CustomModel
-    from app.core.model_providers import PROVIDERS, PROVIDER_MAP
+    import app.core.model_providers as _mp
     from app.core.model_adapter import adapter
 
     try:
@@ -99,7 +115,7 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
 
     # 收集所有内置模型 ID（用于判断是否为远程模型）
     builtin_ids: set = set()
-    for p in PROVIDERS:
+    for p in _mp.PROVIDERS:
         for m in p.models:
             builtin_ids.add(m.id)
 
@@ -108,7 +124,7 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
     for provider_id, model_ids in enabled_map.items():
         if not isinstance(model_ids, list):
             continue
-        provider_def = PROVIDER_MAP.get(provider_id)
+        provider_def = _mp.PROVIDER_MAP.get(provider_id)
         if not provider_def:
             continue
         for model_id in model_ids:
@@ -124,7 +140,7 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
 
     # Upsert：为 enabled_remote 中的模型创建/更新 CustomModel
     for provider_id, model_id in enabled_remote:
-        provider_def = PROVIDER_MAP.get(provider_id)
+        provider_def = _mp.PROVIDER_MAP.get(provider_id)
         if not provider_def:
             continue
         api_key = adapter.resolve_api_key(provider_def)
@@ -176,10 +192,10 @@ def _sync_custom_model_api_keys(db, provider_id: str) -> None:
     确保 CustomModel 记录的 api_key 与 provider 当前 Key 保持一致。
     """
     from app.models.agent import CustomModel
-    from app.core.model_providers import PROVIDER_MAP
+    import app.core.model_providers as _mp
     from app.core.model_adapter import adapter
 
-    provider_def = PROVIDER_MAP.get(provider_id)
+    provider_def = _mp.PROVIDER_MAP.get(provider_id)
     if not provider_def:
         return
     new_key = adapter.resolve_api_key(provider_def)
@@ -220,15 +236,23 @@ def _sync_approval_mode(value: str) -> None:
 
 
 
+def _is_secret_key(key: str) -> bool:
+    """判断是否为需脱敏的密钥类设置（provider api_key_* / stt_api_key / vision_api_key / volcengine_access_token 等）。"""
+    return key.startswith("api_key_") or key.endswith("_api_key") or key == "volcengine_access_token"
+
+
 @router.get("", response_model=Dict[str, str])
 async def get_all_settings():
-    """返回全部设置（本地化工具，明文下发，知情权归用户）"""
+    """返回全部设置（密钥类字段脱敏，前端仅感知已配置状态）"""
     db = SessionLocal()
     try:
         settings = db.query(Setting).all()
         result = dict(DEFAULT_SETTINGS)
         for s in settings:
-            result[s.key] = s.value
+            if _is_secret_key(s.key):
+                result[s.key] = _mask_key(s.value)
+            else:
+                result[s.key] = s.value
         return result
     finally:
         db.close()
@@ -240,9 +264,13 @@ async def get_setting(key: str):
     try:
         setting = db.query(Setting).filter(Setting.key == key).first()
         if setting:
-            return SettingResponse(key=setting.key, value=setting.value)
+            value = _mask_key(setting.value) if _is_secret_key(setting.key) else setting.value
+            return SettingResponse(key=setting.key, value=value)
         if key in DEFAULT_SETTINGS:
-            return SettingResponse(key=key, value=DEFAULT_SETTINGS[key])
+            value = DEFAULT_SETTINGS[key]
+            if _is_secret_key(key):
+                value = _mask_key(value)
+            return SettingResponse(key=key, value=value)
         raise HTTPException(status_code=404, detail="Setting not found")
     finally:
         db.close()
@@ -288,6 +316,27 @@ async def update_setting(key: str, request: SettingUpdate):
             proxy_invalidate()
 
         return SettingResponse(key=setting.key, value=setting.value)
+    finally:
+        db.close()
+
+
+@router.get("/{key}/reveal", response_model=SettingResponse)
+async def reveal_setting(key: str):
+    """获取明文设置值（仅用于密钥类字段，如 API Key）。
+
+    普通 GET /{key} 会对密钥脱敏，此接口返回明文，
+    供前端"显示明文"按钮调用，使用户可查看/复制已保存的真实 Key。
+    """
+    if not _is_secret_key(key):
+        raise HTTPException(status_code=400, detail="Only secret keys can be revealed")
+    db = SessionLocal()
+    try:
+        setting = db.query(Setting).filter(Setting.key == key).first()
+        if setting:
+            return SettingResponse(key=setting.key, value=setting.value)
+        if key in DEFAULT_SETTINGS:
+            return SettingResponse(key=key, value=DEFAULT_SETTINGS[key])
+        raise HTTPException(status_code=404, detail="Setting not found")
     finally:
         db.close()
 

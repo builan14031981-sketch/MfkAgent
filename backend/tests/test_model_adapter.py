@@ -190,7 +190,7 @@ class TestCustomModelOverride:
         assert all_models["my-custom-model"].api_key == "custom-key"
 
     def test_custom_model_empty_key_falls_through(self):
-        """CustomModel.api_key 为空时，使用空串（不回退到内置，因为是覆盖）"""
+        """CustomModel.api_key 为空时，回退到 provider 的 key（env/settings）"""
         from app.core.model_adapter import ModelConfigAdapter
         adapter = ModelConfigAdapter()
         builtin_provider = _make_provider_def()
@@ -207,8 +207,8 @@ class TestCustomModelOverride:
             all_models = adapter.resolve_all()
 
         config = all_models["deepseek-chat"]
-        # 覆盖后 api_key 为空串（CustomModel 明确设为空）
-        assert config.api_key == "", "CustomModel 覆盖后 api_key 应为空串"
+        # 空 key 回退到 provider 的 key（settings 表 api_key_{id} > .env 的 {PROVIDER}_API_KEY）
+        assert config.api_key == "env-key", "CustomModel 空 key 应回退到 provider key"
 
     def test_resolve_single_returns_override(self):
         """resolve_single 返回被覆盖的配置"""

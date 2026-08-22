@@ -116,7 +116,7 @@ export function useHeroTheme() {
 
       // 首次使用（后端尚无收藏记录）：写入默认收藏，生成本地个人喜好配置
       if (settings !== null && (!remoteRaw || remoteRaw === "[]")) {
-        updateSetting("hero_favorites", JSON.stringify(favs));
+        updateSetting("hero_favorites", JSON.stringify(favs)).catch(() => {});
       }
 
       setEnabledState(savedEnabled);
@@ -143,7 +143,8 @@ export function useHeroTheme() {
       decide(randomEnabled, randomScope);
       return;
     }
-    const t = setTimeout(() => decide(true, "all"), 1200);
+    // settings 加载超时兜底：不随机，用上次保存的主题/默认主题，避免用户关闭随机后仍被强制随机
+    const t = setTimeout(() => decide(false, "all"), 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings]);
@@ -193,7 +194,7 @@ export function useHeroTheme() {
     setFavoritesState(next);
     persistFavorites(next);
     // 同步到后端 Settings（本地 SQLite），生成用户个人喜好配置
-    updateSetting("hero_favorites", JSON.stringify(next));
+    updateSetting("hero_favorites", JSON.stringify(next)).catch(() => {});
   }, [favorites, updateSetting]);
 
   const favoriteThemes = HERO_THEMES.filter((t) => favorites.includes(t.id));

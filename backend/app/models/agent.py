@@ -33,8 +33,12 @@ class Chat(Base):
     personality_level = Column(Integer, nullable=True)
     model = Column(String(50))
     thinking_mode = Column(String(20), default="none")
-    mode = Column(String(10), default="build")
+    mode = Column(String(20), default="build")
+    permission_mode = Column(String(10), default="standard", nullable=False)
     context_files = Column(JSON, default=list)
+    # ──── 圆桌模式（Roundtable）────
+    # mode="roundtable" 时启用：多 Agent 同会话讨论
+    roundtable_config = Column(JSON, default=dict)  # {agent_ids, max_rounds, need_summary, moderator_id, strategy}
     is_deleted = Column(Boolean, default=False)
     deleted_at = Column(DateTime)
     is_archived = Column(Boolean, default=False)
@@ -72,6 +76,8 @@ class AgentRun(Base):
     agent_id = Column(String(50), default="general")
     status = Column(String(20), default="running")
     state = Column(String(50), default="pending")
+    # Phase H: checkpoint 血缘 — 本次执行从哪个 run 继续（重跑/断点续跑时设置）
+    parent_run_id = Column(Integer, ForeignKey("agent_runs.id"), nullable=True, index=True)
     started_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
 
@@ -125,6 +131,7 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
     role = Column(String(20), nullable=False)
+    agent_id = Column(String(50), nullable=True)  # 圆桌模式：标记消息发送者
     content = Column(Text, nullable=False)
     thinking = Column(Text, nullable=True)
     tool_calls  = Column(JSON)
@@ -212,6 +219,9 @@ class MemoryItem(Base):
     memory_type = Column(String(50), default="preference")  # preference / fact / workflow / project
     confidence = Column(Float, default=0.8)                 # 提取置信度 0.0 ~ 1.0
     source_chat_id = Column(Integer, nullable=True)         # 记忆来源 Chat ID（自动提取时回填）
+    is_active = Column(Boolean, default=True)               # 软删标记（P0-2 衰减剪枝）
+    last_accessed_at = Column(DateTime, nullable=True)      # 最近访问时间（P0-2 访问衰减）
+    access_count = Column(Integer, default=0)               # 访问次数（P0-2 访问衰减）
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -339,11 +349,29 @@ class CustomModel(Base):
     api_key = Column(String(500), default="")
     max_tokens = Column(Integer, default=4096)
     temperature = Column(Float, default=0.7)
+    context_window = Column(Integer, default=200000)  # 上下文窗口大小（token），默认200K
     enabled = Column(Boolean, default=True)
     supports_vision = Column(Boolean, default=False)  # 模型是否支持多模态图片识别
     # 2026-08-11 新增：记录来源，区分"候选池自动同步"与"用户手动创建"。
     # sync：_sync_custom_models 从 enabled_models 自动创建/维护，生命周期由候选池接管；
     # manual：用户在"自定义模型"表单手动创建，sync 逻辑绝不触碰。
     source = Column(String(10), default="manual", nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CustomProvider(Base):
+    """自定义端点表：用户动态添加的 OpenAI 兼容供应商，运行时转为 ProviderDef 合并进 PROVIDERS。
+
+    只存元数据（名称 + 默认端点），api_key / api_base 覆盖 / enabled_models / provider_disabled
+    全部复用 settings 表现有机制（key 前缀为 custom_<id>），与官方供应商 100% 同构。
+    """
+    __tablename__ = "custom_providers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    default_api_base = Column(String(500), nullable=False)
+    description = Column(String(500), default="")
+    is_builtin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

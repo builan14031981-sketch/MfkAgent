@@ -433,7 +433,8 @@ class TestG4CRunStream(unittest.TestCase):
             asyncio.run(collect())
 
         task_events = [
-            (e["type"], e["task_id"]) for e in events if e["type"].startswith("task_")
+            (e["type"], e["task_id"]) for e in events
+            if e["type"] in ("task_started", "task_completed", "task_skipped", "task_failed")
         ]
         self.assertEqual(
             task_events,

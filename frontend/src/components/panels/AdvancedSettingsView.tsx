@@ -23,7 +23,7 @@ function ModelAdvanced() {
 
 // ── ai 高级区块：Agent 管理 + 子代理 + AI 长期记忆 ──
 function AiAdvanced(props: AdvancedSettingsViewProps) {
-  const { onManageAgents, onManageSubAgents, t } = props;
+  const { onManageAgents, onManageSubAgents, onClose, t } = props;
   return (
     <>
       {/* 预设 Agent：统一入口（列表在独立二级面板） */}
@@ -84,7 +84,7 @@ function AiAdvanced(props: AdvancedSettingsViewProps) {
 
       {/* AI 长期记忆（三作用域：全局 / Agent / 项目） */}
       <div style={{ marginTop: "24px" }}>
-        <MemoryPanel embedded isOpen onClose={() => {}} />
+        <MemoryPanel embedded isOpen onClose={onClose ?? (() => {})} />
       </div>
     </>
   );

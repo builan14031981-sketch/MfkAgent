@@ -8,6 +8,7 @@ import {
   FolderPlus,
   ChevronRight,
   MessageSquare,
+  Folder,
   FolderOpen,
   PanelLeftClose,
 } from "lucide-react";
@@ -18,6 +19,8 @@ import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSettingsStore } from "@/lib/store";
 import { useStreamStore } from "@/lib/streamStore";
+import { useTabStore } from "@/lib/tabStore";
+import { Search, X } from "lucide-react";
 import { selectDirectory } from "@/lib/selectDirectory";
 import { Panel } from "./panels/Panel";
 import { ProjectInitModal } from "./ProjectInitModal";
@@ -53,6 +56,7 @@ interface SidebarProps {
   onSettingsClick?: () => void;
   collapsed?: boolean;
   onToggleSidebar?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 /** 排序：置顶的聊天在前，再按更新时间倒序 */
@@ -65,7 +69,7 @@ function sortChats(chats: Chat[]): Chat[] {
   });
 }
 
-export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSidebar }: SidebarProps) {
+export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSidebar, onOpenCommandPalette }: SidebarProps) {
   const router = useRouter();
   const { t } = useTranslation();
   const { chats, deleteChat, updateChat, pinChat, archiveChat, refetch: refetchChats } = useChat();
@@ -95,6 +99,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
   const generalChatsListRef = useRef<HTMLDivElement>(null);
   const [collapsedProjectWorkspace, setCollapsedProjectWorkspace] = useState(false);
   const projectWorkspaceRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 客户端挂载后从 localStorage 同步 UI 折叠状态（避免 SSR hydration mismatch）
   useEffect(() => {
@@ -134,6 +139,15 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
     }
     return { projectChats: map, generalChats: sortChats(general) };
   }, [chats]);
+
+  // 搜索过滤：匹配标题（不区分大小写），搜索时扁平展示所有匹配聊天
+  const filteredChats = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+    return chats
+      .filter((c) => c.title?.toLowerCase().includes(q))
+      .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime());
+  }, [chats, searchQuery]);
 
   // 自动展开当前会话所在的项目
   const activeProjectId = useMemo(() => {
@@ -237,8 +251,14 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
   const handleDeleteChat = async (id: number) => {
     try {
       await deleteChat(id);
+      useTabStore.getState().closeTab(id);
       if (currentChatId === id) {
-        router.push("/");
+        const nextActiveId = useTabStore.getState().activeChatId;
+        if (nextActiveId != null) {
+          router.push(`/chat/${nextActiveId}`);
+        } else {
+          router.push("/");
+        }
       }
     } catch (err) {
       console.error("Failed to delete chat:", err);
@@ -264,6 +284,15 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
     }
     try {
       await archiveChat(id);
+      useTabStore.getState().closeTab(id);
+      if (currentChatId === id) {
+        const nextActiveId = useTabStore.getState().activeChatId;
+        if (nextActiveId != null) {
+          router.push(`/chat/${nextActiveId}`);
+        } else {
+          router.push("/");
+        }
+      }
     } catch (err) {
       console.error("Failed to archive chat:", err);
     }
@@ -461,11 +490,14 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
       overflow: collapsed ? "hidden" : "visible",
       transition: "width 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-right 0.3s ease",
     }}>
+      {/* 内容缩放包装：框架固定，只缩放内容 */}
+      <div data-zoomable="sidebar-content" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       {/* 新建任务 */}
       <div style={{ padding: "12px 12px 4px", display: "flex", alignItems: "center", gap: "6px" }}>
         <button
           ref={newTaskBtnRef}
           onClick={() => router.push("/")}
+          className="sb-btn--ghost"
           style={{
             flex: 1,
             display: "flex",
@@ -473,23 +505,34 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             gap: "8px",
             padding: "6px 10px",
             borderRadius: "var(--radius-md)",
-            border: "none",
-            outline: "none",
-            background: "var(--bg-level-3)",
-            cursor: "pointer",
             fontSize: "14px",
             color: "var(--text-level-1)",
-            transition: "background var(--transition-fast)",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
         >
           <Plus style={{ width: "16px", height: "16px" }} />
           <span>{t("sidebar.newTask")}</span>
         </button>
+        {/* 搜索按钮 */}
+        <button
+          onClick={() => onOpenCommandPalette?.()}
+          className="sb-btn--ghost"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "28px",
+            height: "28px",
+            padding: 0,
+            borderRadius: "var(--radius-md)",
+          }}
+          title={t("sidebar.search")}
+        >
+          <Search style={{ width: "14px", height: "14px" }} />
+        </button>
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
+            className="sb-btn"
             style={{
               display: "flex",
               alignItems: "center",
@@ -497,27 +540,69 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               width: "28px",
               height: "28px",
               padding: 0,
-              border: "none",
               borderRadius: "var(--radius-sm)",
-              background: "transparent",
-              cursor: "pointer",
               color: "var(--text-level-4)",
               flexShrink: 0,
-              transition: "background 0.15s ease, color 0.15s ease",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--text-level-2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-4)";
-            }}
-            title="收起侧边栏"
+            title={t("sidebar.collapse")}
           >
             <PanelLeftClose size={16} />
           </button>
         )}
+      </div>
+
+      {/* 搜索框：实时过滤聊天标题 */}
+      <div style={{ padding: "0 12px 8px" }}>
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          padding: "5px 8px",
+          borderRadius: "var(--radius-md)",
+          background: "var(--bg-level-3)",
+          border: "1px solid transparent",
+          transition: "border-color 0.15s ease",
+        }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; }}
+        >
+          <Search style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("sidebar.searchPlaceholder")}
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              fontSize: "12px",
+              color: "var(--text-level-2)",
+              minWidth: 0,
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "16px",
+                height: "16px",
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--text-level-4)",
+                flexShrink: 0,
+              }}
+            >
+              <X style={{ width: "12px", height: "12px" }} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 待办面板（可折叠，位于 New Task 与 Projects 之间） */}
@@ -531,8 +616,24 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         overflowY: "auto",
         padding: "0 8px 12px",
       }}>
+        {/* 搜索结果：有搜索词时扁平展示 */}
+        {filteredChats && (
+          <div>
+            {filteredChats.length === 0 ? (
+              <div style={{ padding: "16px 8px", textAlign: "center" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
+                  {t("sidebar.noSearchResults")}
+                </p>
+              </div>
+            ) : (
+              filteredChats.map((chat) => renderGeneralChatRow(chat))
+            )}
+          </div>
+        )}
+        {/* 原分组：搜索时隐藏 */}
+        <div style={{ display: filteredChats ? "none" : "block" }}>
         {/* ===== 项目工作区 ===== */}
-        <div style={{ marginBottom: "8px" }}>
+        <div style={{ marginBottom: "16px" }}>
           {/* section header：sticky 吸顶，列表在外层可滚容器内独立滚动（2026-08-11 父不动子滚原则） */}
           <div style={{
             display: "flex",
@@ -545,6 +646,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           }}>
             <button
               onClick={toggleProjectWorkspace}
+              className="sb-btn"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -552,13 +654,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 flex: 1,
                 minWidth: 0,
                 padding: "2px 4px",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                outline: "none",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
               <ChevronRight style={{
                 width: "var(--sidebar-icon-size-sm)",
@@ -568,7 +664,11 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 transform: collapsedProjectWorkspace ? "rotate(0deg)" : "rotate(90deg)",
                 transition: "transform var(--transition-fast)",
               }} />
-              <FolderOpen style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
+              {collapsedProjectWorkspace ? (
+                <Folder style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
+              ) : (
+                <FolderOpen style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
+              )}
               <p style={{
                 fontSize: "11px",
                 fontWeight: "600",
@@ -581,23 +681,8 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             </button>
             <button
               onClick={() => setProjectModalOpen(true)}
+              className="sb-btn--icon-sm"
               title={t("sidebar.openProject")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "20px",
-                height: "20px",
-                borderRadius: "var(--radius-sm)",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: "var(--text-level-3)",
-                flexShrink: 0,
-                padding: 0,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-primary)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-3)"; }}
             >
               <FolderPlus style={{ width: "12px", height: "12px" }} />
             </button>
@@ -615,22 +700,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             {projects.length === 0 ? (
               <button
                 onClick={() => setProjectModalOpen(true)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  width: "100%",
-                  padding: "6px 8px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px dashed var(--border-primary)",
-                  background: "transparent",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                  color: "var(--text-level-3)",
-                  textAlign: "left",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; e.currentTarget.style.color = "var(--color-primary)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; e.currentTarget.style.color = "var(--text-level-3)"; }}
+                className="sb-btn--dashed"
               >
                 <FolderPlus style={{ width: "13px", height: "13px", flexShrink: 0 }} />
                 <span>{t("sidebar.noProjectsDesc")}</span>
@@ -669,22 +739,12 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               导致本标题孤悬在 28px 处头顶留白（用户报「悬浮」）。兄弟不互相定位，各自只管自己的孩子 → top:0 */}
           <button
             onClick={toggleGeneralChats}
+            className="sb-section-hdr"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              width: "100%",
-              padding: "2px 4px",
-              border: "none",
-              background: "var(--bg-level-1)",
-              cursor: "pointer",
-              outline: "none",
               position: "sticky",
               top: 0,
               zIndex: 1,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-1)"; }}
           >
             <ChevronRight style={{
               width: "var(--sidebar-icon-size-sm)",
@@ -728,6 +788,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               generalChats.map(renderGeneralChatRow)
             )}
           </div>
+        </div>
         </div>
       </div>
 
@@ -783,6 +844,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         {onSettingsClick && (
           <button
             onClick={onSettingsClick}
+            className="sb-btn"
             style={{
               width: "100%",
               display: "flex",
@@ -790,19 +852,8 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               gap: "8px",
               padding: "6px 10px",
               borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
               fontSize: "13px",
               color: "var(--text-level-3)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--text-level-2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-3)";
             }}
           >
             <Settings style={{ width: "15px", height: "15px" }} />
@@ -829,7 +880,8 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         }}
       />
 
-      {/* 底部提示条：绝对定位，不影响主布局 */}
+      {/* 底部提示条：绝对定位，不影响主布局，不缩放 */}
+      </div>
       {activeProjectId == null && (
         <div style={{
           position: "absolute",
@@ -851,3 +903,6 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
     </aside>
   );
 }
+
+
+

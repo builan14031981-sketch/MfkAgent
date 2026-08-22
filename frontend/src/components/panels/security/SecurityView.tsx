@@ -28,12 +28,6 @@ import type {
 type TroubleshootTab = "matrix" | "audit" | "status" | "logs";
 type GuardTab = "approvals" | "command-risk" | "guardrails";
 
-const MODE_LABEL: Record<string, string> = {
-  safe: "settings.security.permission.safe",
-  standard: "settings.security.permission.standard",
-  autonomous: "settings.security.permission.autonomous",
-};
-
 const TROUBLESHOOT_TABS: { id: TroubleshootTab; labelKey: string }[] = [
   { id: "matrix", labelKey: "settings.security.matrix" },
   { id: "audit", labelKey: "settings.security.audit" },
@@ -61,49 +55,6 @@ function Badge({ action }: { action: PolicyAction }) {
       fontSize: 11, fontWeight: 600, lineHeight: "18px",
       color: m.color, background: m.bg, whiteSpace: "nowrap",
     }}>{m.text}</span>
-  );
-}
-
-// ───────────────────── 审批模式：紧凑分段控件 ─────────────────────
-function ModeSegment({ settings, saving, onUpdate, t }: SettingsViewProps) {
-  const current = settings?.agent_permission_mode || "standard";
-  const modes = [
-    { value: "safe", label: t(MODE_LABEL.safe) },
-    { value: "standard", label: t(MODE_LABEL.standard) },
-    { value: "autonomous", label: t(MODE_LABEL.autonomous) },
-  ];
-  const descs: Record<string, string> = {
-    safe: "所有写入操作需人工审批",
-    standard: "普通操作自动执行，高风险需审批",
-    autonomous: "仅极高风险操作需审批",
-  };
-
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: "var(--radius-md)",
-        background: "var(--bg-level-3)", width: "100%", marginBottom: 8 }}>
-        {modes.map((m) => {
-          const active = current === m.value;
-          return (
-            <button
-              key={m.value}
-              onClick={() => onUpdate("agent_permission_mode", m.value)}
-              disabled={saving === "agent_permission_mode"}
-              style={{
-                flex: 1, padding: "6px 8px", borderRadius: "calc(var(--radius-md) - 2px)",
-                border: "none", cursor: "pointer", fontSize: 13, fontWeight: active ? 600 : 400,
-                color: active ? "#fff" : "var(--text-level-3)",
-                background: active ? "var(--color-primary)" : "transparent",
-                transition: "background var(--transition-fast), color var(--transition-fast)",
-              }}
-            >{m.label}</button>
-          );
-        })}
-      </div>
-      <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: 0, lineHeight: 1.4 }}>
-        {descs[current]}
-      </p>
-    </div>
   );
 }
 
@@ -821,6 +772,19 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
 function GuardrailsView({ t }: { t: (key: string) => string }) {
   const [data, setData] = useState<GuardrailsData | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // 三个 details 折叠态持久化（默认：命令白名单展开，工具列表折叠）
+  const [cmdsOpen, setCmdsOpen] = useState(() => {
+    try { return localStorage.getItem("mfk_guard_cmds_open") !== "0"; }
+    catch { return true; }
+  });
+  const [toolsOpen, setToolsOpen] = useState(() => {
+    try { return localStorage.getItem("mfk_guard_tools_open") === "1"; }
+    catch { return false; }
+  });
+  const [writeToolsOpen, setWriteToolsOpen] = useState(() => {
+    try { return localStorage.getItem("mfk_guard_write_tools_open") === "1"; }
+    catch { return false; }
+  });
   const load = useCallback(() => {
     setErr(null);
     getGuardrails().then(setData).catch((e) => setErr(e instanceof Error ? e.message : String(e)));
@@ -862,7 +826,11 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
       </div>
 
       {/* 只读命令白名单 */}
-      <details open>
+      <details open={cmdsOpen} onToggle={(e) => {
+        const v = e.currentTarget.open;
+        setCmdsOpen(v);
+        try { localStorage.setItem("mfk_guard_cmds_open", v ? "1" : "0"); } catch { /* noop */ }
+      }}>
         <summary style={{ fontSize: 12, fontWeight: 600, color: "var(--text-level-1)", cursor: "pointer" }}>
           {t("settings.security.allowedCommands")}（{data.allowed_commands.length}）
         </summary>
@@ -882,7 +850,11 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
       </details>
 
       {/* 只读工具 */}
-      <details>
+      <details open={toolsOpen} onToggle={(e) => {
+        const v = e.currentTarget.open;
+        setToolsOpen(v);
+        try { localStorage.setItem("mfk_guard_tools_open", v ? "1" : "0"); } catch { /* noop */ }
+      }}>
         <summary style={{ fontSize: 12, fontWeight: 600, color: "var(--text-level-1)", cursor: "pointer" }}>
           {t("settings.security.readOnlyTools")}（{data.read_only_tools.length}）
         </summary>
@@ -897,7 +869,11 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
       </details>
 
       {/* 写入工具规则 */}
-      <details>
+      <details open={writeToolsOpen} onToggle={(e) => {
+        const v = e.currentTarget.open;
+        setWriteToolsOpen(v);
+        try { localStorage.setItem("mfk_guard_write_tools_open", v ? "1" : "0"); } catch { /* noop */ }
+      }}>
         <summary style={{ fontSize: 12, fontWeight: 600, color: "var(--text-level-1)", cursor: "pointer" }}>
           {t("settings.security.writeTools")}（{data.write_tools.length}）
         </summary>
@@ -928,9 +904,16 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
 // ───────────────────── 主入口 ─────────────────────
 export function SecurityView(props: SettingsViewProps) {
   const { t } = props;
-  const [open, setOpen] = useState(true);
+  // 折叠态持久化：默认展开，用户收起后写入 localStorage（"0" = 收起）
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem("mfk_security_troubleshoot_open") !== "0"; }
+    catch { return true; }
+  });
   const [troubleshootTab, setTroubleshootTab] = useState<TroubleshootTab>("matrix");
-  const [guardOpen, setGuardOpen] = useState(true);
+  const [guardOpen, setGuardOpen] = useState(() => {
+    try { return localStorage.getItem("mfk_security_guard_open") !== "0"; }
+    catch { return true; }
+  });
   const [guardTab, setGuardTab] = useState<GuardTab>("approvals");
 
   return (
@@ -945,8 +928,7 @@ export function SecurityView(props: SettingsViewProps) {
         </p>
       </div>
 
-      {/* 审批模式（始终可见） */}
-      <ModeSegment {...props} />
+      {/* 审批模式为会话级（聊天界面权限胶囊），此处不再提供全局开关 */}
 
       {/* 分隔 */}
       <div style={{ height: 1, background: "var(--border-primary)", margin: "12px 0" }} />
@@ -954,7 +936,11 @@ export function SecurityView(props: SettingsViewProps) {
       {/* 故障排查（折叠区域，仿字体选择字段交互：整行点击，箭头在右同一层级） */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => {
+          const next = !v;
+          try { localStorage.setItem("mfk_security_troubleshoot_open", next ? "1" : "0"); } catch { /* noop */ }
+          return next;
+        })}
         style={{
           width: "100%",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
@@ -1019,7 +1005,11 @@ export function SecurityView(props: SettingsViewProps) {
       {/* 安全防护（独立区块，仿字体选择字段交互；平时收起故障排查后无空隙） */}
       <button
         type="button"
-        onClick={() => setGuardOpen((v) => !v)}
+        onClick={() => setGuardOpen((v) => {
+          const next = !v;
+          try { localStorage.setItem("mfk_security_guard_open", next ? "1" : "0"); } catch { /* noop */ }
+          return next;
+        })}
         style={{
           width: "100%",
           display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,

@@ -1,10 +1,12 @@
-"""子代理（Sub-Agent）管理接口 — Phase SubAgent。
+"""子代理（Sub-Agent / 角色模板）管理接口 — Phase SubAgent + Orchestration 模板统一。
 
-子代理即工具：主 Agent 通过 delegate_sub_agent 工具将子任务委派给专门化子代理。
-本 router 提供子代理的 CRUD 管理（创建 / 查询 / 更新 / 删除），供前端管理面板使用。
+角色模板 = 子代理定义（is_sub_agent=True）：身份提示词 + 工具白名单，持久化于 agents 表。
+主 Agent 通过 delegate_sub_agent 委派，Orchestrator 通过 spawn_orchestration 按模板 spawn
+用完即弃实例。本 router 提供角色模板的 CRUD 管理（创建 / 查询 / 更新 / 删除），
+供前端管理面板使用。
 
 - 仅操作 is_sub_agent=True 的记录，绝不触碰普通 Agent。
-- 内置子代理（seed_agents.PRESET_AGENTS 中的 is_sub_agent 项）允许编辑但禁止删除，
+- 内置角色模板（seed_agents.PRESET_AGENTS 中的 is_sub_agent 项）允许编辑但禁止删除，
   避免误删后重启又被 seed 逻辑重建造成困惑。
 """
 from fastapi import APIRouter, HTTPException
@@ -17,8 +19,12 @@ from app.services.tools import tool_registry
 
 router = APIRouter()
 
-# 内置子代理 agent_id：禁止删除（seed 数据），但允许编辑
-BUILTIN_SUB_AGENT_IDS = {"sub_code_reviewer", "sub_researcher", "sub_file_analyst"}
+# 内置角色模板 agent_id：禁止删除（seed 数据），但允许编辑
+BUILTIN_SUB_AGENT_IDS = {
+    "sub_code_reviewer", "sub_researcher", "sub_file_analyst",
+    # 编排角色内置模板（与 app/core/orchestrator/roles.py 的 ROLE_TO_TEMPLATE_ID 对齐）
+    "sub_architecture", "sub_backend", "sub_frontend", "sub_testing", "sub_security",
+}
 
 
 class SubAgentInfo(BaseModel):

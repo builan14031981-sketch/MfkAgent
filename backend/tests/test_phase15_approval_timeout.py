@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
 
@@ -86,6 +86,8 @@ class TestApprovalTimeout:
         """审批超时 → status=denied + 超时文案 + 注册表已清理。"""
 
         async def _run():
+            from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+            set_approval_mode(ApprovalMode.SAFE)
             tool_call = {
                 "function": {"name": "run_command", "arguments": '{"command": "git push origin main"}'},
                 "id": "call_timeout",

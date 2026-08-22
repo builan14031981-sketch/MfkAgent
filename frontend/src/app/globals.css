@@ -94,6 +94,9 @@
   /* 弹层/模态遮罩：与主背景同色但加 alpha，深浅模式下都可形成层级感 */
   --overlay-modal: rgba(0, 0, 0, 0.32);
 
+  /* Focus ring */
+  --focus-ring: rgba(0, 113, 227, 0.32);
+
   /* Composer 卡片阴影：仅在 hover/聚焦/拖拽态使用的柔和阴影，比 --shadow-md 更轻 */
   --shadow-composer: 0 1px 2px rgba(0, 0, 0, 0.03), 0 2px 8px rgba(0, 0, 0, 0.04);
 
@@ -196,6 +199,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  outline: none;
 }
 
 /* 基础样式 */
@@ -834,4 +838,157 @@ button:active {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* ========================================
+ * Ctrl+滚轮 内容缩放（V4 2026-08-19）
+ * 框架固定，只缩放内容区域。通过 --app-content-zoom CSS 变量控制。
+ * ======================================== */
+[data-zoomable="sidebar-content"] {
+  zoom: var(--app-content-zoom, 1);
+}
+
+[data-zoomable="message-list"] {
+  zoom: var(--app-content-zoom, 1);
+}
+
+[data-zoomable="composer"] {
+  zoom: var(--app-content-zoom, 1);
+}
+
+/* ========================================
+ * Sidebar 按钮规范（2026-08-18 统一）
+ * 替代 inline onMouseEnter/Leave 模式
+ * ======================================== */
+
+/* 基础按钮：透明背景，hover 变灰 */
+.sb-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.sb-btn:hover { background: var(--bg-level-3); }
+
+/* 灰底按钮：bg-level-3，hover 变深 + 文字变亮 */
+.sb-btn--ghost {
+  border: none;
+  background: var(--bg-level-3);
+  cursor: pointer;
+  outline: none;
+  color: var(--text-level-3);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.sb-btn--ghost:hover { background: var(--bg-level-4); color: var(--text-level-1); }
+
+/* 图标按钮：透明 + 灰文字，hover 变深 */
+.sb-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-level-3);
+  padding: 0;
+  outline: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.sb-btn--icon:hover { background: var(--bg-level-3); color: var(--text-level-1); }
+
+/* 小型图标按钮（20px） */
+.sb-btn--icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-level-3);
+  padding: 0;
+  outline: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.sb-btn--icon-sm:hover { background: var(--bg-level-3); color: var(--color-primary); }
+
+/* 分段标题（sticky header）：透明背景，hover 变灰 */
+.sb-section-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 4px;
+  border: none;
+  background: var(--bg-level-1);
+  cursor: pointer;
+  outline: none;
+  transition: background var(--transition-fast);
+}
+.sb-section-hdr:hover { background: var(--bg-level-3); }
+
+/* 虚线占位按钮：虚线边框，hover 变主色 */
+.sb-btn--dashed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-primary);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-level-3);
+  text-align: left;
+  outline: none;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.sb-btn--dashed:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* 右键菜单项 */
+.ctx-menu-item {
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+.ctx-menu-item:hover { background: var(--bg-level-3) !important; }
+
+/* 项目列表操作图标 */
+.sb-project-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.sb-project-action:hover { background: var(--bg-level-3); }
+
+/* 描边按钮：透明底 + 1px 边框，hover 变主色 */
+.sb-btn--outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-primary);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-level-3);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.sb-btn--outline:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* 多会话标签栏呼吸指示动画 */
+@keyframes mfk-tab-pulse {
+  0%, 100% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 1; }
+}
+
 

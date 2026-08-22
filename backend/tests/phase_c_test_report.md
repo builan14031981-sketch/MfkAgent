@@ -1,7 +1,7 @@
 # MfkAgent Tool Runtime Phase C 测试报告
 
-- 时间: 2026-08-10 13:54:07
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseC_bc2bnfoe`
+- 时间: 2026-08-18 14:33:56
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseC_hhgw538m`
 - 测试模式: 单元级 (normalizer) + FastAPI TestClient + 脚本化 LLM
 
 ## 结果总览
@@ -9,12 +9,12 @@
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
 | 1 | Normalizer 单元用例 | ✅ PASS | 0ms |
-| 2 | 集成: XML invoke 归一化执行 | ✅ PASS | 1328ms |
-| 3 | 集成: 纯文本调用归一化执行 | ✅ PASS | 1016ms |
-| 4 | 集成: 解析失败回馈重生成 | ✅ PASS | 812ms |
-| 5 | 非流式审批明确拒绝 | ❌ FAIL | 0ms |
+| 2 | 集成: XML invoke 归一化执行 | ✅ PASS | 1127ms |
+| 3 | 集成: 纯文本调用归一化执行 | ✅ PASS | 911ms |
+| 4 | 集成: 解析失败回馈重生成 | ✅ PASS | 772ms |
+| 5 | 非流式审批明确拒绝 | ✅ PASS | 684ms |
 
-**通过率: 4/5**
+**通过率: 5/5**
 
 ### 1. Normalizer 单元用例
 
@@ -40,10 +40,10 @@
 
 ### 5. 非流式审批明确拒绝
 
-- 说明: LLM 轮次溢出：调用了第 2 轮
-
-> 失败: LLM 轮次溢出：调用了第 2 轮
+- case: nonstream_approval
+- rejected: True
+- chat_id: 4
 
 ## 结论
 
-❌ **1 项未通过**，详见上方明细。
+✅ **全部通过**：非标准工具调用可归一化执行；解析失败回馈重生成；非流式审批明确拒绝。

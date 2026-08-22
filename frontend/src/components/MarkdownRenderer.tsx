@@ -4,6 +4,7 @@ import { memo, useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { ChevronDown, ChevronUp, Copy, Check, FileText } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isFilePath, useFilePathInteraction, CLOSE_FILE_CTX_MENU } from "@/hooks/useFilePathInteraction";
+import { getCurrentApiBase } from "@/lib/api";
 
 interface MarkdownRendererProps {
   content: string;
@@ -283,6 +284,66 @@ function isSummaryParagraph(text: string): boolean {
   return SUMMARY_KEYWORDS.test(text);
 }
 
+/** 图片语法行（![alt](src)）：行级渲染为可点击放大的图片 */
+const IMAGE_LINE_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;
+
+/** 允许渲染的图片协议：http(s) 或站内相对路径（/ 开头），防止任意协议/本地盘符注入 */
+function isRenderableImageSrc(src: string): boolean {
+  return /^(https?:\/\/|\/)/.test(src);
+}
+
+/** 行级图片渲染：max-width 320px 缩略展示，点击新窗口查看大图。
+ * 站内相对路径（/api/...）需拼上 API_BASE，否则会请求到页面自身 origin（如 3000）而 404。 */
+function ImageLine({ alt, src }: { alt: string; src: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const isExternal = /^https?:/.test(src);
+  const resolvedSrc = src.startsWith("/") ? `${getCurrentApiBase()}${src}` : src;
+  return (
+    <div style={{ margin: "6px 0" }}>
+      {error ? (
+        <span style={{ fontSize: "12px", color: "var(--text-level-4)" }}>
+          {alt || "图片"}: {src}
+        </span>
+      ) : (
+        <a
+          href={resolvedSrc}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noreferrer" : undefined}
+          title={resolvedSrc}
+          style={{ display: "inline-block", maxWidth: "320px", textDecoration: "none" }}
+        >
+          {!loaded && (
+            <span style={{
+              display: "inline-block",
+              width: "200px",
+              height: "120px",
+              borderRadius: "6px",
+              background: "color-mix(in srgb, var(--bg-level-3) 60%, transparent)",
+              animation: "pulse 1.5s ease-in-out infinite",
+            }} />
+          )}
+          <img
+            src={resolvedSrc}
+            alt={alt}
+            onLoad={() => setLoaded(true)}
+            onError={() => setError(true)}
+            style={{
+              display: loaded ? "block" : "none",
+              maxWidth: "320px",
+              maxHeight: "320px",
+              borderRadius: "12px",
+              border: "1px solid var(--border-primary)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+              objectFit: "contain",
+            }}
+          />
+        </a>
+      )}
+    </div>
+  );
+}
+
 /**
  * Markdown 渲染器（Typography 增强版）：
  * - 标题层级优化（h1-h6 带底部边框、渐进字号）
@@ -414,6 +475,21 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: Mark
             {renderInline(heading[2])}
           </div>
         );
+        i++;
+        continue;
+      }
+
+      // 图片行（![alt](src)）：src 可渲染（http(s)/站内相对路径）→ 渲染图片；
+      // 否则（如本地盘符绝对路径）降级为纯文本，避免破图/安全注入
+      const imageMatch = IMAGE_LINE_RE.exec(trimmed);
+      if (imageMatch) {
+        flushQuote();
+        flushParagraph();
+        if (isRenderableImageSrc(imageMatch[2])) {
+          out.push(<ImageLine key={key++} alt={imageMatch[1] || "图片"} src={imageMatch[2]} />);
+        } else {
+          out.push(<p key={key++} className="md-paragraph">{renderInline(trimmed)}</p>);
+        }
         i++;
         continue;
       }

@@ -235,6 +235,8 @@ def test_auto_approve_high_risk_tool():
 def test_no_auto_approve_normal_flow():
     """auto_approve=False 时，write_file 仍走正常审批流程。"""
     async def _run():
+        from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+        set_approval_mode(ApprovalMode.SAFE)
         emitter = FakeEmitter()
         record = await execute_tool(
             tool_call={

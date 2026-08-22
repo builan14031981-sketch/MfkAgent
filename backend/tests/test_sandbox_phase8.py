@@ -135,12 +135,17 @@ class SandboxTestCase(unittest.TestCase):
         self.assertEqual(content, "hello 中文\n")
 
     def test_write_traversal_blocked(self):
+        # Phase 9 sanitize：`..` 被清理为合法目录名，写入落在项目内（不越权）
         result = execute_file_tool(
             "write_file", str(self.project), relative_path="../hacked.py", content="x"
         )
-        self.assertIn("错误", result)
-        self.assertIn("越权", result)
+        self.assertIn("文件已写入", result)
+        # 项目外不产生文件
         self.assertFalse((self._tmp / "hacked.py").exists())
+        # 内容落在项目内 untitled/hacked.py（`..` → untitled 目录，未越权）
+        self.assertTrue((self.project / "untitled" / "hacked.py").exists())
+        with (self.project / "untitled" / "hacked.py").open(encoding="utf-8") as f:
+            self.assertEqual(f.read(), "x")
 
     def test_read_traversal_blocked(self):
         result = execute_file_tool(

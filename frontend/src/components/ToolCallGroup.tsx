@@ -7,6 +7,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useProjectPath } from "@/lib/projectPathContext";
 import { CLOSE_FILE_CTX_MENU } from "@/hooks/useFilePathInteraction";
 import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export type ToolStatus = "pending" | "running" | "success" | "failed" | "cancelled";
 
@@ -361,39 +362,44 @@ export function ToolCallRow({ toolCall }: { toolCall: ToolCall }) {
               borderLeft: "1px solid var(--border-primary)",
             }}
           >
-            <pre
-              style={{
-                margin: 0,
-                maxHeight: "240px",
-                overflow: "auto",
-                fontSize: "12px",
-                lineHeight: "1.6",
-                fontFamily: "var(--font-geist-mono), var(--font-family)",
-                color: failed ? "var(--color-error)" : "var(--text-level-3)",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {logTruncated && logHead != null ? (
-                <>
-                  {logHead}
-                  <span
-                    style={{
-                      display: "block",
-                      padding: "4px 0",
-                      fontSize: "11px",
-                      color: "var(--text-level-4)",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    {t("chat.logTruncated", { count: String(logTotal) })}
-                  </span>
-                  {logTail}
-                </>
-              ) : (
-                detail
-              )}
-            </pre>
+            {normalized.tool === "generate_image" ? (
+              /* 文生图：结果首行为 ![alt](url)，用 Markdown 渲染出真实图片 */
+              <MarkdownRenderer content={detail || ""} />
+            ) : (
+              <pre
+                style={{
+                  margin: 0,
+                  maxHeight: "240px",
+                  overflow: "auto",
+                  fontSize: "12px",
+                  lineHeight: "1.6",
+                  fontFamily: "var(--font-geist-mono), var(--font-family)",
+                  color: failed ? "var(--color-error)" : "var(--text-level-3)",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {logTruncated && logHead != null ? (
+                  <>
+                    {logHead}
+                    <span
+                      style={{
+                        display: "block",
+                        padding: "4px 0",
+                        fontSize: "11px",
+                        color: "var(--text-level-4)",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {t("chat.logTruncated", { count: String(logTotal) })}
+                    </span>
+                    {logTail}
+                  </>
+                ) : (
+                  detail
+                )}
+              </pre>
+            )}
           </div>
         )}
       </div>
@@ -537,7 +543,15 @@ export function ToolCallGroup({
   else summary = t("chat.toolCallsCount", { count: String(normalized.length) });
 
   return (
-    <div style={{ marginBottom: "8px", minWidth: 0, opacity: cancelledAll ? 0.6 : 1 }}>
+    <div style={{
+      marginBottom: "8px",
+      minWidth: 0,
+      opacity: cancelledAll ? 0.6 : 1,
+      background: "var(--mf-bg-surface, var(--bg-level-3))",
+      border: "1px solid var(--mf-border-2, var(--border-secondary))",
+      borderRadius: "8px",
+      padding: "12px",
+    }}>
       <div
         style={{
           display: "flex",
@@ -606,3 +620,5 @@ export function ToolCallGroup({
     </div>
   );
 }
+
+

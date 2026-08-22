@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MARVIS Particle Lab</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #06060e; overflow: hidden; height: 100vh; width: 100vw; }
+  canvas { position: fixed; inset: 0; }
+
+  #ui {
+    position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 12px; z-index: 10;
+  }
+  #ui button {
+    padding: 10px 22px; border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 24px; background: rgba(255,255,255,0.05);
+    color: #aaa; font-size: 13px; font-family: "Segoe UI","Microsoft YaHei",sans-serif;
+    cursor: pointer; backdrop-filter: blur(8px); transition: all 0.3s;
+  }
+  #ui button:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.35); }
+  #ui button.active { background: rgba(120,180,255,0.18); border-color: rgba(120,180,255,0.5); color: #fff; }
+
+  #hint {
+    position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,0.25); font-size: 12px;
+    font-family: "Segoe UI","Microsoft YaHei",sans-serif;
+    transition: opacity 0.6s;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint">移动鼠标推开粒子 · 双击重置</div>
+<div id="ui">
+  <button data-idx="0" class="active">MARVIS</button>
+  <button data-idx="1">春江花月夜</button>
+  <button data-idx="2">Hello World</button>
+  <button data-idx="3">To be or not to be</button>
+</div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const hint = document.getElementById('hint');
+  const buttons = document.querySelectorAll('#ui button');
+
+  /* ---- 预设文字 ---- */
+  const phrases = ['MARVIS', '春江花月夜', 'Hello World', 'To be or not to be'];
+
+  /* ---- 粒子配置 ---- */
+  const N = 6000;
+  const px = new Float32Array(N), py = new Float32Array(N), pz = new Float32Array(N);
+  const vx = new Float32Array(N), vy = new Float32Array(N), vz = new Float32Array(N);
+  const tx = new Float32Array(N), ty = new Float32Array(N), tz = new Float32Array(N);
+  const hueArr = new Float32Array(N);
+  const phase = new Float32Array(N);
+
+  /* ---- 状态 ---- */
+  let W, H, CX, CY, dpr;
+  let mouseX = -9999, mouseY = -9999;
+  let activePhraseIdx = 0;
+  let t = 0;
+  let formTimer = 0;      // 入场计时器
+  let targetReady = false; // 目标坐标是否就绪
+
+  const REPEL_R = 120;
+  const REPEL_F = 10;
+  const SPRING_TEXT = 0.028;
+  const SPRING_SCATTER = 0.015;
+  const FRICTION = 0.84;
+  const FOV = 500;
+  const CAM_Z = 550;
+
+  /* ---- 自适应 ---- */
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    CX = W / 2; CY = H / 2;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (targetReady) buildTargets(phrases[activePhraseIdx]);
+  }
+
+  /* ---- 初始化粒子 ---- */
+  function initParticles() {
+    for (let i = 0; i < N; i++) {
+      px[i] = (Math.random() - 0.5) * W * 3;
+      py[i] = (Math.random() - 0.5) * H * 3;
+      pz[i] = (Math.random() - 0.5) * 1200;
+      vx[i] = vy[i] = vz[i] = 0;
+      hueArr[i] = Math.random() * 360;
+      phase[i] = Math.random() * Math.PI * 2;
+    }
+  }
+
+  /* ---- 位图采样 ---- */
+  function buildTargets(phrase) {
+    const cw = Math.floor(W), ch = Math.floor(H);
+    const off = document.createElement('canvas');
+    off.width = cw; off.height = ch;
+    const oc = off.getContext('2d');
+
+    // 多行换行
+    const words = phrase.split(' ');
+    const lines = [];
+    let cur = '';
+    const maxChars = phrase.length > 15 ? 14 : 22;
+    words.forEach(w => {
+      if ((cur + w).length > maxChars) { lines.push(cur.trim()); cur = w + ' '; }
+      else cur += w + ' ';
+    });
+    lines.push(cur.trim());
+
+    // 自适应字号
+    let fs = Math.min(cw * 0.75 / (maxChars * 0.5), ch * 0.55 / lines.length, 200);
+    if (phrase.length > 20) fs *= 0.75;
+
+    oc.fillStyle = '#fff';
+    oc.font = `900 ${fs}px "Segoe UI Black", "Microsoft YaHei", "PingFang SC", sans-serif`;
+    oc.textAlign = 'center';
+    oc.textBaseline = 'middle';
+
+    const lh = fs * 1.15;
+    const startY = ch / 2 - (lines.length - 1) * lh / 2;
+    lines.forEach((line, i) => oc.fillText(line, cw / 2, startY + i * lh));
+
+    const data = oc.getImageData(0, 0, cw, ch).data;
+    const pts = [];
+    const step = phrase.length > 25 ? 2 : 1;
+    const jitter = phrase.length > 20 ? 0.3 : 0.6;
+
+    for (let y = 0; y < ch; y += step) {
+      for (let x = 0; x < cw; x += step) {
+        if (data[(y * cw + x) * 4 + 3] > 110) {
+          pts.push(x - cw/2 + (Math.random()-0.5)*jitter, y - ch/2 + (Math.random()-0.5)*jitter);
+        }
+      }
+    }
+
+    // Fisher-Yates 打乱
+    for (let i = pts.length/2 - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const ia=i*2, ja=j*2;
+      let t=pts[ia]; pts[ia]=pts[ja]; pts[ja]=t;
+      t=pts[ia+1]; pts[ia+1]=pts[ja+1]; pts[ja+1]=t;
+    }
+
+    // 分配目标
+    const pc = pts.length / 2;
+    for (let i = 0; i < N; i++) {
+      const idx = (i % pc) * 2;
+      tx[i] = pts[idx];
+      ty[i] = pts[idx + 1];
+      tz[i] = 0;
+    }
+
+    targetReady = true;
+    formTimer = 0; // 重置入场
+  }
+
+  /* ---- 物理更新 ---- */
+  function update() {
+    t += 0.005;
+    formTimer += 0.016;
+
+    // 入场阶段用更强的弹簧系数
+    const easeIn = Math.min(formTimer / 1.5, 1); // 1.5 秒内完成入场
+    const sp = targetReady ? SPRING_TEXT + (SPRING_TEXT * 2) * (1 - easeIn) : SPRING_SCATTER;
+
+    for (let i = 0; i < N; i++) {
+      const useTarget = targetReady;
+
+      // 目标位置（无 3D 旋转，单纯 2D 吸附，更纯粹展示弹簧力）
+      const targetX = useTarget ? tx[i] : 0;
+      const targetY = useTarget ? ty[i] : 0;
+
+      vx[i] += (targetX - px[i]) * sp;
+      vy[i] += (targetY - py[i]) * sp;
+
+      // 光标排斥
+      if (useTarget && mouseX > 0) {
+        const dx = px[i] - mouseX;
+        const dy = py[i] - mouseY;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < REPEL_R * REPEL_R && d2 > 1) {
+          const d = Math.sqrt(d2);
+          const mag = REPEL_F * (1 - d / REPEL_R) * 6;
+          vx[i] += (dx / d) * mag;
+          vy[i] += (dy / d) * mag;
+        }
+      }
+
+      vx[i] *= FRICTION;
+      vy[i] *= FRICTION;
+
+      px[i] += vx[i];
+      py[i] += vy[i];
+
+      // 微弱的回中（无目标时）
+      if (!useTarget) {
+        vx[i] += -px[i] * 0.0003;
+        vy[i] += -py[i] * 0.0003;
+      }
+    }
+  }
+
+  /* ---- 渲染 ---- */
+  function draw() {
+    // 拖尾
+    ctx.fillStyle = 'rgba(6,6,14,0.25)';
+    ctx.fillRect(0, 0, W, H);
+
+    for (let i = 0; i < N; i++) {
+      const speed = Math.sqrt(vx[i]*vx[i] + vy[i]*vy[i]);
+
+      let h, s, l, a, r;
+
+      if (targetReady) {
+        // 文字模式：根据 X 位置渐变色调
+        const nx = (px[i] / (W * 0.6)) + 0.5; // -0.5~0.5 映射
+        h = 190 + nx * 60; // 180~250 蓝紫渐变
+        s = 70 + speed * 5;
+        l = 72 + speed * 8;
+        a = Math.min(1, 0.3 + speed * 0.15);
+        r = 1.4 + speed * 0.18;
+      } else {
+        h = (hueArr[i] + t * 40) % 360;
+        s = 80;
+        l = 72;
+        a = 0.55 + speed * 0.1;
+        r = 1.0 + speed * 0.12;
+      }
+
+      ctx.beginPath();
+      ctx.arc(px[i], py[i], r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${h},${s}%,${l}%,${a})`;
+      ctx.fill();
+
+      // 速度快的粒子加辉光
+      if (speed > 30) {
+        ctx.beginPath();
+        ctx.arc(px[i], py[i], r * 1.8, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${h},${s}%,${l}%,0.1)`;
+        ctx.fill();
+      }
+    }
+
+    // 光标辉光
+    if (targetReady && mouseX > 0) {
+      const grd = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, REPEL_R);
+      grd.addColorStop(0, 'rgba(180,220,255,0.06)');
+      grd.addColorStop(1, 'rgba(180,220,255,0)');
+      ctx.beginPath(); ctx.arc(mouseX, mouseY, REPEL_R, 0, Math.PI*2);
+      ctx.fillStyle = grd; ctx.fill();
+    }
+  }
+
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  /* ---- 交互 ---- */
+  canvas.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
+  canvas.addEventListener('mouseleave', () => { mouseX = -9999; mouseY = -9999; });
+  canvas.addEventListener('dblclick', () => {
+    // 重新飞散再聚合
+    targetReady = false;
+    for (let i = 0; i < N; i++) {
+      vx[i] += (Math.random() - 0.5) * 40;
+      vy[i] += (Math.random() - 0.5) * 40;
+    }
+    setTimeout(() => buildTargets(phrases[activePhraseIdx]), 600);
+  });
+
+  function switchPhrase(idx) {
+    activePhraseIdx = idx;
+    targetReady = false;
+    // 飞散
+    for (let i = 0; i < N; i++) {
+      vx[i] += (Math.random() - 0.5) * 50;
+      vy[i] += (Math.random() - 0.5) * 50;
+    }
+    // 延迟聚合
+    setTimeout(() => buildTargets(phrases[idx]), 500);
+
+    buttons.forEach(b => b.classList.remove('active'));
+    buttons[idx].classList.add('active');
+    hint.style.opacity = '1';
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx);
+      if (idx !== activePhraseIdx) switchPhrase(idx);
+    });
+  });
+
+  /* ---- 启动 ---- */
+  resize();
+  initParticles();
+  buildTargets(phrases[0]);
+  loop();
+
+  window.addEventListener('resize', resize);
+
+  // 几秒后淡化提示
+  setTimeout(() => { hint.style.opacity = '0'; }, 5000);
+})();
+</script>
+</body>
+</html>

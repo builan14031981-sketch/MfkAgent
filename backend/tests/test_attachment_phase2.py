@@ -22,7 +22,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -38,6 +38,7 @@ os.environ["QWEN_API_KEY"] = ""
 os.environ["GOOGLE_API_KEY"] = ""
 
 import app.models.agent as _agent_models  # noqa: F401, E402
+import app.models.persona as _persona_models  # noqa: F401, E402
 from app.core.database import engine as _engine, Base as _Base, SessionLocal  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 

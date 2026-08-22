@@ -20,6 +20,11 @@ init_logging()
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
 
+# 自定义端点：seed 内置模板（FreeLLMAPI）+ 加载到 PROVIDERS
+from app.core.model_providers import seed_builtin_custom_providers, reload_custom_providers
+seed_builtin_custom_providers()
+reload_custom_providers()
+
 # 预置插件 seed（需在 create_all 之后，表存在才能写入）
 from app.services.plugin import plugin_manager as _pm
 _pm.seed_default_plugins()
@@ -66,10 +71,15 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN thinking_mode VARCHAR(20) DEFAULT 'none'"))
             if "mode" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN mode VARCHAR(10) DEFAULT 'build'"))
+            if "permission_mode" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN permission_mode VARCHAR(10) DEFAULT 'standard'"))
             if "is_archived" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
             if "archived_at" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN archived_at DATETIME"))
+            # 圆桌模式
+            if "roundtable_config" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN roundtable_config JSON DEFAULT '{}'"))
 
     if "projects" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("projects")}
@@ -94,6 +104,9 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE messages ADD COLUMN timeline JSON"))
             if "task_graph" not in cols:
                 conn.execute(sa.text("ALTER TABLE messages ADD COLUMN task_graph JSON"))
+            # 圆桌模式：消息发送者
+            if "agent_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN agent_id VARCHAR(50)"))
 
     if "agents" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("agents")}
@@ -123,6 +136,12 @@ def _ensure_schema():
                 conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN confidence FLOAT DEFAULT 0.8"))
             if "source_chat_id" not in cols:
                 conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN source_chat_id INTEGER"))
+            if "is_active" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+            if "last_accessed_at" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN last_accessed_at DATETIME"))
+            if "access_count" not in cols:
+                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN access_count INTEGER DEFAULT 0"))
 
     if "agent_runs" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("agent_runs")}
@@ -175,7 +194,7 @@ def _seed_sub_agents():
 _seed_sub_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, tts as tts_api, workflows, autotasks  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -337,11 +356,15 @@ app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
 app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
+app.include_router(tts_api.router, prefix="/api/tts", tags=["tts"])
 app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 app.include_router(proxy_api.router, prefix="/api/proxy", tags=["proxy"])
 app.include_router(terminal_api.router, prefix="/api", tags=["terminal"])
 app.include_router(browser_api.router, prefix="/api", tags=["browser"])
+app.include_router(feishu_api.router, prefix="/api/feishu", tags=["feishu"])
+app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
+app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"])
 
 # 关闭时清理所有终端 PTY 会话
 @app.on_event("shutdown")
@@ -353,6 +376,28 @@ async def _shutdown_terminal():
 async def _shutdown_browser():
     from app.core.browser_session import browser_manager
     browser_manager.shutdown()
+
+# 证据化收尾：启动时回收进程重启前遗留的 status=running 陈旧 run（1281/1229/1234 类僵尸），
+# 置为 failed 并补写 error 证据事件，避免"进行中"永远挂着。
+@app.on_event("startup")
+async def _recover_stale_runs_on_startup():
+    import asyncio
+    try:
+        from app.core.agent_runtime.recorder import runtime_event_recorder
+        recovered = await asyncio.to_thread(runtime_event_recorder.recover_stale_runs)
+        if recovered:
+            logger.warning("启动回收陈旧 AgentRun %d 个（interrupted by restart）", recovered)
+    except Exception as e:
+        logger.warning("启动回收陈旧 AgentRun 异常（已忽略不阻断启动）: %s", e)
+
+@app.on_event("startup")
+async def _start_feishu_ws():
+    try:
+        from app.services.feishu_ws import start as start_feishu_ws
+        if getattr(settings, "FEISHU_WS_ENABLED", True):
+            start_feishu_ws()
+    except Exception as e:
+        logger.warning("飞书 WebSocket 启动异常（已忽略不阻断启动）: %s", e)
 
 @app.get("/")
 async def root():
@@ -379,6 +424,6 @@ if __name__ == "__main__":
     write_port_file(port)
 
     try:
-        uvicorn.run("main:app", host="127.0.0.1", port=port, reload=False)
+        uvicorn.run(app, host="127.0.0.1", port=port, reload=False)
     finally:
         clear_port_file()

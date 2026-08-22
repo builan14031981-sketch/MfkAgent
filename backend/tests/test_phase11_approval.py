@@ -11,12 +11,18 @@
 import sys
 import os
 import asyncio
+import tempfile
 import unittest
 from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.core.tool_runtime.approval import ApprovalRegistry, approval_registry
+from app.core.tool_runtime.approval_policy import (
+    set_approval_mode,
+    ApprovalMode,
+    DEFAULT_APPROVAL_MODE,
+)
 from app.core.tool_runtime.risk_engine import (
     CommandRiskEngine,
     command_risk_engine,
@@ -25,6 +31,10 @@ from app.core.tool_runtime.risk_engine import (
     _DESTRUCTIVE_PATTERNS,
     _WRITE_PATTERNS,
 )
+
+
+# Windows 无 /tmp，使用真实临时目录作为沙箱项目根（跨平台兼容）
+_TEST_PROJECT = tempfile.mkdtemp(prefix="mfk_phase11_")
 
 
 # ──── ApprovalRegistry 单元测试 ────
@@ -337,7 +347,17 @@ class TestApprovalNonBlocking(unittest.TestCase):
 # ──── execute_tool 审批流程测试 ────
 
 class TestExecuteToolApproval(unittest.TestCase):
-    """execute_tool + complete_approval 审批闭环。"""
+    """execute_tool + complete_approval 审批闭环。
+
+    使用 SAFE 模式：git push 属 WRITE 风险，仅 SAFE（所有写入需审批）下
+    才会走审批分支返回 awaiting_approval；STANDARD 默认会将其自动放行执行。
+    """
+
+    def setUp(self):
+        set_approval_mode(ApprovalMode.SAFE)
+
+    def tearDown(self):
+        set_approval_mode(DEFAULT_APPROVAL_MODE)
 
     def test_high_risk_returns_pending(self):
         """HIGH_RISK 命令应返回 awaiting_approval record。"""
@@ -351,7 +371,7 @@ class TestExecuteToolApproval(unittest.TestCase):
             }
             record = await execute_tool(
                 tool_call=tool_call,
-                project_path="/tmp/test_project",
+                project_path=_TEST_PROJECT,
                 read_only=False,
                 ctx={"chat_id": 1},
                 emit=None,
@@ -377,7 +397,7 @@ class TestExecuteToolApproval(unittest.TestCase):
             }
             record = await execute_tool(
                 tool_call=tool_call,
-                project_path="/tmp/test_project",
+                project_path=_TEST_PROJECT,
                 read_only=False,
                 ctx={"chat_id": 1},
                 emit=None,
@@ -407,7 +427,7 @@ class TestExecuteToolApproval(unittest.TestCase):
                 }
                 record = await execute_tool(
                     tool_call=tool_call,
-                    project_path="/tmp/test_project",
+                    project_path=_TEST_PROJECT,
                     read_only=False,
                     ctx={"chat_id": 1},
                     emit=None,
@@ -430,7 +450,7 @@ class TestExecuteToolApproval(unittest.TestCase):
             }
             record = await execute_tool(
                 tool_call=tool_call,
-                project_path="/tmp/test_project",
+                project_path=_TEST_PROJECT,
                 read_only=False,
                 ctx={"chat_id": 1},
                 emit=None,
@@ -448,7 +468,7 @@ class TestExecuteToolApproval(unittest.TestCase):
                 new_callable=AsyncMock,
             ) as mock_run:
                 mock_run.return_value = "Everything up-to-date"
-                final = await complete_approval(record, project_path="/tmp/test_project")
+                final = await complete_approval(record, project_path=_TEST_PROJECT)
 
             self.assertEqual(final["status"], "success")
             self.assertEqual(final["result"], "Everything up-to-date")
@@ -467,7 +487,7 @@ class TestExecuteToolApproval(unittest.TestCase):
             }
             record = await execute_tool(
                 tool_call=tool_call,
-                project_path="/tmp/test_project",
+                project_path=_TEST_PROJECT,
                 read_only=False,
                 ctx={"chat_id": 1},
                 emit=None,
@@ -498,7 +518,7 @@ class TestPlanModeDenial(unittest.TestCase):
             }
             record = await execute_tool(
                 tool_call=tool_call,
-                project_path="/tmp/test_project",
+                project_path=_TEST_PROJECT,
                 read_only=True,  # Plan 模式
                 ctx={"chat_id": 1},
                 emit=None,
@@ -518,7 +538,7 @@ class TestPlanModeDenial(unittest.TestCase):
             }
             record = await execute_tool(
                 tool_call=tool_call,
-                project_path="/tmp/test_project",
+                project_path=_TEST_PROJECT,
                 read_only=True,
                 ctx={"chat_id": 1},
                 emit=None,

@@ -30,7 +30,7 @@ import threading
 import time
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True)
 
@@ -453,7 +453,8 @@ def test_nonstream_run_command_passed(project_dir: Path) -> dict:
         result = asyncio.run(_run())
 
     assert "验证通过" in result.content, result.content
-    assert len(calls) == 2, f"应有 2 轮 call_once，实际 {len(calls)}"
+    # 工具轮 + 总结轮 + Phase 11 自查轮 = 3 轮 call_once
+    assert len(calls) == 3, f"应有 3 轮 call_once（工具+总结+自查），实际 {len(calls)}"
     round2_text = "\n".join(m.get("content") or "" for m in calls[1])
     assert "验证反馈" not in round2_text, "验证通过不应注入反馈"
 
@@ -500,7 +501,8 @@ def test_nonstream_run_command_need_retry(project_dir: Path) -> dict:
         result = asyncio.run(_run())
 
     assert "编译失败" in result.content, result.content
-    assert len(calls) == 2, f"应有 2 轮 call_once，实际 {len(calls)}"
+    # 工具轮 + 反馈重试轮 + Phase 11 自查轮 = 3 轮 call_once
+    assert len(calls) == 3, f"应有 3 轮 call_once（工具+重试+自查），实际 {len(calls)}"
     round2_text = "\n".join(m.get("content") or "" for m in calls[1])
     assert "【验证反馈】" in round2_text, f"下一轮应看到验证反馈，实际: {round2_text[:200]}"
 
@@ -525,6 +527,9 @@ def main() -> int:
     print("MfkAgent Verification Phase E4 自动化验证")
     print("临时工作目录:", _TEMP_DIR)
     print("=" * 70)
+
+    from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+    set_approval_mode(ApprovalMode.SAFE)
 
     project_dir = _TEMP_DIR / "project"
     project_dir.mkdir(exist_ok=True)

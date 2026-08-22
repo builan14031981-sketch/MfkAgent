@@ -39,15 +39,20 @@ class PermissionFilter:
         "probe_ui", "capture_screenshot", "analyze_screenshot",
         # 文生图（万相 API，外部付费服务，需审批）
         "generate_image",
+        # 飞书多维表格（只读：list_bases / query_records；写入：write_records / create_base）
+        "feishu_list_bases", "feishu_query_records",
+        "feishu_write_records", "feishu_create_base",
+        # 飞书 IM（P1：发文本 / 图片 / 文件；列群只读）
+        "feishu_send_message", "feishu_send_image", "feishu_send_file",
+        "feishu_list_chats",
     ]
 
     # 写入/有副作用工具（plan 模式移除；派生自 risk_engine，与执行闸保持同步）
     _plan_write_tools = set(PLAN_FORBIDDEN_TOOLS)
 
-    # 项目专有工具（无 project_path 时移除）
+    # 必须绑定项目才可使用的写入与环境专有工具（无 project_path 时移除；只读文件工具如 read_file/list_files/find_files/search_files 全局可用）
     _project_only_tools = {
-        "read_file", "write_file", "list_files", "find_files", "edit_file", "apply_patch",
-        "search_files",
+        "write_file", "edit_file", "apply_patch",
         "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
         "git_commit", "git_restore", "git_clone", "git_pull", "git_push", "git_fetch",
         "probe_ui", "capture_screenshot", "analyze_screenshot",

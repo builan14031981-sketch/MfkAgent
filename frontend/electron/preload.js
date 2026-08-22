@@ -19,4 +19,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   openInFolder: (filePath) => ipcRenderer.invoke("open-in-folder", filePath),
   openPath: (dirPath) => ipcRenderer.invoke("open-path", dirPath),
+  // 自定义区域截图：类似 QQ/豆包的截图工具
+  startScreenshot: () => ipcRenderer.invoke("start-screenshot"),
 });

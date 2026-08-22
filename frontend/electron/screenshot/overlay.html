@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Screenshot</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      cursor: crosshair;
+      user-select: none;
+      -webkit-user-select: none;
+      /* 默认完全透明，看到实时桌面；不做全屏变暗 */
+      background: transparent;
+    }
+
+    /* 四个方向遮罩：选中区域外变暗，选中区域内透明（亮） */
+    .mask {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      display: none;
+    }
+    #mask-top { top: 0; left: 0; right: 0; }
+    #mask-bottom { bottom: 0; left: 0; right: 0; }
+    #mask-left { left: 0; }
+    #mask-right { right: 0; }
+
+    /* 选框：蓝色边框，无 box-shadow（透明窗口中 box-shadow 不可靠） */
+    #selection-box {
+      position: absolute;
+      border: 2px solid #4a9eff;
+      display: none;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    /* 十字线：鼠标位置的水平和垂直引导线 */
+    .crosshair-line {
+      position: absolute;
+      background: rgba(74, 158, 255, 0.4);
+      pointer-events: none;
+      display: none;
+    }
+    #crosshair-h {
+      left: 0; right: 0;
+      height: 1px;
+    }
+    #crosshair-v {
+      top: 0; bottom: 0;
+      width: 1px;
+    }
+
+    /* 选框尺寸标签 */
+    #size-label {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font-size: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: none;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    /* 工具栏 */
+    #toolbar {
+      position: absolute;
+      background: #2b2b2b;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px 8px;
+      display: none;
+      gap: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      z-index: 100;
+    }
+    .toolbar-btn {
+      background: transparent;
+      border: none;
+      color: #ddd;
+      font-size: 13px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s;
+    }
+    .toolbar-btn:hover {
+      background: #3a3a3a;
+      color: #fff;
+    }
+    .toolbar-btn.primary {
+      background: #4a9eff;
+      color: #fff;
+    }
+    .toolbar-btn.primary:hover {
+      background: #3a8eef;
+    }
+    .toolbar-divider {
+      width: 1px;
+      background: #444;
+      margin: 2px 4px;
+    }
+
+    /* 提示文字 */
+    #hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.95);
+      font-size: 18px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-align: center;
+      pointer-events: none;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.3);
+      padding: 16px 28px;
+      border-radius: 10px;
+      backdrop-filter: blur(4px);
+    }
+    #hint small {
+      display: block;
+      font-size: 13px;
+      margin-top: 8px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <!-- 四个方向遮罩：选中区域外变暗 -->
+  <div id="mask-top" class="mask"></div>
+  <div id="mask-bottom" class="mask"></div>
+  <div id="mask-left" class="mask"></div>
+  <div id="mask-right" class="mask"></div>
+
+  <!-- 十字线引导 -->
+  <div id="crosshair-h" class="crosshair-line"></div>
+  <div id="crosshair-v" class="crosshair-line"></div>
+
+  <!-- 选框 -->
+  <div id="selection-box"></div>
+  <div id="size-label"></div>
+
+  <!-- 提示文字 -->
+  <div id="hint">拖拽鼠标选择截图区域<small>ESC 取消 · Enter 确认</small></div>
+
+  <!-- 工具栏 -->
+  <div id="toolbar">
+    <button class="toolbar-btn" id="btn-redo" title="重新选择">↻ 重选</button>
+    <div class="toolbar-divider"></div>
+    <button class="toolbar-btn" id="btn-cancel" title="取消 (ESC)">✕ 取消</button>
+    <button class="toolbar-btn primary" id="btn-confirm" title="确认 (Enter)">✓ 确认</button>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require("electron");
+
+    let isSelecting = false;
+    let hasSelection = false;
+    let startX = 0, startY = 0;
+    let currentX = 0, currentY = 0;
+
+    const selectionBox = document.getElementById("selection-box");
+    const sizeLabel = document.getElementById("size-label");
+    const toolbar = document.getElementById("toolbar");
+    const hint = document.getElementById("hint");
+    const crosshairH = document.getElementById("crosshair-h");
+    const crosshairV = document.getElementById("crosshair-v");
+    const maskTop = document.getElementById("mask-top");
+    const maskBottom = document.getElementById("mask-bottom");
+    const maskLeft = document.getElementById("mask-left");
+    const maskRight = document.getElementById("mask-right");
+
+    // 显示所有遮罩
+    function showMasks() {
+      maskTop.style.display = "block";
+      maskBottom.style.display = "block";
+      maskLeft.style.display = "block";
+      maskRight.style.display = "block";
+    }
+
+    // 隐藏所有遮罩
+    function hideMasks() {
+      maskTop.style.display = "none";
+      maskBottom.style.display = "none";
+      maskLeft.style.display = "none";
+      maskRight.style.display = "none";
+    }
+
+    // 根据选框位置更新四个方向遮罩的大小
+    function updateMasks(rect) {
+      // 上遮罩：从顶部到选框顶部
+      maskTop.style.height = rect.y + "px";
+      // 下遮罩：从选框底部到底部
+      maskBottom.style.height = (window.innerHeight - rect.y - rect.height) + "px";
+      // 左遮罩：选框左侧，高度等于选框高度
+      maskLeft.style.top = rect.y + "px";
+      maskLeft.style.height = rect.height + "px";
+      maskLeft.style.width = rect.x + "px";
+      // 右遮罩：选框右侧，高度等于选框高度
+      maskRight.style.top = rect.y + "px";
+      maskRight.style.height = rect.height + "px";
+      maskRight.style.width = (window.innerWidth - rect.x - rect.width) + "px";
+    }
+
+    // 鼠标移动：更新十字线位置
+    document.addEventListener("mousemove", (e) => {
+      if (!isSelecting) {
+        // 未选择时显示十字线引导
+        crosshairH.style.top = e.clientY + "px";
+        crosshairV.style.left = e.clientX + "px";
+        crosshairH.style.display = "block";
+        crosshairV.style.display = "block";
+        return;
+      }
+      // 选择中：隐藏十字线，更新选框
+      crosshairH.style.display = "none";
+      crosshairV.style.display = "none";
+      currentX = e.clientX;
+      currentY = e.clientY;
+      updateSelectionBox();
+    });
+
+    // 鼠标离开窗口：隐藏十字线
+    document.addEventListener("mouseleave", () => {
+      if (!isSelecting) {
+        crosshairH.style.display = "none";
+        crosshairV.style.display = "none";
+      }
+    });
+
+    // 鼠标按下：开始选择
+    document.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      if (e.target.closest("#toolbar")) return;
+
+      isSelecting = true;
+      hasSelection = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      currentX = e.clientX;
+      currentY = e.clientY;
+
+      // 显示四个方向遮罩
+      showMasks();
+      // 隐藏十字线和提示文字
+      crosshairH.style.display = "none";
+      crosshairV.style.display = "none";
+      hint.style.display = "none";
+
+      selectionBox.style.display = "block";
+      selectionBox.style.left = startX + "px";
+      selectionBox.style.top = startY + "px";
+      selectionBox.style.width = "0px";
+      selectionBox.style.height = "0px";
+
+      toolbar.style.display = "none";
+      sizeLabel.style.display = "none";
+    });
+
+    // 鼠标释放：结束选择
+    document.addEventListener("mouseup", (e) => {
+      if (!isSelecting) return;
+      isSelecting = false;
+
+      const rect = getSelectionRect();
+      if (rect.width < 5 || rect.height < 5) {
+        // 选择区域太小，取消选择
+        hideMasks();
+        selectionBox.style.display = "none";
+        sizeLabel.style.display = "none";
+        hint.style.display = "block";
+        return;
+      }
+
+      hasSelection = true;
+      showToolbar();
+    });
+
+    // 更新选框位置和大小
+    function updateSelectionBox() {
+      const rect = getSelectionRect();
+      selectionBox.style.left = rect.x + "px";
+      selectionBox.style.top = rect.y + "px";
+      selectionBox.style.width = rect.width + "px";
+      selectionBox.style.height = rect.height + "px";
+
+      // 更新四个方向遮罩
+      updateMasks(rect);
+
+      // 更新尺寸标签
+      sizeLabel.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
+      sizeLabel.style.left = rect.x + "px";
+      sizeLabel.style.top = (rect.y - 24) + "px";
+      sizeLabel.style.display = "block";
+    }
+
+    // 获取选框的矩形（处理反向拖拽）
+    function getSelectionRect() {
+      const x = Math.min(startX, currentX);
+      const y = Math.min(startY, currentY);
+      const width = Math.abs(currentX - startX);
+      const height = Math.abs(currentY - startY);
+      return { x, y, width, height };
+    }
+
+    // 显示工具栏
+    function showToolbar() {
+      const rect = getSelectionRect();
+      let toolbarY = rect.y + rect.height + 8;
+      if (toolbarY + 50 > window.innerHeight) {
+        toolbarY = rect.y - 45;
+      }
+      let toolbarX = rect.x + rect.width - 220;
+      if (toolbarX < 8) toolbarX = 8;
+
+      toolbar.style.left = toolbarX + "px";
+      toolbar.style.top = toolbarY + "px";
+      toolbar.style.display = "flex";
+    }
+
+    // 确认截图
+    function confirmScreenshot() {
+      if (!hasSelection) return;
+      const rect = getSelectionRect();
+      const selection = {
+        x: Math.round(rect.x + window.screenX),
+        y: Math.round(rect.y + window.screenY),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+      };
+      ipcRenderer.send("screenshot:confirm", selection);
+    }
+
+    // 取消截图
+    function cancelScreenshot() {
+      ipcRenderer.send("screenshot:cancel");
+    }
+
+    // 重新选择
+    function redoSelection() {
+      hasSelection = false;
+      hideMasks();
+      selectionBox.style.display = "none";
+      toolbar.style.display = "none";
+      sizeLabel.style.display = "none";
+      hint.style.display = "block";
+    }
+
+    // 工具栏按钮事件
+    document.getElementById("btn-confirm").addEventListener("click", confirmScreenshot);
+    document.getElementById("btn-cancel").addEventListener("click", cancelScreenshot);
+    document.getElementById("btn-redo").addEventListener("click", redoSelection);
+
+    // 键盘快捷键
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelScreenshot();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (hasSelection) confirmScreenshot();
+      }
+    });
+
+    // 防止右键菜单
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    // 主进程通知重置状态（每次显示截图窗口前调用，避免上一次的状态残留）
+    ipcRenderer.on("screenshot:reset", () => {
+      isSelecting = false;
+      hasSelection = false;
+      startX = 0;
+      startY = 0;
+      currentX = 0;
+      currentY = 0;
+      // 隐藏所有 UI
+      hideMasks();
+      selectionBox.style.display = "none";
+      sizeLabel.style.display = "none";
+      toolbar.style.display = "none";
+      crosshairH.style.display = "none";
+      crosshairV.style.display = "none";
+      // 显示提示文字
+      hint.style.display = "block";
+    });
+  </script>
+</body>
+</html>

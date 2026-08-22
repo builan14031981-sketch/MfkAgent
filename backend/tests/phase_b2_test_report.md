@@ -1,21 +1,21 @@
 # MfkAgent Tool Runtime Phase B-2 测试报告
 
-- 时间: 2026-08-10 21:39:21
-- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseB2_lse5deg3`
+- 时间: 2026-08-18 14:33:50
+- 临时工作目录: `C:\Users\Asus\AppData\Local\Temp\mfk_phaseB2_n7ld41p1`
 - 测试模式: 单元级 (permission/runtime) + FastAPI TestClient + 脚本化 LLM
 
 ## 结果总览
 
 | # | 用例 | 结果 | 耗时 |
 |---|------|------|------|
-| 1 | 权限目录组合 (permission.resolve) | ✅ PASS | 0ms |
-| 2 | 目录与消息无关 (意图软提示) | ✅ PASS | 15ms |
-| 3 | git_status 只读自动执行 | ✅ PASS | 2735ms |
-| 4 | git_commit 触发审批并提交 | ❌ FAIL | 0ms |
-| 5 | write_file plan 直接拒绝 | ✅ PASS | 266ms |
+| 1 | 权限目录组合 (permission.resolve) | ✅ PASS | 7ms |
+| 2 | 目录与消息无关 (意图软提示) | ✅ PASS | 19ms |
+| 3 | git_status 只读自动执行 | ✅ PASS | 2243ms |
+| 4 | git_commit 触发审批并提交 | ✅ PASS | 2007ms |
+| 5 | write_file plan 直接拒绝 | ✅ PASS | 197ms |
 | 6 | 审批注册表无残留 | ✅ PASS | 0ms |
 
-**通过率: 5/6**
+**通过率: 6/6**
 
 ## 验证明细
 
@@ -38,9 +38,10 @@
 
 ### 4. git_commit 触发审批并提交
 
-- 说明: 20.0s 内审批未注册。state={'ok': True}
-
-> 失败: 20.0s 内审批未注册。state={'ok': True}
+- tool: git_commit
+- approval_gate: True
+- committed: True
+- chat_id: 2
 
 ### 5. write_file plan 直接拒绝
 
@@ -56,4 +57,4 @@
 
 ## 结论
 
-❌ **1 项未通过**，详见上方明细。
+✅ **全部通过**：权限决定工具可见性、模型决定调用，写入类工具统一走审批/拒绝。

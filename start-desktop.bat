@@ -1,65 +1,73 @@
 @echo off
 chcp 65001 >nul
-echo Starting MfkAgent Desktop...
+title MfkAgent Desktop 桌面端启动
+echo ========================================
+echo   MfkAgent Desktop 桌面端启动
+echo ========================================
 
-:: 后端 Python 解释器（3.14，已装 fastapi/sqlalchemy；PATH 中的 python 可能被其它运行时劫持）
+:: 1. 探测 Python 解释器
 set "PYTHON=C:\Users\Asus\AppData\Local\Programs\Python\Python314\python.exe"
+if not exist "%PYTHON%" set "PYTHON=python"
 
+:: 2. 启动 Backend (port 8001)
 echo.
-echo [1/3] Starting Backend (auto-detecting port)...
-:: 清理占用 8001 端口的旧后端进程,确保加载最新代码
+echo [1/3] 启动 Backend 守护进程 (port 8001)...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001 ^| findstr LISTENING') do (
-    echo Cleaning up stale backend process PID %%a ...
     taskkill /pid %%a /f >nul 2>&1
 )
-:: 清理上次强杀后端残留的端口文件，避免读到旧端口
 if exist "%~dp0backend\.mfkagent_port" del "%~dp0backend\.mfkagent_port"
-start "MfkAgent Backend" cmd /c "cd /d %~dp0backend && %PYTHON% main.py"
+start "Backend Guardian" /min cmd /c "powershell.exe -NoProfile -ExecutionPolicy Bypass -File %~dp0backend_guardian.ps1"
 
-echo Waiting for backend port file...
-set BACKEND_PORT=8001
-REM Phase 9 P1: 等待端口文件就绪（最多 10 秒），读取自动检测到的端口
-for /L %%i in (1,1,20) do (
-    if exist "%~dp0backend\.mfkagent_port" (
-        set /p BACKEND_PORT=<"%~dp0backend\.mfkagent_port"
-        echo Backend port detected: %BACKEND_PORT%
-        goto :port_ready
-    )
-    timeout /t 1 /nobreak >nul
+echo   等待 Backend 就绪...
+set /a tries=0
+:wait_backend_ready
+netstat -ano | findstr :8001 | findstr LISTENING >nul
+if not errorlevel 1 goto backend_ready
+set /a tries+=1
+if %tries% geq 30 (
+    echo [警告] Backend 启动超时，继续启动前端...
+    goto start_frontend_dev
 )
-echo WARNING: Port file not found, using default port 8001
-:port_ready
+ping 127.0.0.1 -n 2 >nul
+goto wait_backend_ready
 
-echo Waiting for backend at http://127.0.0.1:%BACKEND_PORT% ...
-powershell -Command "$port=%BACKEND_PORT%; $max=60; for($i=0; $i -lt $max; $i++) { try { $r=Invoke-WebRequest -Uri http://127.0.0.1:$port/health -TimeoutSec 2 -UseBasicParsing; if($r.StatusCode -eq 200){ Write-Host 'Backend ready!'; exit 0 }} catch { Write-Host ('Waiting... (' + ($i+1) + '/' + $max + ')'); Start-Sleep 1 } }; Write-Host 'TIMEOUT: Backend did not start within 60s'; exit 1"
-if %ERRORLEVEL% NEQ 0 (
-  echo [ERROR] Backend failed to start. Aborting.
-  pause
-  exit /b 1
-)
+:backend_ready
+echo   Backend 已就绪 (http://127.0.0.1:8001)
 
-echo [2/3] Starting Frontend (port 3000)...
-:: 清理占用 3000 端口的旧前端进程，确保加载最新代码（Electron dev 硬编码加载 3000）
+:: 3. 启动 Frontend Dev (port 3000)
+:start_frontend_dev
+echo.
+echo [2/3] 启动 Frontend Dev Server (port 3000)...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do (
-  echo Cleaning up stale frontend process PID %%a ...
-  taskkill /pid %%a /f >nul 2>&1
+    taskkill /pid %%a /f >nul 2>&1
 )
 start "MfkAgent Frontend" cmd /c "cd /d %~dp0frontend && npm run dev"
 
-echo Waiting for frontend at http://localhost:3000 ...
-powershell -Command "$max=60; for($i=0; $i -lt $max; $i++) { try { $r=Invoke-WebRequest -Uri http://localhost:3000 -TimeoutSec 2 -UseBasicParsing; if($r.StatusCode -eq 200){ Write-Host 'Frontend ready!'; exit 0 }} catch { Write-Host ('Waiting... (' + ($i+1) + '/' + $max + ')'); Start-Sleep 1 } }; Write-Host 'TIMEOUT: Frontend did not start within 60s'; exit 1"
-if %ERRORLEVEL% NEQ 0 (
-  echo [ERROR] Frontend failed to start. Aborting.
-  pause
-  exit /b 1
-)
+echo   等待 Frontend 就绪...
+set /a f_tries=0
+:wait_frontend_ready
+netstat -ano | findstr :3000 | findstr LISTENING >nul
+if not errorlevel 1 goto frontend_ready
+set /a f_tries+=1
+if %f_tries% geq 45 goto start_electron
+ping 127.0.0.1 -n 2 >nul
+goto wait_frontend_ready
 
-echo [3/3] Starting Electron...
+:frontend_ready
+echo   Frontend 已就绪 (http://localhost:3000)
+
+:: 4. 启动 Electron 桌面窗口
+:start_electron
+echo.
+echo [3/3] 启动 Electron 桌面客户端...
 set ELECTRON_DEV=true
-set MFK_BACKEND_PORT=%BACKEND_PORT%
+set MFK_BACKEND_PORT=8001
 start "MfkAgent Electron" cmd /c "cd /d %~dp0frontend && npx electron ."
 
 echo.
-echo MfkAgent Desktop started!
+echo ========================================
+echo   MfkAgent Desktop 已成功拉起！
+echo ========================================
 echo.
-pause
+echo 按任意键关闭本启动窗口...
+pause >nul

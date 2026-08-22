@@ -7,11 +7,16 @@ import os
 import base64
 import logging
 import time
+import asyncio
 from app.core.config import settings
-from app.core.model_providers import PROVIDERS, PROVIDER_MAP
+import app.core.model_providers as _mp
 from app.core.tool_runtime.normalizer import normalize_tool_call_text
 
 logger = logging.getLogger(__name__)
+
+# 证据化/健壮性：单次 LLM 调用硬超时（秒）。防止模型 API 挂死导致 run 永久卡在 running。
+# 可通过环境变量 MFK_MODEL_CALL_TIMEOUT 覆盖。
+_MODEL_CALL_TIMEOUT = float(os.environ.get("MFK_MODEL_CALL_TIMEOUT", "300"))
 
 class ModelProvider(str, Enum):
     MIMO = "mimo"
@@ -26,14 +31,17 @@ class ModelProvider(str, Enum):
     FREELLMAPI = "freellmapi"
     GOOGLE = "google"
     OPENAI = "openai"  # 通用 OpenAI 兼容端点（自定义模型默认 provider）
+    CUSTOM = "custom"  # 用户动态添加的自定义端点（provider_id 字段区分具体端点）
 
 class ModelConfig(BaseModel):
     provider: ModelProvider
+    provider_id: Optional[str] = None  # 自定义端点的原始 ID（如 custom_2），官方 provider 为 None
     model_name: str
     api_key: str
     api_base: str
     max_tokens: int = 4096
     temperature: float = 0.7
+    context_window: int = 200000  # 上下文窗口大小（token），默认200K
     priority: int = 0  # 0 = 主力模型（可用），1 = 备用模型（可能不可用）
     supports_vision: bool = False   # 动态能力：是否支持多模态图片
     supports_tools: bool = True     # 动态能力：是否支持函数调用（Tool Calling）
@@ -166,7 +174,7 @@ def _inject_vision_into_messages(
 
 def _provider_supports_vision(provider_value: str) -> bool:
     """查询 provider 是否支持多模态图片（provider 级别粗判）。"""
-    provider_def = PROVIDER_MAP.get(provider_value)
+    provider_def = _mp.PROVIDER_MAP.get(provider_value)
     return bool(provider_def and provider_def.supports_vision)
 
 
@@ -174,13 +182,14 @@ def _detect_supports_vision(model_name: str, provider_vision: bool, model_vision
     """动态能力检测：三级优先级。
     
     1. 模型级显式指定（非 None）→ 直接使用
-    2. 命名推测（含 vl/vision）→ True
+    2. 命名推测（含 vl / vision / gemini / 4o / claude-3 / omni / multimodal / image / llava）→ True
     3. 回退 provider 级配置
     """
     if model_vision is not None:
         return model_vision
     name_lower = (model_name or "").lower()
-    if "vl" in name_lower or "vision" in name_lower:
+    vision_keywords = ("vl", "vision", "gemini", "4o", "claude-3", "omni", "multimodal", "image", "llava")
+    if any(kw in name_lower for kw in vision_keywords):
         return True
     return provider_vision
 
@@ -251,7 +260,7 @@ async def _vision_fallback_extract(vision_context: dict) -> str:
 
     # ── 解析 API Base URL ──
     if not vbu:
-        provider_def = PROVIDER_MAP.get(vp)
+        provider_def = _mp.PROVIDER_MAP.get(vp)
         if provider_def:
             vbu = provider_def.default_api_base
         else:
@@ -477,7 +486,7 @@ class ModelService:
         保留原签名以兼容内部调用。
         """
         provider_id = setting_key.replace("api_key_", "")
-        provider_def = PROVIDER_MAP.get(provider_id)
+        provider_def = _mp.PROVIDER_MAP.get(provider_id)
         if provider_def is None:
             return env_key
         return self._adapter.resolve_api_key(provider_def)
@@ -487,7 +496,7 @@ class ModelService:
 
         未配置时用 provider 默认端点。保留原签名以兼容内部调用。
         """
-        provider_def = PROVIDER_MAP.get(provider_id)
+        provider_def = _mp.PROVIDER_MAP.get(provider_id)
         if provider_def is None:
             return env_base
         return self._adapter.resolve_api_base(provider_def)
@@ -508,7 +517,7 @@ class ModelService:
         """初始化所有模型配置：内置 Provider 注册表 + models 表自定义模型合并。
 
         委托 ModelConfigAdapter.resolve_all() 完成三层优先级合并：
-          1. 内置 PROVIDERS（.env Key + settings 表覆盖）
+          1. 内置 _mp.PROVIDERS（.env Key + settings 表覆盖）
           2. CustomModel 表（enabled=True）覆盖同名 model_id
 
         同名 model_id 时自定义模型覆盖内置（便于用户替换默认端点/模型名）。
@@ -525,13 +534,15 @@ class ModelService:
         """
         models = []
         for model_id, config in self.models.items():
+            # 实际 provider 标识：自定义端点用 provider_id（custom_2），官方用 provider.value
+            actual_provider = config.provider_id or config.provider.value
             # 跳过被禁用的 Provider（强禁用：UI 选不到 + API 直调会被 call_once 拦截）
-            if config.provider.value in self._disabled_providers:
+            if actual_provider in self._disabled_providers:
                 continue
             if config.api_key:
                 # 查找 display_name（优先用 ProviderModel 中定义的展示名）
                 display_name = model_id
-                provider_def = PROVIDER_MAP.get(config.provider.value)
+                provider_def = _mp.PROVIDER_MAP.get(actual_provider)
                 if provider_def:
                     for m in provider_def.models:
                         if m.id == model_id and m.display_name:
@@ -540,7 +551,7 @@ class ModelService:
                 models.append({
                     "id": model_id,
                     "name": display_name,
-                    "provider": config.provider.value,
+                    "provider": actual_provider,
                     "max_tokens": config.max_tokens,
                     "priority": config.priority,
                 })
@@ -728,8 +739,9 @@ class ModelService:
         config = self.get_model_config(model_id)
         if not config:
             raise ModelConfigError(f"模型 {model_id} 未注册或不存在")
-        if config.provider.value in self._disabled_providers:
-            raise ModelConfigError(f"Provider {config.provider.value} 已被禁用，请在设置中开启")
+        actual_provider = config.provider_id or config.provider.value
+        if actual_provider in self._disabled_providers:
+            raise ModelConfigError(f"Provider {actual_provider} 已被禁用，请在设置中开启")
         if not config.api_key:
             raise ModelConfigError(f"模型 {model_id} 未配置 API Key")
 
@@ -784,11 +796,14 @@ class ModelService:
         try:
             from app.core.proxy import build_llm_client
 
-            async with build_llm_client(config.api_base, timeout=60.0) as client:
-                response = await client.post(
-                    f"{config.api_base}/chat/completions",
-                    headers=headers,
-                    json=payload,
+            async with build_llm_client(config.api_base, timeout=300.0) as client:
+                response = await asyncio.wait_for(
+                    client.post(
+                        f"{config.api_base}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    ),
+                    timeout=_MODEL_CALL_TIMEOUT,
                 )
                 if response.status_code != 200:
                     self._check_model_not_found(response.status_code, response.text, config.model_name)
@@ -860,8 +875,9 @@ class ModelService:
         config = self.get_model_config(model_id)
         if not config:
             raise ModelConfigError(f"模型 {model_id} 未注册或不存在")
-        if config.provider.value in self._disabled_providers:
-            raise ModelConfigError(f"Provider {config.provider.value} 已被禁用，请在设置中开启")
+        actual_provider = config.provider_id or config.provider.value
+        if actual_provider in self._disabled_providers:
+            raise ModelConfigError(f"Provider {actual_provider} 已被禁用，请在设置中开启")
         if not config.api_key:
             raise ModelConfigError(f"模型 {model_id} 未配置 API Key")
 
@@ -954,11 +970,11 @@ class ModelService:
                                 # G6-A: 捕获 token 用量（usage chunk 无 choices）
                                 if "usage" in data and data["usage"]:
                                     final_usage = data["usage"]
-                                choices = data.get("choices", [])
+                                choices = data.get("choices") or []
                                 if not choices:
                                     continue
                                 choice = choices[0]
-                                delta = choice.get("delta", {})
+                                delta = choice.get("delta") or {}
                                 content = delta.get("content", "")
 
                                 # Phase 12: 多字段兼容提取 reasoning_content
@@ -977,8 +993,8 @@ class ModelService:
                                 if finish_reason:
                                     final_finish = finish_reason
 
-                                # 收集流式 tool_calls delta
-                                for tc in delta.get("tool_calls", []):
+                                # 收集流式 tool_calls delta（兼容上游返回 null 的情况）
+                                for tc in (delta.get("tool_calls") or []):
                                     idx = tc.get("index")
                                     if idx is None:
                                         continue
@@ -989,9 +1005,9 @@ class ModelService:
                                     })
                                     if tc.get("id"):
                                         acc["id"] = tc["id"]
-                                    if tc.get("function", {}).get("name"):
+                                    if (tc.get("function") or {}).get("name"):
                                         acc["function"]["name"] = tc["function"]["name"]
-                                    if tc.get("function", {}).get("arguments"):
+                                    if (tc.get("function") or {}).get("arguments"):
                                         acc["function"]["arguments"] += tc["function"]["arguments"]
 
                                 # 普通文本增量才透传（工具调用段不输出文本）

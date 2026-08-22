@@ -1,6 +1,6 @@
 # MfkAgent Planner LLM 测试报告（Phase G2-B）
 
-- 时间: 2026-08-07 19:01:51
+- 时间: 2026-08-18 14:32:14
 
 ## 结果总览
 
@@ -8,13 +8,13 @@
 |---|------|------|------|
 | 1 | T1  PlanningLevel.allow_llm() 层级判断 | ✅ PASS | 0ms |
 | 2 | T2  LLMPlanner.plan() 成功 → 生成 Plan | ✅ PASS | 2ms |
-| 3 | T3  LLM 调用失败 → fallback heuristic | ✅ PASS | 1ms |
-| 4 | T4  JSON 解析失败 → fallback heuristic | ✅ PASS | 1ms |
+| 3 | T3  LLM 调用失败 → fallback heuristic | ✅ PASS | 2ms |
+| 4 | T4  JSON 解析失败 → fallback heuristic | ✅ PASS | 2ms |
 | 5 | T5  空 steps → fallback heuristic | ✅ PASS | 1ms |
 | 6 | T6  Level 0/1 → 仅 heuristic | ✅ PASS | 1ms |
-| 7 | T7  PlannerService LLM 成功路径 | ✅ PASS | 1ms |
+| 7 | T7  PlannerService LLM 成功路径 | ✅ PASS | 2ms |
 | 8 | T8  非任务型请求 → None | ✅ PASS | 1ms |
-| 9 | T9  AgentRuntime 执行链回归 | ✅ PASS | 17ms |
+| 9 | T9  AgentRuntime 执行链回归 | ✅ PASS | 44ms |
 | 10 | T10 ContextBuilder planning_level 传递 | ✅ PASS | 0ms |
 | 11 | T11 LLM ```json 包裹解析 | ✅ PASS | 0ms |
 | 12 | T12 LLM plan 模式只读约束 | ✅ PASS | 1ms |
@@ -59,14 +59,14 @@
 
 - plan_not_none: True
 - goal: 分析项目结构
-- steps: 3
+- steps: 1
 - llm_called: True
 - fallback_to_heuristic: True
 
 ### 5. T5  空 steps → fallback heuristic
 
 - plan_not_none: True
-- steps: 3
+- steps: 1
 - fallback: True
 
 ### 6. T6  Level 0/1 → 仅 heuristic
@@ -90,7 +90,7 @@
 
 ### 9. T9  AgentRuntime 执行链回归
 
-- MAX_ROUNDS: 3
+- MAX_ROUNDS: 10
 - has_router: True
 - has_run: True
 - has_run_stream: True

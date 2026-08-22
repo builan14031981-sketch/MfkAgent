@@ -1,0 +1,10 @@
+import re
+s = open(r'E:\智慧项目\portfolio-mfkagent\index.html', encoding='utf-8').read()
+i = s.find('作品')
+print('--- first 作品 context ---')
+print(s[max(0, i-500):i+800])
+print()
+j = s.find('slider')
+print('--- slider HTML ---')
+k = s.find('class="slider"')
+print(s[max(0, k-400):k+1200] if k >= 0 else 'no slider html')

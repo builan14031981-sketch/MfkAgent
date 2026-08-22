@@ -11,11 +11,14 @@
  */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Archive as ArchiveIcon } from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Archive as ArchiveIcon, Search, X } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
 import { useAgents } from "@/hooks/useAgents";
+import { SETTINGS_SEARCH_INDEX } from "@/lib/settingsSearchIndex";
+import { useSettingsToast, errorMessage } from "@/lib/toastStore";
+import { SettingsToast } from "@/components/SettingsToast";
 import { Panel } from "./Panel";
 import { AgentListPanel } from "./AgentListPanel";
 import { SubAgentPanel } from "./SubAgentPanel";
@@ -40,9 +43,12 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { t } = useTranslation();
   const { models, loading: modelsLoading } = useModels();
   const { agents } = useAgents();
+  const { showToast } = useSettingsToast();
 
   // ── 统管状态 ──
   const [saving, setSaving] = useState<string | null>(null);
+  // 设置搜索框（导航级过滤，索引见 lib/settingsSearchIndex.ts）
+  const [searchQuery, setSearchQuery] = useState("");
   const [activeSection, setActiveSection] = useState<SettingSectionId>(() => {
     try {
       const saved = localStorage.getItem("mfk_settings_active_section");
@@ -84,8 +90,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setSaving(key);
     try {
       await updateSetting(key, value);
+      showToast(t("common.saved"), "success");
     } catch (err) {
       console.error("Failed to update setting:", err);
+      showToast(errorMessage(err) || t("common.saved"), "error");
     } finally {
       setSaving(null);
     }
@@ -108,6 +116,49 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "archive", label: t("settings.archive.title"), icon: ArchiveIcon },
     { id: "about", label: t("settings.about.title"), icon: Info },
   ];
+
+  // ── 设置搜索：过滤左侧导航 + 命中字段计数（导航级，不侵入字段渲染）──
+  const q = searchQuery.trim().toLowerCase();
+  const matchFields = (sectionId: string) => {
+    if (!q) return [];
+    const entry = SETTINGS_SEARCH_INDEX.find((e) => e.section === sectionId);
+    if (!entry) return [];
+    return entry.fields.filter(
+      (f) =>
+        f.label.toLowerCase().includes(q) ||
+        (f.aliases ?? []).some((a) => a.toLowerCase().includes(q)),
+    );
+  };
+  const isSectionMatched = (sectionId: string) => {
+    if (!q) return true;
+    const labelKey = navItems.find((n) => n.id === sectionId)?.label ?? "";
+    if (labelKey && labelKey.toLowerCase().includes(q)) return true;
+    return matchFields(sectionId).length > 0;
+  };
+  const filteredNav = q ? navItems.filter((n) => isSectionMatched(n.id)) : navItems;
+  const activeHits = q ? matchFields(activeSection) : [];
+
+  // 搜索词变化时（onChange 事件内）：若当前 tab 不在命中集，自动跳到第一个命中 tab
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    const nq = value.trim().toLowerCase();
+    if (!nq) return;
+    const matched = navItems.filter((n) => {
+      const entry = SETTINGS_SEARCH_INDEX.find((e) => e.section === n.id);
+      const titleOk = n.label.toLowerCase().includes(nq);
+      const fieldsOk = entry
+        ? entry.fields.some(
+            (f) =>
+              f.label.toLowerCase().includes(nq) ||
+              (f.aliases ?? []).some((a) => a.toLowerCase().includes(nq)),
+          )
+        : false;
+      return titleOk || fieldsOk;
+    });
+    if (matched.length > 0 && !matched.some((n) => n.id === activeSection)) {
+      setActiveSection(matched[0].id as SettingSectionId);
+    }
+  };
 
   const viewTitle =
     currentView === "main_settings"
@@ -161,6 +212,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   return (
     <Panel isOpen={isOpen} onClose={handleClose} title={viewTitle} width="700px" height="min(680px, 82vh)" variant="center">
       <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
+        <SettingsToast />
         <AnimatePresence mode="popLayout" initial={false} custom={direction}>
           {currentView === "main_settings" ? (
             <motion.div
@@ -180,8 +232,48 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   borderRight: "1px solid var(--border-primary)",
                   paddingRight: "16px", marginRight: "16px",
                   height: "100%", overflow: "hidden",
+                  display: "flex", flexDirection: "column",
                 }}>
-                  {navItems.map((item) => (
+                  {/* 设置搜索框：导航级过滤 */}
+                  <div style={{ position: "relative", marginBottom: "10px", flexShrink: 0 }}>
+                    <Search style={{
+                      position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)",
+                      width: "13px", height: "13px", color: "var(--text-level-4)", pointerEvents: "none",
+                    }} />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      placeholder={t("settings.searchPlaceholder")}
+                      style={{
+                        width: "100%", padding: "7px 26px 7px 28px", boxSizing: "border-box",
+                        borderRadius: "var(--radius-sm)",
+                        border: "1px solid var(--border-primary)",
+                        background: "var(--bg-level-2)",
+                        fontSize: "12px", color: "var(--text-level-2)",
+                        outline: "none",
+                      }}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        aria-label="clear search"
+                        style={{
+                          position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)",
+                          background: "transparent", border: "none", cursor: "pointer",
+                          color: "var(--text-level-4)", padding: "2px", display: "inline-flex",
+                        }}
+                      >
+                        <X style={{ width: "12px", height: "12px" }} />
+                      </button>
+                    )}
+                  </div>
+                  {q && filteredNav.length === 0 && (
+                    <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "4px 0 0 0", flexShrink: 0 }}>
+                      {t("settings.searchNoResult")}
+                    </p>
+                  )}
+                  <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", scrollbarGutter: "stable" }}>
+                  {filteredNav.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => {
@@ -201,9 +293,15 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       }}
                     >
                       <item.icon style={{ width: "16px", height: "16px" }} />
-                      <span>{item.label}</span>
+                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+                      {q && matchFields(item.id).length > 0 && (
+                        <span style={{ fontSize: "10px", color: "var(--color-primary)", flexShrink: 0 }}>
+                          {matchFields(item.id).length}
+                        </span>
+                      )}
                     </button>
                   ))}
+                  </div>
                 </nav>
 
                 {/* 右侧内容 - 独立滚动 */}
@@ -213,6 +311,18 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   height: "100%", paddingRight: "4px",
                   scrollbarGutter: "stable",
                 }}>
+                  {/* 搜索命中提示（导航级计数，不侵入字段渲染） */}
+                  {q && activeHits.length > 0 && (
+                    <div style={{
+                      padding: "8px 12px", marginBottom: "12px",
+                      borderRadius: "var(--radius-sm)",
+                      background: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)",
+                      fontSize: "12px", color: "var(--text-level-2)",
+                    }}>
+                      {t("settings.searchHits", { count: String(activeHits.length) })}：{activeHits.map((f) => f.label).join("、")}
+                    </div>
+                  )}
                   {/* 归档 Tab：独立面板（归档列表 + 归档目录配置） */}
                   {activeSection === "archive" ? (
                     <ArchivePanel />
@@ -243,6 +353,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                             {...viewProps}
                             activeSection={activeSection}
                             agents={agents}
+                            onClose={onClose}
                             onManageAgents={() => {
                               setDirection(1);
                               setCurrentView("agent_list");

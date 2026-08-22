@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
-import { API_BASE } from "@/lib/api";
+import { getCurrentApiBase } from "@/lib/api";
 
 export interface ApprovalState {
   id: string;
@@ -14,7 +14,7 @@ export interface TerminalStatus {
   shell: string | null;
 }
 
-const WS_BASE = API_BASE.replace(/^http/, "ws");
+const WS_BASE = () => getCurrentApiBase().replace(/^http/, "ws");
 
 // xterm 握手/内部生成的序列（非用户输入），过滤后不转发给后端，避免污染行级拦截状态：
 //   \x1b[?1;2c  DA1 设备属性响应       \x1b[O / \x1b[I  焦点进入/离开事件
@@ -48,7 +48,7 @@ export function useTerminal({ containerRef, cwd, cols = 120, rows = 30, active =
   const ensureSession = useCallback(async (): Promise<string | null> => {
     if (sessionIdRef.current) return sessionIdRef.current;
     try {
-      const res = await fetch(`${API_BASE}/api/terminal`, {
+      const res = await fetch(`${getCurrentApiBase()}/api/terminal`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cwd: cwd || undefined, cols, rows }),
@@ -76,7 +76,7 @@ export function useTerminal({ containerRef, cwd, cols = 120, rows = 30, active =
       if (sid) query.set("sid", sid);
       let ws: WebSocket;
       try {
-        ws = new WebSocket(`${WS_BASE}/api/terminal/ws?${query.toString()}`);
+        ws = new WebSocket(`${WS_BASE()}/api/terminal/ws?${query.toString()}`);
       } catch {
         setStatus((s) => ({ ...s, connected: false }));
         return;

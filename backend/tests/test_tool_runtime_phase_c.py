@@ -29,7 +29,7 @@ import tempfile
 import time
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -376,7 +376,11 @@ def test_nonstream_approval_reject(project_dir: Path) -> dict:
         "choices": [{"message": {"role": "assistant", "content": "非流式不支持审批，操作已拒绝。"},
                      "finish_reason": "stop"}]
     }
-    install_fake_llm([call_msg, final_msg], non_stream=True)
+    self_check_msg = {
+        "choices": [{"message": {"role": "assistant", "content": "拒绝原因已确认，自查完成，任务结束。"},
+                     "finish_reason": "stop"}]
+    }
+    install_fake_llm([call_msg, final_msg, self_check_msg], non_stream=True)
 
     import asyncio
 
@@ -414,6 +418,8 @@ def test_nonstream_approval_reject(project_dir: Path) -> dict:
 
 
 def main() -> int:
+    from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+    set_approval_mode(ApprovalMode.SAFE)
     print("=" * 70)
     print("MfkAgent Tool Runtime Phase C 自动化验证")
     print("临时工作目录:", _TEMP_DIR)

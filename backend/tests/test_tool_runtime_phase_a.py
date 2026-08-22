@@ -32,7 +32,7 @@ import time
 from pathlib import Path
 
 # 标准输出以 UTF-8 打印，避免 Windows GBK 控制台报错
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -438,6 +438,8 @@ def verify_persistence(chat_ids: list) -> dict:
 
 
 def main() -> int:
+    from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+    set_approval_mode(ApprovalMode.SAFE)
     print("=" * 70)
     print("MfkAgent Tool Runtime Phase A 自动化验证")
     print("临时工作目录:", _TEMP_DIR)

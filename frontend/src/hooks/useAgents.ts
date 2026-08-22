@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { apiGet, apiPatch } from "@/lib/api";
+import { useSettingsStore } from "@/lib/store";
 
 export interface Agent {
   id: string;
@@ -11,7 +12,21 @@ export interface Agent {
   identity: string;
   capabilities: string[];
   status: string;
+  default_personality_level?: number | null;
+  expression_profile?: string | null;
+  group?: string;
 }
+
+/**
+ * Agent 英文名映射（英文模式下显示）。
+ * 中文模式显示后端返回的中文名，英文模式显示这里的英文名/拼音。
+ * 未配置的 agent 英文模式下保持中文名。
+ */
+const AGENT_EN_NAMES: Record<string, string> = {
+  general: "AnGent",
+  pianai: "Pianai",
+  spark: "Spark",
+};
 
 // 跨实例同步事件：任一实例变更 agents 后广播，所有实例立即重新拉取
 export const AGENTS_CHANGED_EVENT = "mfk-agents-changed";
@@ -28,15 +43,16 @@ export function triggerAgentsRefresh() {
 }
 
 export function useAgents() {
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [rawAgents, setRawAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const locale = useSettingsStore((s) => s.settings?.language ?? "zh-CN");
 
   const fetchAgents = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiGet<Agent[]>("/api/agents");
-      setAgents(data);
+      setRawAgents(data);
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -44,6 +60,17 @@ export function useAgents() {
       setLoading(false);
     }
   }, []);
+
+  // 根据当前语言转换 agent 显示名：英文模式下用英文名，中文模式下用后端中文名
+  const agents = useMemo(() => {
+    if (locale === "en-US") {
+      return rawAgents.map((a) => ({
+        ...a,
+        name: AGENT_EN_NAMES[a.id] ?? a.name,
+      }));
+    }
+    return rawAgents;
+  }, [rawAgents, locale]);
 
   useEffect(() => {
     fetchAgents();

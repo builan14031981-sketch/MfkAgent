@@ -34,9 +34,10 @@ from app.core.capability_profiles import get_capability_prompt
 from app.core.persona_engine import build_persona_context, load_expression_knowledge, PersonaContext
 from app.core.persona_signature import get_agent_signature
 from app.core.persona_quirks import build_conversation_state
+from app.core.character_presets import detect_preset_switch
 from app.core.identity_principle import get_identity_principle
 from app.core.agent_base_instruction import get_agent_base_instruction
-from app.core.skill_store import get_enabled_skills_prompt  # Phase 4 T3: Skill Prompt Fragment 加载
+# 2026-08-16：Skill 全局注入已废弃（会话级调用改由前端 buildContent 注入），不再 import get_enabled_skills_prompt
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
 from app.core.tool_runtime.policy import (
@@ -242,6 +243,7 @@ class ContextBuildInput:
     reasoning_effort: Optional[str] = None
     planning_level: Optional[int] = None  # G2-B: Planner 层级控制
     attachments: list = field(default_factory=list)  # Phase 2: AttachmentItem 列表
+    parent_run_id: Optional[int] = None  # Phase H: checkpoint 血缘（断点续跑追溯）
 
 
 @dataclass
@@ -267,7 +269,7 @@ def get_default_model() -> str:
         setting = db.query(Setting).filter(Setting.key == "default_model").first()
         if setting and setting.value:
             return setting.value
-        return "qwen-flash"
+        return "qwen3-14b"
     finally:
         db.close()
 
@@ -401,6 +403,27 @@ def _build_memory_text(db, project_id: Optional[int] = None, agent_id: Optional[
 
     if not sections:
         return ""
+    # ---- P0-2: token 预算截断（受 Setting 开关 memory_budget_enabled 控制） ----
+    try:
+        _mem_budget = db.query(Setting).filter(Setting.key == "memory_budget_enabled").first()
+        if _mem_budget and _mem_budget.value and _mem_budget.value.lower() == "true":
+            _budget_val = db.query(Setting).filter(Setting.key == "memory_budget_max_tokens").first()
+            max_tok = 4000
+            if _budget_val and _budget_val.value:
+                max_tok = int(_budget_val.value)
+            kept = []
+            budget = 0
+            for sec in sections:
+                tok = max(1, int(len(sec) / 1.2))
+                if budget + tok > max_tok:
+                    break
+                budget += tok
+                kept.append(sec)
+            sections = kept
+    except Exception:  # noqa: BLE001
+        pass
+    if not sections:
+        return ""
     return (
         "<user_defined_memories>\n"
         "  <priority>user_memory</priority>\n"
@@ -485,7 +508,14 @@ def _build_attachment_prompt(attachments: list, project_path: Optional[str]) -> 
         size = a.get("size", 0)
         mime = a.get("mime", "application/octet-stream")
 
-        if kind == "image":
+        is_image = (
+            kind == "image"
+            or a.get("type") == "image"
+            or (mime or "").startswith("image/")
+            or any((name or "").lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"))
+        )
+
+        if is_image:
             # image 不入 system prompt 内容（由 build() 写入 vision_context），
             # 仅写入名称+路径提示，让 Agent 知道有图片附件已传入视觉通道
             path_hint = rel_path if rel_path else "(无路径)"
@@ -555,27 +585,45 @@ def _build_vision_context(attachments: list, project_path: Optional[str]) -> Opt
             a = att
         else:
             continue
-        if a.get("kind") != "image":
+        is_image = (
+            a.get("kind") == "image"
+            or a.get("type") == "image"
+            or (a.get("mime") or "").startswith("image/")
+            or any((a.get("name") or "").lower().endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"))
+        )
+        if not is_image:
             continue
         rel_path = a.get("path")
         abs_path = None
         if rel_path and project_path:
-            candidate = os.path.join(project_path, rel_path)
-            if _is_path_within(project_path, candidate) and os.path.isfile(candidate):
-                abs_path = candidate
-            else:
-                logger.warning(
-                    "vision_context: 图片路径解析失败 rel_path=%s project_path=%s candidate=%s isfile=%s",
-                    rel_path, project_path, candidate, os.path.isfile(candidate) if candidate else False,
-                )
-        elif rel_path and not project_path:
-            # 无项目关联：rel_path 可能是绝对路径或 .mfkagent/uploads/ 相对路径
             if os.path.isabs(rel_path) and os.path.isfile(rel_path):
                 abs_path = rel_path
             else:
-                logger.warning(
-                    "vision_context: 无项目关联且路径非绝对路径 rel_path=%s", rel_path,
-                )
+                candidate = os.path.join(project_path, rel_path)
+                if _is_path_within(project_path, candidate) and os.path.isfile(candidate):
+                    abs_path = candidate
+                elif os.path.isfile(rel_path):
+                    abs_path = os.path.abspath(rel_path)
+                else:
+                    logger.warning(
+                        "vision_context: 图片路径解析失败 rel_path=%s project_path=%s candidate=%s isfile=%s",
+                        rel_path, project_path, candidate, os.path.isfile(candidate) if candidate else False,
+                    )
+        elif rel_path and not project_path:
+            # 无项目关联：rel_path 可能是绝对路径或 backend/data/uploads 相对路径
+            if os.path.isabs(rel_path) and os.path.isfile(rel_path):
+                abs_path = rel_path
+            else:
+                backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+                candidate = os.path.join(backend_dir, rel_path)
+                if os.path.isfile(candidate):
+                    abs_path = candidate
+                elif os.path.isfile(rel_path):
+                    abs_path = os.path.abspath(rel_path)
+                else:
+                    logger.warning(
+                        "vision_context: 无项目关联且路径解析失败 rel_path=%s candidate=%s", rel_path, candidate,
+                    )
         images.append({
             "name": a.get("name", "unknown"),
             "path": abs_path,  # 绝对路径，供模型层/工具读取
@@ -648,12 +696,24 @@ class ChatContextBuilder:
         if persona_context and persona_context.quirk_text:
             full_prompt += "\n\n" + persona_context.quirk_text
 
-        # ②b Skill Prompt Fragment（Phase 4 T3: 能力增强层，注入位置在 capability 之后、execution_policy 之前）
-        # Skill = Prompt Fragment，仅文本，无 Tool/Code/Executor 能力
-        # 加载失败/无 Skill 时返回空串，不影响 prompt 结构
-        skills_prompt = get_enabled_skills_prompt()
-        if skills_prompt:
-            full_prompt += "\n\n" + skills_prompt
+        # ③c character_preset（V17 — 多人格预设语言风格引导）
+        # 告诉模型"该怎么说话"的正面引导，比禁令更有效
+        if persona_context and persona_context.preset_text:
+            full_prompt += "\n\n" + persona_context.preset_text
+        if persona_context and persona_context.preset_intro_text:
+            full_prompt += "\n\n" + persona_context.preset_intro_text
+        # V17: 首次对话开场白
+        if persona_context and persona_context.greeting_text:
+            full_prompt += "\n\n" + persona_context.greeting_text
+        # V17: 模糊切换指令 —— 列出所有可选人格
+        if persona_context and persona_context.vague_switch_text:
+            full_prompt += "\n\n" + persona_context.vague_switch_text
+
+        # ②b Skill 注入（2026-08-16 重构：废弃「全局常驻注入」）。
+        # 原先 get_enabled_skills_prompt() 会把所有 enabled Skill 全量塞进每次请求的 system prompt，
+        # 既无法被用户感知、又造成未用也烧 token（且与前端「会话级注入」重复，等于双倍浪费）。
+        # 现改为：Skill 只由前端在「当前会话」点击调用时，作为该会话文档注入一次（见前端 buildContent），
+        # 不写全局 enabled、不跨会话、不污染其它会话。此处不再拼接任何全局 Skill 片段。
 
         # ③ execution_policy（统一执行规范 v1）
         full_prompt += "\n\n" + get_execution_policy()
@@ -821,7 +881,7 @@ class ChatContextBuilder:
             chat_mode = chat.mode or "build"
 
             # ──── 模型参数（先于 Planner：G2-B 需要 model_id）────
-            effective_model = chat.model or input.model or get_default_model()
+            effective_model = input.model or chat.model or get_default_model()
             reasoning_effort = input.reasoning_effort or get_default_reasoning_effort()
 
             # ──── Planner V1 → G2-B：意图/模式 → Plan → task_context ────
@@ -878,11 +938,22 @@ class ChatContextBuilder:
                         recent_turns = recent_turns + [input.content]
                     conv_state = build_conversation_state(sig_for_state, recent_turns)
 
+                    # V17: 从历史消息中恢复最近的人格预设切换
+                    # 倒序扫描 recent_turns，找到最近的切换指令，设置 character_preset
+                    # （当前轮的切换由 build_persona_context 内部检测并设置 just_switched）
+                    if agent.expression_profile == "natural_companion":
+                        for turn in reversed(recent_turns[:-1]):  # 排除当前轮（由引擎处理）
+                            preset_id = detect_preset_switch(turn)
+                            if preset_id:
+                                conv_state.character_preset = preset_id
+                                break
+
                 persona_ctx = build_persona_context(
                     agent, persona_tmpl, expr_knowledge,
                     user_message=input.content,
                     interaction_count=interaction_count,
                     conversation_state=conv_state,
+                    first_message=(interaction_count == 1),
                 )
 
             full_prompt = self._assemble_prompt(
@@ -932,6 +1003,8 @@ class ChatContextBuilder:
                     "agent_id": chat.agent_id,
                     "project_id": chat.project_id,
                     "chat_id": input.chat_id,
+                    "project_path": effective_chat.project_path,
+                    "permission_mode": chat.permission_mode or "standard",
                 },
                 memory_text=memory_text,
                 tools=tools_arg,
@@ -949,6 +1022,7 @@ class ChatContextBuilder:
                 task_context=task_context,  # Phase G1：Planner V1 注入（非任务型请求为 None）
                 planning_level=input.planning_level,  # Phase G2-B：Planner 层级控制
                 plan=plan,  # G4-B: 原始 Plan 对象（供 AgentRuntime init_task_graph）
+                parent_run_id=input.parent_run_id,  # Phase H: checkpoint 血缘
                 history=[
                     {"role": role, "content": content}
                     for role, content in map(_msg_role_content, pruned_history)

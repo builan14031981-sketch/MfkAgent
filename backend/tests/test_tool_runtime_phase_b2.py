@@ -32,7 +32,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 # 标准输出以 UTF-8 打印，避免 Windows GBK 控制台报错
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -349,6 +349,7 @@ def test_git_commit_approval(project_dir: Path) -> dict:
     install_fake_llm([
         tool_round("git_commit", {"message": "提交改动 v2"}, "call_gc_1"),
         text_round("已提交。"),
+        text_round("自查完成，任务结束。"),
     ])
     pid = make_project(repo)
     cid = make_chat(pid, mode="build")
@@ -413,6 +414,8 @@ def test_write_file_plan_deny(project_dir: Path) -> dict:
 
 
 def main() -> int:
+    from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+    set_approval_mode(ApprovalMode.SAFE)
     print("=" * 70)
     print("MfkAgent Tool Runtime Phase B-2 自动化验证")
     print("临时工作目录:", _TEMP_DIR)

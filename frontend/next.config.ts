@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
   // 生产构建为静态导出，无需代理（Electron 直接调用后端）
   async rewrites() {
     if (process.env.NODE_ENV === "production") return [];
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8002";
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
     return [
       {
         source: "/api/:path*",

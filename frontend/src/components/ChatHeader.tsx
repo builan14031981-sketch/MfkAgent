@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useRef, useEffect, useCallback } from "react";
-import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink, TerminalSquare, Package } from "lucide-react";
+import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink, TerminalSquare, Package, Globe, Download, Plus } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import type { Agent } from "@/hooks/useAgents";
@@ -33,6 +33,10 @@ interface ChatHeaderProps {
   onSwitchProject?: (projectId: number) => void;
   /** 解绑当前项目 */
   onUnbindProject?: () => void;
+  /** 直接选择本地目录（右上角「关联项目」胶囊点击调用，替代触发加号菜单） */
+  onSelectDirectory?: () => void;
+  /** 新建对话（Phase1：聊天头部新建按钮 + Ctrl+N 快捷键） */
+  onNewChat?: () => void;
 }
 
 /**
@@ -79,9 +83,12 @@ export const ChatHeader = memo(function ChatHeader({
   projects,
   onSwitchProject,
   onUnbindProject,
+  onSelectDirectory,
+  onNewChat,
 }: ChatHeaderProps) {
   const { t } = useTranslation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -91,6 +98,7 @@ export const ChatHeader = memo(function ChatHeader({
   const dockTabs = useDockStore((s) => s.tabs);
   const terminalOpen = dockTabs.terminal;
   const artifactOpen = dockTabs.artifacts;
+  const browserOpen = dockTabs.browser;
 
   // 点击外部关闭下拉
   useEffect(() => {
@@ -116,6 +124,28 @@ export const ChatHeader = memo(function ChatHeader({
     setDropdownOpen(false);
     onUnbindProject?.();
   }, [onUnbindProject]);
+
+  const handleExport = useCallback(async () => {
+    if (!chat || exporting) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/chat/${chat.id}/export?format=markdown`);
+      const data = await res.json();
+      const blob = new Blob([data.content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename || `${chat.title || "chat"}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export failed:", e);
+    } finally {
+      setExporting(false);
+    }
+  }, [chat, exporting]);
 
   // 其他项目（排除当前已绑定的）
   const otherProjects = (projects ?? []).filter((p) => p.id !== project?.id);
@@ -321,10 +351,7 @@ export const ChatHeader = memo(function ChatHeader({
           {/* 无项目时显示关联入口胶囊 */}
           {!project && (
             <span
-              onClick={() => {
-                const el = document.querySelector("[data-upload-menu-trigger]") as HTMLButtonElement | null;
-                el?.click();
-              }}
+              onClick={() => onSelectDirectory?.()}
               title={t("chat.noProjectHint")}
               style={{
                 fontSize: "12px",
@@ -353,6 +380,31 @@ export const ChatHeader = memo(function ChatHeader({
             borderRadius: "var(--radius-full)",
             background: "var(--bg-level-3)",
           }}>{agent.name}</span>
+          {/* 导出对话为 Markdown */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            title={t("chat.export")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              padding: 0,
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              background: "transparent",
+              cursor: exporting ? "wait" : "pointer",
+              color: "var(--text-level-3)",
+              opacity: exporting ? 0.5 : 1,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => { if (!exporting) e.currentTarget.style.background = "var(--bg-level-4)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            <Download style={{ width: "14px", height: "14px" }} />
+          </button>
           {/* 产出物入口：切换"产出物"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
           <button
             onClick={() => toggleTab("artifacts")}
@@ -406,6 +458,33 @@ export const ChatHeader = memo(function ChatHeader({
             }}
           >
             <TerminalSquare style={{ width: "15px", height: "15px" }} />
+          </button>
+          {/* 浏览器入口：切换"浏览器"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
+          <button
+            onClick={() => toggleTab("browser")}
+            title={t("browser.title")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              padding: 0,
+              borderRadius: "var(--radius-sm)",
+              border: "none",
+              background: browserOpen && activeTab === "browser" ? "var(--bg-level-4)" : "transparent",
+              cursor: "pointer",
+              color: browserOpen && activeTab === "browser" ? "var(--color-primary)" : "var(--text-level-3)",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-4)";
+            }}
+            onMouseLeave={(e) => {
+              if (!(browserOpen && activeTab === "browser")) e.currentTarget.style.background = "transparent";
+            }}
+          >
+            <Globe style={{ width: "15px", height: "15px" }} />
           </button>
         </div>
       )}

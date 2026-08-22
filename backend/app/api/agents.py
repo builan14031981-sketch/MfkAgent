@@ -8,7 +8,7 @@ from app.models.agent import Agent
 
 router = APIRouter()
 
-# Agent 展示优先级：核心研发 Agent 置顶，其余辅助 Agent 按定义顺序排列
+# Agent 展示优先级：核心研发 Agent 置顶，其余辅助 Agent 按定义顺序排列（唯一权威排序源）
 AGENT_ORDER = {
     "general": 0,
     "g": 1,
@@ -17,10 +17,30 @@ AGENT_ORDER = {
     "product": 4,
     "writer": 5,
     "writer_narrative": 6,
-    "personal": 7,
-    "spark": 8,
-    "pianai": 9,
-    "research": 10,
+    "writer_jiangnan": 7,
+    "personal": 8,
+    "spark": 9,
+    "pianai": 10,
+    "research": 11,
+}
+
+# Agent 用途分组：core=核心研发 / assist=辅助智能 / sub=子代理（前端分组展示依据）
+AGENT_GROUP = {
+    "general": "core",
+    "g": "core",
+    "coder": "core",
+    "frontend_ui": "core",
+    "product": "core",
+    "research": "assist",
+    "personal": "assist",
+    "spark": "assist",
+    "pianai": "assist",
+    "writer": "assist",
+    "writer_narrative": "assist",
+    "writer_jiangnan": "assist",
+    "sub_code_reviewer": "sub",
+    "sub_researcher": "sub",
+    "sub_file_analyst": "sub",
 }
 
 
@@ -36,9 +56,27 @@ class AgentInfo(BaseModel):
     status: str = "active"
     default_personality_level: Optional[int] = None
     expression_profile: Optional[str] = None
+    group: str = "assist"
 
     class Config:
         from_attributes = True
+
+
+def _to_info(a: Agent) -> AgentInfo:
+    return AgentInfo(
+        id=a.agent_id,
+        name=a.name,
+        description=a.description,
+        avatar=a.avatar,
+        icon=a.avatar,
+        system_prompt=a.identity or a.system_prompt or "",
+        identity=a.identity or "",
+        capabilities=a.capabilities or [],
+        status=a.status or "active",
+        default_personality_level=a.default_personality_level,
+        expression_profile=a.expression_profile,
+        group=AGENT_GROUP.get(a.agent_id, "assist"),
+    )
 
 
 @router.get("", response_model=List[AgentInfo])
@@ -50,22 +88,7 @@ async def list_agents():
             else_=99,
         )
         agents = db.query(Agent).order_by(order_expr, Agent.id.asc()).all()
-        return [
-            AgentInfo(
-                id=a.agent_id,
-                name=a.name,
-                description=a.description,
-                avatar=a.avatar,
-                icon=a.avatar,
-                system_prompt=a.identity or a.system_prompt or "",
-                identity=a.identity or "",
-                capabilities=a.capabilities or [],
-                status=a.status or "active",
-                default_personality_level=a.default_personality_level,
-                expression_profile=a.expression_profile,
-            )
-            for a in agents
-        ]
+        return [_to_info(a) for a in agents]
     finally:
         db.close()
 
@@ -112,19 +135,7 @@ async def update_agent(agent_id: str, update: AgentUpdate):
             agent.expression_profile = update.expression_profile
         db.commit()
         db.refresh(agent)
-        return AgentInfo(
-            id=agent.agent_id,
-            name=agent.name,
-            description=agent.description,
-            avatar=agent.avatar,
-            icon=agent.avatar,
-            system_prompt=agent.identity or agent.system_prompt or "",
-            identity=agent.identity or "",
-            capabilities=agent.capabilities or [],
-            status=agent.status or "active",
-            default_personality_level=agent.default_personality_level,
-            expression_profile=agent.expression_profile,
-        )
+        return _to_info(agent)
     finally:
         db.close()
 
@@ -136,18 +147,6 @@ async def get_agent(agent_id: str):
         agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
-        return AgentInfo(
-            id=agent.agent_id,
-            name=agent.name,
-            description=agent.description,
-            avatar=agent.avatar,
-            icon=agent.avatar,
-            system_prompt=agent.identity or agent.system_prompt or "",
-            identity=agent.identity or "",
-            capabilities=agent.capabilities or [],
-            status=agent.status or "active",
-            default_personality_level=agent.default_personality_level,
-            expression_profile=agent.expression_profile,
-        )
+        return _to_info(agent)
     finally:
         db.close()

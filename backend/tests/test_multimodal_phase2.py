@@ -20,7 +20,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-if hasattr(sys.stdout, "buffer"):
+if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
@@ -225,7 +225,7 @@ def test_attachment_endpoint():
             f.write(png_bytes)
 
         # 调用端点
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             read_attachment(proj.id, img_rel)
         )
         check("F1: 返回 path 正确", result.path == img_rel)
@@ -264,11 +264,9 @@ def test_attachment_security():
             db.commit()
             db.refresh(proj)
 
-        loop = asyncio.get_event_loop()
-
         # 路径穿越攻击
         try:
-            loop.run_until_complete(
+            asyncio.run(
                 read_attachment(proj.id, "../../etc/passwd")
             )
             check("F9: 路径穿越被拦截", False, "未抛异常")
@@ -280,7 +278,7 @@ def test_attachment_security():
         with open(txt_path, "w") as f:
             f.write("not allowed")
         try:
-            loop.run_until_complete(
+            asyncio.run(
                 read_attachment(proj.id, "evil.txt")
             )
             check("F10: .txt 被白名单拒绝", False, "未抛异常")

@@ -9,6 +9,8 @@ from app.core.command_tools import COMMAND_TOOLS_DEFINITIONS
 from app.core.tools import FILE_TOOLS_DEFINITIONS
 from app.core.git_tools import GIT_TOOLS_DEFINITIONS
 from app.core.search_tools import SEARCH_TOOLS_DEFINITIONS
+from app.core.ui_probe_tools import UI_PROBE_TOOLS_DEFINITIONS
+from app.core.image_gen_tools import IMAGE_GEN_TOOLS_DEFINITIONS
 from app.services.tools import tool_registry
 
 
@@ -35,17 +37,24 @@ class ToolSelector:
         for t in SEARCH_TOOLS_DEFINITIONS:
             self._def_map[t["function"]["name"]] = t
 
+        # UI 自检工具
+        for t in UI_PROBE_TOOLS_DEFINITIONS:
+            self._def_map[t["function"]["name"]] = t
+
+        # 文生图工具（万相 API）
+        for t in IMAGE_GEN_TOOLS_DEFINITIONS:
+            self._def_map[t["function"]["name"]] = t
+
         # 通用工具（来自 tool_registry）
         for t in tool_registry.get_definitions():
             self._def_map[t["function"]["name"]] = t
 
-        # 需要项目路径的工具
+        # 必须依赖项目路径的写入/专有工具（只读工具 read_file / list_files / find_files / search_files 允许无项目路径全局使用）
         self._project_only_tools = {
-            "read_file", "write_file", "list_files",
+            "write_file", "edit_file", "apply_patch",
             "git_status", "git_diff", "git_log", "git_branch_list", "git_remote",
             "git_commit",
             "git_add", "git_reset", "git_push", "git_pull", "git_clone", "git_fetch",
-            "search_files",
         }
 
     def select(self, tool_names: List[str], chat) -> List[Dict]:

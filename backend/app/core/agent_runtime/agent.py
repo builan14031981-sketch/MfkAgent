@@ -16,6 +16,7 @@ Phase E4 新增：
 from typing import Optional, List
 import asyncio
 import os
+import re
 
 from .router import TaskRouter
 from .context import AgentContext, AgentResult
@@ -40,6 +41,10 @@ MAX_ROUNDS = 10
 MAX_STREAM_ROUNDS = 10
 DEFAULT_MAX_TOOL_ROUNDS = 10
 
+# ──── G6-B Auto: 自动压缩触发配置 ────
+COMPRESS_WATERMARK_THRESHOLD = 50.0   # 上下文水位超过 50% 触发自动压缩（留足压缩后继续对话的余量）
+COMPRESS_MIN_INTERVAL_ROUNDS = 2      # 两次自动压缩间的最小轮次间隔（防反复触发）
+
 # ──── Phase 12: Completion Loop V1 配置 ────
 DEFAULT_MAX_COMPLETION_RETRY = 3
 
@@ -49,6 +54,24 @@ WRITE_TOOLS = {"write_file", "replace_in_file", "apply_patch", "delete_file", "r
 # ──── Phase 11: 倒数预警与自查提示文本 ────
 COUNTDOWN_WARNING = "[系统提示]: 你的工具调用轮次即将达到上限，请在下一轮结束工具调用并向用户总结最终结果。"
 SELF_CHECK_PROMPT = "[系统强制自查]: 你在本次任务中进行了代码或文件修改。请仔细核对改动，确保没有引入语法错误、格式错乱或非预期的功能破坏。确认无误后给出最终汇报。"
+
+# ──── Round 3 修复: 剥除残留的工具调用序列化文本 ────
+_TOOL_CALL_BLOCK_RE = re.compile(
+    r"<tool_call>.*?</tool_call>|"
+    r"<arg_key>.*?</arg_key>|"
+    r"<arg_value>.*?</arg_value>|"
+    r"<tool_call_id>.*?</tool_call_id>",
+    flags=re.DOTALL | re.IGNORECASE,
+)
+
+
+def _strip_tool_call_blocks(content: str) -> str:
+    """移除 LLM 输出中残留的 <tool_call> / <arg_*_> 序列化文本，保留正常正文。"""
+    if not content:
+        return ""
+    stripped = _TOOL_CALL_BLOCK_RE.sub("", content)
+    stripped = re.sub(r"\n{3,}", "\n\n", stripped).strip()
+    return stripped
 
 # ──── Phase 3.5: Runtime Context 边界隔离标记 ────
 
@@ -493,7 +516,9 @@ class AgentRuntime:
     DEFAULT_KEEP_RECENT = 4
     DEFAULT_MIN_MIDDLE = 4
     DEFAULT_SUMMARY_MAX_CHARS = 500
-    DEFAULT_COMPRESSION_MODEL = "qwen-flash"
+    # 压缩模型不硬编码：优先使用调用方传入的 model_id（当前主模型），
+    # 其次使用 settings.COMPRESSION_MODEL，最后兜底为用户配置的默认主模型。
+    # 后端不假设用户启用了哪些特定模型。
 
     SUMMARY_PROMPT_TEMPLATE = (
         "你是会话压缩引擎。请将以下对话与工具操作精炼成不超过{max_chars}字的核心摘要。"
@@ -572,9 +597,15 @@ class AgentRuntime:
             {"role": "user", "content": to_summarize or "（空内容）"},
         ]
 
-        # 摘要模型：优先显式 model_id → settings.COMPRESSION_MODEL → 默认便宜模型
+        # 摘要模型：优先显式 model_id（当前主模型）→ settings.COMPRESSION_MODEL → 用户配置的默认主模型
+        # 不硬编码任何特定模型名，所有选择基于用户实际配置
         from app.core.config import settings
-        resolved_model = model_id or getattr(settings, "COMPRESSION_MODEL", "") or self.DEFAULT_COMPRESSION_MODEL
+        from app.core.agent_runtime.context_builder import get_default_model
+        resolved_model = model_id or getattr(settings, "COMPRESSION_MODEL", "") or get_default_model()
+
+        if not resolved_model:
+            # 无可用模型时 fail-safe，返回原消息不压缩
+            return messages
 
         try:
             from app.services.model import model_service
@@ -603,6 +634,84 @@ class AgentRuntime:
                 memory_node = {"role": "user", "content": memory_content}
 
         return head + [memory_node] + recent
+
+    @staticmethod
+    def _truncate_history_fallback(messages: List, keep_recent: int = DEFAULT_KEEP_RECENT) -> List:
+        """规则截断降级：LLM 摘要不可用时，将中间消息按条截断合并为一条摘要节点。
+
+        与 compress_history 同构（head 保留 + 中间截断合并 + recent 保留），
+        保证自动压缩在摘要模型不可用时仍有兜底，避免上下文无界膨胀。
+        """
+        if not messages:
+            return messages
+        head = []
+        i = 0
+        while i < len(messages) and messages[i].get("role") == "system":
+            head.append(messages[i])
+            i += 1
+        rest = messages[i:]
+        if len(rest) <= keep_recent:
+            return messages
+        recent = rest[-keep_recent:]
+        middle = rest[:-keep_recent]
+        if len(middle) < 4:
+            return messages
+        parts = []
+        for m in middle:
+            role = m.get("role", "user")
+            content = m.get("content") or ""
+            if not isinstance(content, str):
+                content = str(content)
+            parts.append(f"{role}: {content[:300]}")
+        memory_node = {
+            "role": "user",
+            "content": "【历史截断摘要】\n" + "\n".join(parts)[:12000],
+        }
+        return head + [memory_node] + recent
+
+    async def _maybe_auto_compress(
+        self,
+        run_id: str,
+        messages: List,
+        usage: dict,
+        model_id: str,
+    ) -> bool:
+        """G6-B Auto: 水位超阈值时自动压缩历史（LLM 摘要 + 规则截断双保险）。
+
+        触发条件：prompt_tokens 水位 >= COMPRESS_WATERMARK_THRESHOLD。
+        压缩链路：先 LLM 摘要（compress_history），失败降级规则截断；
+        两者都未生效 → 返回 False（不破坏执行流）。
+
+        Returns:
+            bool: True 表示发生了压缩（messages 已被原地替换为压缩结果）
+        """
+        if not usage:
+            return False
+        prompt_tokens = usage.get("prompt_tokens", 0) or 0
+        if prompt_tokens <= 0:
+            return False
+        watermark = compute_watermark(prompt_tokens, model_id)
+        if watermark < COMPRESS_WATERMARK_THRESHOLD:
+            return False
+
+        before = len(messages)
+        compressed = await self.compress_history(messages, model_id=model_id)
+        mode = "llm_summary"
+        if compressed is messages or len(compressed) >= before:
+            compressed = self._truncate_history_fallback(messages)
+            mode = "truncate_fallback"
+            if compressed is messages or len(compressed) >= before:
+                return False
+
+        messages[:] = compressed
+        runtime_event_recorder.emit(run_id, "session_compressed", {
+            "before": before,
+            "after": len(compressed),
+            "watermark": watermark,
+            "prompt_tokens": prompt_tokens,
+            "mode": mode,
+        })
+        return True
 
     # ──── 工具执行（流式 + 非流式共用）────
 
@@ -727,6 +836,7 @@ class AgentRuntime:
                         "success": False,
                         "status": "failed",
                         "result": "错误: 该操作需要用户审批，但非流式接口不支持审批，已拒绝执行。请改用流式接口重试。",
+                        "_skip_strategy": True,
                     })
 
             # 抉择工具：等待用户抉择后完成执行闭环（同审批架构；choice_request 事件已随 drain 到达前端）
@@ -745,7 +855,7 @@ class AgentRuntime:
                     record = await complete_choice(record)
 
             # Strategy Layer V1: 执行后策略检查
-            if strategy_engine:
+            if strategy_engine and not record.get("_skip_strategy"):
                 post_result = strategy_engine.check_after_execution(
                     tool_name,
                     tool_args,
@@ -900,14 +1010,28 @@ class AgentRuntime:
 
     @staticmethod
     def _extract_task_goal(messages: list) -> str:
-        """从 messages 提取任务目标（首个 user 消息内容，供完成判定使用）。"""
+        """从 messages 提取任务目标（最后一个真实 user 消息，跳过压缩摘要/验证反馈节点）。
+
+        G6-B Auto: 自动压缩会把中间 user 消息替换为「历史记忆摘要」节点，
+        其 role 同样是 user，若不跳过会把摘要误当成任务目标。
+        P1-1（run 844）: 验证反馈以 user 角色追加到末尾，同样跳过；
+        取最后一个真实用户请求，避免多轮对话后仍取首轮旧意图。
+        """
+        last_goal = ""
         for m in messages:
             if isinstance(m, dict) and m.get("role") == "user":
                 content = m.get("content") or ""
-                return content[:500] if isinstance(content, str) else str(content)[:500]
-            if hasattr(m, "role") and getattr(m, "role") == "user":
-                return str(getattr(m, "content", ""))[:500]
-        return ""
+                if isinstance(content, str) and (
+                    content.startswith("【历史") or content.startswith("【验证反馈")
+                ):
+                    continue
+                last_goal = content[:500] if isinstance(content, str) else str(content)[:500]
+            elif hasattr(m, "role") and getattr(m, "role") == "user":
+                content = str(getattr(m, "content", ""))[:500]
+                if content.startswith("【历史") or content.startswith("【验证反馈"):
+                    continue
+                last_goal = content
+        return last_goal
 
     async def _verify_completion(
         self,
@@ -1141,9 +1265,11 @@ class AgentRuntime:
         from app.services.model import model_service
 
         # ──── Phase E2: 创建运行记录（status=running, state=pending）────
+        # Phase H: parent_run_id 记录 checkpoint 血缘（断点续跑追溯）
         run_id = runtime_event_recorder.create_run(
             chat_id=context.chat_id,
             agent_id=context.agent_id,
+            parent_run_id=getattr(context, "parent_run_id", None),
         )
 
         try:
@@ -1177,6 +1303,7 @@ class AgentRuntime:
             # ──── Execution Loop ────
             loop_messages = self._to_dict_messages(messages)
             ctx = {k: v for k, v in (context.memory_context or {}).items() if v is not None}
+            ctx.setdefault("chat_id", context.chat_id)
 
             # ──── Phase 11: 解析 max_tool_rounds & 初始化自查状态 ────
             resolved_max_rounds = self._resolve_max_tool_rounds(context, max_tool_rounds)
@@ -1196,6 +1323,8 @@ class AgentRuntime:
             # Round 2 优化：run 级失败标记与最后一次验证失败（用于兜底失败汇报）
             any_completion_failed = False
             run_completion_exhausted = None
+            # G6-B Auto: 自动压缩轮次跟踪
+            last_compress_round = 0
 
             # Round 2 优化：测试基建（conftest fixture）摘要一次性注入，避免重复 read_file
             _test_infra = build_test_infra_summary(
@@ -1258,6 +1387,26 @@ class AgentRuntime:
                 # 而是 failed + 级联 skip 依赖 + task_failed/task_skipped 事件后收尾
                 try:
                     while round_no < task_rounds:
+                        # G6-B Auto: 水位超阈值自动压缩历史（基于上一轮 usage，首轮跳过）
+                        if (
+                            round_no > 0
+                            and final_usage
+                            and (round_no - last_compress_round) >= COMPRESS_MIN_INTERVAL_ROUNDS
+                        ):
+                            if await self._maybe_auto_compress(
+                                run_id, loop_messages, final_usage, context.model_id
+                            ):
+                                last_compress_round = round_no
+                                # 压缩可能吞掉本轮任务上下文 → 重新注入
+                                if has_task_graph and current_task is not None:
+                                    loop_messages.append({
+                                        "role": "system",
+                                        "content": _wrap_runtime_context(
+                                            f"【当前任务】{current_task.action}",
+                                            source="MfkAgent TaskGraph",
+                                        ),
+                                    })
+
                         round_tools = context.tools if round_no < task_rounds - 1 else None
 
                         # ──── Phase 11: 倒数预警（第 task_rounds - 1 轮，即最后一轮有工具时）────
@@ -1295,7 +1444,45 @@ class AgentRuntime:
                                 self_check_done = True
                                 continue
 
-                            task_content = result.content
+                            # Round 3 修复：最后一轮工具已禁用（round_tools 为 None）但模型仍输出
+                            # 工具调用 → 强制纯文本收尾，避免 final_content 变成原始 <tool_call>
+                            # 序列化文本（子代理编排断链根因）
+                            if result.tool_calls:
+                                runtime_event_recorder.emit(run_id, "agent_state_update",
+                                    self._build_agent_state_event(
+                                        agent_role=self._agent_role_display_name(
+                                            current_task.assigned_agent if current_task else "default_agent"
+                                        ),
+                                        status="working",
+                                        action_detail="工具已禁用但模型仍请求工具，强制纯文本收尾",
+                                        current_task_id=current_task.id if current_task else None,
+                                        task_progress=self._build_task_progress(
+                                            current_task.id if current_task else None
+                                        ),
+                                    ))
+                                loop_messages.append({
+                                    "role": "system",
+                                    "content": "工具调用已不可用。请基于你已获得的工具执行结果，直接以纯文本输出最终结论或报告，"
+                                               "严禁再输出任何 <tool_call> / <arg_*_> 格式的工具调用内容。",
+                                })
+                                result = await model_service.call_once(
+                                    model_id=context.model_id,
+                                    messages=loop_messages,
+                                    temperature=temperature,
+                                    max_tokens=max_tokens,
+                                    tools=None,
+                                    reasoning_effort=reasoning_effort,
+                                )
+                                final_usage = result.usage
+                                final_finish_reason = result.finish_reason
+                                if result.tool_calls:
+                                    # 模型仍固执输出工具调用格式 → 剥壳兜底
+                                    task_content = _strip_tool_call_blocks(result.content or "") \
+                                        or "[执行完成：工具已执行，但模型未输出文本总结]"
+                                else:
+                                    task_content = result.content
+                            else:
+                                task_content = result.content
 
                             # ──── Phase 12: Completion Loop V1 — 完成候选验证 ────
                             if completion_enabled:
@@ -1616,10 +1803,11 @@ class AgentRuntime:
         run_id = runtime_event_recorder.create_run(
             chat_id=context.chat_id,
             agent_id=context.agent_id,
+            parent_run_id=getattr(context, "parent_run_id", None),
         )
         try:
             async for event in self._run_stream_events(
-                context, messages, temperature, max_tokens, reasoning_effort, read_only, max_tool_rounds
+                context, messages, run_id, temperature, max_tokens, reasoning_effort, read_only, max_tool_rounds
             ):
                 # Phase E5: state_change 事件先更新 AgentRun.state（含审计），再统一持久化
                 if event.get("type") == "state_change":
@@ -1653,6 +1841,7 @@ class AgentRuntime:
         self,
         context: AgentContext,
         messages: list,
+        run_id: Optional[int] = None,
         temperature: float = 0.7,
         max_tokens: int = 16384,
         reasoning_effort: Optional[str] = None,
@@ -1682,6 +1871,7 @@ class AgentRuntime:
         yield {"type": "state_change", "state": RuntimePhase.LLM_CALL.value, "reason": "execution loop"}
 
         ctx = {k: v for k, v in (context.memory_context or {}).items() if v is not None}
+        ctx.setdefault("chat_id", context.chat_id)
 
         current_messages = self._to_dict_messages(messages)
         all_tool_calls = []
@@ -1762,8 +1952,31 @@ class AgentRuntime:
             # Phase 12: 每个任务独立的完成验证重试计数
             completion_retry_count = 0
             completion_exhausted = None
+            # G6-B Auto: 自动压缩轮次跟踪 + 上一轮 usage（finish 事件更新）
+            last_compress_round = 0
+            last_round_usage = None
             try:
                 for round_no in range(task_budget + 1):
+                    # G6-B Auto: 水位超阈值自动压缩历史（基于上一轮 usage，首轮跳过）
+                    if (
+                        round_no > 0
+                        and last_round_usage
+                        and (round_no - last_compress_round) >= COMPRESS_MIN_INTERVAL_ROUNDS
+                    ):
+                        if await self._maybe_auto_compress(
+                            run_id, current_messages, last_round_usage, context.model_id
+                        ):
+                            last_compress_round = round_no
+                            # 压缩可能吞掉本轮任务上下文 → 重新注入
+                            if has_task_graph and current_task is not None:
+                                current_messages.append({
+                                    "role": "system",
+                                    "content": _wrap_runtime_context(
+                                        f"【当前任务】{current_task.action}",
+                                        source="MfkAgent TaskGraph",
+                                    ),
+                                })
+
                     round_tools = context.tools if round_no < task_budget else None
 
                     # ──── Phase 11: 倒数预警（第 task_budget - 1 轮，即最后一轮有工具时）────
@@ -1794,13 +2007,13 @@ class AgentRuntime:
                         elif etype == "thinking":
                             yield event
                         elif etype == "tool_calls":
-                            collected_tool_calls = {i: c for i, c in enumerate(event.get("calls", []))}
+                            collected_tool_calls = {i: c for i, c in enumerate(event.get("calls") or [])}
                         elif etype == "finish":
                             final_finish = event.get("finish_reason", "stop")
                             # G6-A: 捕获 usage，yield token_usage 事件
-                            round_usage = event.get("usage")
-                            if round_usage:
-                                yield self._build_token_usage_event(round_usage, context.model_id)
+                            last_round_usage = event.get("usage")
+                            if last_round_usage:
+                                yield self._build_token_usage_event(last_round_usage, context.model_id)
 
                     if final_finish == "tool_calls" and collected_tool_calls and round_tools:
                         ordered = [collected_tool_calls[i] for i in sorted(collected_tool_calls)]
