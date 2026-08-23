@@ -815,8 +815,8 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
             color: "var(--mf-bubble-user-fg)",
             border: "1px solid var(--mf-bubble-user-border)",
             boxShadow: "var(--shadow-md)",
-            fontSize: "14px",
-            lineHeight: 1.5,
+            fontSize: "15px",
+            lineHeight: 1.65,
             overflow: "hidden",
           }}>
             {/* 图片附件 */}

@@ -254,9 +254,14 @@ optgroup {
 }
 
 /* 滚动条样式 - 低调薄条，hover 时才显形 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-level-4) 40%, transparent) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -264,13 +269,13 @@ optgroup {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-level-4) 35%, transparent);
+  background: color-mix(in srgb, var(--text-level-4) 40%, transparent);
   border-radius: var(--radius-full);
   transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text-level-3) 70%, transparent);
+  background: color-mix(in srgb, var(--text-level-3) 75%, transparent);
 }
 
 /* 隐藏滚动条但保留滚动能力（用于下拉菜单等紧凑弹层） */
@@ -295,6 +300,11 @@ optgroup {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 @keyframes slideIn {
@@ -690,8 +700,8 @@ button:active {
   line-height: var(--line-height-tight);
 }
 .md-h1 { font-size: 22px; margin: 20px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border-primary); }
-.md-h2 { font-size: 18px; margin: 16px 0 8px 0; }
-.md-h3 { font-size: 16px; margin: 14px 0 6px 0; }
+.md-h2 { font-size: 18px; margin: 18px 0 9px 0; }
+.md-h3 { font-size: 16px; margin: 15px 0 7px 0; }
 .md-h4 { font-size: 15px; margin: 12px 0 6px 0; color: var(--text-level-2); }
 .md-h5, .md-h6 { font-size: 14px; margin: 10px 0 4px 0; color: var(--text-level-2); }
 
@@ -753,7 +763,7 @@ button:active {
 
 /* 代码块容器 */
 .md-code-block {
-  margin: 10px 0;
+  margin: 12px 0;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-primary);
   overflow: hidden;
@@ -822,7 +832,7 @@ button:active {
 
 /* 段落 */
 .md-paragraph {
-  margin: 0 0 4px 0;
+  margin: 0 0 10px 0;
   line-height: var(--line-height-normal);
 }
 
