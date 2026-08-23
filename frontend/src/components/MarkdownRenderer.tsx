@@ -541,7 +541,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: Mark
   }, [content, t]);
 
   return (
-    <div style={{ fontSize: "15px", lineHeight: 1.65, color: "var(--text-level-2)", wordBreak: "break-word" }}>
+    <div style={{ fontSize: "16px", lineHeight: 1.65, color: "var(--text-level-2)", wordBreak: "break-word" }}>
       {blocks.length === 0 ? content : blocks}
     </div>
   );

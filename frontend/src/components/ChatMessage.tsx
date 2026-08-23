@@ -815,7 +815,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
             color: "var(--mf-bubble-user-fg)",
             border: "1px solid var(--mf-bubble-user-border)",
             boxShadow: "var(--shadow-md)",
-            fontSize: "15px",
+            fontSize: "16px",
             lineHeight: 1.65,
             overflow: "hidden",
           }}>
