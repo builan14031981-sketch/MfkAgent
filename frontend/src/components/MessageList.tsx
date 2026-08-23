@@ -43,8 +43,10 @@ interface MessageListProps {
   scrollPersistenceKey?: string;
 }
 
-/** 距离底部阈值：低于该值视为"用户停在底部"，自动吸底 */
-const BOTTOM_THRESHOLD = 120;
+/** 距离底部阈值：低于该值视为"用户停在底部"，自动吸底。
+ *  收窄到 60px：旧版 120px 时用户在底部附近轻轻一滚就进吸底区，
+ *  配合流式内容变化会反复硬拉回底部，造成跳转闪现。 */
+const BOTTOM_THRESHOLD = 60;
 
 /** 判断消息是否为压缩摘要节点 */
 function isCompressionNode(message: Message): boolean {
@@ -159,13 +161,50 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
   const restoredRef = useRef(false);
   const jumpButtonRef = useRef<HTMLButtonElement>(null);
 
+  // 渲染模式：≤100 条消息用原生全渲染（滚动丝滑，无虚拟器跳动），
+  // >100 条才启用虚拟滚动。模式在消息首次加载时锁定，对话过程中不切换，
+  // 避免从 100→101 条时组件树重挂载导致白屏/滚动重置。
+  const VIRTUAL_THRESHOLD = 100;
+  const [useVirtual, setUseVirtual] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (useVirtual === null && messages.length > 0) {
+      setUseVirtual(messages.length > VIRTUAL_THRESHOLD);
+    }
+  }, [messages, useVirtual]);
+
   // Phase H: 消息列表虚拟化（@tanstack/react-virtual）——
   // 超长会话（数百条）时只渲染视口窗口 ± overscan，大幅降低 Markdown 渲染开销。
-  // 行高动态测量（measureElement），默认估高 140px。
+  // 行高动态测量（measureElement）；estimateSize 按消息类型分档估算。
+  // 关键：工具卡片展开后单条消息可达 5000~15000px，若估算过低（如旧版统一 140px），
+  // 滚动时测量真实高度会触发虚拟器 applyScrollAdjustment 大幅改 scrollTop，表现为"回弹闪现"。
+  // 因此估算倾向高估——偏高时测量后 totalSize 收缩，调整幅度小；折叠态下初始滚动条略不准，
+  // 但消息一经测量即自动修正，用户感知远小于跳动。
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => containerRef.current,
-    estimateSize: () => 140,
+    estimateSize: (index) => {
+      const msg = messages[index];
+      if (!msg) return 300;
+      // 压缩摘要节点：默认折叠，很矮
+      if (msg.role === "user" && msg.content.startsWith("【历史记忆摘要】")) return 80;
+      // 用户消息：文字矮，带图时预留图片高度
+      if (msg.role === "user") {
+        const hasImage = msg.attachments?.some(
+          (a) => a.kind === "image" || a.mime?.startsWith("image/")
+        );
+        const textH = Math.min(msg.content.length * 0.5, 400);
+        return (hasImage ? 340 : 80) + textH;
+      }
+      // AI / system 消息：倾向高估（工具卡片展开态）
+      const toolCount = msg.tool_calls?.length || 0;
+      const timelineCount = msg.timeline?.length || 0;
+      const contentLen = msg.content?.length || 0;
+      let est = 400; // 基础（头像行 + 操作栏 + 间距）
+      est += Math.min(contentLen * 0.8, 4000); // 文本（Markdown 含代码块/列表）
+      est += toolCount * 800; // 每个工具调用（展开态含输入/输出/代码块，约 800~1500px）
+      est += timelineCount * 80; // timeline 事件
+      return Math.min(est, 30000); // 硬上限
+    },
     overscan: 8,
     useFlushSync: false,
   });
@@ -487,49 +526,77 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
           </div>
         ) : (
           <>
-            <div
-              style={{
-                height: totalSize,
-                position: "relative",
-                maxWidth: "100%",
-                margin: "0",
-              }}
-            >
-              {virtualItems.map((vi) => {
-                const message = messages[vi.index];
-                return (
-                  <div
-                    key={vi.key}
-                    data-index={vi.index}
-                    ref={virtualizer.measureElement}
-                    id={`msg-${message.id}`}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${vi.start}px)`,
-                    }}
-                  >
-                    <div style={{ marginBottom: message.role === "user" ? "24px" : "16px" }}>
-                      {isCompressionNode(message) ? (
-                        <CompressionNodeCard content={message.content} />
-                      ) : (
-                        <ChatMessage
-                          message={message}
-                          currentAgent={currentAgent}
-                          durationMs={computeAssistantDuration(message, messages, vi.index)}
-                          onQuote={onQuote}
-                          onRegenerate={onRegenerate}
-                          onEdit={onEdit}
-                          onImageClick={handleImageClick}
-                        />
-                      )}
+            {useVirtual === null ? null : useVirtual ? (
+              // 虚拟渲染：>100 条消息时启用，只渲染视口窗口
+              <div
+                style={{
+                  height: totalSize,
+                  position: "relative",
+                  maxWidth: "100%",
+                  margin: "0",
+                }}
+              >
+                {virtualItems.map((vi) => {
+                  const message = messages[vi.index];
+                  return (
+                    <div
+                      key={vi.key}
+                      data-index={vi.index}
+                      ref={virtualizer.measureElement}
+                      id={`msg-${message.id}`}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${vi.start}px)`,
+                      }}
+                    >
+                      <div style={{ marginBottom: message.role === "user" ? "24px" : "16px" }}>
+                        {isCompressionNode(message) ? (
+                          <CompressionNodeCard content={message.content} />
+                        ) : (
+                          <ChatMessage
+                            message={message}
+                            currentAgent={currentAgent}
+                            durationMs={computeAssistantDuration(message, messages, vi.index)}
+                            onQuote={onQuote}
+                            onRegenerate={onRegenerate}
+                            onEdit={onEdit}
+                            onImageClick={handleImageClick}
+                          />
+                        )}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            ) : (
+              // 原生渲染：≤100 条消息全量渲染，原生滚动无跳动
+              <div>
+                {messages.map((message, index) => (
+                  <div
+                    key={message.id}
+                    id={`msg-${message.id}`}
+                    style={{ marginBottom: message.role === "user" ? "24px" : "16px" }}
+                  >
+                    {isCompressionNode(message) ? (
+                      <CompressionNodeCard content={message.content} />
+                    ) : (
+                      <ChatMessage
+                        message={message}
+                        currentAgent={currentAgent}
+                        durationMs={computeAssistantDuration(message, messages, index)}
+                        onQuote={onQuote}
+                        onRegenerate={onRegenerate}
+                        onEdit={onEdit}
+                        onImageClick={handleImageClick}
+                      />
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
             {timeline.length > 0 && (
               <div style={{ maxWidth: "800px", margin: "0", marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>

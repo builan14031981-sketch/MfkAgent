@@ -611,7 +611,7 @@ export function ToolCallGroup({
         </span>
       </div>
       {expanded && (
-        <div style={{ marginTop: "8px", display: "flex", flexDirection: "column" }}>
+        <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", maxHeight: "500px", overflowY: "auto" }}>
           {normalized.map((tc, i) => (
             <ToolCallRow key={tc.tool_call_id ?? `${tc.tool}-${i}`} toolCall={tc} />
           ))}
