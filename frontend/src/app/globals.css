@@ -700,8 +700,8 @@ button:active {
   line-height: var(--line-height-tight);
 }
 .md-h1 { font-size: 22px; margin: 20px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid var(--border-primary); }
-.md-h2 { font-size: 18px; margin: 18px 0 9px 0; }
-.md-h3 { font-size: 16px; margin: 15px 0 7px 0; }
+.md-h2 { font-size: 18px; margin: 22px 0 12px 0; }
+.md-h3 { font-size: 16px; margin: 18px 0 10px 0; }
 .md-h4 { font-size: 15px; margin: 12px 0 6px 0; color: var(--text-level-2); }
 .md-h5, .md-h6 { font-size: 14px; margin: 10px 0 4px 0; color: var(--text-level-2); }
 
@@ -763,7 +763,7 @@ button:active {
 
 /* 代码块容器 */
 .md-code-block {
-  margin: 12px 0;
+  margin: 16px 0;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-primary);
   overflow: hidden;
@@ -816,8 +816,7 @@ button:active {
 .md-list-item {
   display: flex;
   gap: 8px;
-  margin: 0 0 3px 0;
-  font-size: 14px;
+  margin: 0 0 8px 0;
   line-height: var(--line-height-normal);
 }
 
@@ -825,14 +824,13 @@ button:active {
 .md-ordered-item {
   display: flex;
   gap: 8px;
-  margin: 0 0 3px 0;
-  font-size: 14px;
+  margin: 0 0 8px 0;
   line-height: var(--line-height-normal);
 }
 
 /* 段落 */
 .md-paragraph {
-  margin: 0 0 10px 0;
+  margin: 0 0 18px 0;
   line-height: var(--line-height-normal);
 }
 
