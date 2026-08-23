@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Copy, Check, FileText } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isFilePath, useFilePathInteraction, CLOSE_FILE_CTX_MENU } from "@/hooks/useFilePathInteraction";
@@ -193,8 +194,8 @@ function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean
         <FileText style={{ width: "12px", height: "12px", flexShrink: 0 }} />
         {isCode ? path : fileName}
       </span>
-      {/* 右键菜单 */}
-      {contextMenu && isFile && (
+      {/* 右键菜单：用 Portal 挂到 body，避免嵌套在 <p> 内导致 hydration 错误 */}
+      {contextMenu && isFile && typeof document !== "undefined" && createPortal(
         <div
           style={{
             position: "fixed",
@@ -253,7 +254,8 @@ function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean
           >
             {copied ? "已复制" : "复制路径"}
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
