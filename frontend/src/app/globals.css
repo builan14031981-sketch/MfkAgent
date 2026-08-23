@@ -853,14 +853,17 @@ button:active {
  * ======================================== */
 [data-zoomable="sidebar-content"] {
   zoom: var(--app-content-zoom, 1);
+  contain: layout paint;
 }
 
 [data-zoomable="message-list"] {
   zoom: var(--app-content-zoom, 1);
+  contain: layout paint;
 }
 
 [data-zoomable="composer"] {
   zoom: var(--app-content-zoom, 1);
+  contain: layout paint;
 }
 
 /* ========================================

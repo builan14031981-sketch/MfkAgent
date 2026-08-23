@@ -69,6 +69,7 @@ export function ChatRow({
         cursor: "pointer",
         marginBottom: "1px",
         transition: "background var(--transition-fast)",
+        contain: "layout paint",
       }}
       onClick={() => !isRenaming && router.push(`/chat/${chat.id}`)}
       onContextMenu={(e) => onContextMenu(e, chat.id)}

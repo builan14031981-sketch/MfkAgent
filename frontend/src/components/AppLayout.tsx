@@ -88,6 +88,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     const applyZoom = (v: number) => {
       document.documentElement.style.setProperty("--app-content-zoom", String(v));
     };
+    let rafId = 0;
 
     // 恢复上次缩放比例
     let zoom = 1;
@@ -115,8 +116,14 @@ export function AppLayout({ children }: AppLayoutProps) {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
       zoom = clamp(zoom + delta);
-      applyZoom(zoom);
-      try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
+      // 用 rAF 节流，合并多次滚轮事件，减少重排
+      if (!rafId) {
+        rafId = requestAnimationFrame(() => {
+          applyZoom(zoom);
+          try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
+          rafId = 0;
+        });
+      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -141,6 +148,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     return () => {
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKeyDown);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);
 
