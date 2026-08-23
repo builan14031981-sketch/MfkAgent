@@ -295,7 +295,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // ── 侧边栏宽度 ──
   const layoutRef = useRef<HTMLDivElement>(null);
-  const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const sidebarDragRef = useRef<{ startX: number; startWidth: number; lastX: number } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
 
   // 初始从 localStorage 恢复宽度
@@ -369,31 +369,48 @@ export function AppLayout({ children }: AppLayoutProps) {
   // 侧边栏拖拽调宽
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    const startWidth = Number(
-      getComputedStyle(layoutRef.current!).getPropertyValue("--sidebar-width").replace("px", "") || sidebarWidth
-    );
-    sidebarDragRef.current = { startX: e.clientX, startWidth };
+    if (!layoutRef.current) return;
+    const computed = getComputedStyle(layoutRef.current).getPropertyValue("--sidebar-width");
+    const startWidth = parseFloat(computed) || sidebarWidth;
+    sidebarDragRef.current = { startX: e.clientX, startWidth, lastX: e.clientX };
 
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
+    // 拖拽时标记，CSS 据此关闭 width transition，保证 0 延迟跟手
+    layoutRef.current.setAttribute("data-resizing", "true");
+
+    let rafId: number | null = null;
 
     const onMove = (ev: MouseEvent) => {
       const drag = sidebarDragRef.current;
       if (!drag) return;
-      const delta = ev.clientX - drag.startX;
-      const next = clampWidth(drag.startWidth + delta, SIDEBAR_MIN, SIDEBAR_MAX);
-      layoutRef.current?.style.setProperty("--sidebar-width", `${next}px`);
+      drag.lastX = ev.clientX;
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const currentDrag = sidebarDragRef.current;
+        if (!currentDrag) return;
+        const delta = currentDrag.lastX - currentDrag.startX;
+        const next = clampWidth(currentDrag.startWidth + delta, SIDEBAR_MIN, SIDEBAR_MAX);
+        layoutRef.current?.style.setProperty("--sidebar-width", `${next}px`);
+      });
     };
 
     const onUp = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       const drag = sidebarDragRef.current;
       sidebarDragRef.current = null;
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
+      layoutRef.current?.removeAttribute("data-resizing");
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       if (drag) {
-        const final = clampWidth(drag.startWidth, SIDEBAR_MIN, SIDEBAR_MAX);
+        const final = clampWidth(drag.startWidth + (drag.lastX - drag.startX), SIDEBAR_MIN, SIDEBAR_MAX);
+        layoutRef.current?.style.setProperty("--sidebar-width", `${final}px`);
         setSidebarWidth(final);
         try {
           localStorage.setItem(SIDEBAR_STORAGE_KEY, final.toString());
