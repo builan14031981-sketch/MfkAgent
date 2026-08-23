@@ -7,6 +7,7 @@ import {
   Settings,
   FolderPlus,
   ChevronRight,
+  ChevronDown,
   MessageSquare,
   Folder,
   FolderOpen,
@@ -497,7 +498,6 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         <button
           ref={newTaskBtnRef}
           onClick={() => router.push("/")}
-          className="sb-btn--ghost"
           style={{
             flex: 1,
             display: "flex",
@@ -506,8 +506,16 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             padding: "6px 10px",
             borderRadius: "var(--radius-md)",
             fontSize: "14px",
+            fontWeight: 500,
             color: "var(--text-level-1)",
+            background: "transparent",
+            border: "1px solid var(--border-primary)",
+            cursor: "pointer",
+            outline: "none",
+            transition: "background var(--transition-fast), border-color var(--transition-fast)",
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "var(--border-primary)"; }}
         >
           <Plus style={{ width: "16px", height: "16px" }} />
           <span>{t("sidebar.newTask")}</span>
@@ -527,7 +535,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           }}
           title={t("sidebar.search")}
         >
-          <Search style={{ width: "14px", height: "14px" }} />
+          <Search style={{ width: "16px", height: "16px" }} />
         </button>
         {onToggleSidebar && (
           <button
@@ -566,7 +574,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         onFocus={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; }}
         onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; }}
         >
-          <Search style={{ width: "13px", height: "13px", color: "var(--text-level-4)", flexShrink: 0 }} />
+          <Search style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
           <input
             type="text"
             value={searchQuery}
@@ -606,7 +614,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
       </div>
 
       {/* 待办面板（可折叠，位于 New Task 与 Projects 之间） */}
-      <div style={{ padding: "0 4px" }}>
+      <div style={{ padding: "0 4px", marginBottom: "8px" }}>
         <TodoPanel />
       </div>
 
@@ -633,7 +641,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         {/* 原分组：搜索时隐藏 */}
         <div style={{ display: filteredChats ? "none" : "block" }}>
         {/* ===== 项目工作区 ===== */}
-        <div style={{ marginBottom: "16px" }}>
+        <div style={{ marginBottom: "8px" }}>
           {/* section header：sticky 吸顶，列表在外层可滚容器内独立滚动（2026-08-11 父不动子滚原则） */}
           <div style={{
             display: "flex",
@@ -656,25 +664,20 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 padding: "2px 4px",
               }}
             >
-              <ChevronRight style={{
-                width: "var(--sidebar-icon-size-sm)",
-                height: "var(--sidebar-icon-size-sm)",
-                color: "var(--text-level-4)",
-                flexShrink: 0,
-                transform: collapsedProjectWorkspace ? "rotate(0deg)" : "rotate(90deg)",
-                transition: "transform var(--transition-fast)",
-              }} />
               {collapsedProjectWorkspace ? (
-                <Folder style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
+                <ChevronRight style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
               ) : (
-                <FolderOpen style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
+                <ChevronDown style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+              )}
+              {collapsedProjectWorkspace ? (
+                <Folder style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+              ) : (
+                <FolderOpen style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
               )}
               <p style={{
-                fontSize: "11px",
-                fontWeight: "600",
-                color: "var(--text-level-4)",
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
+                fontSize: "12px",
+                fontWeight: 500,
+                color: "var(--text-level-3)",
                 margin: 0,
                 whiteSpace: "nowrap",
               }}>{t("sidebar.projectWorkspace")}</p>
@@ -684,7 +687,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               className="sb-btn--icon-sm"
               title={t("sidebar.openProject")}
             >
-              <FolderPlus style={{ width: "12px", height: "12px" }} />
+              <FolderPlus style={{ width: "14px", height: "14px" }} />
             </button>
           </div>
 
@@ -746,21 +749,16 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               zIndex: 1,
             }}
           >
-            <ChevronRight style={{
-              width: "var(--sidebar-icon-size-sm)",
-              height: "var(--sidebar-icon-size-sm)",
-              color: "var(--text-level-4)",
-              flexShrink: 0,
-              transform: collapsedGeneralChats ? "rotate(0deg)" : "rotate(90deg)",
-              transition: "transform var(--transition-fast)",
-            }} />
-            <MessageSquare style={{ width: "var(--sidebar-icon-size-sm)", height: "var(--sidebar-icon-size-sm)", color: "var(--text-level-4)", flexShrink: 0 }} />
+            {collapsedGeneralChats ? (
+              <ChevronRight style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+            ) : (
+              <ChevronDown style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+            )}
+            <MessageSquare style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
             <p style={{
-              fontSize: "11px",
-              fontWeight: "600",
-              color: "var(--text-level-4)",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
+              fontSize: "12px",
+              fontWeight: 500,
+              color: "var(--text-level-3)",
               margin: 0,
               whiteSpace: "nowrap",
             }}>{t("sidebar.generalChats")}</p>
@@ -856,7 +854,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               color: "var(--text-level-3)",
             }}
           >
-            <Settings style={{ width: "15px", height: "15px" }} />
+            <Settings style={{ width: "16px", height: "16px" }} />
             <span>{t("sidebar.settings")}</span>
           </button>
         )}
