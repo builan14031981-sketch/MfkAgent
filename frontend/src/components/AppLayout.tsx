@@ -76,31 +76,72 @@ export function AppLayout({ children }: AppLayoutProps) {
   // 对标豆包：框架固定，只缩放内容（侧边栏内容、消息列表、输入框）。
   // 通过 CSS 变量 --app-content-zoom 控制，globals.css 中给指定容器加 zoom。
   // 步长5%，范围0.75~1.5，持久化到 localStorage。
+  // Ctrl+0 重置到用户默认缩放；Ctrl+Shift+0 把当前缩放设为新默认。
   const ZOOM_KEY = "mfk_app_zoom";
+  const ZOOM_DEFAULT_KEY = "mfk_app_zoom_default";
   const ZOOM_MIN = 0.75;
   const ZOOM_MAX = 1.5;
   const ZOOM_STEP = 0.05;
 
   useEffect(() => {
+    const clamp = (v: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +v.toFixed(2)));
+    const applyZoom = (v: number) => {
+      document.documentElement.style.setProperty("--app-content-zoom", String(v));
+    };
+
     // 恢复上次缩放比例
     let zoom = 1;
     try {
       const saved = parseFloat(window.localStorage.getItem(ZOOM_KEY) || "");
-      if (Number.isFinite(saved)) zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, saved));
+      if (Number.isFinite(saved)) zoom = clamp(saved);
     } catch { /* localStorage 不可用则用默认 1 */ }
-    document.documentElement.style.setProperty("--app-content-zoom", String(zoom));
+
+    // 恢复或初始化用户默认缩放：首次运行把当前比例存为默认
+    let defaultZoom = 1;
+    try {
+      const savedDefault = parseFloat(window.localStorage.getItem(ZOOM_DEFAULT_KEY) || "");
+      if (Number.isFinite(savedDefault)) {
+        defaultZoom = clamp(savedDefault);
+      } else {
+        defaultZoom = zoom;
+        window.localStorage.setItem(ZOOM_DEFAULT_KEY, String(defaultZoom));
+      }
+    } catch { /* noop */ }
+
+    applyZoom(zoom);
 
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-      zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(zoom + delta).toFixed(2)));
-      document.documentElement.style.setProperty("--app-content-zoom", String(zoom));
+      zoom = clamp(zoom + delta);
+      applyZoom(zoom);
       try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
     };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      if (e.key !== "0") return;
+      e.preventDefault();
+      if (e.shiftKey) {
+        // Ctrl+Shift+0：把当前缩放设为新默认
+        defaultZoom = zoom;
+        try { window.localStorage.setItem(ZOOM_DEFAULT_KEY, String(defaultZoom)); } catch { /* noop */ }
+      } else {
+        // Ctrl+0：重置到默认缩放
+        zoom = defaultZoom;
+        applyZoom(zoom);
+        try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
+      }
+    };
+
     // passive:false 才能 preventDefault 阻止浏览器默认的 Ctrl+滚轮缩放
     window.addEventListener("wheel", onWheel, { passive: false });
-    return () => window.removeEventListener("wheel", onWheel);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const toggleSidebar = useCallback(() => {
@@ -426,7 +467,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       }}>
         {/* 多标签栏（浏览器式多会话切换） */}
         <ChatTabBar onNewChat={handleGlobalNewChat} />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           {children}
         </div>
       </main>
