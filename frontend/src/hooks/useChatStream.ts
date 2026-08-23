@@ -271,10 +271,6 @@ export function useChatStream({
   const sendStream = useCallback(
     async (content: string, options: SendStreamOptions = {}) => {
       if (!chatId) throw new Error("No chat selected");
-      if (useStreamStore.getState().sessions[chatId]?.isSending) {
-        console.warn("Already sending, ignoring request.");
-        return;
-      }
       const targetChatId = chatId; // 捕获发送时的 chatId，后续所有操作都使用此值
       const startedAt = Date.now(); // 任务开始时刻：用于完成通知与用时展示
 
@@ -457,8 +453,8 @@ export function useChatStream({
         }
       };
 
+      const controller = new AbortController();
       try {
-        const controller = new AbortController();
         refs.abortController = controller;
         await sendMessageStream(
           finalContent,
@@ -863,11 +859,15 @@ export function useChatStream({
           }
         );
       } catch (err) {
-        // 主动中断（用户点击停止）不算错误：静默清理
-        if (refs.abortController && err instanceof DOMException && err.name === "AbortError") {
-          refs.abortController = null;
-          resetStreaming(targetChatId);
-          store.updateSession(targetChatId, () => ({ isSending: false }));
+        // 主动中断（用户点击停止 / 被新消息取代）不算错误：静默清理
+        if (err instanceof DOMException && err.name === "AbortError") {
+          // 只有当自己仍是当前活跃流时才重置状态；
+          // 若 refs.abortController 已指向新流，说明是被新消息取代，不碰新流状态
+          if (refs.abortController === controller) {
+            refs.abortController = null;
+            resetStreaming(targetChatId);
+            store.updateSession(targetChatId, () => ({ isSending: false }));
+          }
           return;
         }
         const msg = err instanceof Error ? err.message : String(err);

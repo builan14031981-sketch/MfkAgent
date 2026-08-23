@@ -359,8 +359,8 @@ export const ChatInput = memo(function ChatInput({
     setScreenshots((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  // 有文字或有截图时都能发送
-  const canSend = (value.trim().length > 0 || screenshots.length > 0) && !isSending && !disabled;
+  // 有文字或有截图时都能发送；发送中也允许发新消息（会中断当前输出，以最新输入为准）
+  const canSend = (value.trim().length > 0 || screenshots.length > 0) && !disabled;
 
   // 统一发送：把 screenshots 传给父组件，由父组件统一上传和发送
   const handleSend = useCallback(() => {
@@ -658,7 +658,7 @@ export const ChatInput = memo(function ChatInput({
           }}
           placeholder={placeholder}
           rows={1}
-          disabled={isSending || disabled}
+          disabled={disabled}
           style={{
             width: "100%",
             // 启用语音时左侧留出小球空间（10 球宽28 + 间距10 = 48），其余保持原 14px
@@ -799,7 +799,8 @@ export const ChatInput = memo(function ChatInput({
         </div>
 
         {/* 发送/停止按钮 28x28 - 卡片右下角 */}
-        {isSending && onStop ? (
+        {/* 发送中且输入框为空 → 停止按钮；发送中输入了内容 → 发送按钮（中断旧流，以最新输入为准） */}
+        {isSending && onStop && !value.trim() ? (
           <button
             onClick={onStop}
             title={t("chat.stop")}

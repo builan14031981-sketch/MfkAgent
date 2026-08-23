@@ -1259,47 +1259,26 @@ async def send_message_stream(chat_id: int, request: SendRequest):
                 except Exception as e:
                     logger.warning("[action_guard] stream regen failed: %s", e)
 
-            # ── Phase 10: 记忆提取（写闸 = memory_write_enabled）──
-            # 写闸关闭 → 完全不提取（记忆落库不做）。写闸开启但提示关闭或自治模式 → 后台无感提取。
-            # 写闸开启且提示开启且非自治 → 内联完成，通知随消息落库并推入流。
-            memory_saved_notice = None
+            # ── Phase 10: 记忆提取（始终后台异步，不阻塞 [DONE]）──
+            # 写闸关闭 → 不提取。写闸开启 → 后台 fire-and-forget 提取并落库。
+            # 之前同步等待 LLM 提取会导致文字打完后还要等几秒才发 [DONE]、锁输入框。
             if mem_settings["write"]:
-                if mem_settings["alert"] and not mem_settings["autonomous"]:
-                    try:
-                        mem_actions = await run_memory_extraction(
+                try:
+                    asyncio.create_task(
+                        run_memory_extraction(
                             chat_id=chat_id,
                             project_id=mem_project_id,
                             user_message=mem_user_content,
                             ai_content=full_content,
                             agent_id=mem_agent_id,
                         )
-                    except Exception as e:  # noqa: BLE001
-                        logger.warning("memory extraction failed: %s", e, exc_info=True)
-                        mem_actions = []
-                    if mem_actions:
-                        memory_saved_notice = _memory_saved_event(mem_actions)
-                        timeline_events.append(memory_saved_notice)
-                else:
-                    try:
-                        asyncio.create_task(
-                            run_memory_extraction(
-                                chat_id=chat_id,
-                                project_id=mem_project_id,
-                                user_message=mem_user_content,
-                                ai_content=full_content,
-                                agent_id=mem_agent_id,
-                            )
-                        )
-                    except Exception:  # noqa: BLE001
-                        pass
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
 
             # DB 持久化（无论客户端是否断连，始终执行）
             _persist()
             run.db_persisted = True
-
-            # 记忆保存通知推入流（在哨兵之前，保证 SSE 客户端可达）
-            if memory_saved_notice is not None:
-                _put(memory_saved_notice)
 
             # Phase 3 T3/T8: 发布任务完成通知
             event_bus.task_completed(
