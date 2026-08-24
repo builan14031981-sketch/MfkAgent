@@ -1,0 +1,53 @@
+{
+  "gongke": {
+    "name": "工科",
+    "sections": [
+      {"role": "background", "layout": "two_column", "title": "研究背景"},
+      {"role": "status", "layout": "bullets", "title": "研究现状"},
+      {"role": "method", "layout": "image_right", "title": "研究方法 / 系统设计"},
+      {"role": "result", "layout": "image_right", "title": "实验与结果"},
+      {"role": "innovation", "layout": "bullets", "title": "创新点"},
+      {"role": "conclusion", "layout": "bullets", "title": "结论与展望"}
+    ]
+  },
+  "liberal": {
+    "name": "文科",
+    "sections": [
+      {"role": "background", "layout": "two_column", "title": "研究背景"},
+      {"role": "literature", "layout": "bullets", "title": "文献综述"},
+      {"role": "method", "layout": "two_column", "title": "研究方法"},
+      {"role": "analysis", "layout": "two_column", "title": "核心论点 / 分析"},
+      {"role": "conclusion", "layout": "bullets", "title": "结论与展望"}
+    ]
+  },
+  "science": {
+    "name": "理科",
+    "sections": [
+      {"role": "background", "layout": "two_column", "title": "研究背景"},
+      {"role": "theory", "layout": "bullets", "title": "理论基础"},
+      {"role": "method", "layout": "two_column", "title": "实验方法"},
+      {"role": "analysis", "layout": "image_right", "title": "数据分析"},
+      {"role": "conclusion", "layout": "bullets", "title": "结论与展望"}
+    ]
+  },
+  "medical": {
+    "name": "医科",
+    "sections": [
+      {"role": "background", "layout": "two_column", "title": "研究背景"},
+      {"role": "method", "layout": "bullets", "title": "研究方法"},
+      {"role": "data", "layout": "image_right", "title": "病例 / 数据"},
+      {"role": "result", "layout": "image_right", "title": "结果分析"},
+      {"role": "conclusion", "layout": "bullets", "title": "结论与展望"}
+    ]
+  },
+  "art_design": {
+    "name": "艺术设计",
+    "sections": [
+      {"role": "background", "layout": "two_column", "title": "设计背景"},
+      {"role": "concept", "layout": "bullets", "title": "设计理念"},
+      {"role": "process", "layout": "two_column", "title": "设计过程"},
+      {"role": "works", "layout": "image_right", "title": "作品展示"},
+      {"role": "summary", "layout": "bullets", "title": "总结"}
+    ]
+  }
+}

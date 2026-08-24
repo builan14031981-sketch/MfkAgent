@@ -1,0 +1,62 @@
+{
+  "minimal_academic": {
+    "id": "minimal_academic",
+    "name": "简约学术",
+    "bg": "FFFFFF",
+    "bg_alt": "F4F6F9",
+    "title_color": "1F3A5F",
+    "body_color": "2B2B2B",
+    "accent": "2F6FB0",
+    "accent_soft": "DCE7F2",
+    "font_title": "微软雅黑",
+    "font_body": "微软雅黑",
+    "font_size_title": 32,
+    "font_size_body": 20,
+    "cover_bg": "1F3A5F"
+  },
+  "tech": {
+    "id": "tech",
+    "name": "科技感",
+    "bg": "FFFFFF",
+    "bg_alt": "EEF4FB",
+    "title_color": "0B2545",
+    "body_color": "333333",
+    "accent": "00A6D6",
+    "accent_soft": "D6F0F7",
+    "font_title": "微软雅黑",
+    "font_body": "微软雅黑",
+    "font_size_title": 32,
+    "font_size_body": 20,
+    "cover_bg": "0B2545"
+  },
+  "fresh": {
+    "id": "fresh",
+    "name": "清新",
+    "bg": "FFFFFF",
+    "bg_alt": "EAF7EF",
+    "title_color": "1B5E3A",
+    "body_color": "2B2B2B",
+    "accent": "3DA776",
+    "accent_soft": "D8F0E2",
+    "font_title": "微软雅黑",
+    "font_body": "微软雅黑",
+    "font_size_title": 32,
+    "font_size_body": 20,
+    "cover_bg": "1B5E3A"
+  },
+  "formal_business": {
+    "id": "formal_business",
+    "name": "正式商务",
+    "bg": "FFFFFF",
+    "bg_alt": "F7F3EA",
+    "title_color": "23232F",
+    "body_color": "2B2B2B",
+    "accent": "B8893B",
+    "accent_soft": "F0E6CF",
+    "font_title": "SimSun",
+    "font_body": "微软雅黑",
+    "font_size_title": 32,
+    "font_size_body": 20,
+    "cover_bg": "23232F"
+  }
+}
