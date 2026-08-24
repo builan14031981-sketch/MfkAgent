@@ -69,3 +69,10 @@ CE1/
 backend/.py_deps/
 backend/.venv_test/
 
+# Repo hygiene (added 2026-08-24): debug screenshots / logs / scratch
+_*.png
+_scroll_test/
+*.lnk
+*.log.*
+_archive/
+
