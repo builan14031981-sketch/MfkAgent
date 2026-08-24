@@ -188,13 +188,23 @@ export const TaskProgressCard = memo(function TaskProgressCard({ tasks, chatId =
                   display: "flex",
                   alignItems: "flex-start",
                   gap: "8px",
-                  padding: "2px 8px",
+                  padding: "4px 8px 4px 10px",
                   borderRadius: "var(--radius-sm)",
                   background: isFailed
-                    ? "color-mix(in srgb, var(--color-error) 8%, transparent)"
+                    ? "color-mix(in srgb, var(--color-error) 12%, transparent)"
+                    : isRunning
+                    ? "color-mix(in srgb, var(--color-primary) 5%, transparent)"
                     : "transparent",
-                  opacity: isCompleted ? 0.65 : 1,
-                  transition: "opacity 0.2s ease",
+                  borderLeft: isFailed
+                    ? "2px solid var(--color-error)"
+                    : isRunning
+                    ? "2px solid var(--color-primary)"
+                    : "2px solid transparent",
+                  boxShadow: isRunning
+                    ? "inset 0 0 12px color-mix(in srgb, var(--color-primary) 8%, transparent)"
+                    : "none",
+                  opacity: isCompleted ? 0.6 : 1,
+                  transition: "opacity 0.25s ease, background 0.2s ease, box-shadow 0.2s ease",
                 }}
               >
                 <div style={{ marginTop: "1px" }}>

@@ -194,7 +194,7 @@ def _seed_sub_agents():
 _seed_sub_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, tts as tts_api, workflows, autotasks  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, tts as tts_api, workflows, autotasks, defense_ppt  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -365,6 +365,7 @@ app.include_router(browser_api.router, prefix="/api", tags=["browser"])
 app.include_router(feishu_api.router, prefix="/api/feishu", tags=["feishu"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"])
+app.include_router(defense_ppt.router, prefix="/api/defense-ppt", tags=["defense-ppt"])
 
 # 关闭时清理所有终端 PTY 会话
 @app.on_event("shutdown")

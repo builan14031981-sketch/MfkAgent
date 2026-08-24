@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Download } from "lucide-react";
 
 interface ScreenshotLightboxProps {
@@ -35,7 +36,10 @@ export function ScreenshotLightbox({ dataUrl, onClose, onSaveAs }: ScreenshotLig
     };
   }, [onClose]);
 
-  return (
+  // SSR 守卫：document 未就绪时不渲染
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -128,6 +132,7 @@ export function ScreenshotLightbox({ dataUrl, onClose, onSaveAs }: ScreenshotLig
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -15,13 +15,12 @@ _DATA_FILE = os.path.abspath(
 
 # 类目顺序（前端台词菜单分组用；name 为界面展示名）——与数据文件的 key 对应
 _CATEGORY_ORDER = [
-    {"id": "digital-life", "name": "数字生命"},
-    {"id": "movie", "name": "世界百大电影"},
-    {"id": "jiangnan", "name": "江南"},
-    {"id": "suibi", "name": "江南随笔"},
-    {"id": "lyric-cn", "name": "华语歌词"},
-    {"id": "lyric-en", "name": "外语歌词"},
-    {"id": "meme", "name": "互联网名梗"},
+    {"id": "digital-life", "name": "数字生命 / 科幻"},
+    {"id": "movie", "name": "世界电影"},
+    {"id": "jiangnan", "name": "江南 / 文学"},
+    {"id": "lyric", "name": "歌词"},
+    {"id": "meme", "name": "程序员 / 互联网"},
+    {"id": "original", "name": "MfkAgent 原创"},
 ]
 
 # 类目 id → 展示名

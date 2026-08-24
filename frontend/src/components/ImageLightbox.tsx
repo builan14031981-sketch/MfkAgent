@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ImageLightboxProps {
@@ -58,7 +59,10 @@ export function ImageLightbox({ urls, initialIndex = 0, onClose }: ImageLightbox
     setImageLoaded(false);
   }, [currentIndex]);
 
-  return (
+  // SSR 守卫：document 未就绪时不渲染
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
       onClick={onClose}
       style={{
@@ -189,6 +193,7 @@ export function ImageLightbox({ urls, initialIndex = 0, onClose }: ImageLightbox
           {currentIndex + 1} / {urls.length}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -863,7 +863,7 @@ button:active {
 
 [data-zoomable="composer"] {
   zoom: var(--app-content-zoom, 1);
-  contain: layout paint;
+  contain: layout;
 }
 
 /* 侧边栏拖拽调宽时临时关闭 width transition，保证 0 延迟跟手；松手后恢复折叠/展开动画 */

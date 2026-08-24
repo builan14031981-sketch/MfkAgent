@@ -26,6 +26,7 @@ const AGENT_EN_NAMES: Record<string, string> = {
   general: "AnGent",
   pianai: "Pianai",
   spark: "Spark",
+  defense_ppt_expert: "Defense PPT",
 };
 
 // 跨实例同步事件：任一实例变更 agents 后广播，所有实例立即重新拉取

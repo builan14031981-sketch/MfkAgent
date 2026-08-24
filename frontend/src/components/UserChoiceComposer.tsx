@@ -92,9 +92,9 @@ export function UserChoiceComposer({
       aria-label={t("chat.choiceTitle")}
       style={{
         width: "100%",
-        maxWidth: "768px",
+        maxWidth: "1400px",
         margin: "0 auto",
-        padding: "8px 16px",
+        padding: "0 100px 4px 100px",
       }}
     >
       <div
@@ -104,8 +104,8 @@ export function UserChoiceComposer({
           gap: "8px",
           padding: "10px 12px",
           borderRadius: "var(--radius-2xl)",
-          background: "var(--bg-level-2)",
-          border: "1.5px solid color-mix(in srgb, var(--color-primary) 40%, var(--border-primary))",
+          background: "var(--bg-level-3)",
+          border: "1px solid var(--border-primary)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.06)",
         }}
       >
@@ -205,11 +205,14 @@ export function UserChoiceComposer({
                     : isRecommended
                     ? "color-mix(in srgb, var(--color-primary) 6%, var(--bg-level-3))"
                     : "var(--bg-level-3)",
+                  boxShadow: isSelected
+                    ? "inset 3px 0 0 var(--color-primary)"
+                    : "none",
                   cursor: submitting ? "not-allowed" : "pointer",
                   textAlign: "left",
                   font: "inherit",
                   color: "var(--text-level-1)",
-                  transition: "background 0.15s ease, border-color 0.15s ease, transform 0.1s ease",
+                  transition: "background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease",
                 }}
                 onMouseEnter={(e) => {
                   if (submitting) return;
@@ -286,6 +289,7 @@ export function UserChoiceComposer({
                         lineHeight: "14px",
                         textTransform: "uppercase",
                         letterSpacing: "0.3px",
+                        animation: "softPulse 1.8s ease-in-out infinite",
                       }}>
                         <Star style={{ width: "8px", height: "8px" }} fill="currentColor" />
                         {t("chat.choiceRecommended")}

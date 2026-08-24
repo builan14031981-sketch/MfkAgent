@@ -17,6 +17,7 @@ import { MentorA, MentorB, MentorC } from "./mentor";
 import { PersonalA, PersonalB, PersonalC } from "./personal";
 import { ResearchA, ResearchB, ResearchC } from "./research";
 import { GptA, GptB, GptC } from "./gpt";
+import { PresentationA } from "./presentation";
 
 type IconComponent = () => ReactElement;
 
@@ -39,6 +40,7 @@ export const AGENT_ICON_SCHEMES: Record<string, Record<AgentIconScheme, IconComp
   personal: { A: PersonalA, B: PersonalB, C: PersonalC },
   research: { A: ResearchA, B: ResearchB, C: ResearchC },
   gpt: { A: GptA, B: GptB, C: GptC },
+  defense_ppt_expert: { A: PresentationA, B: PresentationA, C: PresentationA },
 };
 
 /** 展示元数据（供测试台/下拉框使用） */
@@ -127,6 +129,11 @@ export const AGENT_META: Record<string, { name: string; desc: string; schemeNote
     name: "默认助手",
     desc: "通用对话 · 消息",
     schemeNote: "A 对话气泡+文字 · B 气泡+光标 · C 圆环气泡",
+  },
+  defense_ppt_expert: {
+    name: "答辩PPT专家",
+    desc: "毕业答辩 · 演示屏",
+    schemeNote: "A 演示屏+画架",
   },
 };
 

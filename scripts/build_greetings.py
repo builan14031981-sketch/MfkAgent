@@ -20,13 +20,15 @@ SOURCE_DIR = os.path.join(REPO_ROOT, "资产库", "文案素材")
 OUTPUT_PATH = os.path.join(REPO_ROOT, "backend", "app", "data", "greetings.json")
 
 # 文案源文件 → 类目（与运行时 greetings.py 的 _CATEGORY_ORDER 保持一致）
+# 注意：歌词（华语+外语）、江南（台词+随笔）已合并为单一类目；
+# 程序员/互联网（meme）与 MfkAgent 原创（original）为手写类目，无调研源文件。
 _FILE_CATEGORIES: Dict[str, Dict[str, str]] = {
-    "数字生命文案调研.md": {"id": "digital-life", "name": "数字生命"},
-    "世界百大电影台词调研.md": {"id": "movie", "name": "世界百大电影"},
-    "江南台词调研.md": {"id": "jiangnan", "name": "江南"},
-    "江南随笔文案调研.md": {"id": "suibi", "name": "江南随笔"},
-    "华语经典歌词文案调研.md": {"id": "lyric-cn", "name": "华语歌词"},
-    "外语经典歌词文案调研.md": {"id": "lyric-en", "name": "外语歌词"},
+    "数字生命文案调研.md": {"id": "digital-life", "name": "数字生命 / 科幻"},
+    "世界百大电影台词调研.md": {"id": "movie", "name": "世界电影"},
+    "江南台词调研.md": {"id": "jiangnan", "name": "江南 / 文学"},
+    "江南随笔文案调研.md": {"id": "jiangnan", "name": "江南 / 文学"},
+    "华语经典歌词文案调研.md": {"id": "lyric", "name": "歌词"},
+    "外语经典歌词文案调研.md": {"id": "lyric", "name": "歌词"},
 }
 
 _FALLBACK_CATEGORY_ID = "digital-life"
@@ -125,6 +127,20 @@ def main() -> int:
     if not os.path.isdir(SOURCE_DIR):
         print(f"[build_greetings] 源目录不存在: {SOURCE_DIR}")
         return 1
+
+    # 保护：若已存在手写精编版（含 original 类目，即人工定稿的 66 条欢迎语），
+    # 禁止静默覆盖。显式加 --force 才允许从调研文档重新生成（会丢失精编定稿）。
+    force = "--force" in sys.argv
+    if os.path.exists(OUTPUT_PATH) and not force:
+        try:
+            with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            if isinstance(existing, dict) and "original" in existing:
+                print("[build_greetings] 检测到手写精编版（含 'original' 类目），中止覆盖。")
+                print("[build_greetings] 如需从调研文档重新生成，请显式加 --force 参数（将丢失精编定稿）。")
+                return 1
+        except (OSError, ValueError):
+            pass
 
     items = _load_items()
     if not items:

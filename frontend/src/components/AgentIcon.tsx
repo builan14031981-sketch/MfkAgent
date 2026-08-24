@@ -18,6 +18,7 @@ import { MentorA } from "./agent-icons/mentor";
 import { PersonalA } from "./agent-icons/personal";
 import { ResearchC } from "./agent-icons/research";
 import { GptA } from "./agent-icons/gpt";
+import { PresentationA } from "./agent-icons/presentation";
 
 type IconComponent = () => ReactElement;
 
@@ -48,6 +49,7 @@ const AGENT_ICONS: Record<string, IconComponent> = {
   sub_file_analyst: FileAnalystB, // B 方形文件夹+对勾（1:1）
   warm: PianaiA, // 暖阳 → 关联偏爱 A（温暖之心）
   rational: AnalystC, // 理性 → 关联数据节点
+  defense_ppt_expert: PresentationA, // 答辩PPT专家 → 演示屏
   // ── 后端 Agent.avatar 语义值（seed 归一化后的 icon 字段） ──
   code: CoderC,
   palette: FrontendUiA,
@@ -65,6 +67,7 @@ const AGENT_ICONS: Record<string, IconComponent> = {
   target: AnalystC,
   globe: ResearcherC,
   file: FileAnalystB,
+  presentation: PresentationA,
 };
 
 interface AgentIconProps {

@@ -22,6 +22,7 @@ AGENT_ORDER = {
     "spark": 9,
     "pianai": 10,
     "research": 11,
+    "defense_ppt_expert": 12,
 }
 
 # Agent 用途分组：core=核心研发 / assist=辅助智能 / sub=子代理（前端分组展示依据）
@@ -38,6 +39,7 @@ AGENT_GROUP = {
     "writer": "assist",
     "writer_narrative": "assist",
     "writer_jiangnan": "assist",
+    "defense_ppt_expert": "assist",
     "sub_code_reviewer": "sub",
     "sub_researcher": "sub",
     "sub_file_analyst": "sub",

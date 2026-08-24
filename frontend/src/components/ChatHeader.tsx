@@ -202,7 +202,10 @@ export const ChatHeader = memo(function ChatHeader({
               margin: 0,
               lineHeight: "1.4",
               cursor: "pointer",
+              transition: "color 0.15s ease",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-primary)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-level-1)"; }}
           >{chat?.title || "Chat"}</h1>
         )}
       </div>
@@ -373,13 +376,19 @@ export const ChatHeader = memo(function ChatHeader({
               {t("chat.linkProjectNow")}
             </span>
           )}
-          <span style={{
-            fontSize: "12px",
-            color: "var(--text-level-3)",
-            padding: "4px 8px",
-            borderRadius: "var(--radius-full)",
-            background: "var(--bg-level-3)",
-          }}>{agent.name}</span>
+          <span
+            style={{
+              fontSize: "12px",
+              color: "var(--text-level-3)",
+              padding: "4px 8px",
+              borderRadius: "var(--radius-full)",
+              background: "var(--bg-level-3)",
+              cursor: "default",
+              transition: "background 0.2s ease, color 0.2s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-4)"; e.currentTarget.style.color = "var(--text-level-2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--text-level-3)"; }}
+          >{agent.name}</span>
           {/* 导出对话为 Markdown */}
           <button
             onClick={handleExport}

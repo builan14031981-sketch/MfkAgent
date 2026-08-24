@@ -55,9 +55,11 @@ export function UploadMenu({
   const { t } = useTranslation();
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+  const skillPanelRef = useRef<HTMLDivElement>(null);
   const [skillSubOpen, setSkillSubOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [skillQuery, setSkillQuery] = useState("");
+  const [panelPlacement, setPanelPlacement] = useState<"down" | "up">("down");
 
   // 点击外部关闭
   useEffect(() => {
@@ -80,6 +82,28 @@ export function UploadMenu({
       setSkillQuery("");
     }
   }, [open]);
+
+  // Skill 二级面板边界检测：根据视口可用空间决定向上还是向下展开
+  useEffect(() => {
+    if (!skillSubOpen) return;
+    const raf = requestAnimationFrame(() => {
+      const panel = skillPanelRef.current;
+      if (!panel || !panel.parentElement) return;
+      const rect = panel.parentElement.getBoundingClientRect();
+      const panelHeight = panel.offsetHeight || 260;
+      const margin = 8;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      if (spaceBelow >= panelHeight + margin) {
+        setPanelPlacement("down");
+      } else if (spaceAbove >= panelHeight + margin) {
+        setPanelPlacement("up");
+      } else {
+        setPanelPlacement(spaceAbove > spaceBelow ? "up" : "down");
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [skillSubOpen]);
 
   // 已安装（enabled）的 Skill 列表，供会话级注入使用
   const installedSkills = (skills ?? []).filter((s) => s.installed);
@@ -195,12 +219,15 @@ export function UploadMenu({
 
             {skillSubOpen && (
               <div
+                ref={skillPanelRef}
                 style={{
                   position: "absolute",
                   left: "100%",
-                  top: "-4px",
+                  ...(panelPlacement === "down"
+                    ? { top: "-4px" }
+                    : { bottom: "0" }),
                   marginLeft: "4px",
-                  minWidth: "200px",
+                  minWidth: "240px",
                   maxHeight: "260px",
                   overflowY: "auto",
                   background: "var(--bg-level-1)",

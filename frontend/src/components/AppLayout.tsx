@@ -76,80 +76,31 @@ export function AppLayout({ children }: AppLayoutProps) {
   // 对标豆包：框架固定，只缩放内容（侧边栏内容、消息列表、输入框）。
   // 通过 CSS 变量 --app-content-zoom 控制，globals.css 中给指定容器加 zoom。
   // 步长5%，范围0.75~1.5，持久化到 localStorage。
-  // Ctrl+0 重置到用户默认缩放；Ctrl+Shift+0 把当前缩放设为新默认。
   const ZOOM_KEY = "mfk_app_zoom";
-  const ZOOM_DEFAULT_KEY = "mfk_app_zoom_default";
   const ZOOM_MIN = 0.75;
   const ZOOM_MAX = 1.5;
   const ZOOM_STEP = 0.05;
 
   useEffect(() => {
-    const clamp = (v: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +v.toFixed(2)));
-    const applyZoom = (v: number) => {
-      document.documentElement.style.setProperty("--app-content-zoom", String(v));
-    };
-    let rafId = 0;
-
     // 恢复上次缩放比例
     let zoom = 1;
     try {
       const saved = parseFloat(window.localStorage.getItem(ZOOM_KEY) || "");
-      if (Number.isFinite(saved)) zoom = clamp(saved);
+      if (Number.isFinite(saved)) zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, saved));
     } catch { /* localStorage 不可用则用默认 1 */ }
-
-    // 恢复或初始化用户默认缩放：首次运行把当前比例存为默认
-    let defaultZoom = 1;
-    try {
-      const savedDefault = parseFloat(window.localStorage.getItem(ZOOM_DEFAULT_KEY) || "");
-      if (Number.isFinite(savedDefault)) {
-        defaultZoom = clamp(savedDefault);
-      } else {
-        defaultZoom = zoom;
-        window.localStorage.setItem(ZOOM_DEFAULT_KEY, String(defaultZoom));
-      }
-    } catch { /* noop */ }
-
-    applyZoom(zoom);
+    document.documentElement.style.setProperty("--app-content-zoom", String(zoom));
 
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-      zoom = clamp(zoom + delta);
-      // 用 rAF 节流，合并多次滚轮事件，减少重排
-      if (!rafId) {
-        rafId = requestAnimationFrame(() => {
-          applyZoom(zoom);
-          try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
-          rafId = 0;
-        });
-      }
+      zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(zoom + delta).toFixed(2)));
+      document.documentElement.style.setProperty("--app-content-zoom", String(zoom));
+      try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
     };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      if (e.key !== "0") return;
-      e.preventDefault();
-      if (e.shiftKey) {
-        // Ctrl+Shift+0：把当前缩放设为新默认
-        defaultZoom = zoom;
-        try { window.localStorage.setItem(ZOOM_DEFAULT_KEY, String(defaultZoom)); } catch { /* noop */ }
-      } else {
-        // Ctrl+0：重置到默认缩放
-        zoom = defaultZoom;
-        applyZoom(zoom);
-        try { window.localStorage.setItem(ZOOM_KEY, String(zoom)); } catch { /* noop */ }
-      }
-    };
-
     // passive:false 才能 preventDefault 阻止浏览器默认的 Ctrl+滚轮缩放
     window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("keydown", onKeyDown);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
+    return () => window.removeEventListener("wheel", onWheel);
   }, []);
 
   const toggleSidebar = useCallback(() => {
@@ -295,7 +246,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // ── 侧边栏宽度 ──
   const layoutRef = useRef<HTMLDivElement>(null);
-  const sidebarDragRef = useRef<{ startX: number; startWidth: number; lastX: number } | null>(null);
+  const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
 
   // 初始从 localStorage 恢复宽度
@@ -369,48 +320,31 @@ export function AppLayout({ children }: AppLayoutProps) {
   // 侧边栏拖拽调宽
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    if (!layoutRef.current) return;
-    const computed = getComputedStyle(layoutRef.current).getPropertyValue("--sidebar-width");
-    const startWidth = parseFloat(computed) || sidebarWidth;
-    sidebarDragRef.current = { startX: e.clientX, startWidth, lastX: e.clientX };
+    const startWidth = Number(
+      getComputedStyle(layoutRef.current!).getPropertyValue("--sidebar-width").replace("px", "") || sidebarWidth
+    );
+    sidebarDragRef.current = { startX: e.clientX, startWidth };
 
     document.body.style.userSelect = "none";
     document.body.style.cursor = "col-resize";
-    // 拖拽时标记，CSS 据此关闭 width transition，保证 0 延迟跟手
-    layoutRef.current.setAttribute("data-resizing", "true");
-
-    let rafId: number | null = null;
 
     const onMove = (ev: MouseEvent) => {
       const drag = sidebarDragRef.current;
       if (!drag) return;
-      drag.lastX = ev.clientX;
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        const currentDrag = sidebarDragRef.current;
-        if (!currentDrag) return;
-        const delta = currentDrag.lastX - currentDrag.startX;
-        const next = clampWidth(currentDrag.startWidth + delta, SIDEBAR_MIN, SIDEBAR_MAX);
-        layoutRef.current?.style.setProperty("--sidebar-width", `${next}px`);
-      });
+      const delta = ev.clientX - drag.startX;
+      const next = clampWidth(drag.startWidth + delta, SIDEBAR_MIN, SIDEBAR_MAX);
+      layoutRef.current?.style.setProperty("--sidebar-width", `${next}px`);
     };
 
     const onUp = () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
       const drag = sidebarDragRef.current;
       sidebarDragRef.current = null;
       document.body.style.userSelect = "";
       document.body.style.cursor = "";
-      layoutRef.current?.removeAttribute("data-resizing");
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       if (drag) {
-        const final = clampWidth(drag.startWidth + (drag.lastX - drag.startX), SIDEBAR_MIN, SIDEBAR_MAX);
-        layoutRef.current?.style.setProperty("--sidebar-width", `${final}px`);
+        const final = clampWidth(drag.startWidth, SIDEBAR_MIN, SIDEBAR_MAX);
         setSidebarWidth(final);
         try {
           localStorage.setItem(SIDEBAR_STORAGE_KEY, final.toString());
@@ -492,7 +426,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       }}>
         {/* 多标签栏（浏览器式多会话切换） */}
         <ChatTabBar onNewChat={handleGlobalNewChat} />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           {children}
         </div>
       </main>

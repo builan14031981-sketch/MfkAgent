@@ -294,7 +294,7 @@ function EntryCard({
 // ── Skill 管理列表（二级）：按分类分组展示，可安装/卸载，点卡片进详情 ──
 
 /** 分类展示顺序（与后端 SKILL_CATALOG 的 5 大意图分类对齐） */
-const SKILL_CATEGORY_ORDER = ["开发", "内容创作", "数据分析", "办公效率", "安全合规"];
+const SKILL_CATEGORY_ORDER = ["开发", "设计", "内容创作", "数据分析", "办公效率", "安全合规"];
 
 function ManageSkillList({
   onSelectSkill,

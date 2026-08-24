@@ -276,18 +276,23 @@ export function TodoPanel() {
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    padding: "2px 8px",
+                    padding: "2px 8px 2px 10px",
                     borderRadius: "var(--radius-sm)",
+                    borderLeft: "2px solid transparent",
                     opacity: isCompleting ? 0 : 1,
                     transform: isCompleting ? "translateX(6px)" : "translateX(0)",
-                    transition: "opacity 0.3s ease, transform 0.3s ease",
+                    transition: "opacity 0.3s ease, transform 0.3s ease, background 0.15s ease, border-color 0.15s ease",
                     position: "relative",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isCompleting) e.currentTarget.style.background = "var(--bg-level-3)";
+                    if (!isCompleting) {
+                      e.currentTarget.style.background = "var(--bg-level-3)";
+                      e.currentTarget.style.borderLeftColor = "var(--color-primary)";
+                    }
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.borderLeftColor = "transparent";
                   }}
                 >
                   {/* 自定义圆形 Checkbox */}
@@ -308,15 +313,18 @@ export function TodoPanel() {
                       flexShrink: 0,
                       padding: 0,
                       outline: "none",
-                      transition: "border-color 0.15s, background 0.15s",
+                      transition: "border-color 0.15s, background 0.15s, transform 0.1s ease",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = "var(--color-primary)";
                       e.currentTarget.style.background = "var(--color-primary-faint, rgba(99,102,241,0.1))";
                     }}
+                    onMouseDown={(e) => { if (!isCompleting) e.currentTarget.style.transform = "scale(0.85)"; }}
+                    onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.borderColor = "var(--text-level-4)";
                       e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.transform = "scale(1)";
                     }}
                   >
                     {isCompleting && (
