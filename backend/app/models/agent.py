@@ -166,6 +166,11 @@ class Agent(Base):
     allowed_tools = Column(JSON, default=list)
     # 所属主代理 agent_id（可空，仅子代理有意义）
     parent_agent_id = Column(String(50), nullable=True)
+    # ──── 美学创作技能绑定（Phase CreativeAgent）────
+    # Agent 默认携带的技能 id 列表（JSON 数组，如 ["gc-minimal-zine-poster", "surreal-pop-collage"]）；
+    # 运行时由 context_builder 读取并注入 system prompt（②b 层），独立于前端会话级注入。
+    # NULL/空列表 = 不绑定任何技能（与旧行为完全兼容）。
+    skills = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

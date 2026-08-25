@@ -664,6 +664,7 @@ class ChatContextBuilder:
         tool_guidance: Optional[str] = None,
         expression_profile: Optional[str] = None,
         persona_context: Optional[PersonaContext] = None,
+        agent=None,
     ) -> str:
         """按 ①-⑩+ 层组装完整 system prompt（memory_text 由模型层单独注入）。"""
         # ⓪ 最高身份准则（强制置顶，锁定桌面端 Agent 身份认知）
@@ -709,11 +710,36 @@ class ChatContextBuilder:
         if persona_context and persona_context.vague_switch_text:
             full_prompt += "\n\n" + persona_context.vague_switch_text
 
-        # ②b Skill 注入（2026-08-16 重构：废弃「全局常驻注入」）。
-        # 原先 get_enabled_skills_prompt() 会把所有 enabled Skill 全量塞进每次请求的 system prompt，
-        # 既无法被用户感知、又造成未用也烧 token（且与前端「会话级注入」重复，等于双倍浪费）。
-        # 现改为：Skill 只由前端在「当前会话」点击调用时，作为该会话文档注入一次（见前端 buildContent），
-        # 不写全局 enabled、不跨会话、不污染其它会话。此处不再拼接任何全局 Skill 片段。
+        # ②b 技能注入（Agent 绑定层，Phase CreativeAgent 2026-08-25）。
+        # 从 Agent.skills JSON 列读取该 Agent 绑定的技能 id 列表，
+        # 查 skill_catalog 取 prompt 正文，逐条注入 system prompt。
+        # 这是「Agent 级技能绑定」，与前端「会话级 Skill 注入」互补：
+        #   - Agent 级（本处）：Agent 创建时静态绑定，对该 Agent 的所有会话生效
+        #   - 会话级（前端）：用户在当前会话手动启用，只影响本次会话
+        # 两者可同时生效（Agent 级先注入，会话级追加），互不冲突。
+        try:
+            _agent_skills = getattr(agent, "skills", None) or []
+            if _agent_skills:
+                from app.core.skill_catalog import SKILL_CATALOG
+                _skill_index = {s["id"]: s for s in SKILL_CATALOG}
+                _fragments = []
+                for _sid in _agent_skills:
+                    _entry = _skill_index.get(_sid)
+                    if _entry and _entry.get("prompt"):
+                        _fragments.append(
+                            f'<skill name="{_entry["name"]}">\n{_entry["prompt"]}\n</skill>'
+                        )
+                if _fragments:
+                    full_prompt += (
+                        "\n\n## 【Agent 绑定技能】\n"
+                        "以下技能是本 Agent 内置的工作规范，始终有效：\n\n"
+                        + "\n\n".join(_fragments)
+                    )
+        except Exception as _e:  # noqa: BLE001
+            import logging as _logging
+            _logging.getLogger(__name__).warning(
+                "[context_builder] Agent 技能注入失败（不影响主流程）: %s", _e
+            )
 
         # ③ execution_policy（统一执行规范 v1）
         full_prompt += "\n\n" + get_execution_policy()
@@ -972,6 +998,7 @@ class ChatContextBuilder:
                 ),
                 expression_profile=agent.expression_profile if agent else None,
                 persona_context=persona_ctx,
+                agent=agent,
             )
 
             # ──── Phase 2: image 附件 → vision_context ────

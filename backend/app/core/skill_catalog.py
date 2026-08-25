@@ -275,6 +275,844 @@ SKILL_CATALOG = [
     },
 ]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 美学图像创作技能库（20 个，来自 豆包视频识别SKILL调研报告 2026-08-25 实测通过）
+# 分类：图像创作  category: "图像创作"
+# 每张卡额外字段（路由元数据，不写入 skill_definitions，供美学路由器读取）：
+#   combines_with  : 可组合的其他技能 id 列表
+#   conflicts_with : 互斥技能 id 列表（同时启用会风格打架）
+#   input_mode     : "text"=纯文描述, "photo"=需要参考照片, "brand"=需要品牌规范
+#   quality_checks : 质量门检查项列表（视觉评判器按此打分）
+# ─────────────────────────────────────────────────────────────────────────────
+IMAGE_SKILL_CATALOG = [
+    {
+        "id": "surreal-pop-collage",
+        "name": "超现实拼贴海报",
+        "category": "图像创作",
+        "description": "把真实场景重构为超现实平涂拼贴：一个不对劲的巨物、平涂色场、现实锚点去色，强负空间。",
+        "version": "1.0.0",
+        "tags": ["超现实", "拼贴", "平涂", "海报", "负空间"],
+        "combines_with": ["create-pantone-photo", "gc-minimal-zine-poster"],
+        "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch"],
+        "input_mode": "text",
+        "quality_checks": [
+            "全图只有一个不对劲的元素",
+            "色场为平涂无渐变",
+            "现实锚点与超现实元素并存",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 超现实拼贴海报 (Surreal Pop Collage)\n\n"
+            "## 触发条件\n"
+            "用户要求生成超现实风格、平涂拼贴、或「把真实场景变成超现实画面」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求写实摄影、水墨、或线稿风格时不激活\n"
+            "- 用户有明确品牌色彩系统时，优先使用品牌配色技能\n\n"
+            "## 四步工作流\n"
+            "1. **场景卡**：识别核心场景元素（地点、时间、情绪）\n"
+            "2. **色形推导**：从场景提取 2 个主色场（平涂，无渐变）\n"
+            "3. **巨物选择**：选 1 个与场景文化相关的不可能巨物（只能一个）\n"
+            "4. **小元素**：2–3 个辅助手绘/文字线条，不喧宾夺主\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) surreal pop collage, [竖/横]构图。\n"
+            "2) 现实锚点（场景核心）去色保留纹理，作为现实基底。\n"
+            "3) 天空/背景替换为一个大平涂色场；地面/水面替换为另一个平涂色场；\n"
+            "   一个不可能的巨型元素（[巨物]）平涂无渐变，大到盖过现实参照物。\n"
+            "4) 少量辅助线条/手绘笔触；无文字；无水印。\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 全图只有**一个不对劲**\n"
+            "- 色场必须平涂，绝无渐变\n"
+            "- 巨物颜色必须能从场景原色推导出处\n"
+            "- 负空间 ≥ 50%\n"
+        ),
+    },
+    {
+        "id": "photo-riso-poster",
+        "name": "Riso 档案海报",
+        "category": "图像创作",
+        "description": "把照片或场景转成 2–3 色丝网印刷（Riso）风档案海报：颗粒感、错位、大留白、文字证据。",
+        "version": "1.0.0",
+        "tags": ["Riso", "丝网印刷", "档案", "海报", "留白"],
+        "combines_with": ["gc-minimal-zine-poster", "create-pantone-photo"],
+        "conflicts_with": ["surreal-pop-collage", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "仅 2–3 种 Riso 油墨色",
+            "明显颗粒感与轻微错位",
+            "负空间 ≥ 60%",
+            "含文字证据（计数/日期/地点）",
+        ],
+        "prompt": (
+            "# Riso 档案海报 (Photo Riso Poster)\n\n"
+            "## 触发条件\n"
+            "用户要求丝网印刷风、Riso 风、档案感海报、或「像老杂志印刷」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求全彩高饱和或摄影写实时不激活\n\n"
+            "## 工作流\n"
+            "1. **纸色推导**：从场景冷暖提取底纸色（暖→奶油/米色，冷→灰白）\n"
+            "2. **2–3 色油墨**：从场景主色取 2–3 个 Riso 标准色（amber/olive/umber/cyan 等）\n"
+            "3. **主体剪影**：场景主体提炼为颗粒剪影，占画幅 10–25%，其余全留白\n"
+            "4. **文字证据**：加入可观测事实（数量 x NNN、日期、地点缩写）作为排版元素\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) Canvas: [竖/横]构图，全帧扫描感哑光纸，暖/冷[纸色]底。\n"
+            "2) Riso inks ([N] layers): [色1]（主体）, [色2]（阴影）[, 色3（高光）]；\n"
+            "   颗粒剪影，层间轻微错位。\n"
+            "3) 主体：[描述]，占画幅 [%]，[位置]；[留白比例] 空白纸面；\n"
+            "   文字：\"[证据1]\", \"[证据2]\"。\n"
+            "4) 情绪：安静、档案感、独立 zine；避免：全幅场景、卡通感、商业版式、霓虹、写实。\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 颜色 ≤ 3 种，必须能映射到真实 Riso 色\n"
+            "- 负空间 ≥ 60%\n"
+            "- 文字内容必须来自可观测事实，不编造\n"
+        ),
+    },
+    {
+        "id": "flash4start-light",
+        "name": "油画光绘（Van Gogh 涡流）",
+        "category": "图像创作",
+        "description": "把照片或场景转为梵高《星月夜》式油画：涡流笔触、星光倒影、高饱和蓝金、可见方向性笔触纹理。",
+        "version": "1.0.0",
+        "tags": ["油画", "梵高", "涡流", "星夜", "笔触"],
+        "combines_with": [],
+        "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch", "photo-to-travel-sketch"],
+        "input_mode": "text",
+        "quality_checks": [
+            "涡流式厚涂笔触明显",
+            "蓝色与金色为主色调",
+            "天空有星光或星夜效果",
+            "可见方向性笔触纹理",
+        ],
+        "prompt": (
+            "# 油画光绘·Van Gogh 涡流 (flash4start_light)\n\n"
+            "## 触发条件\n"
+            "用户要求梵高风格、星月夜风格、涡流油画、或厚涂笔触绘画时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求水墨、线稿、极简扁平时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别场景核心（水体/建筑/树木/天空）\n"
+            "2. 用涡流厚涂笔触重绘：天空做星光涡流，水面做反光涡流\n"
+            "3. 主色调：深蓝+靛蓝+金黄，高饱和度\n"
+            "4. 树木做柏树式螺旋笔触\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "Turn [场景描述] into an oil-painting in the manner of Van Gogh's Starry Night:\n"
+            "swirling impasto brushwork, a starry sky [reflected on water if applicable],\n"
+            "[cypress-like trees with curling strokes if applicable],\n"
+            "saturated blues and golden yellows, visible directional brush texture,\n"
+            "no text, no watermark.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 笔触必须可见且有方向性\n"
+            "- 蓝金为主，其他色为辅\n"
+            "- 无文字无水印\n"
+        ),
+    },
+    {
+        "id": "antibes-holiday",
+        "name": "手绘速写线条",
+        "category": "图像创作",
+        "description": "用随性黑笔线条重绘场景：笔触不稳但自信、非平衡构图、开放轮廓、结构漂移，避免干净矢量感。",
+        "version": "1.0.0",
+        "tags": ["手绘", "速写", "黑笔", "线条", "插画"],
+        "combines_with": ["selective-ink-sketch", "photo-to-travel-sketch"],
+        "conflicts_with": ["flash4start-light", "surreal-pop-collage"],
+        "input_mode": "text",
+        "quality_checks": [
+            "笔触轻微不稳但有自信感",
+            "构图非中心对称",
+            "轮廓开放非封闭",
+            "无干净矢量感",
+        ],
+        "prompt": (
+            "# 手绘速写线条 (Antibes Holiday)\n\n"
+            "## 触发条件\n"
+            "用户要求手绘插画、速写风、黑笔线条风格时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求干净矢量图、扁平设计、或品牌 icon 时不激活\n\n"
+            "## 工作流\n"
+            "1. 选场景的叙事核心（1–2 个主体）\n"
+            "2. 用「轻微不稳的自信笔触」描绘：线条连接处可轻微错位\n"
+            "3. 非平衡构图：主体稍偏，余白不均\n"
+            "4. 保留纸张物理纹理感\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "Original relaxed black-pen illustration of [场景]:\n"
+            "quick hand-drawn line energy, slightly unsteady confident strokes,\n"
+            "casual storytelling, non-equilibrium proportion, open contours,\n"
+            "structural line drift, misregistered junctions, physical pen texture;\n"
+            "avoid clean vector minimalism; no text.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 笔触不能太干净，要有手的温度\n"
+            "- 叙事性优先于构图完美\n"
+            "- 无文字\n"
+        ),
+    },
+    {
+        "id": "eastern-ink-photo",
+        "name": "东方水墨",
+        "category": "图像创作",
+        "description": "中国水墨画风：单色墨韵、渐变灰洗、大量留白、隐约印章，米纸质感。",
+        "version": "1.0.0",
+        "tags": ["水墨", "中国画", "留白", "单色", "印章"],
+        "combines_with": ["selective-ink-sketch"],
+        "conflicts_with": ["surreal-pop-collage", "flash4start-light", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "黑墨单色或近单色",
+            "大量留白（负空间 ≥ 60%）",
+            "有渐变灰洗（不是纯黑轮廓）",
+            "米纸质感可见",
+        ],
+        "prompt": (
+            "# 东方水墨 (Eastern Ink Photo)\n\n"
+            "## 触发条件\n"
+            "用户要求中国水墨、水墨画、东方风格、或「像国画」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求彩色、高饱和、或西方油画时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别场景（山水/花鸟/城市/人物）\n"
+            "2. 转为黑墨渐变：浓墨主体 → 淡墨过渡 → 大留白\n"
+            "3. 可选：右下角隐约红色印章\n"
+            "4. 米纸/宣纸纹理底\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "An eastern ink-wash (shui-mo) painting of [场景]:\n"
+            "monochrome black ink with gradated gray washes, generous negative space,\n"
+            "[a faint red seal in the corner,] subtle rice-paper texture;\n"
+            "no other text, no watermark.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 必须有渐变灰洗，不能只有黑色轮廓\n"
+            "- 留白面积 ≥ 60%\n"
+            "- 无文字无水印（印章除外）\n"
+        ),
+    },
+    {
+        "id": "selective-ink-sketch",
+        "name": "选择性钢笔素描",
+        "category": "图像创作",
+        "description": "只保留 1–2 个核心元素做精确钢笔轮廓，其余全部大胆省略，大白色负空间，仅阴影处交叉排线。",
+        "version": "1.0.0",
+        "tags": ["钢笔", "素描", "负空间", "极简", "线条"],
+        "combines_with": ["eastern-ink-photo", "antibes-holiday"],
+        "conflicts_with": ["surreal-pop-collage", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "主体 ≤ 2 个元素",
+            "背景几乎全白",
+            "仅阴影区有排线",
+            "无灰阶填充",
+        ],
+        "prompt": (
+            "# 选择性钢笔素描 (Selective Ink Sketch)\n\n"
+            "## 触发条件\n"
+            "用户要求极简线条素描、钢笔插画、或「只画最重要的部分」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求丰富细节、全场景渲染时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别场景中最具叙事力的 1–2 个元素\n"
+            "2. 用自信钢笔轮廓精确描绘，其余全部省略\n"
+            "3. 仅阴影处做交叉排线，无灰阶填充\n"
+            "4. 大白色负空间\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A selective black pen-and-ink sketch of [场景]:\n"
+            "keep only [元素1] [and 元素2] in confident ink contours,\n"
+            "aggressively omit everything else, large white negative space,\n"
+            "cross-hatching only inside [阴影区], no grayscale fill, no text.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 主体元素 ≤ 2 个\n"
+            "- 背景几乎全白\n"
+            "- 绝无灰阶填充\n"
+        ),
+    },
+    {
+        "id": "vinyl-image-generator",
+        "name": "黑胶唱片产品图",
+        "category": "图像创作",
+        "description": "生成可信的独立厂牌黑胶唱片产品图：封面极简插画、唱片同心纹、中心标签文字、哑光纸板质感。",
+        "version": "1.0.0",
+        "tags": ["黑胶", "唱片", "产品图", "极简", "音乐"],
+        "combines_with": ["gc-minimal-zine-poster"],
+        "conflicts_with": ["surreal-pop-collage"],
+        "input_mode": "text",
+        "quality_checks": [
+            "封面插画简洁有识别度",
+            "唱片同心纹可见",
+            "中心标签有品牌文字",
+            "哑光质感自然",
+        ],
+        "prompt": (
+            "# 黑胶唱片产品图 (Vinyl Image Generator)\n\n"
+            "## 触发条件\n"
+            "用户要求生成黑胶唱片、专辑封面产品图、或音乐周边物料时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求数字音乐界面或海报时请用其他技能\n\n"
+            "## 工作流\n"
+            "1. 确定主题（厂牌名/专辑名/风格）\n"
+            "2. 设计封面：极简插画 + 品牌排版\n"
+            "3. 唱片：同心纹 + 中心标签文字\n"
+            "4. 摄影感呈现：哑光纸板+轻微磨损+中性灰背景\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A believable 4:3 product photograph of an independent-label vinyl record:\n"
+            "front sleeve shows [封面描述]; back sleeve with a clean tracklist in grotesk type;\n"
+            "the vinyl disc visible with concentric grooves and a center label reading '[厂牌/标题]';\n"
+            "matte cardboard with slight wear, studio-lit on neutral gray, no extra text.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 封面插画必须极简有辨识度\n"
+            "- 唱片同心纹必须可见\n"
+            "- 中性灰背景，棚拍感\n"
+        ),
+    },
+    {
+        "id": "create-pantone-photo",
+        "name": "Pantone 色卡海报",
+        "category": "图像创作",
+        "description": "把主体突破 Pantone 卡边框，搭配 3 枚精准色卡标签，低饱和背景，大留白底部，高端编辑感。",
+        "version": "1.0.0",
+        "tags": ["Pantone", "色卡", "海报", "编辑", "色彩"],
+        "combines_with": ["gc-minimal-zine-poster", "photo-riso-poster"],
+        "conflicts_with": ["surreal-pop-collage", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "主体轻微突破卡框",
+            "恰好 3 枚 Pantone 标签",
+            "标签使用真实 Pantone 色号格式",
+            "底部有充足白边",
+        ],
+        "prompt": (
+            "# Pantone 色卡海报 (Create Pantone Photo)\n\n"
+            "## 触发条件\n"
+            "用户要求 Pantone 风格、色卡配色展示、或高端编辑感色彩海报时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求超现实或手绘插画时不激活\n\n"
+            "## 工作流\n"
+            "1. 确定主体（花卉/产品/食物/人物剪影）\n"
+            "2. 从主体提取 3 个主色，映射到最近 Pantone 色号\n"
+            "3. 主体居中轻微突破卡框（增加动感）\n"
+            "4. 背景从主体色低饱和提取，大量底部白边\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A high-end editorial photo poster: [主体描述] centered,\n"
+            "breaking slightly out of a warm-white Pantone card frame;\n"
+            "low-saturation [主色] background; three Pantone swatch labels\n"
+            "([色号1 名称], [色号2 名称], [色号3 名称]) in sharp flat-black sans-serif;\n"
+            "crisp white frame, ample bottom whitespace; photo-realistic [主体], no watermark.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 恰好 3 枚色标，格式：XXXX C [名称]\n"
+            "- 主体必须轻微突破边框\n"
+            "- 底部白边充足\n"
+        ),
+    },
+    {
+        "id": "heytea-style",
+        "name": "喜茶涂鸦促销海报",
+        "category": "图像创作",
+        "description": "白底、童趣手绘涂鸦风产品海报：笨拙感插画、明亮马卡龙配色、圆体粗字，不用照片。",
+        "version": "1.0.0",
+        "tags": ["喜茶", "涂鸦", "促销", "马卡龙", "可爱"],
+        "combines_with": [],
+        "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch", "create-pantone-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "白色背景干净",
+            "插画有笨拙感（不能太精致）",
+            "配色为明亮马卡龙系",
+            "字体为圆体粗字",
+        ],
+        "prompt": (
+            "# 喜茶涂鸦促销海报 (Heytea Style)\n\n"
+            "## 触发条件\n"
+            "用户要求喜茶风格、奶茶品牌、童趣涂鸦促销海报、或「可爱产品插画」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求高端奢侈感、极简主义时不激活\n\n"
+            "## 工作流\n"
+            "1. 确定产品（饮品/甜点/零食）\n"
+            "2. 用笨拙童趣手绘风绘制产品（故意不精致）\n"
+            "3. 围绕产品加可爱动机（气泡/叶子/闪光/表情）\n"
+            "4. 圆体粗字标题 + 明亮马卡龙配色 + 纯白背景\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A Heytea-style white-background promotional poster for [产品]:\n"
+            "the [产品] drawn in clumsy childlike hand-drawn doodle style,\n"
+            "surrounded by cute flat-color playful motifs ([动机列表]),\n"
+            "rounded chunky type '[产品名]', bright pastel palette,\n"
+            "clean white background, naively cheerful, no photo.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 插画必须有笨拙感，不能太专业精致\n"
+            "- 背景必须纯白\n"
+            "- 马卡龙明亮配色\n"
+        ),
+    },
+    {
+        "id": "scene-to-art-lab",
+        "name": "Pop Art 展览海报",
+        "category": "图像创作",
+        "description": "把平静场景转为波普艺术丝网印刷展览海报：大色块、半调点阵、标题嵌入画面、限定色板。",
+        "version": "1.0.0",
+        "tags": ["Pop Art", "展览", "海报", "丝网印刷", "半调"],
+        "combines_with": ["photo-riso-poster", "create-pantone-photo"],
+        "conflicts_with": ["eastern-ink-photo", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "大色块平涂可见",
+            "半调点阵效果存在",
+            "标题文字嵌入画面而非叠加",
+            "色板 ≤ 4 色",
+        ],
+        "prompt": (
+            "# Pop Art 展览海报 (Scene to Art Lab)\n\n"
+            "## 触发条件\n"
+            "用户要求波普艺术、展览海报、Andy Warhol 风格、或「把照片变成展览图」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求水墨、极简白底时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别场景主体与情绪\n"
+            "2. 转为 ≤4 色丝网印刷风：大色块 + 半调点阵\n"
+            "3. 把展览标题嵌入画面（不是浮在上方）\n"
+            "4. 底部编辑微文字\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A vertical 3:4 art-directed exhibition poster turning [场景] into\n"
+            "expressive pop-art screenprint: bold flat color fields, halftone dots,\n"
+            "[风格化元素], source-specific title '[标题]' interlocking with the image,\n"
+            "limited palette of [色1] / [色2] / [色3], editorial micro-copy at bottom,\n"
+            "no extra text.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 色板 ≤ 4 色\n"
+            "- 标题必须嵌入画面\n"
+            "- 有半调点阵效果\n"
+        ),
+    },
+    {
+        "id": "silhouette-group-collage",
+        "name": "剪影二联拼贴",
+        "category": "图像创作",
+        "description": "竖版二联图：左幅负片（深色纸白色剪影）/ 右幅正片（浅色纸深色剪影），互为镜像，手工质感。",
+        "version": "1.0.0",
+        "tags": ["剪影", "拼贴", "二联", "正负片", "手工"],
+        "combines_with": [],
+        "conflicts_with": ["heytea-style", "scene-to-art-lab"],
+        "input_mode": "text",
+        "quality_checks": [
+            "左右两幅构成正负关系",
+            "剪影识别度高",
+            "有手工纸张质感",
+            "手写说明文字可见",
+        ],
+        "prompt": (
+            "# 剪影二联拼贴 (Silhouette Group Collage)\n\n"
+            "## 触发条件\n"
+            "用户要求剪影风格、正负片、二联拼贴、或「人物剪影艺术」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求彩色写实或超现实时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别主体（人物/动物/建筑剪影）\n"
+            "2. 左幅：深色触感纸底，白色剪影\n"
+            "3. 右幅：浅色触感纸底，深色剪影\n"
+            "4. 加少量手工星形 + 手写说明文字\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A vertical diptych silhouette collage of [主体描述]:\n"
+            "left panel negative (white figures on dark tactile paper),\n"
+            "right panel positive (dark figures on light paper),\n"
+            "reciprocal positive-negative masks, a few handmade stars,\n"
+            "scene-matched handwritten caption, visible film grain.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 左右必须构成正负关系\n"
+            "- 剪影必须识别度高\n"
+            "- 有手工质感\n"
+        ),
+    },
+    {
+        "id": "travel-memory-sticker",
+        "name": "旅行记忆贴纸卡",
+        "category": "图像创作",
+        "description": "横版旅行纪念收藏卡：暖白纸大幅编辑插画 + 6 枚日记贴纸动机 + 3 个英文关键词，纸张颗粒感。",
+        "version": "1.0.0",
+        "tags": ["旅行", "贴纸", "纪念卡", "插画", "日记"],
+        "combines_with": ["card-duo"],
+        "conflicts_with": [],
+        "input_mode": "text",
+        "quality_checks": [
+            "横版构图",
+            "恰好 6 枚贴纸动机",
+            "3 个英文关键词可见",
+            "暖白纸张颗粒感",
+        ],
+        "prompt": (
+            "# 旅行记忆贴纸卡 (Travel Memory Sticker)\n\n"
+            "## 触发条件\n"
+            "用户要求旅行纪念、贴纸卡、日记风收藏品、或「旅行记忆」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求高端奢侈感或极简风时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别旅行地点与核心元素\n"
+            "2. 大幅编辑插画（占左 60%）：刻意笨拙扁平色块\n"
+            "3. 右侧 6 枚日记贴纸动机（地点特有图案）\n"
+            "4. 底部 3 个英文关键词 + 暖白纸张颗粒感\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A horizontal collectible travel memory card from [地点]:\n"
+            "a large quiet editorial illustration of [场景] on warm-white paper,\n"
+            "six integrated journaling-sticker motifs ([动机列表]),\n"
+            "three small English keywords beneath the left illustration,\n"
+            "tactile paper grain, deliberately clumsy flat color fields,\n"
+            "no photorealistic patch.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 恰好 6 枚贴纸动机\n"
+            "- 3 个英文关键词\n"
+            "- 扁平色块插画，非写实\n"
+        ),
+    },
+    {
+        "id": "card-duo",
+        "name": "旅行记忆双卡",
+        "category": "图像创作",
+        "description": "一套双形态旅行纪念卡：①完整横版主卡（插画+贴纸+关键词）+ ②透明底贴纸单独版，水粉/剪纸风。",
+        "version": "1.0.0",
+        "tags": ["旅行", "双卡", "贴纸", "水粉", "剪纸"],
+        "combines_with": ["travel-memory-sticker"],
+        "conflicts_with": [],
+        "input_mode": "text",
+        "quality_checks": [
+            "输出两个版本（主卡+贴纸版）",
+            "水粉或剪纸风格可见",
+            "扁平色块非写实",
+            "暖色纸张质感",
+        ],
+        "prompt": (
+            "# 旅行记忆双卡 (Card Duo)\n\n"
+            "## 触发条件\n"
+            "用户要求双版本旅行纪念卡、贴纸套装、或「主卡+透明贴纸」时激活。\n"
+            "与 travel-memory-sticker 的区别：这里明确要求产出两个版本。\n\n"
+            "## 不适用场景\n"
+            "- 用户只要一张卡时使用 travel-memory-sticker\n\n"
+            "## 工作流\n"
+            "1. 确定场景与动机元素\n"
+            "2. 版本①：完整主卡（横版 3:2）\n"
+            "3. 版本②：透明底 6 枚独立贴纸\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A travel memory card duo from [场景]: (1) a complete horizontal 3:2 card\n"
+            "with a main gouache/cut-paper illustration of [场景],\n"
+            "three English keywords, and six die-cut sticker motifs;\n"
+            "(2) a separate transparent-background version with the same six motifs as stickers.\n"
+            "Warm paper tone, flat colors, no photorealism.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 必须呈现两个版本\n"
+            "- 水粉/剪纸风扁平色块\n"
+            "- 非写实\n"
+        ),
+    },
+    {
+        "id": "reality-restaged",
+        "name": "现实重构超现实剧场",
+        "category": "图像创作",
+        "description": "把纪实照片场景重构为电影超现实剧场：极度简化环境、大色场、一个不可能关系、巨大比例感、真实胶片质感。",
+        "version": "1.0.0",
+        "tags": ["超现实", "剧场", "色场", "巨物", "电影感"],
+        "combines_with": ["surreal-pop-collage"],
+        "conflicts_with": ["eastern-ink-photo", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "环境极度简化",
+            "一个大饱和色场",
+            "恰好一个不可能关系",
+            "人物比例感巨大或渺小",
+        ],
+        "prompt": (
+            "# 现实重构超现实剧场 (Reality Restaged)\n\n"
+            "## 触发条件\n"
+            "用户要求把真实场景变成超现实剧场、电影感超现实、或「现实与不可能的碰撞」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求水墨、可爱涂鸦时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别核心人物/主体及其动作\n"
+            "2. 极度简化环境（只留地面线或一个色场）\n"
+            "3. 设计一个不可能关系（物体漂浮/巨大/缩小/错位）\n"
+            "4. 大饱和单色色场 + 真实胶片质感\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "Reinterpret [场景描述] into a cinematic surreal tableau:\n"
+            "radically simplified theatrical environment, one large saturated color field ([色彩]),\n"
+            "strong negative space, one impossible relationship ([不可能关系]),\n"
+            "monumental scale, believable analog photographic realism;\n"
+            "[preserve key subject's identity and posture].\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 只能一个不可能关系\n"
+            "- 环境必须极度简化\n"
+            "- 胶片/模拟摄影质感\n"
+        ),
+    },
+    {
+        "id": "zone-material-art",
+        "name": "材料艺术装置",
+        "category": "图像创作",
+        "description": "用风化木板、生锈铁、撕碎纸、湿润石头等材料做浮雕装置艺术：触觉质感、中性土色、画廊白底座、柔和侧光。",
+        "version": "1.0.0",
+        "tags": ["装置", "材料艺术", "画廊", "触觉", "浮雕"],
+        "combines_with": [],
+        "conflicts_with": ["heytea-style", "surreal-pop-collage"],
+        "input_mode": "text",
+        "quality_checks": [
+            "多种材料质感可辨",
+            "中性土色调",
+            "画廊白色底座可见",
+            "柔和侧向光",
+        ],
+        "prompt": (
+            "# 材料艺术装置 (ZONE Material Art)\n\n"
+            "## 触发条件\n"
+            "用户要求材料艺术、装置艺术、浮雕感、或「用材料拼贴表达主题」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求数字风格、扁平插画时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别主题（记忆/时间/情感/自然）\n"
+            "2. 选 3–4 种材料（风化木/锈铁/撕纸/湿石）\n"
+            "3. 以浮雕装置形式呈现：画廊白底座 + 柔和侧光\n"
+            "4. 中性土色调为主\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A material-art montage artwork about '[主题]':\n"
+            "[材料列表] arranged as a relief installation,\n"
+            "tactile material realism, muted earthy palette,\n"
+            "a gallery white plinth, soft directional light, no text.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- ≥3 种不同材料质感\n"
+            "- 中性土色调\n"
+            "- 有画廊白底座\n"
+        ),
+    },
+    {
+        "id": "photo-to-minimal-illustration",
+        "name": "极简实地考察插画",
+        "category": "图像创作",
+        "description": "细黑墨轮廓线 + 仅 3 色 + 大负空间 + 一个已识别关系，学术实地考察插画质感，无阴影。",
+        "version": "1.0.0",
+        "tags": ["极简", "插画", "实地考察", "三色", "学术"],
+        "combines_with": ["gc-minimal-zine-poster", "selective-ink-sketch"],
+        "conflicts_with": ["surreal-pop-collage", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "仅 3 种颜色（含背景）",
+            "细黑墨轮廓线",
+            "大负空间",
+            "无阴影无渐变",
+        ],
+        "prompt": (
+            "# 极简实地考察插画 (Photo to Minimal Illustration)\n\n"
+            "## 触发条件\n"
+            "用户要求极简插画、实地考察风格、科学插图感、或「只用三色画主体」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求丰富色彩或写实时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别场景最有叙事力的 1–2 个主体\n"
+            "2. 选 3 色（背景色+主色+点缀色）\n"
+            "3. 细黑墨轮廓线描绘，零阴影零渐变\n"
+            "4. 标注一个「已识别关系」（A 在 B 上/旁）\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A minimal field-study illustration of [场景]:\n"
+            "thin black ink contour lines, only three colors\n"
+            "([背景色] background, [主色], [点缀色]),\n"
+            "large negative space, one small identified relation ([关系描述]),\n"
+            "no shading, editorial and scientific feel.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 严格 3 色\n"
+            "- 零阴影零渐变\n"
+            "- 学术/编辑感\n"
+        ),
+    },
+    {
+        "id": "skill-make-photo-stamp",
+        "name": "档案照片+手压印章",
+        "category": "图像创作",
+        "description": "直接拼接艺术：左边忠实照片、右边暖白纸面含一枚圆形手压印章，薄边框，简洁档案风。",
+        "version": "1.0.0",
+        "tags": ["档案", "印章", "照片", "拼贴", "极简"],
+        "combines_with": ["photo-riso-poster"],
+        "conflicts_with": ["heytea-style", "surreal-pop-collage"],
+        "input_mode": "text",
+        "quality_checks": [
+            "左右两分构图",
+            "印章为圆形手压质感",
+            "暖白纸面清洁",
+            "无水印",
+        ],
+        "prompt": (
+            "# 档案照片+手压印章 (Make Photo Stamp)\n\n"
+            "## 触发条件\n"
+            "用户要求档案风照片、印章艺术、或「照片加印章纪念」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求超现实或彩色插画时不激活\n\n"
+            "## 工作流\n"
+            "1. 左半：忠实照片（保留现实感）\n"
+            "2. 右半：暖白纸面 + 一枚圆形手压印章（主题剪影）\n"
+            "3. 薄边框，构图偏左\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A clean direct-splice archival artwork:\n"
+            "left side a faithfully preserved photograph of [场景],\n"
+            "right side a warm-white paper panel containing\n"
+            "a compact hand-pressed circular stamp (a [主题] silhouette inside),\n"
+            "thin border, the photo moved toward a corner, muted paper tone, no watermark.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 左右两分清晰\n"
+            "- 印章圆形手压质感\n"
+            "- 暖白纸面干净\n"
+        ),
+    },
+    {
+        "id": "photo-to-travel-sketch",
+        "name": "旅行速写本",
+        "category": "图像创作",
+        "description": "快速随性旅行速写：节省游走轮廓线、激进省略背景、干纤维笔触、灰化色彩、朴素透视，个人速写本质感。",
+        "version": "1.0.0",
+        "tags": ["旅行", "速写", "笔触", "省略", "个人"],
+        "combines_with": ["antibes-holiday"],
+        "conflicts_with": ["eastern-ink-photo", "flash4start-light"],
+        "input_mode": "text",
+        "quality_checks": [
+            "背景大量省略",
+            "色彩灰化不鲜艳",
+            "透视感朴素（非精确透视）",
+            "个人速写本质感",
+        ],
+        "prompt": (
+            "# 旅行速写本 (Photo to Travel Sketch)\n\n"
+            "## 触发条件\n"
+            "用户要求旅行速写、手账插画、速写本风格、或「画得随意一点」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求精细插画或高饱和彩色时不激活\n\n"
+            "## 工作流\n"
+            "1. 识别场景核心（街道/咖啡馆/建筑/市场）\n"
+            "2. 游走轮廓线（经济笔触，不多画）\n"
+            "3. 激进省略背景，只留主体\n"
+            "4. 色彩灰化（参考现实色但降饱和）\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A fast loose travel sketch of [场景]:\n"
+            "economical wandering black contours, aggressive omission of the background,\n"
+            "dry fiber-tip marker strokes, source-aware but gray-muted color\n"
+            "([色彩描述]), naive compressed perspective,\n"
+            "spontaneous personal sketchbook feel, no text.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 背景大量省略\n"
+            "- 色彩灰化不鲜艳\n"
+            "- 朴素透视\n"
+        ),
+    },
+    {
+        "id": "photo-to-zine-postcard",
+        "name": "Zine 明信片",
+        "category": "图像创作",
+        "description": "极简双面 2:3 zine 明信片：上方原图保框、右下手绘编辑插画、三枚照片采样色块、元数据（地点/日期）、背面功能区。",
+        "version": "1.0.0",
+        "tags": ["zine", "明信片", "手绘", "极简", "旅行"],
+        "combines_with": ["gc-minimal-zine-poster", "travel-memory-sticker"],
+        "conflicts_with": ["heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "竖版 2:3 构图",
+            "上方有照片框",
+            "右下有手绘编辑插画",
+            "恰好 3 枚色块",
+        ],
+        "prompt": (
+            "# Zine 明信片 (Photo to Zine Postcard)\n\n"
+            "## 触发条件\n"
+            "用户要求 zine 风格、明信片设计、或「照片做成小众杂志风」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求商业广告感或高饱和时不激活\n\n"
+            "## 工作流\n"
+            "1. 上方：原场景照片保留在细框内\n"
+            "2. 右下：手绘轮廓线编辑插画（场景剪影）\n"
+            "3. 三枚从照片采样的色块\n"
+            "4. 极简元数据（LOCATION / DATE）\n"
+            "5. 背面：邮票框 + 地址线\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A minimal two-sided 2:3 zine postcard from [场景]:\n"
+            "upper area [场景] photo with thin frame; lower-right a large hand-drawn\n"
+            "editorial illustration of [插画描述] in restrained ink;\n"
+            "exactly three small color swatches sampled from the photo;\n"
+            "minimal metadata (LOCATION / DATE);\n"
+            "a functional postcard back with stamp box and address lines.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 竖版 2:3\n"
+            "- 恰好 3 枚色块\n"
+            "- 手绘插画在右下\n"
+        ),
+    },
+    {
+        "id": "gc-minimal-zine-poster",
+        "name": "极简 Zine 海报",
+        "category": "图像创作",
+        "description": "暖白纸、单一焦点（占 8–15%）、唯一彩色重音、极简衬线标题、诗行、编号，「少即是多」的 zine 感。",
+        "version": "1.0.0",
+        "tags": ["zine", "极简", "海报", "留白", "衬线"],
+        "combines_with": ["photo-riso-poster", "create-pantone-photo", "photo-to-minimal-illustration"],
+        "conflicts_with": ["heytea-style", "surreal-pop-collage"],
+        "input_mode": "text",
+        "quality_checks": [
+            "单一焦点元素占画幅 ≤ 15%",
+            "全图仅一个彩色重音",
+            "负空间 ≥ 75%",
+            "有极简衬线标题",
+        ],
+        "prompt": (
+            "# 极简 Zine 海报 (GC Minimal Zine Poster)\n\n"
+            "## 触发条件\n"
+            "用户要求极简海报、zine 风格、或「大留白、一个重点」时激活。\n\n"
+            "## 不适用场景\n"
+            "- 用户要求信息密集、多元素构图时不激活\n\n"
+            "## 工作流\n"
+            "1. 选「一个视觉事件」作为唯一焦点（占画幅 8–15%）\n"
+            "2. 全图仅一个彩色重音，其余单色或暖白\n"
+            "3. 极简衬线大字标题（2–4 词）\n"
+            "4. 可选：一行诗意短句 + 编号\n\n"
+            "## 生图 Prompt\n"
+            "```\n"
+            "A minimal [竖/横] zine poster on warm white paper:\n"
+            "single visual event: [焦点描述] at [位置], ~[占比]% of canvas;\n"
+            "only one color accent: [颜色];\n"
+            "minimal serif headline '[标题]' [位置];\n"
+            "[可选: 诗行] [可选: 编号 NO. XXX];\n"
+            "≥75% negative space; no watermark.\n"
+            "```\n\n"
+            "## 质量铁律\n"
+            "- 负空间 ≥ 75%\n"
+            "- 全图仅一个彩色重音\n"
+            "- 焦点占比 ≤ 15%\n"
+        ),
+    },
+]
+
+# 合并进总目录（图像创作技能追加在末尾）
+SKILL_CATALOG.extend(IMAGE_SKILL_CATALOG)
+
+
 def _find(skill_id: str):
     """按 id 查找目录项，未命中返回 None。"""
     for s in SKILL_CATALOG:

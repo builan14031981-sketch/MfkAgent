@@ -1,16 +1,11 @@
-"""文生图工具 —— 千问图像生成（qwen-image）API 接入，供 LLM Function Calling 使用。
+"""文生图工具 —— 多后端容灾版（DashScope qwen-image 主力 + SiliconFlow 备用）。
 
-Phase H (super_enhance_20260818) 新增，2026-08-18 实测修正（用户 key 实测通过）：
-- 实测确认：该账号（sk-ws-* 千问聚合 key）可用模型为 qwen-image-3.0 / qwen-image-3.0-pro
-  （wanx 系列在此账号返回 AccessDenied / Model not exist，勿回退 wanx 端点）。
-- 调用方式（千问图像生成 3.0 文档）：
-  1. POST /api/v1/services/aigc/image-generation/generation 提交任务，
-     请求头必须带 X-DashScope-Async: enable（否则报 "current user api does not support synchronous calls"）。
-  2. 轮询 GET /api/v1/tasks/{task_id} 直至 SUCCEEDED。
-  3. 结果在 output.choices[].message.content[].image（OpenAI 兼容 messages 结构）。
-- 实测单张 1024*1024 生成耗时约 9 分钟（prompt_extend + enable_thinking 默认开启），
-  因此轮询上限放宽至 900s、间隔 5s。
-- API Key 读取：settings 表 api_key_qwen > .env 的 QWEN_API_KEY（复用 ModelConfigAdapter）。
+Phase H (super_enhance_20260818) 新增，Phase CreativeAgent (2026-08-25) 扩展多后端：
+- 主力：DashScope 万相 qwen-image（qwen-image-3.0-pro / qwen-image-3.0，异步轮询）
+- 备用：SiliconFlow Qwen/Qwen-Image（同步，~15s，额度独立）
+  触发条件：DashScope key 不存在 / HTTP 401 / 429 / 5xx 时自动降级
+- API Key 读取：settings 表 api_key_qwen > .env QWEN_API_KEY；
+               settings 表 api_key_siliconflow > .env SILICONFLOW_API_KEY
 - 无 project_path 时仅返回图片 URL（不落盘）。
 - 所有异常/失败返回以 "错误:" 开头（与既有工具约定一致，executor 判定 failed）。
 """
@@ -55,6 +50,70 @@ def _resolve_qwen_key() -> str:
         except Exception as e:  # noqa: BLE001
             logger.warning("[image_gen] 解析 Qwen API Key 失败: %s", e)
     return os.environ.get("QWEN_API_KEY", "")
+
+
+# ─── SiliconFlow 备用后端 ───────────────────────────────────────────────────
+
+_SF_URL = "https://api.siliconflow.cn/v1/images/generations"
+# 优先高质 Qwen-Image，失败回退快速 Z-Image-Turbo
+_SF_MODELS = ("Qwen/Qwen-Image", "Tongyi-MAI/Z-Image-Turbo")
+# SiliconFlow 支持的标准尺寸映射（宽*高 → 宽x高）
+_SF_SIZE_MAP = {
+    "1024*1024": "1024x1024",
+    "768*1024": "768x1024",
+    "1024*768": "1024x768",
+    "768*768": "768x768",
+}
+
+
+def _resolve_siliconflow_key() -> str:
+    """读取 SiliconFlow API Key：settings 表 api_key_siliconflow > .env SILICONFLOW_API_KEY。"""
+    try:
+        import sqlite3
+        from pathlib import Path
+        db_path = Path(__file__).parents[3] / "mfkagent.db"
+        if db_path.exists():
+            con = sqlite3.connect(str(db_path))
+            row = con.execute(
+                "SELECT value FROM settings WHERE key='api_key_siliconflow'"
+            ).fetchone()
+            con.close()
+            if row and row[0]:
+                return row[0]
+    except Exception as e:  # noqa: BLE001
+        logger.debug("[image_gen] 读取 SiliconFlow key 失败: %s", e)
+    return os.environ.get("SILICONFLOW_API_KEY", "")
+
+
+def _sf_generate(prompt: str, size: str) -> Optional[List[str]]:
+    """SiliconFlow 同步生图，返回图片 URL 列表（失败返回 None）。"""
+    key = _resolve_siliconflow_key()
+    if not key:
+        logger.debug("[image_gen] 未配置 SiliconFlow key，跳过备用通道")
+        return None
+    sf_size = _SF_SIZE_MAP.get(size, "1024x1024")
+    for model in _SF_MODELS:
+        try:
+            resp = httpx.post(
+                _SF_URL,
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"model": model, "prompt": prompt, "n": 1, "size": sf_size},
+                timeout=180.0,
+            )
+        except httpx.RequestError as e:
+            logger.warning("[image_gen/sf] 网络错误: %s", e)
+            continue
+        if resp.status_code != 200:
+            logger.warning("[image_gen/sf] HTTP %s model=%s: %s",
+                           resp.status_code, model, resp.text[:200])
+            continue
+        imgs = resp.json().get("images") or []
+        urls = [i["url"] for i in imgs if i.get("url")]
+        if urls:
+            logger.info("[image_gen/sf] 成功 model=%s size=%s", model, sf_size)
+            return urls
+        logger.warning("[image_gen/sf] 无图像 model=%s: %s", model, resp.text[:200])
+    return None
 
 
 def _submit(model: str, prompt: str, size: str, n: int, api_key: str) -> Optional[str]:
@@ -187,25 +246,45 @@ def generate_image(
         model = _resolve_model() or _DEFAULT_MODEL
 
     api_key = _resolve_qwen_key()
+    # ── DashScope 不可用时直接走 SiliconFlow 备用通道 ──
     if not api_key:
-        return "错误: 未配置 QWEN_API_KEY（settings 表 api_key_qwen 或 .env），无法调用千问文生图"
+        logger.info("[image_gen] 未配置 QWEN_API_KEY，尝试 SiliconFlow 备用通道")
+        sf_results = _sf_generate(prompt, size or "1024*1024")
+        if sf_results:
+            results = sf_results
+        else:
+            return "错误: 未配置任何生图 API Key（QWEN_API_KEY / SILICONFLOW_API_KEY），无法生图"
 
-    # 主模型提交失败时依次尝试回退模型
-    task_id = _submit(model, prompt, size, n, api_key)
-    used_model = model
-    if not task_id:
-        for fb in _FALLBACK_MODELS:
-            if fb == model:
-                continue
-            task_id = _submit(fb, prompt, size, n, api_key)
-            if task_id:
-                used_model = fb
-                break
-    if not task_id:
-        return "错误: 文生图任务提交失败（所有可用模型均失败），请检查 API Key 权限或稍后重试"
-
-    results = _poll_results(task_id, api_key)
-    if not results:
+    else:
+        # 主模型提交失败时依次尝试回退模型
+        task_id = _submit(model, prompt, size, n, api_key)
+        used_model = model
+        if not task_id:
+            for fb in _FALLBACK_MODELS:
+                if fb == model:
+                    continue
+                task_id = _submit(fb, prompt, size, n, api_key)
+                if task_id:
+                    used_model = fb
+                    break
+        if not task_id:
+            # DashScope 全部失败 → 自动降级 SiliconFlow
+            logger.warning("[image_gen] DashScope 全部失败，降级到 SiliconFlow 备用通道")
+            sf_results = _sf_generate(prompt, size or "1024*1024")
+            if sf_results:
+                results = sf_results
+            else:
+                return "错误: 文生图任务提交失败（DashScope 全部模型失败且 SiliconFlow 备用也失败），请检查 API Key 权限或稍后重试"
+        else:
+            results = _poll_results(task_id, api_key)
+            if not results:
+                # DashScope 轮询失败 → 降级 SiliconFlow
+                logger.warning("[image_gen] DashScope 轮询失败，降级到 SiliconFlow 备用通道")
+                sf_results = _sf_generate(prompt, size or "1024*1024")
+                if sf_results:
+                    results = sf_results
+                else:
+                    return f"错误: 文生图任务未返回结果（模型 {used_model}，可能超时/失败），SiliconFlow 备用也失败，请稍后重试"
         return f"错误: 文生图任务未返回结果（模型 {used_model}，可能超时/失败，请稍后重试）"
 
     # 下载并保存到项目（可选）
@@ -228,7 +307,7 @@ def generate_image(
                 if img_resp.status_code != 200:
                     logger.warning("[image_gen] 图片下载失败 %s: %s", url, img_resp.status_code)
                     continue
-                fname = f"qwen_image_{int(time.time())}_{i + 1}.png"
+                fname = f"generated_image_{int(time.time())}_{i + 1}.png"
                 fpath = out_dir / fname
                 fpath.write_bytes(img_resp.content)
                 local_paths.append(str(fpath))
@@ -326,3 +405,28 @@ def execute_image_gen_tool(name: str, project_path: str, chat_id: Optional[int] 
         return fn(project_path=project_path, chat_id=chat_id, **kwargs)
     except Exception as e:  # noqa: BLE001
         return f"错误: {e}"
+
+
+# ─── 质量门：按技能检查表生成自检提示 ──────────────────────────────────────────
+
+def get_quality_checklist(skill_id: str) -> str:
+    """返回指定技能的质量检查清单文本，供 Agent 出图后自检使用。
+
+    Agent 在 generate_image 成功后调用本函数，把检查项告诉用户，
+    引导用户（或视觉模型）逐条核对风格是否符合技能铁律。
+    """
+    try:
+        from app.core.skill_catalog import IMAGE_SKILL_CATALOG
+        for s in IMAGE_SKILL_CATALOG:
+            if s["id"] == skill_id:
+                checks = s.get("quality_checks", [])
+                if not checks:
+                    return ""
+                lines = [f"**{s['name']}** 质量检查清单："]
+                for i, c in enumerate(checks, 1):
+                    lines.append(f"{i}. {c}")
+                lines.append("\n> 请对照以上要点核查生成图片，不符合则建议重试（调整 Prompt 或换技能）。")
+                return "\n".join(lines)
+    except Exception as e:  # noqa: BLE001
+        logger.debug("[image_gen] get_quality_checklist 失败: %s", e)
+    return ""
