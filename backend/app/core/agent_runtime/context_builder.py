@@ -721,6 +721,7 @@ class ChatContextBuilder:
             _agent_skills = getattr(agent, "skills", None) or []
             if _agent_skills:
                 from app.core.skill_catalog import SKILL_CATALOG
+                from app.core.skill_templates import get_template_prompt_fragment
                 _skill_index = {s["id"]: s for s in SKILL_CATALOG}
                 _fragments = []
                 for _sid in _agent_skills:
@@ -734,6 +735,7 @@ class ChatContextBuilder:
                         "\n\n## 【Agent 绑定技能】\n"
                         "以下技能是本 Agent 内置的工作规范，始终有效：\n\n"
                         + "\n\n".join(_fragments)
+                        + "\n\n" + get_template_prompt_fragment()
                     )
         except Exception as _e:  # noqa: BLE001
             import logging as _logging

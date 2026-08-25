@@ -71,15 +71,19 @@ def _resolve_siliconflow_key() -> str:
     try:
         import sqlite3
         from pathlib import Path
-        db_path = Path(__file__).parents[3] / "mfkagent.db"
-        if db_path.exists():
-            con = sqlite3.connect(str(db_path))
-            row = con.execute(
-                "SELECT value FROM settings WHERE key='api_key_siliconflow'"
-            ).fetchone()
-            con.close()
-            if row and row[0]:
-                return row[0]
+        for db_path in [
+            Path(__file__).parents[2] / "mfkagent.db",
+            Path(__file__).parents[3] / "mfkagent.db",
+            Path(__file__).parents[1] / "mfkagent.db",
+        ]:
+            if db_path.exists():
+                con = sqlite3.connect(str(db_path))
+                row = con.execute(
+                    "SELECT value FROM settings WHERE key='api_key_siliconflow'"
+                ).fetchone()
+                con.close()
+                if row and row[0]:
+                    return row[0]
     except Exception as e:  # noqa: BLE001
         logger.debug("[image_gen] 读取 SiliconFlow key 失败: %s", e)
     return os.environ.get("SILICONFLOW_API_KEY", "")
@@ -285,7 +289,6 @@ def generate_image(
                     results = sf_results
                 else:
                     return f"错误: 文生图任务未返回结果（模型 {used_model}，可能超时/失败），SiliconFlow 备用也失败，请稍后重试"
-        return f"错误: 文生图任务未返回结果（模型 {used_model}，可能超时/失败，请稍后重试）"
 
     # 下载并保存到项目（可选）
     local_paths: List[str] = []
