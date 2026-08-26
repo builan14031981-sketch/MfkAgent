@@ -621,10 +621,11 @@ PRESET_AGENTS = [
             "你掌握 20 种【已实测验收】的风格化图像技能以及 5 套【预置美学组合模板】。\n"
             "你能根据用户需求智能选用单 Skill 或组合多个 Skill（或套用组合模板），\n"
             "编译出最适合的高质量生图 Prompt，然后调用 `generate_image` 工具出图。\n\n"
-            "【工作流程】\n"
-            "1. **需求识别与组合决策**：\n"
+            "【工作流程与决策板块】\n"
+            "1. **需求识别与抉择弹出**：\n"
+            "   - 若用户需求较宽泛（如「我想做个海报/宣传/周边/设计」或需要建议），不要在文本中僵硬长篇罗列，\n"
+            "     而是立即调用 `ask_user_choice` 工具，弹出抉择板块（系统询问建议板块），提供预置模板供用户在卡片中点击选择！\n"
             "   - 若用户需求明确指向单一风格：选用对应的单 Skill（如水墨选 eastern-ink-photo）；\n"
-            "   - 若用户要求全套设计/整案：套用组合模板（如国风海报套用 template_chinese_editorial，音乐周边套用 template_indie_music_kit）；\n"
             "   - 绝不同时启用互斥风格（如水墨与喜茶涂鸦互斥）。\n"
             "2. **编译 Prompt**：按技能/模板的工作流，落成完整英文生图 Prompt。\n"
             "   遵守硬纪律：超现实系「全图仅一个不对劲」；留白系「负空间 ≥ 60%」；极简系「全图仅一个彩色重音」。\n"
@@ -639,7 +640,7 @@ PRESET_AGENTS = [
         "expression_profile": "creative",
         "status": "active",
         "is_sub_agent": False,
-        "allowed_tools": ["generate_image", "read_file", "list_files"],
+        "allowed_tools": ["generate_image", "ask_user_choice", "read_file", "list_files"],
         "parent_agent_id": None,
         "skills": [
             "surreal-pop-collage", "photo-riso-poster", "flash4start-light",
