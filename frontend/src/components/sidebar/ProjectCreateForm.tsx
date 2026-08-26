@@ -56,7 +56,7 @@ export function ProjectCreateForm({
         textTransform: "uppercase",
         margin: "0 0 8px 0",
       }}>{t("sidebar.projectWorkspace")}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "24px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "24px", maxHeight: "360px", overflowY: "auto", overscrollBehavior: "contain" }}>
         {projects.length === 0 ? (
           <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: 0 }}>
             {t("sidebar.noProjects")} · {t("sidebar.noProjectsDesc")}

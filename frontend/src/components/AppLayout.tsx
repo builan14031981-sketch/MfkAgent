@@ -20,7 +20,7 @@ interface AppLayoutProps {
 /** 侧边栏宽度边界（px） */
 const SIDEBAR_MIN = 180;
 const SIDEBAR_MAX = 480;
-const SIDEBAR_DEFAULT = 260;
+const SIDEBAR_DEFAULT = 280;
 const SIDEBAR_STORAGE_KEY = "sidebar_width";
 // 2026-08-11：侧边栏收起/展开态持久化（此前纯内存，刷新即丢）
 const SIDEBAR_COLLAPSED_KEY = "mfk_sidebar_collapsed";
@@ -393,8 +393,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         onToggleSidebar={toggleSidebar}
       />
 
-      {/* 侧边栏拖拽调宽条：收起时隐藏 */}
-      {!sidebarCollapsed && (
+      {/* 侧边栏拖拽调宽条：豆包风格固定宽度，暂隐藏 */}
+      {false && !sidebarCollapsed && (
         <div
           onMouseDown={startResize}
           onDoubleClick={resetWidth}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Pin, MessageSquare, MoreHorizontal } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
@@ -33,7 +33,7 @@ interface ChatRowProps {
  * - 活动态：背景 --sidebar-active-bg + 文字 --sidebar-active-fg + 2px 左侧指示条
  * - hover 才显形的按钮：默认 opacity 0（color 保持，避免脱色相）
  */
-export function ChatRow({
+export const ChatRow = memo(function ChatRow({
   chat,
   indented,
   isActive,
@@ -49,7 +49,6 @@ export function ChatRow({
   const router = useRouter();
   const renameInputRef = useRef<HTMLInputElement>(null);
   const isPinned = chat.is_pinned;
-  // 2026-08-12：标题右侧最后交互时间（共享 60s tick 防过期）
   const { t } = useTranslation();
   const now = useNowTick();
 
@@ -61,15 +60,13 @@ export function ChatRow({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        // 统一文字起始位置 44px（对齐标题文字：4padding + 12Chevron + 8gap + 12icon + 8gap = 44）
-        // 项目内会话与通用对话统一对齐，不再单独缩进
-        padding: "3px var(--sidebar-row-px) 3px 44px",
-        borderRadius: "var(--radius-sm)",
+        padding: `7px 12px 7px ${indented ? "32px" : "12px"}`,
+        borderRadius: "8px",
         background: isActive ? "var(--sidebar-active-bg)" : "transparent",
+        boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)" : "none",
         cursor: "pointer",
-        marginBottom: "1px",
-        transition: "background var(--transition-fast)",
-        contain: "layout paint",
+        marginBottom: "2px",
+        transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
       }}
       onClick={() => !isRenaming && router.push(`/chat/${chat.id}`)}
       onContextMenu={(e) => onContextMenu(e, chat.id)}
@@ -88,21 +85,6 @@ export function ChatRow({
         e.currentTarget.style.transform = "scale(1)";
       }}
     >
-      {/* 活动会话：2px 左侧指示条（与 ProjectNode 对齐） */}
-      {isActive && (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: "4px",
-            top: "20%",
-            bottom: "20%",
-            width: "var(--sidebar-indicator-w)",
-            borderRadius: "var(--radius-full)",
-            background: "var(--sidebar-active-fg)",
-          }}
-        />
-      )}
       <div
         style={{
           display: "flex",
@@ -110,6 +92,7 @@ export function ChatRow({
           gap: "8px",
           flex: 1,
           overflow: "hidden",
+          minWidth: 0,
         }}
       >
         {isPinned && (
@@ -154,13 +137,12 @@ export function ChatRow({
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: "13px",
-              fontWeight: 400,
-              lineHeight: "var(--line-height-normal)",
-              // 活动态用 primary 色（与 ProjectNode 对齐，不靠字重区分）
+              fontSize: "14px",
+              fontWeight: isActive ? 600 : 500,
+              lineHeight: 1.4,
               color: isActive
                 ? "var(--sidebar-active-fg)"
-                : "var(--text-level-2)",
+                : "var(--text-level-1)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -228,4 +210,4 @@ export function ChatRow({
       </div>
     </div>
   );
-}
+});

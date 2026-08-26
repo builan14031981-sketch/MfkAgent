@@ -23,7 +23,7 @@ function readLocalBool(key: string): boolean {
  * - 扁平内嵌式输入框，Enter 直接添加
  * - 全部使用 CSS Variables 与 18 种 Hero Theme 融合
  */
-export function TodoPanel() {
+export function TodoPanel({ forceExpanded = false, hideHeader = false }: { forceExpanded?: boolean; hideHeader?: boolean }) {
   const { t } = useTranslation();
   const { todos, completedTodos, loading, createTodo, completeTodo, removeTodoFromList, deleteTodo, fetchCompletedTodos } = useTodos();
   const [inputValue, setInputValue] = useState("");
@@ -36,9 +36,13 @@ export function TodoPanel() {
 
   // 客户端挂载后从 localStorage 同步折叠状态（避免 SSR hydration mismatch）
   useEffect(() => {
-    setCollapsed(readLocalBool(TODO_COLLAPSED_KEY));
+    if (forceExpanded) {
+      setCollapsed(false);
+    } else {
+      setCollapsed(readLocalBool(TODO_COLLAPSED_KEY));
+    }
     setShowCompleted(readLocalBool(TODO_SHOW_COMPLETED_KEY));
-  }, []);
+  }, [forceExpanded]);
 
   const handleAddTodo = useCallback(
     async (refocus = true) => {
@@ -140,6 +144,7 @@ export function TodoPanel() {
       }}
     >
       {/* 可折叠 Header：左侧折叠按钮 + 右侧常显 "+" 新建按钮 */}
+      {!hideHeader && (
       <div
         style={{
           display: "flex",
@@ -247,6 +252,7 @@ export function TodoPanel() {
           <Plus style={{ width: "13px", height: "13px" }} />
         </button>
       </div>
+      )}
 
       {/* 待办列表 + 输入框区域（可折叠） */}
       <div

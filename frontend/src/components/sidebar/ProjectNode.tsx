@@ -65,7 +65,7 @@ export function ProjectNode({
   const isActive = isActiveProject;
 
   return (
-    <div style={{ marginBottom: "1px" }}>
+    <div style={{ marginBottom: "2px" }}>
       {/* 项目文件夹节点 */}
       <div
         onClick={onToggleCollapse}
@@ -77,31 +77,14 @@ export function ProjectNode({
           display: "flex",
           alignItems: "center",
           gap: "6px",
-          padding: "4px var(--sidebar-row-px) 4px 22px",
-          borderRadius: "var(--radius-sm)",
+          padding: "7px 12px 7px 12px",
+          borderRadius: "8px",
           cursor: "pointer",
-          background: isActive ? "var(--sidebar-active-bg-strong)" : (isHovered ? "var(--bg-level-4)" : "transparent"),
-          transition: "background var(--transition-fast)",
+          background: isActive ? "var(--sidebar-active-bg)" : (isHovered ? "var(--bg-level-4)" : "transparent"),
+          boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)" : "none",
+          transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
         }}
       >
-        {/* 活动项目：仅折叠态显示 2px 左侧指示条（展开时子级 ChatRow 已有指示条，避免双杠） */}
-        {isActive && isCollapsed && (
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              left: "4px",
-              top: "20%",
-              bottom: "20%",
-              width: "var(--sidebar-indicator-w)",
-              borderRadius: "var(--radius-full)",
-              background: "var(--sidebar-active-fg)",
-            }}
-          />
-        )}
-
-
-        {/* 文件夹图标：16px（对齐标题文字起始位置 44px = 22padding + 16icon + 6gap） */}
         {isCollapsed ? (
           <Folder
             style={{
@@ -130,10 +113,10 @@ export function ProjectNode({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            fontSize: "13px",
-            fontWeight: 500,
-            lineHeight: "var(--line-height-normal)",
-            color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-2)",
+            fontSize: "14px",
+            fontWeight: isActive ? 600 : 500,
+            lineHeight: 1.4,
+            color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-1)",
           }}
         >
           {project.name}
