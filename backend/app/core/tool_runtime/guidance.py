@@ -36,6 +36,8 @@ _INTENT_TO_GUIDANCE: dict[str, str] = {
     "web_search": "research",
     "git_operation": "coding",
     "memory_operation": "file_operation",
+    "image_generation": "creative",
+    "creative": "creative",
 }
 
 
@@ -78,6 +80,8 @@ def _resolve_guidance_type(
         return "research"
     if any(kw in msg_lower for kw in ["文件", "读取", "写入", "创建", "file", "read", "write"]):
         return "file_operation"
+    if any(kw in msg_lower for kw in ["海报", "生图", "宣传", "设计", "周边", "画张", "画一个", "图片", "画图"]):
+        return "creative"
     if any(kw in msg_lower for kw in ["调试", "debug", "报错", "错误", "排查", "诊断"]):
         return "debugging"
 
@@ -93,6 +97,22 @@ _GUIDANCE_PREAMBLE = (
 )
 
 GUIDANCE_TEMPLATES: dict[str, dict] = {
+    "creative": {
+        "tool_flow": [
+            "1. 方案选型与交互：当用户需求较宽泛或询问建议时，优先使用 `ask_user_choice` 提供 2-4 个推荐方案/预置模板供用户在卡片中点选",
+            "2. 风格匹配与 Prompt 编译：按选定技能/模板规范将需求编译为高质量英文 Prompt（遵守留白/平涂/控色等纪律）",
+            "3. 图像生成与自检：调用 `generate_image` 生成图像，并在生成后对照质量检查表做自检说明",
+        ],
+        "suggestions": [
+            "当用户询问有哪些设计方案或模板推荐时，调用 `ask_user_choice` 可以在界面上为用户弹出精致的可交互选择卡片",
+            "生成图像 Prompt 统一使用英文表达，避免中文图生图出现乱码",
+            "严格遵循选定技能的负空间与配色规则，不混用互斥画风",
+        ],
+        "warnings": [
+            "禁止在用户询问方案建议时在文本中僵硬罗列选项，应优先使用 `ask_user_choice` 弹出选择卡片",
+            "禁止对平涂/剪影类技能使用复杂的渐变色和高光渲染",
+        ],
+    },
     "coding": {
         "tool_flow": [
             "1. 探索阶段：先用 list_files 了解项目结构，再用 read_file 阅读相关代码",
