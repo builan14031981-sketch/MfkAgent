@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import time
+import sys
 import urllib.parse
 from typing import Dict, List, Optional
 
@@ -117,6 +118,52 @@ def _sf_generate(prompt: str, size: str) -> Optional[List[str]]:
             logger.info("[image_gen/sf] 成功 model=%s size=%s", model, sf_size)
             return urls
         logger.warning("[image_gen/sf] 无图像 model=%s: %s", model, resp.text[:200])
+    return None
+
+
+# ─── ComfyUI 本地生图后端 (127.0.0.1:8188) ──────────────────────────────────
+
+_COMFY_SCRIPT = r"E:\BaiduNetdiskDownload\ComfyUI-aki-v3.2\ComfyUI\workflows_opencode\comfy_call.py"
+
+
+def _comfyui_generate(prompt: str, size: str = "1024*1024") -> Optional[List[str]]:
+    """调用本机 ComfyUI REST API (comfy_call.py) 出图。"""
+    if not os.path.exists(_COMFY_SCRIPT):
+        logger.debug("[image_gen/comfy] comfy_call.py 路径不存在，跳过本地生图")
+        return None
+    try:
+        w, h = 1024, 1024
+        if "*" in size:
+            parts = size.split("*")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                w, h = int(parts[0]), int(parts[1])
+        python_exe = sys.executable or "python"
+        cmd = [
+            python_exe,
+            _COMFY_SCRIPT,
+            "--workflow", "01_快捷出图_T2I.json",
+            "--prompt", prompt,
+            "--width", str(w),
+            "--height", str(h),
+            "--seed", str(int(time.time())),
+            "--steps", "20",
+        ]
+        import subprocess
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        if proc.returncode != 0:
+            logger.warning("[image_gen/comfy] 进程退出码 %s: %s", proc.returncode, proc.stderr[:200])
+            return None
+        paths = []
+        for line in proc.stdout.splitlines():
+            s = line.strip()
+            if s.endswith(".png") and os.path.exists(s):
+                paths.append(s)
+        if paths:
+            logger.info("[image_gen/comfy] 本生图成功: %s", paths)
+            return paths
+        logger.warning("[image_gen/comfy] 未输出有效图片路径: %s", proc.stdout[:200])
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[image_gen/comfy] 本地生图异常: %s", e)
     return None
 
 
@@ -249,51 +296,55 @@ def generate_image(
     if model == _DEFAULT_MODEL:
         model = _resolve_model() or _DEFAULT_MODEL
 
-    api_key = _resolve_qwen_key()
-    # ── DashScope 不可用时直接走 SiliconFlow 备用通道 ──
-    if not api_key:
-        logger.info("[image_gen] 未配置 QWEN_API_KEY，尝试 SiliconFlow 备用通道")
-        sf_results = _sf_generate(prompt, size or "1024*1024")
-        if sf_results:
-            results = sf_results
-        else:
-            return "错误: 未配置任何生图 API Key（QWEN_API_KEY / SILICONFLOW_API_KEY），无法生图"
-
+    # ── 1. 优先尝试本地 ComfyUI 服务 (127.0.0.1:8188) ──
+    comfy_results = _comfyui_generate(prompt, size or "1024*1024")
+    if comfy_results:
+        results = comfy_results
     else:
-        # 主模型提交失败时依次尝试回退模型
-        task_id = _submit(model, prompt, size, n, api_key)
-        used_model = model
-        if not task_id:
-            for fb in _FALLBACK_MODELS:
-                if fb == model:
-                    continue
-                task_id = _submit(fb, prompt, size, n, api_key)
-                if task_id:
-                    used_model = fb
-                    break
-        if not task_id:
-            # DashScope 全部失败 → 自动降级 SiliconFlow
-            logger.warning("[image_gen] DashScope 全部失败，降级到 SiliconFlow 备用通道")
+        # ── 2. 本地未开或失败时，走 DashScope 主选 ──
+        api_key = _resolve_qwen_key()
+        if not api_key:
+            logger.info("[image_gen] 未配置 QWEN_API_KEY，尝试 SiliconFlow 备用通道")
             sf_results = _sf_generate(prompt, size or "1024*1024")
             if sf_results:
                 results = sf_results
             else:
-                return "错误: 文生图任务提交失败（DashScope 全部模型失败且 SiliconFlow 备用也失败），请检查 API Key 权限或稍后重试"
+                return "错误: 未配置任何生图 API Key（QWEN_API_KEY / SILICONFLOW_API_KEY）且 ComfyUI 本地未开启"
         else:
-            results = _poll_results(task_id, api_key)
-            if not results:
-                # DashScope 轮询失败 → 降级 SiliconFlow
-                logger.warning("[image_gen] DashScope 轮询失败，降级到 SiliconFlow 备用通道")
+            task_id = _submit(model, prompt, size, n, api_key)
+            used_model = model
+            if not task_id:
+                for fb in _FALLBACK_MODELS:
+                    if fb == model:
+                        continue
+                    task_id = _submit(fb, prompt, size, n, api_key)
+                    if task_id:
+                        used_model = fb
+                        break
+            if not task_id:
+                # DashScope 全部失败 → 自动降级 SiliconFlow
+                logger.warning("[image_gen] DashScope 全部失败，降级到 SiliconFlow 备用通道")
                 sf_results = _sf_generate(prompt, size or "1024*1024")
                 if sf_results:
                     results = sf_results
                 else:
-                    return f"错误: 文生图任务未返回结果（模型 {used_model}，可能超时/失败），SiliconFlow 备用也失败，请稍后重试"
+                    return "错误: 文生图任务提交失败（DashScope 与 SiliconFlow 均失败，ComfyUI 本地未响应）"
+            else:
+                results = _poll_results(task_id, api_key)
+                if not results:
+                    # DashScope 轮询失败 → 降级 SiliconFlow
+                    logger.warning("[image_gen] DashScope 轮询失败，降级到 SiliconFlow 备用通道")
+                    sf_results = _sf_generate(prompt, size or "1024*1024")
+                    if sf_results:
+                        results = sf_results
+                    else:
+                        return f"错误: 文生图任务未返回结果（模型 {used_model}），SiliconFlow 与 ComfyUI 均失败"
 
     # 下载并保存到项目（可选）
     local_paths: List[str] = []
     if save_to_project and project_path:
         from app.core.sandbox import resolve_sandbox_path
+        from pathlib import Path
 
         try:
             out_dir = resolve_sandbox_path(_IMAGE_OUTPUT_DIR, project_path)
@@ -306,13 +357,18 @@ def generate_image(
 
         for i, url in enumerate(results):
             try:
-                img_resp = httpx.get(url, timeout=HTTP_TIMEOUT, follow_redirects=True)
-                if img_resp.status_code != 200:
-                    logger.warning("[image_gen] 图片下载失败 %s: %s", url, img_resp.status_code)
-                    continue
+                url_clean = str(url).strip()
+                if os.path.exists(url_clean):
+                    content = Path(url_clean).read_bytes()
+                else:
+                    img_resp = httpx.get(url_clean, timeout=HTTP_TIMEOUT, follow_redirects=True)
+                    if img_resp.status_code != 200:
+                        logger.warning("[image_gen] 图片下载失败 %s: %s", url_clean, img_resp.status_code)
+                        continue
+                    content = img_resp.content
                 fname = f"generated_image_{int(time.time())}_{i + 1}.png"
                 fpath = out_dir / fname
-                fpath.write_bytes(img_resp.content)
+                fpath.write_bytes(content)
                 local_paths.append(str(fpath))
             except Exception as e:  # noqa: BLE001
                 logger.warning("[image_gen] 图片下载/保存失败: %s", e)
