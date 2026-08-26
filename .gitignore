@@ -76,3 +76,10 @@ _scroll_test/
 *.log.*
 _archive/
 
+# Physical backup folders & snapshots (added 2026-08-25)
+_backup/
+_bak*/
+backup_*/
+Mfkagent_backups/
+_trash/
+

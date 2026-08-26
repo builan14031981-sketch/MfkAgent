@@ -35,6 +35,7 @@ export function TodoPanel({ forceExpanded = false, hideHeader = false }: { force
   const listRef = useRef<HTMLDivElement>(null);
 
   // 客户端挂载后从 localStorage 同步折叠状态（避免 SSR hydration mismatch）
+  // forceExpanded 模式（浮层）下忽略本地折叠状态，始终展开
   useEffect(() => {
     if (forceExpanded) {
       setCollapsed(false);

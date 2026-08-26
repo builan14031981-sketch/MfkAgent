@@ -60,6 +60,7 @@ export const ChatRow = memo(function ChatRow({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        // 豆包风格：行高更大，圆角更明显
         padding: `7px 12px 7px ${indented ? "32px" : "12px"}`,
         borderRadius: "8px",
         background: isActive ? "var(--sidebar-active-bg)" : "transparent",
@@ -108,49 +109,68 @@ export const ChatRow = memo(function ChatRow({
         {streamingStage && (
           <ThinkingOrb state={streamingStage} size={20} theme="auto" />
         )}
-        {isRenaming ? (
-          <input
-            ref={renameInputRef}
-            value={renameValue}
-            onChange={(e) => onRenameValueChange(e.target.value)}
-            onBlur={onRenameCommit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onRenameCommit();
-              if (e.key === "Escape") onRenameCancel();
-            }}
-            onClick={(e) => e.stopPropagation()}
-            autoFocus
-            style={{
-              flex: 1,
-              fontSize: "13px",
-              lineHeight: "var(--line-height-normal)",
-              color: "var(--text-level-2)",
-              background: "var(--bg-level-2)",
-              border: "1px solid var(--sidebar-active-fg)",
-              borderRadius: "var(--radius-xs)",
-              padding: "2px 6px",
-              outline: "none",
-            }}
-          />
-        ) : (
-          <span
-            style={{
-              flex: 1,
-              minWidth: 0,
-              fontSize: "14px",
-              fontWeight: isActive ? 600 : 500,
-              lineHeight: 1.4,
-              color: isActive
-                ? "var(--sidebar-active-fg)"
-                : "var(--text-level-1)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {chat.title}
-          </span>
-        )}
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          {isRenaming ? (
+            <input
+              ref={renameInputRef}
+              value={renameValue}
+              onChange={(e) => onRenameValueChange(e.target.value)}
+              onBlur={onRenameCommit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onRenameCommit();
+                if (e.key === "Escape") onRenameCancel();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              autoFocus
+              style={{
+                width: "100%",
+                fontSize: "13px",
+                lineHeight: "var(--line-height-normal)",
+                color: "var(--text-level-2)",
+                background: "var(--bg-level-2)",
+                border: "1px solid var(--sidebar-active-fg)",
+                borderRadius: "var(--radius-xs)",
+                padding: "2px 6px",
+                outline: "none",
+              }}
+            />
+          ) : (
+            <>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: isActive ? 600 : 500,
+                  lineHeight: 1.4,
+                  color: isActive
+                    ? "var(--sidebar-active-fg)"
+                    : "var(--text-level-1)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {chat.title}
+              </span>
+              {chat.summary && (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    lineHeight: 1.3,
+                    color: "var(--text-level-4)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    marginTop: "1px",
+                  }}
+                >
+                  {chat.summary}
+                </span>
+              )}
+            </>
+          )}
+        </div>
       </div>
       {/* 右侧操作区：时间 + 更多按钮，容器负 margin 抵消 padding-right 贴边 */}
       <div style={{ display: "flex", alignItems: "center", gap: "4px", marginRight: "-8px", flexShrink: 0 }}>

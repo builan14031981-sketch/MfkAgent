@@ -29,6 +29,7 @@ class Chat(Base):
     project_path = Column(String(500))
     agent_id = Column(String(50), default="general")
     title = Column(String(200), default="New Chat")
+    summary = Column(String(500), nullable=True)  # 会话语义摘要（Agent 自动生成，Sidebar 展示）
     is_pinned = Column(Boolean, default=False)
     personality_level = Column(Integer, nullable=True)
     model = Column(String(50))

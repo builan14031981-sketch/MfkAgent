@@ -23,22 +23,33 @@ const REL_PATH_RE = /^[\w.-]+([\\/][\w.-]+)+$/;
 /** 单文件名模式：无目录分隔符，但以文件扩展名结尾（如 README.md） */
 const FILE_NAME_ONLY_RE = /^[\w][\w.-]*\.\w+$/;
 
+/** 目录路径模式：以 / 或 \ 结尾（如 output/、src\） */
+const DIR_PATH_RE = /[\\/]$/;
+
 /**
  * 检测给定字符串是否为文件路径。
  * - Windows 绝对路径：C:\xxx\yyy
  * - 相对路径（含分隔符）：src/app.py、output/novel.txt
  * - 单文件名（含扩展名）：README.md、index.ts
+ * - 目录路径（以分隔符结尾）：ppt-tests/、src/components/
  */
 export function isFilePath(text: string): boolean {
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > 500) return false;
   // Windows 绝对路径
   if (WIN_ABS_PATH_RE.test(trimmed)) return true;
-  // 含分隔符的相对路径
-  if (REL_PATH_RE.test(trimmed)) return true;
+  // 含分隔符的相对路径（必须带文件扩展名，避免 PageUp/Down 这类普通文本误判）
+  if (REL_PATH_RE.test(trimmed) && FILE_EXT_RE.test(trimmed)) return true;
   // 单文件名（含扩展名且在常见扩展名列表中）
   if (FILE_NAME_ONLY_RE.test(trimmed) && FILE_EXT_RE.test(trimmed)) return true;
+  // 目录路径（以 / 或 \ 结尾）
+  if (DIR_PATH_RE.test(trimmed)) return true;
   return false;
+}
+
+/** 判断是否为目录路径（以分隔符结尾） */
+export function isDirectoryPath(text: string): boolean {
+  return DIR_PATH_RE.test(text.trim());
 }
 
 /**
@@ -68,12 +79,16 @@ export function resolveFilePath(rawPath: string, projectPath: string | null): st
 export interface FilePathInteraction {
   /** 解析后的绝对路径（若可解析） */
   resolvedPath: string | null;
-  /** 是否为有效文件路径 */
+  /** 是否为有效文件/目录路径 */
   isFile: boolean;
-  /** 双击处理：在文件管理器中打开 */
+  /** 是否为目录路径 */
+  isDirectory: boolean;
+  /** 双击处理：在文件管理器中打开并选中 */
   onDoubleClick: () => void;
-  /** 右键菜单：在文件管理器中打开 */
-  openInFolder: () => Promise<void>;
+  /** 单击：用默认程序打开文件，或直接进入目录 */
+  openPath: () => Promise<boolean>;
+  /** 右键菜单：在文件管理器中打开并选中 */
+  openInFolder: () => Promise<boolean>;
   /** 复制路径到剪贴板 */
   copyPath: () => Promise<void>;
 }
@@ -94,13 +109,32 @@ export function useFilePathInteraction(rawPath: string | null | undefined): File
   }, [rawPath, projectPath]);
 
   const isFile = resolvedPath !== null;
+  const isDirectory = useMemo(() => {
+    if (!rawPath) return false;
+    return isDirectoryPath(rawPath);
+  }, [rawPath]);
 
-  const openInFolder = useCallback(async () => {
-    if (!resolvedPath) return;
+  const openInFolder = useCallback(async (): Promise<boolean> => {
+    if (!resolvedPath) return false;
     try {
-      await window.electronAPI?.openInFolder?.(resolvedPath);
+      // 去掉尾部路径分隔符，避免 showItemInFolder 异常
+      const cleanPath = resolvedPath.replace(/[\\/]+$/, "");
+      const ok = await window.electronAPI?.openInFolder?.(cleanPath);
+      return ok === true;
     } catch {
-      // 非 Electron 环境或路径不存在，静默忽略
+      return false;
+    }
+  }, [resolvedPath]);
+
+  const openPath = useCallback(async (): Promise<boolean> => {
+    if (!resolvedPath) return false;
+    try {
+      // 去掉尾部路径分隔符，避免 shell.openPath 异常
+      const cleanPath = resolvedPath.replace(/[\\/]+$/, "");
+      const ok = await window.electronAPI?.openPath?.(cleanPath);
+      return ok === true;
+    } catch {
+      return false;
     }
   }, [resolvedPath]);
 
@@ -120,7 +154,9 @@ export function useFilePathInteraction(rawPath: string | null | undefined): File
   return {
     resolvedPath,
     isFile,
+    isDirectory,
     onDoubleClick,
+    openPath,
     openInFolder,
     copyPath,
   };

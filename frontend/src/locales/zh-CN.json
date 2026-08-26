@@ -50,7 +50,10 @@
                     "search":  "搜索",
                     "collapse":  "收起侧边栏",
                     "searchPlaceholder":  "搜索对话...",
-                    "noSearchResults":  "没有匹配的对话"
+                    "noSearchResults":  "没有匹配的对话",
+                    "pinned":  "置顶",
+                    "projects":  "项目",
+                    "recent":  "最近对话"
                 },
     "home":  {
                  "welcome":  [
@@ -812,7 +815,8 @@
     "time":  {
                  "justNow":  "刚刚",
                  "minutesAgo":  "{n} 分钟前",
-                 "hoursAgo":  "{n} 小时前"
+                 "hoursAgo":  "{n} 小时前",
+                 "yesterday":  "昨天"
              },
     "terminal":  {
                      "title":  "终端",

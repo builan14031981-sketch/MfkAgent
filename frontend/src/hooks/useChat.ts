@@ -5,8 +5,10 @@ import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 export interface Chat {
   id: number;
   project_id: number | null;
+  project_path: string | null;
   agent_id: string;
   title: string;
+  summary: string | null;
   created_at: string;
   updated_at: string;
   is_pinned: boolean;

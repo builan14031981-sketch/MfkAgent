@@ -85,6 +85,7 @@ export function ProjectNode({
           transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
         }}
       >
+        {/* 文件夹图标：16px */}
         {isCollapsed ? (
           <Folder
             style={{

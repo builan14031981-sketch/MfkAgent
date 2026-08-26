@@ -802,7 +802,7 @@ function ChatPageInner() {
   }, [currentAgent, agents, currentProject, selectedModel, settings, currentChat, createChat, router]);
 
   return (
-    <ProjectPathContext.Provider value={currentProject?.path ?? null}>
+    <ProjectPathContext.Provider value={currentChat?.project_path ?? currentProject?.path ?? null}>
       {/* 聊天头部（memo：流式期间跳过重渲染） */}
       <ChatHeader
         chat={currentChat}

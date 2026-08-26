@@ -11,9 +11,83 @@ import re
 from typing import Dict, List, Optional
 
 from app.services.model import ModelService
+from app.core.skill_catalog import get_catalog
+
+
+def _parse_json_robust(raw: str):
+    """尽量从大模型返回中解析出 JSON 对象，容忍常见语法瑕疵与前后多余文字。"""
+    text = _strip_fences(raw or "").strip()
+    # 1) 直接解析
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+    # 2) 截取最外层 { ... }
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end > start:
+        candidate = text[start:end + 1]
+        try:
+            return json.loads(candidate)
+        except Exception:
+            pass
+        # 3) 去除尾随逗号后再试
+        fixed = re.sub(r",\s*([}\]])", r"\1", candidate)
+        try:
+            return json.loads(fixed)
+        except Exception:
+            pass
+    # 4) 抽取第一个 {...} 块（容忍嵌套之外的噪声）
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            pass
+        try:
+            return json.loads(re.sub(r",\s*([}\]])", r"\1", m.group(0)))
+        except Exception:
+            pass
+    raise ValueError("无法从返回内容中提取合法 JSON")
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PROMPTS_DIR = os.path.join(_HERE, "prompts")
+
+# 核心四件套设计 Skill：内容生成时从平台 skill_catalog 真实加载并注入，
+# 用它们的纪律约束答辩 PPT 的叙事、文字与排版（而非仅靠大模型自由发挥）。
+_SKILL_IDS = ["ppt-builder", "ui-impeccable", "ui-kami", "copywriting-smooth"]
+
+
+def _design_skill_bundle() -> str:
+    """加载核心四件套 Skill 的原始 prompt，并加一段 PPT 适配桥接。"""
+    catalog = {s["id"]: s for s in get_catalog()}
+    adapter = (
+        "# 设计 Skill 纪律（本次答辩 PPT 内容生成必须遵循）\n"
+        "你将输出结构化 PPT 内容 JSON（schema 见下文）。以下四份平台设计 Skill 的纪律，"
+        "请严格映射到你的输出——把它们针对 HTML/CSS 的规则，转译为对幻灯片内容与排版的约束：\n\n"
+        "【ppt-builder → 叙事与版式】\n"
+        "- 全 deck 走叙事弧：封面=钩子；前1-2页=定调(背景/问题)；主体=核心内容；至少1页=转折或新观点；结尾=金句/行动建议。\n"
+        "- 一套 deck 只用一套主题色（即所选 style 的 accent），中途绝不换色、不混搭第二种强调色。\n"
+        "- 反 slop：每页内容量适中不堆砌；不发明 schema 之外的杂乱结构；图文比例合理。\n\n"
+        "【copywriting-smooth → 文字去 AI 腔】\n"
+        "- 反 AI 指纹：删「此外/然而/至关重要/深入探讨/赋能/闭环/底层逻辑」等词；系动词回归（用「是/有」而非「作为/充当」）；"
+        "破三段式（不硬凑三连）；删万能结尾（「未来可期」「代表重要一步」）；减信号（少破折号、少加粗、少反问）。\n"
+        "- 句子长短交错，直接叙述，信任读者；金句从内容自然生长，不硬塞格言。\n\n"
+        "【ui-impeccable → 层级与叙事】\n"
+        "- 层级优先：用字号/字重/间距建立清晰信息层级，scanability 第一。\n"
+        "- 克制色彩：中性色为底，单一强调色点缀；避免彩虹配色。\n"
+        "- 排版质感：大标题收紧字距；正文一族字体。\n\n"
+        "【ui-kami → 文档排版】\n"
+        "- 编辑秩序：标题有层级、章节有编号/装饰线；建立稳定版面节奏。\n"
+        "- 纸墨质感：衬线大标题 + 无衬线正文（若所选风格允许）。\n\n"
+        "以下是四份 Skill 的原始说明（作为权威约束参考）：\n"
+    )
+    parts = [adapter]
+    for sid in _SKILL_IDS:
+        s = catalog.get(sid)
+        if s:
+            parts.append(f"===== Skill: {s['name']} ({sid}) =====\n{s['prompt']}")
+    return "\n\n".join(parts)
 
 DISCIPLINE_FILES = {
     "gongke": "engineering.md",
@@ -131,7 +205,7 @@ async def generate_content(
 ) -> Dict:
     """调大模型，返回结构化内容 JSON。"""
     target_pages = DURATION_PAGES.get(int(duration_min), 13)
-    system_prompt = _load_prompt(discipline)
+    system_prompt = _design_skill_bundle() + "\n\n---\n\n" + _load_prompt(discipline)
     system_prompt += (
         f"\n\n## 本次任务约束\n"
         f"- 答辩时长：{duration_min} 分钟，目标总页数约 {target_pages} 页（含封面/章节/结尾页，允许±1）。\n"
@@ -155,17 +229,31 @@ async def generate_content(
             "或提供 --content-json 直接传入已生成的内容。"
         )
 
-    result = await ModelService().call_once(
-        mid, messages, temperature=0.3, max_tokens=4096
-    )
-    raw = getattr(result, "content", None) or ""
-    try:
-        data = json.loads(_strip_fences(raw))
-    except Exception as e:
-        raise RuntimeError(f"大模型返回内容无法解析为 JSON: {e}\n原始返回:\n{raw[:1000]}")
+    last_err = None
+    for attempt in range(3):
+        if attempt > 0:
+            messages = messages + [{
+                "role": "user",
+                "content": "上一次返回不是合法 JSON。请只输出一个合法的 JSON 对象（不要注释、不要多余文字、"
+                           "键和字符串用双引号、逗号不能遗漏），以 { 开头、} 结尾。",
+            }]
+        try:
+            result = await ModelService().call_once(
+                mid, messages, temperature=0.3, max_tokens=8000
+            )
+        except Exception as e:
+            last_err = e
+            continue
+        raw = getattr(result, "content", None) or ""
+        try:
+            data = _parse_json_robust(raw)
+        except Exception as e:
+            last_err = e
+            continue
+        data = _normalize(data, doc_info.get("meta", {}).get("title", ""))
+        return data
 
-    data = _normalize(data, doc_info.get("meta", {}).get("title", ""))
-    return data
+    raise RuntimeError(f"大模型返回内容无法解析为 JSON（已重试）: {last_err}\n原始返回:\n{raw[:1000]}")
 
 
 if __name__ == "__main__":

@@ -39,6 +39,10 @@ export function formatRelativeTime(
   if (hours < 24) return t("time.hoursAgo", { n: String(hours) });
   const d = new Date(ts);
   const nowD = new Date(now);
+  // 按日期差判断：1 天前 = 昨天
+  const startOfDay = (dt: Date) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
+  const dayDiff = Math.round((startOfDay(nowD) - startOfDay(d)) / 86400000);
+  if (dayDiff === 1) return t("time.yesterday");
   const md = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   if (d.getFullYear() === nowD.getFullYear()) return md;
   return `${d.getFullYear()}-${md}`;

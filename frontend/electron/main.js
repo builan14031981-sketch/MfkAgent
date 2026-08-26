@@ -229,6 +229,7 @@ async function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: "MfkAgent",
+    icon: nativeImage.createFromPath(path.join(__dirname, "assets", "app-icon.png")),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -236,6 +237,13 @@ async function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  // 强制设置窗口图标（Windows dev 模式下任务栏可能读 electron.exe 默认图标，setIcon 覆盖）
+  try {
+    mainWindow.setIcon(nativeImage.createFromPath(path.join(__dirname, "assets", "app-icon.png")));
+  } catch (e) {
+    console.warn("[Electron] setIcon failed:", e.message);
+  }
 
   // 关闭按钮最小化到托盘（托盘「退出」才真正退出）
   mainWindow.on("close", (e) => {

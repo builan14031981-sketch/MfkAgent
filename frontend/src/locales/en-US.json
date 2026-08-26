@@ -50,7 +50,10 @@
                     "search":  "Search",
                     "collapse":  "Collapse sidebar",
                     "searchPlaceholder":  "Search chats...",
-                    "noSearchResults":  "No matching chats"
+                    "noSearchResults":  "No matching chats",
+                    "pinned":  "Pinned",
+                    "projects":  "Projects",
+                    "recent":  "Recent"
                 },
     "home":  {
                  "welcome":  [
@@ -812,7 +815,8 @@
     "time":  {
                  "justNow":  "Just now",
                  "minutesAgo":  "{n} min ago",
-                 "hoursAgo":  "{n} h ago"
+                 "hoursAgo":  "{n} h ago",
+                 "yesterday":  "Yesterday"
              },
     "terminal":  {
                      "title":  "Terminal",

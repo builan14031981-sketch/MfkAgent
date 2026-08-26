@@ -142,6 +142,7 @@ class ChatResponse(BaseModel):
     project_name: Optional[str] = None
     agent_id: str
     title: str
+    summary: Optional[str] = None
     is_pinned: bool = False
     model: Optional[str] = None
     personality_level: Optional[int] = None
@@ -458,6 +459,7 @@ async def export_chat(chat_id: int, format: str = "json"):
 
 class ChatUpdate(BaseModel):
     title: Optional[str] = None
+    summary: Optional[str] = None
     agent_id: Optional[str] = None
     is_pinned: Optional[bool] = None
     model: Optional[str] = None
@@ -478,6 +480,8 @@ async def update_chat(chat_id: int, update: ChatUpdate):
             raise HTTPException(status_code=404, detail="Chat not found")
         if update.title is not None:
             chat.title = update.title
+        if update.summary is not None:
+            chat.summary = update.summary
         if update.agent_id is not None:
             chat.agent_id = update.agent_id
         if update.is_pinned is not None:

@@ -285,15 +285,20 @@ def get_default_reasoning_effort() -> str:
         db.close()
 
 
-def _resolve_workspace(chat, message: str):
+def _resolve_workspace(chat, message: str, db=None):
     """解析本次请求的有效工作目录（用户指定路径 > Default Workspace 兜底）。
 
     规则：
       - 已绑定项目 → 原样返回，无兜底。
       - 未绑定项目但消息含已存在的绝对路径 → 以该路径（文件则取其父目录）
-        作为本次工作目录，返回带 project_path 的视图 + 用户路径上下文文本。
-      - 未绑定项目但指令含文件操作 → 启用默认工作目录兜底。
+        作为本次工作目录（临时路径，不写回 chat.project_path）。
+      - 未绑定项目但指令含文件操作 → 启用默认工作目录兜底，并写回 chat.project_path。
       - 其余 → 返回 project_path=None 视图（仅保留无路径工具）。
+
+    Args:
+        chat: Chat ORM 对象
+        message: 用户消息文本
+        db: 数据库 session（传入时默认工作目录兜底会持久化到 chat.project_path）
 
     Returns:
         (effective_chat_view, workspace_context_text)
@@ -324,6 +329,13 @@ def _resolve_workspace(chat, message: str):
 
     if is_file_operation_request(message):
         ws = ensure_default_workspace()
+        # 持久化默认工作目录到 chat.project_path，后续对话直接复用
+        if db is not None and chat.project_path != ws:
+            try:
+                chat.project_path = ws
+                db.commit()
+            except Exception:
+                db.rollback()
         return (
             _NS(
                 mode=chat.mode or "build",
@@ -863,7 +875,7 @@ class ChatContextBuilder:
             personality_prompt = get_personality_prompt(personality_level)
 
             # ──── 4. 项目/工作目录上下文 ────
-            effective_chat, workspace_context = _resolve_workspace(chat, input.content)
+            effective_chat, workspace_context = _resolve_workspace(chat, input.content, db)
 
             # ──── 5. Memory（现有逻辑）────
             memory_text = _build_memory_text(db, chat.project_id, chat.agent_id)

@@ -126,11 +126,18 @@ function splitByFilePaths(text: string): Array<{ type: "text" | "path"; value: s
 /** 可交互的文件路径链接组件 */
 function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean }) {
   const { t } = useTranslation();
-  const { resolvedPath, isFile, onDoubleClick, openInFolder, copyPath } = useFilePathInteraction(path);
+  const { resolvedPath, isFile, isDirectory, onDoubleClick, openInFolder, openPath, copyPath } = useFilePathInteraction(path);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(false);
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+  // 打开失败时短暂变红提示（1.5s 后恢复）
+  const flashError = useCallback(() => {
+    setError(true);
+    setTimeout(() => setError(false), 1500);
+  }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     if (!isFile || typeof window === "undefined") return;
@@ -148,10 +155,19 @@ function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean
     closeContextMenu();
   }, [copyPath, closeContextMenu]);
 
+  // 右键菜单：打开文件位置（在管理器中选中）
   const handleOpen = useCallback(async () => {
-    await openInFolder();
+    const ok = await openInFolder();
+    if (!ok) flashError();
     closeContextMenu();
-  }, [openInFolder, closeContextMenu]);
+  }, [openInFolder, closeContextMenu, flashError]);
+
+  // 单击：用默认程序打开文件，或直接进入目录
+  const handleClick = useCallback(async () => {
+    if (!isFile) return;
+    const ok = await openPath();
+    if (!ok) flashError();
+  }, [isFile, openPath, flashError]);
 
   // 关闭菜单：监听 click + 全局互斥事件 + contextmenu（右键其他位置时）
   useEffect(() => {
@@ -173,22 +189,24 @@ function FilePathLink({ path, isCode = false }: { path: string; isCode?: boolean
   return (
     <>
       <span
+        onClick={handleClick}
         onDoubleClick={onDoubleClick}
         onContextMenu={handleContextMenu}
-        title={isFile ? "双击打开文件位置 / 右键菜单" : path}
+        title={isFile ? (isDirectory ? "单击打开目录 / 双击打开位置 / 右键菜单" : "单击打开文件 / 双击打开位置 / 右键菜单") : path}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: "2px",
           fontFamily: isCode ? "var(--font-geist-mono), var(--font-family)" : undefined,
           fontSize: isCode ? undefined : "0.95em",
-          color: "var(--text-level-3)",
+          color: error ? "var(--color-error)" : "var(--text-level-3)",
           cursor: isFile ? "pointer" : "inherit",
           textDecoration: isFile ? "underline dotted" : undefined,
           textUnderlineOffset: "3px",
           borderRadius: "var(--radius-xs)",
           padding: isCode ? "0 4px" : undefined,
-          background: isCode ? "var(--bg-level-3)" : undefined,
+          background: error ? "color-mix(in srgb, var(--color-error) 8%, transparent)" : isCode ? "var(--bg-level-3)" : undefined,
+          transition: "color 0.2s ease, background 0.2s ease",
         }}
       >
         <FileText style={{ width: "12px", height: "12px", flexShrink: 0 }} />
