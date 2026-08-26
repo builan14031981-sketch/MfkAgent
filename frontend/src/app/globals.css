@@ -307,6 +307,20 @@ optgroup {
   50% { opacity: 0.55; }
 }
 
+@keyframes pulse3times {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.06); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-badge { animation: none !important; }
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
