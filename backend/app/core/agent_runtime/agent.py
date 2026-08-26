@@ -1729,6 +1729,13 @@ class AgentRuntime:
                 if not (final_content or "").strip() and run_completion_exhausted is not None:
                     final_content = self._build_completion_failure_report(run_completion_exhausted)
 
+            # 杜绝空回复：当 final_content 为空时保底生成说明文本，解决数据库 content=None 导致的空消息悬空问题
+            if not (final_content or "").strip():
+                if all_tool_calls:
+                    final_content = "已为您完成相关的处理与工具调用。"
+                else:
+                    final_content = "处理完成。"
+
             return AgentResult(
                 content=final_content,
                 usage=final_usage,
