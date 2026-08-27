@@ -243,7 +243,7 @@ BENCHMARK_CASES = [
         "category": "动漫唯美",
         "model": "anime",
         "size": "1280*720",
-        "hires": True,
+        "hires": False,
         "summary": "紫粉日落夕阳霞光与超高清光斑天空",
         "prompt_control": "anime city sunset sky with glowing translucent clouds and lens flare, Makoto Shinkai style, hyper detailed, no text, no words, no letters, no watermark",
         "prompt_skill": "anime scenery in the signature style of Makoto Shinkai, hyper-detailed 8k, 16:9 widescreen layout. Dramatic sunset sky with luminous translucent clouds glowing in radiant purple, magenta, and golden rim light. Lens flare artifacts and sparkling bokeh motes floating across a pristine city skyline view. Breathtaking ethereal light quality, hyper-realistic anime aesthetic, negative space over 50%, no text, no words, no letters, no watermark",
