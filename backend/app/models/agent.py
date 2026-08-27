@@ -375,7 +375,7 @@ class CustomModel(Base):
     api_key = Column(String(500), default="")
     max_tokens = Column(Integer, default=4096)
     temperature = Column(Float, default=0.7)
-    context_window = Column(Integer, default=200000)  # 上下文窗口大小（token），默认200K
+    context_window = Column(Integer, default=256000)  # 上下文窗口大小（token），默认从200K提高至256K兜底
     enabled = Column(Boolean, default=True)
     supports_vision = Column(Boolean, default=False)  # 模型是否支持多模态图片识别
     # 2026-08-11 新增：记录来源，区分"候选池自动同步"与"用户手动创建"。

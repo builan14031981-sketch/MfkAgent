@@ -41,7 +41,7 @@ class ModelConfig(BaseModel):
     api_base: str
     max_tokens: int = 4096
     temperature: float = 0.7
-    context_window: int = 200000  # 上下文窗口大小（token），默认200K
+    context_window: int = 256000  # 上下文窗口大小（token），默认提升至256K
     priority: int = 0  # 0 = 主力模型（可用），1 = 备用模型（可能不可用）
     supports_vision: bool = False   # 动态能力：是否支持多模态图片
     supports_tools: bool = True     # 动态能力：是否支持函数调用（Tool Calling）

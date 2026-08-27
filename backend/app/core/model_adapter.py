@@ -17,7 +17,49 @@ import app.core.model_providers as _mp
 from app.core.model_providers import ProviderDef
 from app.core.config import settings
 
+import re
+
 logger = logging.getLogger(__name__)
+
+def _infer_context_window(model_name: str, fallback: int = 256000) -> int:
+    """基于模型名称智能推断上下文窗口大小 (2026年大模型生态)"""
+    name_lower = model_name.lower()
+    
+    # 1. Google Gemini 阵营
+    if "gemini" in name_lower:
+        if "pro" in name_lower:
+            return 2_000_000  # gemini pro 普遍 2M
+        if "flash" in name_lower:
+            return 1_048_576  # gemini flash 普遍 1M
+        return 1_048_576
+        
+    # 2. DeepSeek 阵营
+    if "deepseek" in name_lower:
+        if "v4" in name_lower or "r1" in name_lower or "v3" in name_lower:
+            return 1_048_576
+        return 128_000
+        
+    # 3. 阿里 Qwen 阵营
+    if "qwen" in name_lower:
+        if "3.8" in name_lower or "3.7" in name_lower or "1m" in name_lower:
+            return 1_048_576
+        return 131_072  # 大部分 qwen-plus/max/flash 在 128k
+        
+    # 4. Anthropic Claude 阵营
+    if "claude" in name_lower:
+        return 200_000  # claude 普遍 200k
+        
+    # 5. OpenAI 阵营
+    if "o3" in name_lower or "gpt-4o" in name_lower:
+        return 200_000  # openai 主力一般 128k ~ 200k
+        
+    # 6. GLM / 其他
+    if "glm" in name_lower:
+        if "long" in name_lower:
+            return 1_048_576
+        return 200_000
+        
+    return fallback
 
 
 class ModelConfigAdapter:
@@ -98,7 +140,7 @@ class ModelConfigAdapter:
                 api_base=cm.api_base,
                 max_tokens=cm.max_tokens,
                 temperature=cm.temperature,
-                context_window=getattr(cm, 'context_window', 200000) or 200000,
+                context_window=getattr(cm, 'context_window', None) or _infer_context_window(cm.model_name),
                 supports_vision=_detect_supports_vision(cm.model_name, provider_vision, model_vision),
                 supports_tools=True,
             )
