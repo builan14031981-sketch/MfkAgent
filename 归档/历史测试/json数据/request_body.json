@@ -1,5 +1,0 @@
-{
-  "content": "Use run_command tool. First echo notify_test > E:\\智慧项目\\Mfkagent\\_notify_del_test.txt. THEN run_command delete it: del E:\\智慧项目\\Mfkagent\\_notify_del_test.txt. Call actual tools, not sample code. This must trigger approval.",
-  "use_tools": true,
-  "temperature": 0.7
-}

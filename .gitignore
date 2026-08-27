@@ -91,6 +91,9 @@ temp_screenshot.png
 美学SKILL20组公平对比展厅/
 欢迎语库*.md
 docs/
+归档/
+*.backup
+*.db*
 external_skills/外部Skill接入清单.md
 external_skills/comfyui/
 gen-icons*.js

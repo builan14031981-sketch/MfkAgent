@@ -1,9 +1,0 @@
-﻿registered models: ['deepseek-v4-flash', 'deepseek-v4-pro', 'qwen-flash', 'qwen-plus', 'qwen-max', 'qwen-plus-2025-07-28', 'qwen3.7-plus', 'qwen-math-turbo', 'qwen-mt-flash', 'deepseek-r1-distill-qwen-7b', 'glm-5', 'qwen3-vl-235b-a22b-thinking', 'qwen3-vl-32b-thinking', 'qwen3-vl-30b-a3b-thinking', 'gemini-3.5-flash', 'gemini-3-flash', 'gemini-3.1-flash-lite', 'glm-4', 'moonshot-v1-8k', 'freellm-deepseek-v4-flash', 'freellm-qwen3-coder-30b', 'freellm-reka-edge', 'freellm-reka-flash', 'freellm-cydonia-24b-v4.3', 'freellm-auto', 'freellm-fusion', 'mimo-v2.5-pro', 'mimo-v2.5', 'wenxin-ernie-4-turbo', 'spark-general-v3.5', 'minimax-text-01', 'siliconflow-deepseek-v4-pro', 'siliconflow-deepseek-v4-flash', 'siliconflow-glm-z1-9b', 'deepseek-v4-flash-0731', 'glm-5.2-fast-preview', 'meituan-longcat/LongCat-2.0', 'zai-org/GLM-5.2', 'GLM-4.7-Flash', 'deepseek-ai/DeepSeek-V4-Flash', 'custom-LongCat-2.0', 'qwen-flash-character-2026-02-26', 'qwen3.5-flash']
-
-[qwen3.5-flash] OK -> 濂?
-[qwen-max] OK -> 涓€
-[qwen-flash-character-2026-02-26] OK -> 濂?
-[qwen-mt-flash] OK -> 濂姐€?
-[siliconflow-glm-z1-9b] OK ->  濂姐€?
-[glm-5.2-fast-preview] OK -> 
-[GLM-4.7-Flash] FAIL -> 妯″瀷鏈嶅姟杩斿洖閿欒锛?29锛夛細璇ユā鍨嬪綋鍓嶈闂噺杩囧ぇ锛岃鎮ㄧ◢鍚庡啀璇?
