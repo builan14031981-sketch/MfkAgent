@@ -36,6 +36,19 @@
       background: transparent;
     }
 
+    /* 8 个调整大小手柄：4角 + 4边中点 */
+    .resize-handle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      border: 1px solid #4a9eff;
+      border-radius: 1px;
+      pointer-events: none;
+      display: none;
+      z-index: 50;
+    }
+
     /* 十字线：鼠标位置的水平和垂直引导线 */
     .crosshair-line {
       position: absolute;
@@ -149,8 +162,18 @@
   <div id="selection-box"></div>
   <div id="size-label"></div>
 
+  <!-- 8 个调整大小手柄 -->
+  <div class="resize-handle" id="handle-nw" data-handle="nw"></div>
+  <div class="resize-handle" id="handle-n"  data-handle="n"></div>
+  <div class="resize-handle" id="handle-ne" data-handle="ne"></div>
+  <div class="resize-handle" id="handle-e"  data-handle="e"></div>
+  <div class="resize-handle" id="handle-se" data-handle="se"></div>
+  <div class="resize-handle" id="handle-s"  data-handle="s"></div>
+  <div class="resize-handle" id="handle-sw" data-handle="sw"></div>
+  <div class="resize-handle" id="handle-w"  data-handle="w"></div>
+
   <!-- 提示文字 -->
-  <div id="hint">拖拽鼠标选择截图区域<small>ESC 取消 · Enter 确认</small></div>
+  <div id="hint">拖拽鼠标选择截图区域<small>拖动选框可移动 · 拖边缘可调整大小 · 右键 / ESC 取消</small></div>
 
   <!-- 工具栏 -->
   <div id="toolbar">
@@ -163,10 +186,21 @@
   <script>
     const { ipcRenderer } = require("electron");
 
-    let isSelecting = false;
+    // ── 交互状态机 ──
+    // dragMode: "idle" | "drawing" | "moving" | "resizing"
+    let dragMode = "idle";
     let hasSelection = false;
     let startX = 0, startY = 0;
     let currentX = 0, currentY = 0;
+    // 移动/调整大小时的拖拽起点与起始选框
+    let resizeHandle = null;
+    let dragStartX = 0, dragStartY = 0;
+    let dragStartRect = null;
+
+    // 手柄命中热区半宽（px）
+    const HANDLE_HIT = 8;
+    // 选框最小尺寸
+    const MIN_SIZE = 5;
 
     const selectionBox = document.getElementById("selection-box");
     const sizeLabel = document.getElementById("size-label");
@@ -178,6 +212,16 @@
     const maskBottom = document.getElementById("mask-bottom");
     const maskLeft = document.getElementById("mask-left");
     const maskRight = document.getElementById("mask-right");
+    const handles = {
+      nw: document.getElementById("handle-nw"),
+      n:  document.getElementById("handle-n"),
+      ne: document.getElementById("handle-ne"),
+      e:  document.getElementById("handle-e"),
+      se: document.getElementById("handle-se"),
+      s:  document.getElementById("handle-s"),
+      sw: document.getElementById("handle-sw"),
+      w:  document.getElementById("handle-w"),
+    };
 
     // 显示所有遮罩
     function showMasks() {
@@ -195,63 +239,244 @@
       maskRight.style.display = "none";
     }
 
+    // 显示所有调整手柄
+    function showHandles() {
+      for (const k in handles) handles[k].style.display = "block";
+    }
+
+    // 隐藏所有调整手柄
+    function hideHandles() {
+      for (const k in handles) handles[k].style.display = "none";
+    }
+
+    // 根据选框位置更新 8 个手柄的位置
+    function updateHandles(rect) {
+      const half = 4; // 手柄大小的一半（8px / 2）
+      handles.nw.style.left = (rect.x - half) + "px";
+      handles.nw.style.top  = (rect.y - half) + "px";
+      handles.n.style.left  = (rect.x + rect.width / 2 - half) + "px";
+      handles.n.style.top   = (rect.y - half) + "px";
+      handles.ne.style.left = (rect.x + rect.width - half) + "px";
+      handles.ne.style.top  = (rect.y - half) + "px";
+      handles.e.style.left  = (rect.x + rect.width - half) + "px";
+      handles.e.style.top   = (rect.y + rect.height / 2 - half) + "px";
+      handles.se.style.left = (rect.x + rect.width - half) + "px";
+      handles.se.style.top  = (rect.y + rect.height - half) + "px";
+      handles.s.style.left  = (rect.x + rect.width / 2 - half) + "px";
+      handles.s.style.top   = (rect.y + rect.height - half) + "px";
+      handles.sw.style.left = (rect.x - half) + "px";
+      handles.sw.style.top  = (rect.y + rect.height - half) + "px";
+      handles.w.style.left  = (rect.x - half) + "px";
+      handles.w.style.top   = (rect.y + rect.height / 2 - half) + "px";
+    }
+
     // 根据选框位置更新四个方向遮罩的大小
     function updateMasks(rect) {
-      // 上遮罩：从顶部到选框顶部
       maskTop.style.height = rect.y + "px";
-      // 下遮罩：从选框底部到底部
       maskBottom.style.height = (window.innerHeight - rect.y - rect.height) + "px";
-      // 左遮罩：选框左侧，高度等于选框高度
       maskLeft.style.top = rect.y + "px";
       maskLeft.style.height = rect.height + "px";
       maskLeft.style.width = rect.x + "px";
-      // 右遮罩：选框右侧，高度等于选框高度
       maskRight.style.top = rect.y + "px";
       maskRight.style.height = rect.height + "px";
       maskRight.style.width = (window.innerWidth - rect.x - rect.width) + "px";
     }
 
-    // 鼠标移动：更新十字线位置
+    // 命中测试：判断鼠标在选框的哪个区域
+    // 返回: "nw"|"n"|"ne"|"e"|"se"|"s"|"sw"|"w"|"inside"|"outside"
+    function hitTest(x, y, rect) {
+      // 4 个角（优先检测，角点优先级高于边）
+      if (Math.abs(x - rect.x) < HANDLE_HIT && Math.abs(y - rect.y) < HANDLE_HIT) return "nw";
+      if (Math.abs(x - (rect.x + rect.width)) < HANDLE_HIT && Math.abs(y - rect.y) < HANDLE_HIT) return "ne";
+      if (Math.abs(x - rect.x) < HANDLE_HIT && Math.abs(y - (rect.y + rect.height)) < HANDLE_HIT) return "sw";
+      if (Math.abs(x - (rect.x + rect.width)) < HANDLE_HIT && Math.abs(y - (rect.y + rect.height)) < HANDLE_HIT) return "se";
+      // 4 条边
+      if (Math.abs(y - rect.y) < HANDLE_HIT && x > rect.x && x < rect.x + rect.width) return "n";
+      if (Math.abs(y - (rect.y + rect.height)) < HANDLE_HIT && x > rect.x && x < rect.x + rect.width) return "s";
+      if (Math.abs(x - rect.x) < HANDLE_HIT && y > rect.y && y < rect.y + rect.height) return "w";
+      if (Math.abs(x - (rect.x + rect.width)) < HANDLE_HIT && y > rect.y && y < rect.y + rect.height) return "e";
+      // 内部
+      if (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height) return "inside";
+      // 外部
+      return "outside";
+    }
+
+    // 根据命中区域返回对应光标
+    function getCursorForHit(hit) {
+      switch (hit) {
+        case "inside": return "move";
+        case "n": case "s": return "ns-resize";
+        case "e": case "w": return "ew-resize";
+        case "nw": case "se": return "nwse-resize";
+        case "ne": case "sw": return "nesw-resize";
+        default: return "crosshair";
+      }
+    }
+
+    // 将矩形约束在屏幕边界内，且宽高不小于 MIN_SIZE
+    function clampRect(rect) {
+      let { x, y, width, height } = rect;
+      // 约束在屏幕内
+      if (x < 0) { width += x; x = 0; }
+      if (y < 0) { height += y; y = 0; }
+      if (x + width > window.innerWidth) width = window.innerWidth - x;
+      if (y + height > window.innerHeight) height = window.innerHeight - y;
+      // 最小尺寸
+      if (width < MIN_SIZE) width = MIN_SIZE;
+      if (height < MIN_SIZE) height = MIN_SIZE;
+      return { x, y, width, height };
+    }
+
+    // 从矩形设置 start/current 坐标（start=左上角, current=右下角）
+    function setRectFromCoords(rect) {
+      startX = rect.x;
+      startY = rect.y;
+      currentX = rect.x + rect.width;
+      currentY = rect.y + rect.height;
+    }
+
+    // 鼠标移动
     document.addEventListener("mousemove", (e) => {
-      if (!isSelecting) {
-        // 未选择时显示十字线引导
-        crosshairH.style.top = e.clientY + "px";
-        crosshairV.style.left = e.clientX + "px";
-        crosshairH.style.display = "block";
-        crosshairV.style.display = "block";
+      const mx = e.clientX, my = e.clientY;
+
+      // ── 拖拽中：按模式处理 ──
+      if (dragMode === "drawing") {
+        crosshairH.style.display = "none";
+        crosshairV.style.display = "none";
+        currentX = mx;
+        currentY = my;
+        updateSelectionBox();
         return;
       }
-      // 选择中：隐藏十字线，更新选框
-      crosshairH.style.display = "none";
-      crosshairV.style.display = "none";
-      currentX = e.clientX;
-      currentY = e.clientY;
-      updateSelectionBox();
+
+      if (dragMode === "moving") {
+        const dx = mx - dragStartX;
+        const dy = my - dragStartY;
+        let newRect = {
+          x: dragStartRect.x + dx,
+          y: dragStartRect.y + dy,
+          width: dragStartRect.width,
+          height: dragStartRect.height,
+        };
+        // 约束在屏幕边界内（移动时不改变宽高）
+        newRect.x = Math.max(0, Math.min(newRect.x, window.innerWidth - newRect.width));
+        newRect.y = Math.max(0, Math.min(newRect.y, window.innerHeight - newRect.height));
+        setRectFromCoords(newRect);
+        updateSelectionBox();
+        showToolbar(); // 工具栏跟随移动
+        return;
+      }
+
+      if (dragMode === "resizing") {
+        const dx = mx - dragStartX;
+        const dy = my - dragStartY;
+        let newRect = { ...dragStartRect };
+        // 根据手柄调整对应边
+        switch (resizeHandle) {
+          case "n":  newRect.y = dragStartRect.y + dy; newRect.height = dragStartRect.height - dy; break;
+          case "s":  newRect.height = dragStartRect.height + dy; break;
+          case "w":  newRect.x = dragStartRect.x + dx; newRect.width = dragStartRect.width - dx; break;
+          case "e":  newRect.width = dragStartRect.width + dx; break;
+          case "nw": newRect.x = dragStartRect.x + dx; newRect.width = dragStartRect.width - dx;
+                     newRect.y = dragStartRect.y + dy; newRect.height = dragStartRect.height - dy; break;
+          case "ne": newRect.width = dragStartRect.width + dx;
+                     newRect.y = dragStartRect.y + dy; newRect.height = dragStartRect.height - dy; break;
+          case "sw": newRect.x = dragStartRect.x + dx; newRect.width = dragStartRect.width - dx;
+                     newRect.height = dragStartRect.height + dy; break;
+          case "se": newRect.width = dragStartRect.width + dx;
+                     newRect.height = dragStartRect.height + dy; break;
+        }
+        // 约束最小尺寸和屏幕边界
+        newRect = clampRect(newRect);
+        setRectFromCoords(newRect);
+        updateSelectionBox();
+        showToolbar(); // 工具栏跟随调整
+        return;
+      }
+
+      // ── 空闲状态：更新光标 + 十字线 ──
+      if (hasSelection) {
+        const rect = getSelectionRect();
+        const hit = hitTest(mx, my, rect);
+        document.body.style.cursor = getCursorForHit(hit);
+        // 只有在外部时显示十字线引导
+        if (hit === "outside") {
+          crosshairH.style.top = my + "px";
+          crosshairV.style.left = mx + "px";
+          crosshairH.style.display = "block";
+          crosshairV.style.display = "block";
+        } else {
+          crosshairH.style.display = "none";
+          crosshairV.style.display = "none";
+        }
+      } else {
+        // 未选择时：十字线引导
+        document.body.style.cursor = "crosshair";
+        crosshairH.style.top = my + "px";
+        crosshairV.style.left = mx + "px";
+        crosshairH.style.display = "block";
+        crosshairV.style.display = "block";
+      }
     });
 
     // 鼠标离开窗口：隐藏十字线
     document.addEventListener("mouseleave", () => {
-      if (!isSelecting) {
+      if (dragMode === "idle") {
         crosshairH.style.display = "none";
         crosshairV.style.display = "none";
       }
     });
 
-    // 鼠标按下：开始选择
+    // 鼠标按下
     document.addEventListener("mousedown", (e) => {
-      if (e.button !== 0) return;
-      if (e.target.closest("#toolbar")) return;
+      if (e.button !== 0) return; // 只处理左键
+      if (e.target.closest("#toolbar")) return; // 工具栏点击不触发选框操作
 
-      isSelecting = true;
-      hasSelection = false;
-      startX = e.clientX;
-      startY = e.clientY;
-      currentX = e.clientX;
-      currentY = e.clientY;
+      const mx = e.clientX, my = e.clientY;
 
-      // 显示四个方向遮罩
+      if (hasSelection) {
+        const rect = getSelectionRect();
+        const hit = hitTest(mx, my, rect);
+
+        if (hit === "inside") {
+          // 选框内部：开始移动
+          dragMode = "moving";
+          dragStartX = mx;
+          dragStartY = my;
+          dragStartRect = { ...rect };
+          document.body.style.cursor = "move";
+          crosshairH.style.display = "none";
+          crosshairV.style.display = "none";
+          return;
+        }
+
+        if (hit !== "outside") {
+          // 边缘/角点：开始调整大小
+          dragMode = "resizing";
+          resizeHandle = hit;
+          dragStartX = mx;
+          dragStartY = my;
+          dragStartRect = { ...rect };
+          document.body.style.cursor = getCursorForHit(hit);
+          crosshairH.style.display = "none";
+          crosshairV.style.display = "none";
+          return;
+        }
+
+        // 外部：开始画新框（清除旧选框）
+        hasSelection = false;
+        hideHandles();
+        toolbar.style.display = "none";
+      }
+
+      // 开始画新框
+      dragMode = "drawing";
+      startX = mx;
+      startY = my;
+      currentX = mx;
+      currentY = my;
+
       showMasks();
-      // 隐藏十字线和提示文字
       crosshairH.style.display = "none";
       crosshairV.style.display = "none";
       hint.style.display = "none";
@@ -264,25 +489,45 @@
 
       toolbar.style.display = "none";
       sizeLabel.style.display = "none";
+      hideHandles();
     });
 
-    // 鼠标释放：结束选择
+    // 鼠标释放
     document.addEventListener("mouseup", (e) => {
-      if (!isSelecting) return;
-      isSelecting = false;
+      if (dragMode === "idle") return;
 
-      const rect = getSelectionRect();
-      if (rect.width < 5 || rect.height < 5) {
-        // 选择区域太小，取消选择
-        hideMasks();
-        selectionBox.style.display = "none";
-        sizeLabel.style.display = "none";
-        hint.style.display = "block";
+      if (dragMode === "drawing") {
+        dragMode = "idle";
+        const rect = getSelectionRect();
+        if (rect.width < MIN_SIZE || rect.height < MIN_SIZE) {
+          // 选择区域太小，取消选择
+          hideMasks();
+          hideHandles();
+          selectionBox.style.display = "none";
+          sizeLabel.style.display = "none";
+          hint.style.display = "block";
+          hasSelection = false;
+          return;
+        }
+        hasSelection = true;
+        showHandles();
+        showToolbar();
         return;
       }
 
-      hasSelection = true;
-      showToolbar();
+      if (dragMode === "moving" || dragMode === "resizing") {
+        // 移动/调整大小结束：保持选区，重定位工具栏和手柄
+        dragMode = "idle";
+        resizeHandle = null;
+        dragStartRect = null;
+        const rect = getSelectionRect();
+        updateHandles(rect);
+        showHandles();
+        showToolbar();
+        // 恢复光标为动态更新（由 mousemove 空闲状态处理）
+        document.body.style.cursor = "";
+        return;
+      }
     });
 
     // 更新选框位置和大小
@@ -301,6 +546,11 @@
       sizeLabel.style.left = rect.x + "px";
       sizeLabel.style.top = (rect.y - 24) + "px";
       sizeLabel.style.display = "block";
+
+      // 同步更新手柄位置
+      if (hasSelection || dragMode === "moving" || dragMode === "resizing") {
+        updateHandles(rect);
+      }
     }
 
     // 获取选框的矩形（处理反向拖拽）
@@ -347,12 +597,17 @@
 
     // 重新选择
     function redoSelection() {
+      dragMode = "idle";
       hasSelection = false;
+      resizeHandle = null;
+      dragStartRect = null;
       hideMasks();
+      hideHandles();
       selectionBox.style.display = "none";
       toolbar.style.display = "none";
       sizeLabel.style.display = "none";
       hint.style.display = "block";
+      document.body.style.cursor = "crosshair";
     }
 
     // 工具栏按钮事件
@@ -371,24 +626,31 @@
       }
     });
 
-    // 防止右键菜单
-    document.addEventListener("contextmenu", (e) => e.preventDefault());
+    // 右键取消截图（同时阻止系统默认菜单）
+    document.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      cancelScreenshot();
+    });
 
     // 主进程通知重置状态（每次显示截图窗口前调用，避免上一次的状态残留）
     ipcRenderer.on("screenshot:reset", () => {
-      isSelecting = false;
+      dragMode = "idle";
       hasSelection = false;
+      resizeHandle = null;
+      dragStartRect = null;
       startX = 0;
       startY = 0;
       currentX = 0;
       currentY = 0;
       // 隐藏所有 UI
       hideMasks();
+      hideHandles();
       selectionBox.style.display = "none";
       sizeLabel.style.display = "none";
       toolbar.style.display = "none";
       crosshairH.style.display = "none";
       crosshairV.style.display = "none";
+      document.body.style.cursor = "crosshair";
       // 显示提示文字
       hint.style.display = "block";
     });

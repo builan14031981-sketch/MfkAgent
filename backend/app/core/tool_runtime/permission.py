@@ -6,12 +6,43 @@
   与执行闸共用单一事实来源，避免两处清单漂移）。
 - 无项目绑定：移除项目专有工具。
 - capabilities 仅控制高级能力（第一阶段无高级工具，保留参数向前兼容，不缩减基础工具）。
+- ComfyUI skill 启用时：移除内置 generate_image，强制走本地 ComfyUI。
 """
 
+import time
 from typing import List, Optional
 
 from app.core.tool_runtime.risk_engine import PLAN_FORBIDDEN_TOOLS
 from app.core.plugin_tools import get_enabled_plugin_tools  # 插件→工具集（DeepSeek Harness 范式）
+
+# ComfyUI skill 启用状态缓存（TTL 10s）
+_comfyui_cache = {"enabled": None, "ts": 0.0}
+_COMFYUI_TTL = 10.0
+
+
+def _is_comfyui_enabled() -> bool:
+    """检查 comfyui-local skill 是否已安装并启用。带 10s 缓存。"""
+    now = time.time()
+    if _comfyui_cache["enabled"] is not None and (now - _comfyui_cache["ts"]) < _COMFYUI_TTL:
+        return bool(_comfyui_cache["enabled"])
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import SkillDefinition
+        db = SessionLocal()
+        try:
+            row = (
+                db.query(SkillDefinition)
+                .filter(SkillDefinition.name == "comfyui-local", SkillDefinition.enabled == True)  # noqa: E712
+                .first()
+            )
+            enabled = row is not None
+        finally:
+            db.close()
+    except Exception:
+        enabled = False
+    _comfyui_cache["enabled"] = enabled
+    _comfyui_cache["ts"] = now
+    return enabled
 
 
 class PermissionFilter:
@@ -84,6 +115,10 @@ class PermissionFilter:
         project_path = getattr(chat, "project_path", None)
         if not project_path:
             tools -= self._project_only_tools
+
+        # ComfyUI skill 启用时，禁用内置 generate_image，强制走本地 ComfyUI
+        if _is_comfyui_enabled():
+            tools.discard("generate_image")
 
         return sorted(tools)
 

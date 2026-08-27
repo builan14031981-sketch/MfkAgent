@@ -40,8 +40,8 @@ function saveTabsToStorage(tabs: ChatTabItem[], activeChatId: number | null) {
 interface TabStoreState {
   tabs: ChatTabItem[];
   activeChatId: number | null;
-  /** 打开或激活标签 */
-  openTab: (tab: ChatTabItem) => void;
+  /** 打开或激活标签。默认在当前位置切换，只有 forceNewTab 为 true 时才追加新标签页 */
+  openTab: (tab: ChatTabItem, options?: { forceNewTab?: boolean }) => void;
   /** 关闭单个标签，返回下一个应激活的 chatId（若关闭的是当前激活项） */
   closeTab: (chatId: number) => number | null;
   /** 关闭其他标签 */
@@ -85,12 +85,13 @@ export const useTabStore = create<TabStoreState>((set, get) => {
     sanitizeTabs,
     cleanStaleTabs: sanitizeTabs,
 
-    openTab: (newTab) => {
-      const { tabs } = get();
+    openTab: (newTab, options) => {
+      const { tabs, activeChatId } = get();
       const existingIndex = tabs.findIndex((t) => t.chatId === newTab.chatId);
       let updatedTabs: ChatTabItem[];
+
       if (existingIndex >= 0) {
-        // 更新现有标签的 title / agent 等信息
+        // 该对话已经在标签栏中：更新信息并直接激活该标签
         updatedTabs = [...tabs];
         updatedTabs[existingIndex] = {
           ...updatedTabs[existingIndex],
@@ -98,10 +99,17 @@ export const useTabStore = create<TabStoreState>((set, get) => {
           agentId: newTab.agentId || updatedTabs[existingIndex].agentId,
           projectId: newTab.projectId !== undefined ? newTab.projectId : updatedTabs[existingIndex].projectId,
         };
-      } else {
-        // 追加新标签
+      } else if (options?.forceNewTab || tabs.length === 0) {
+        // 显式要求开启新标签页，或当前没有任何标签页：追加新标签
         updatedTabs = [...tabs, newTab];
+      } else {
+        // 普通导航（无 forceNewTab 标识）：在当前激活页签位置直接替换，避免纵向/横向盲目死塞新标签
+        const activeIndex = tabs.findIndex((t) => t.chatId === activeChatId);
+        const replaceIndex = activeIndex >= 0 ? activeIndex : tabs.length - 1;
+        updatedTabs = [...tabs];
+        updatedTabs[replaceIndex] = newTab;
       }
+
       saveTabsToStorage(updatedTabs, newTab.chatId);
       set({ tabs: updatedTabs, activeChatId: newTab.chatId });
     },

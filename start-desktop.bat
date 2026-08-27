@@ -60,6 +60,11 @@ echo   Frontend 已就绪 (http://localhost:3000)
 :start_electron
 echo.
 echo [3/3] 启动 Electron 桌面客户端...
+:: 先清理旧 Electron 进程（单实例锁会导致新进程直接退出并聚焦旧窗口，
+:: 必须先杀掉旧进程，否则修改后的主进程代码永远不会被加载）
+echo   清理旧 Electron 进程...
+taskkill /f /im electron.exe >nul 2>&1
+ping 127.0.0.1 -n 2 >nul
 set ELECTRON_DEV=true
 set MFK_BACKEND_PORT=8001
 start "MfkAgent Electron" cmd /c "cd /d %~dp0frontend && npx electron ."

@@ -1,0 +1,7137 @@
+{
+  "CHARACTER_SKILL_IRONCLAD1": {
+    "id": "CHARACTER_SKILL_IRONCLAD1",
+    "name": "契约完成",
+    "description": "在一场战斗中消耗20张牌。"
+  },
+  "CHARACTER_SKILL_IRONCLAD2": {
+    "id": "CHARACTER_SKILL_IRONCLAD2",
+    "name": "最重之刃",
+    "description": "一击造成999点伤害。"
+  },
+  "CHARACTER_SKILL_NECROBINDER1": {
+    "id": "CHARACTER_SKILL_NECROBINDER1",
+    "name": "已经死了",
+    "description": "对单个敌人造成999点灾厄。"
+  },
+  "CHARACTER_SKILL_NECROBINDER2": {
+    "id": "CHARACTER_SKILL_NECROBINDER2",
+    "name": "喝奶补钙",
+    "description": "对奥斯提施加50点力量。"
+  },
+  "CHARACTER_SKILL_REGENT1": {
+    "id": "CHARACTER_SKILL_REGENT1",
+    "name": "王者之刃",
+    "description": "打造出一张至少999点伤害的君王之剑。"
+  },
+  "CHARACTER_SKILL_REGENT2": {
+    "id": "CHARACTER_SKILL_REGENT2",
+    "name": "群日凌空",
+    "description": "拥有20辉星。"
+  },
+  "CHARACTER_SKILL_SILENT1": {
+    "id": "CHARACTER_SKILL_SILENT1",
+    "name": "安得奇巧",
+    "description": "通过奇巧机制用一张牌打出5张牌。"
+  },
+  "CHARACTER_SKILL_SILENT2": {
+    "id": "CHARACTER_SKILL_SILENT2",
+    "name": "几滴就好",
+    "description": "对一个敌人施加99层中毒。"
+  },
+  "COMPLETE_TIMELINE": {
+    "id": "COMPLETE_TIMELINE",
+    "name": "历史学家",
+    "description": "完成时间线。"
+  },
+  "DEFEAT_GLORY_ENEMIES": {
+    "id": "DEFEAT_GLORY_ENEMIES",
+    "name": "荣耀",
+    "description": "打败荣耀的所有敌人。"
+  },
+  "DEFEAT_HIVE_ENEMIES": {
+    "id": "DEFEAT_HIVE_ENEMIES",
+    "name": "巢穴",
+    "description": "打败巢穴的所有敌人。"
+  },
+  "DEFEAT_ONE_BOSS": {
+    "id": "DEFEAT_ONE_BOSS",
+    "name": "小小开始",
+    "description": "打败一名Boss。"
+  },
+  "DEFEAT_OVERGROWTH_ENEMIES": {
+    "id": "DEFEAT_OVERGROWTH_ENEMIES",
+    "name": "密林",
+    "description": "打败密林的所有敌人。"
+  },
+  "DEFEAT_UNDERDOCKS_ENEMIES": {
+    "id": "DEFEAT_UNDERDOCKS_ENEMIES",
+    "name": "暗港",
+    "description": "打败暗港的所有敌人。"
+  },
+  "DEFECT_ASCENSION10": {
+    "id": "DEFECT_ASCENSION10",
+    "name": "回响",
+    "description": "用故障机器人赢得一局进阶10的游戏。"
+  },
+  "FLOOR_TEN_THOUSAND": {
+    "id": "FLOOR_TEN_THOUSAND",
+    "name": "好多楼梯",
+    "description": "在尖塔中攀登1万层。"
+  },
+  "IRONCLAD_ASCENSION10": {
+    "id": "IRONCLAD_ASCENSION10",
+    "name": "恶魔",
+    "description": "用铁甲战士赢得一局进阶10的游戏。"
+  },
+  "LOCKED": {
+    "id": "LOCKED",
+    "name": "锁定",
+    "description": ""
+  },
+  "PLAY20_CARDS_SINGLE_TURN": {
+    "id": "PLAY20_CARDS_SINGLE_TURN",
+    "name": "打牌真开心啊",
+    "description": "在一回合内打出20张牌。"
+  },
+  "REGENT_ASCENSION10": {
+    "id": "REGENT_ASCENSION10",
+    "name": "帝王",
+    "description": "用储君赢得一局进阶10的游戏。"
+  },
+  "SILENT_ASCENSION10": {
+    "id": "SILENT_ASCENSION10",
+    "name": "幽魂",
+    "description": "用静默猎手赢得一局进阶10的游戏。"
+  },
+  "DEPRECATED_ACT": {
+    "id": "DEPRECATED_ACT",
+    "name": "已弃用阶段",
+    "description": ""
+  },
+  "GLORY": {
+    "id": "GLORY",
+    "name": "荣耀",
+    "description": ""
+  },
+  "HIVE": {
+    "id": "HIVE",
+    "name": "巢穴",
+    "description": ""
+  },
+  "OVERGROWTH": {
+    "id": "OVERGROWTH",
+    "name": "密林",
+    "description": ""
+  },
+  "UNDERDOCKS": {
+    "id": "UNDERDOCKS",
+    "name": "暗港",
+    "description": ""
+  },
+  "BOUND": {
+    "id": "BOUND",
+    "name": "魂缚",
+    "description": "每回合只能打出1张魂缚卡牌。卡牌会在回合结束时失去魂缚。"
+  },
+  "ENTANGLED": {
+    "id": "ENTANGLED",
+    "name": "缠身",
+    "description": "[Amount]费用增加1。"
+  },
+  "GALVANIZED": {
+    "id": "GALVANIZED",
+    "name": "流电",
+    "description": "打出这张牌时受到{Amount}点伤害。"
+  },
+  "HEXED": {
+    "id": "HEXED",
+    "name": "邪咒",
+    "description": "这张牌获得虚无。"
+  },
+  "MOCK_NO_UNPLAYABLE_AFFLICTION": {
+    "id": "MOCK_NO_UNPLAYABLE_AFFLICTION",
+    "name": "临时不可打出苦痛",
+    "description": ""
+  },
+  "MOCK_SELF_DAMAGE_AFFLICTION": {
+    "id": "MOCK_SELF_DAMAGE_AFFLICTION",
+    "name": "临时自伤苦痛",
+    "description": ""
+  },
+  "MOCK_USELESS_AFFLICTION": {
+    "id": "MOCK_USELESS_AFFLICTION",
+    "name": "临时无用苦痛",
+    "description": ""
+  },
+  "RINGING": {
+    "id": "RINGING",
+    "name": "昏眩",
+    "description": "你在本回合只能打出1张牌。"
+  },
+  "SMOG": {
+    "id": "SMOG",
+    "name": "烟雾",
+    "description": "你在本回合无法再打出更多技能牌。回合结束时消除。"
+  },
+  "TAINTED": {
+    "id": "TAINTED",
+    "name": "污染",
+    "description": "打出时获得{Amount}层污染。"
+  },
+  "ERROR": {
+    "id": "ERROR",
+    "name": "锁定",
+    "description": "你遇见了一个Bug！请务必使用设置菜单的反馈键报告这个Bug！"
+  },
+  "PROCEED": {
+    "id": "PROCEED",
+    "name": "继续",
+    "description": ""
+  },
+  "LEVEL_00": {
+    "id": "LEVEL_00",
+    "name": "无进阶",
+    "description": "在没有任何进阶调整的影响下游玩。"
+  },
+  "LEVEL_01": {
+    "id": "LEVEL_01",
+    "name": "精英蜂拥",
+    "description": "精英敌人出现更加频繁。"
+  },
+  "LEVEL_02": {
+    "id": "LEVEL_02",
+    "name": "旅途劳顿",
+    "description": "先古之民只会回复你已损失生命值的80%。"
+  },
+  "LEVEL_03": {
+    "id": "LEVEL_03",
+    "name": "贫穷",
+    "description": "敌人和宝箱掉落的金币减少25%。"
+  },
+  "LEVEL_04": {
+    "id": "LEVEL_04",
+    "name": "收紧腰带",
+    "description": "游戏开始时药水栏位减少1。"
+  },
+  "LEVEL_05": {
+    "id": "LEVEL_05",
+    "name": "进阶之灾",
+    "description": "游戏开始时被诅咒。"
+  },
+  "LEVEL_06": {
+    "id": "LEVEL_06",
+    "name": "通货膨胀",
+    "description": "商人的卡牌移除服务价格提升。"
+  },
+  "LEVEL_07": {
+    "id": "LEVEL_07",
+    "name": "稀缺",
+    "description": "稀有和已升级卡牌更少出现。"
+  },
+  "LEVEL_08": {
+    "id": "LEVEL_08",
+    "name": "强韧敌人",
+    "description": "所有的敌人变得更难杀死。"
+  },
+  "LEVEL_09": {
+    "id": "LEVEL_09",
+    "name": "致命敌人",
+    "description": "所有的敌人变得更加致命。"
+  },
+  "LEVEL_10": {
+    "id": "LEVEL_10",
+    "name": "双重Boss",
+    "description": "在第3幕末尾与两名首领战斗。"
+  },
+  "CCCCOMBO": {
+    "id": "CCCCOMBO",
+    "name": "连连连连段攻击",
+    "description": "在一回合内打出20张牌。"
+  },
+  "CURSES": {
+    "id": "CURSES",
+    "name": "诅咒局！",
+    "description": "以5张或更多张诅咒牌获胜。"
+  },
+  "DAMAGE_LEADER": {
+    "id": "DAMAGE_LEADER",
+    "name": "伤害第一",
+    "description": "在多人游戏中，对敌人造成最多伤害。"
+  },
+  "DEBUFFER": {
+    "id": "DEBUFFER",
+    "name": "弱化专家",
+    "description": "在多人游戏中，施加最多负面效果。"
+  },
+  "DOUBLE_SNECKO": {
+    "id": "DOUBLE_SNECKO",
+    "name": "二蛇之眼",
+    "description": "同时获得真假版本的异蛇之眼。"
+  },
+  "FAMISHED": {
+    "id": "FAMISHED",
+    "name": "饥肠辘辘",
+    "description": "以少于初始生命值一半的最大生命值获胜。"
+  },
+  "FAVORITE_CARD": {
+    "id": "FAVORITE_CARD",
+    "name": "最爱好牌",
+    "description": "获胜时有一张牌打出过超过100次。"
+  },
+  "HIGHLANDER": {
+    "id": "HIGHLANDER",
+    "name": "宇宙",
+    "description": "获胜时牌组中没有相同牌（初始牌除外）。"
+  },
+  "HONED": {
+    "id": "HONED",
+    "name": "熟能生巧",
+    "description": "获胜时牌组中有至少5张相同牌（初始牌除外）。"
+  },
+  "ILIKESHINY": {
+    "id": "ILIKESHINY",
+    "name": "我爱亮闪闪",
+    "description": "收集25件或更多遗物。"
+  },
+  "KACHING": {
+    "id": "KACHING",
+    "name": "感谢惠顾！",
+    "description": "在商人处花费超过1000金币。"
+  },
+  "MYSTERY_MACHINE": {
+    "id": "MYSTERY_MACHINE",
+    "name": "寻谜问道",
+    "description": "造访过15个或更多个？房间。"
+  },
+  "RESTFUL": {
+    "id": "RESTFUL",
+    "name": "休养生息",
+    "description": "获胜时，在每个休息处都选择了休息。"
+  },
+  "RESTLESS": {
+    "id": "RESTLESS",
+    "name": "战斗不息",
+    "description": "获胜时，一次都没有休息过。"
+  },
+  "TABLET": {
+    "id": "TABLET",
+    "name": "真理石板",
+    "description": "获胜时只有1点最大生命值。"
+  },
+  "TEAM_PLAYER": {
+    "id": "TEAM_PLAYER",
+    "name": "团队型选手",
+    "description": "牌组中有至少3张多人专属牌。"
+  },
+  "WHOMPER": {
+    "id": "WHOMPER",
+    "name": "势大力沉",
+    "description": "单次攻击造成超过100点伤害。"
+  },
+  "ABRASIVE": {
+    "id": "ABRASIVE",
+    "name": "磨蚀",
+    "description": "获得[DexterityPower]点敏捷。\n获得[ThornsPower]点荆棘。"
+  },
+  "ACCELERANT": {
+    "id": "ACCELERANT",
+    "name": "触媒",
+    "description": "中毒会额外触发[Accelerant]次。"
+  },
+  "ACCURACY": {
+    "id": "ACCURACY",
+    "name": "精准",
+    "description": "小刀额外造成[AccuracyPower]点伤害。"
+  },
+  "ACROBATICS": {
+    "id": "ACROBATICS",
+    "name": "杂技",
+    "description": "抽[Cards]张牌。\n丢弃1张牌。"
+  },
+  "ADAPTIVE_STRIKE": {
+    "id": "ADAPTIVE_STRIKE",
+    "name": "适应打击",
+    "description": "造成[Damage]点伤害。\n将这张牌的一张0[energyPrefix]复制品添加到你的弃牌堆。"
+  },
+  "ADRENALINE": {
+    "id": "ADRENALINE",
+    "name": "肾上腺素",
+    "description": "获得[Energy]。\n抽2张牌。"
+  },
+  "AFTERIMAGE": {
+    "id": "AFTERIMAGE",
+    "name": "余像",
+    "description": "你每打出一张牌，都获得[AfterimagePower]点格挡。"
+  },
+  "AFTERLIFE": {
+    "id": "AFTERLIFE",
+    "name": "来生",
+    "description": "召唤[Summon]。"
+  },
+  "AGGRESSION": {
+    "id": "AGGRESSION",
+    "name": "好勇斗狠",
+    "description": "在你的回合开始时，将你弃牌堆的一张随机攻击牌放入你的手牌并将其升级。"
+  },
+  "ALCHEMIZE": {
+    "id": "ALCHEMIZE",
+    "name": "炼制药水",
+    "description": "获得一瓶随机药水。"
+  },
+  "ALIGNMENT": {
+    "id": "ALIGNMENT",
+    "name": "星位序列",
+    "description": "获得[Energy]。"
+  },
+  "ALL_FOR_ONE": {
+    "id": "ALL_FOR_ONE",
+    "name": "万物一心",
+    "description": "造成[Damage]点伤害。\n将你弃牌堆中的所有0[energyPrefix]牌放入你的手牌。"
+  },
+  "ANGER": {
+    "id": "ANGER",
+    "name": "愤怒",
+    "description": "造成[Damage]点伤害。\n将一张此牌的复制品加入你的弃牌堆。"
+  },
+  "ANOINTED": {
+    "id": "ANOINTED",
+    "name": "天选",
+    "description": "将你抽牌堆中的所有稀有牌放入你的手牌。"
+  },
+  "ANTICIPATE": {
+    "id": "ANTICIPATE",
+    "name": "预判",
+    "description": "在本回合获得[DexterityPower]点敏捷。"
+  },
+  "APOTHEOSIS": {
+    "id": "APOTHEOSIS",
+    "name": "神化",
+    "description": "升级你的全部卡牌。"
+  },
+  "APPARITION": {
+    "id": "APPARITION",
+    "name": "灵体",
+    "description": "获得[IntangiblePower]层无实体。"
+  },
+  "ARMAMENTS": {
+    "id": "ARMAMENTS",
+    "name": "武装",
+    "description": "获得[Block]点格挡。\n升级你手牌中的[IfUpgraded]。"
+  },
+  "ARSENAL": {
+    "id": "ARSENAL",
+    "name": "武器库",
+    "description": "每当你生成一张牌，就获得[ArsenalPower]点力量。"
+  },
+  "ASCENDERS_BANE": {
+    "id": "ASCENDERS_BANE",
+    "name": "进阶之灾",
+    "description": ""
+  },
+  "ASHEN_STRIKE": {
+    "id": "ASHEN_STRIKE",
+    "name": "灰烬打击",
+    "description": "造成[CalculatedDamage]点伤害。\n你的消耗牌堆中每有一张牌，伤害增加[ExtraDamage]。"
+  },
+  "ASSASSINATE": {
+    "id": "ASSASSINATE",
+    "name": "刺杀",
+    "description": "造成[Damage]点伤害。\n给予[VulnerablePower]层易伤。"
+  },
+  "ASTRAL_PULSE": {
+    "id": "ASTRAL_PULSE",
+    "name": "星界脉冲",
+    "description": "对所有敌人造成[Damage]点伤害两次。"
+  },
+  "AUTOMATION": {
+    "id": "AUTOMATION",
+    "name": "自动化",
+    "description": "你每抽10张牌，获得[Energy]。"
+  },
+  "BACKFLIP": {
+    "id": "BACKFLIP",
+    "name": "后空翻",
+    "description": "获得[Block]点格挡。\n抽2张牌。"
+  },
+  "BACKSTAB": {
+    "id": "BACKSTAB",
+    "name": "背刺",
+    "description": "造成[Damage]点伤害。"
+  },
+  "BAD_LUCK": {
+    "id": "BAD_LUCK",
+    "name": "霉运",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，你失去[HpLoss]点生命。"
+  },
+  "BALL_LIGHTNING": {
+    "id": "BALL_LIGHTNING",
+    "name": "球状闪电",
+    "description": "造成[Damage]点伤害。\n生成1个闪电充能球。"
+  },
+  "BANSHEES_CRY": {
+    "id": "BANSHEES_CRY",
+    "name": "女妖之嚎",
+    "description": "对所有敌人造成[Damage]点伤害。\n本场战斗中每打出过一张虚无牌，此牌的耗能就减少[Energy]。"
+  },
+  "BARRAGE": {
+    "id": "BARRAGE",
+    "name": "弹幕齐射",
+    "description": "当前每有一个充能球，造成[Damage]点伤害。[InCombat]次）|}"
+  },
+  "BARRICADE": {
+    "id": "BARRICADE",
+    "name": "壁垒",
+    "description": "格挡不再在你的回合开始时消失。"
+  },
+  "BASH": {
+    "id": "BASH",
+    "name": "痛击",
+    "description": "造成[Damage]点伤害。\n给予[VulnerablePower]层易伤。"
+  },
+  "BATTLE_TRANCE": {
+    "id": "BATTLE_TRANCE",
+    "name": "战斗专注",
+    "description": "抽[Cards]张牌。\n你在本回合内不能再抽任何牌。"
+  },
+  "BEACON_OF_HOPE": {
+    "id": "BEACON_OF_HOPE",
+    "name": "希望灯塔",
+    "description": "每当你在你的回合获得格挡时，其他玩家获得相应一半的格挡。"
+  },
+  "BEAM_CELL": {
+    "id": "BEAM_CELL",
+    "name": "光束射线",
+    "description": "造成[Damage]点伤害。\n给予[VulnerablePower]层易伤。"
+  },
+  "BEAT_DOWN": {
+    "id": "BEAT_DOWN",
+    "name": "狠揍",
+    "description": "打出你弃牌堆中的[Cards]张随机攻击牌。"
+  },
+  "BEAT_INTO_SHAPE": {
+    "id": "BEAT_INTO_SHAPE",
+    "name": "锻打成型",
+    "description": "造成[Damage]点伤害。\n铸造[CalculatedForge]。\n本回合内，你此前每击中过该敌人一次，这张牌就额外铸造[CalculationExtra]点。"
+  },
+  "BECKON": {
+    "id": "BECKON",
+    "name": "呼唤",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，\n你失去{HpLoss}点生命。"
+  },
+  "BEGONE": {
+    "id": "BEGONE",
+    "name": "下去！",
+    "description": "选择你手牌中的一张牌，将其变化为[IfUpgraded]。"
+  },
+  "BELIEVE_IN_YOU": {
+    "id": "BELIEVE_IN_YOU",
+    "name": "相信着你",
+    "description": "另一名玩家获得[Energy]。"
+  },
+  "BIASED_COGNITION": {
+    "id": "BIASED_COGNITION",
+    "name": "偏差认知",
+    "description": "获得[FocusPower]点集中。\n在你的回合开始时，失去[BiasedCognitionPower]点集中。"
+  },
+  "BIG_BANG": {
+    "id": "BIG_BANG",
+    "name": "大爆炸",
+    "description": "抽[Cards]张牌。\n获得[Energy]。\n获得[Stars]。\n铸造[Forge]。"
+  },
+  "BLACK_HOLE": {
+    "id": "BLACK_HOLE",
+    "name": "黑洞",
+    "description": "每当你花费或获得{singleStarIcon}时，对所有敌人造成[BlackHolePower]点伤害。"
+  },
+  "BLADE_DANCE": {
+    "id": "BLADE_DANCE",
+    "name": "刀刃之舞",
+    "description": "添加[Cards]张小刀到你的手牌。"
+  },
+  "BLADE_OF_INK": {
+    "id": "BLADE_OF_INK",
+    "name": "墨之刃",
+    "description": "添加[Cards]张墨影小刀到你的手牌。"
+  },
+  "BLIGHT_STRIKE": {
+    "id": "BLIGHT_STRIKE",
+    "name": "荒疫打击",
+    "description": "造成[Damage]点伤害。\n给予等量于所造成伤害的灾厄。"
+  },
+  "BLOODLETTING": {
+    "id": "BLOODLETTING",
+    "name": "放血",
+    "description": "失去[HpLoss]点生命。\n获得[Energy]。"
+  },
+  "BLOOD_WALL": {
+    "id": "BLOOD_WALL",
+    "name": "血墙",
+    "description": "失去[HpLoss]点生命。\n获得[Block]点格挡。"
+  },
+  "BLUDGEON": {
+    "id": "BLUDGEON",
+    "name": "重锤",
+    "description": "造成[Damage]点伤害。"
+  },
+  "BLUR": {
+    "id": "BLUR",
+    "name": "残影",
+    "description": "获得[Block]点格挡。\n你的下一回合开始时格挡不会消失。"
+  },
+  "BODYGUARD": {
+    "id": "BODYGUARD",
+    "name": "护卫",
+    "description": "召唤[Summon]。"
+  },
+  "BODY_SLAM": {
+    "id": "BODY_SLAM",
+    "name": "全身撞击",
+    "description": "造成你当前格挡值的伤害。[InCombat]点伤害）|}"
+  },
+  "BOLAS": {
+    "id": "BOLAS",
+    "name": "流星锤",
+    "description": "造成[Damage]点伤害。\n在你的下个回合开始时，将此卡返回你的手牌。"
+  },
+  "BOMBARDMENT": {
+    "id": "BOMBARDMENT",
+    "name": "轰击",
+    "description": "造成[Damage]点伤害。\n你的回合开始时，如果这张牌在你的消耗牌堆中，则将其打出。"
+  },
+  "BONE_SHARDS": {
+    "id": "BONE_SHARDS",
+    "name": "碎骨",
+    "description": "如果奥斯提存活，则他对所有敌人造成[OstyDamage]点伤害并且你获得[Block]点格挡。\n然后奥斯提死去。"
+  },
+  "BOOST_AWAY": {
+    "id": "BOOST_AWAY",
+    "name": "高速脱离",
+    "description": "获得[Block]点格挡。\n将一张晕眩添加到你的弃牌堆中。"
+  },
+  "BOOT_SEQUENCE": {
+    "id": "BOOT_SEQUENCE",
+    "name": "启动流程",
+    "description": "获得[Block]点格挡。"
+  },
+  "BORROWED_TIME": {
+    "id": "BORROWED_TIME",
+    "name": "预借时间",
+    "description": "获得[Energy]。\n所有卡牌在本回合耗能增加[ExtraCost]。"
+  },
+  "BOUNCING_FLASK": {
+    "id": "BOUNCING_FLASK",
+    "name": "弹跳药瓶",
+    "description": "随机给予敌人[PoisonPower]层中毒[Repeat]次。"
+  },
+  "BRAND": {
+    "id": "BRAND",
+    "name": "烙印",
+    "description": "失去[HpLoss]点生命。\n消耗1张牌。\n获得[StrengthPower]点力量。"
+  },
+  "BREAK": {
+    "id": "BREAK",
+    "name": "破击",
+    "description": "造成[Damage]点伤害。\n给予[VulnerablePower]层易伤。"
+  },
+  "BREAKTHROUGH": {
+    "id": "BREAKTHROUGH",
+    "name": "突破",
+    "description": "失去[HpLoss]点生命。\n对所有敌人造成[Damage]点伤害。"
+  },
+  "BRIGHTEST_FLAME": {
+    "id": "BRIGHTEST_FLAME",
+    "name": "至亮之焰",
+    "description": "获得[Energy]。\n抽[Cards]张牌。\n失去[MaxHp]点最大生命。"
+  },
+  "BUBBLE_BUBBLE": {
+    "id": "BUBBLE_BUBBLE",
+    "name": "咕嘟冒泡",
+    "description": "如果敌方拥有中毒，则给予[PoisonPower]层中毒。"
+  },
+  "BUFFER": {
+    "id": "BUFFER",
+    "name": "缓冲",
+    "description": "阻止下[BufferPower]次你受到的生命值损伤。"
+  },
+  "BULK_UP": {
+    "id": "BULK_UP",
+    "name": "暴涨",
+    "description": "失去[OrbSlots]个充能球栏位。\n获得[StrengthPower]点力量。\n获得[DexterityPower]点敏捷。"
+  },
+  "BULLET_TIME": {
+    "id": "BULLET_TIME",
+    "name": "子弹时间",
+    "description": "你在本回合内不能再抽牌。你手牌中的所有牌在本回合免费打出。"
+  },
+  "BULLY": {
+    "id": "BULLY",
+    "name": "欺凌",
+    "description": "造成[CalculatedDamage]点伤害。\n该敌人身上每有一层易伤就额外造成[ExtraDamage]点伤害。"
+  },
+  "BULWARK": {
+    "id": "BULWARK",
+    "name": "铸墙",
+    "description": "获得[Block]点格挡。\n铸造[Forge]。"
+  },
+  "BUNDLE_OF_JOY": {
+    "id": "BUNDLE_OF_JOY",
+    "name": "新生之喜",
+    "description": "将[Cards]张随机无色牌添加到你的手牌。"
+  },
+  "BURN": {
+    "id": "BURN",
+    "name": "灼伤",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，你受到[Damage]点伤害。"
+  },
+  "BURNING_PACT": {
+    "id": "BURNING_PACT",
+    "name": "燃烧契约",
+    "description": "消耗1张牌。\n抽[Cards]张牌。"
+  },
+  "BURST": {
+    "id": "BURST",
+    "name": "爆发",
+    "description": "在这个回合，你打出的下[Skills]}张技能牌会被额外打出一次。"
+  },
+  "BURY": {
+    "id": "BURY",
+    "name": "埋葬",
+    "description": "造成[Damage]点伤害。"
+  },
+  "BYRDONIS_EGG": {
+    "id": "BYRDONIS_EGG",
+    "name": "多尼斯异鸟蛋",
+    "description": "能在休息处被孵化。"
+  },
+  "BYRD_SWOOP": {
+    "id": "BYRD_SWOOP",
+    "name": "异鸟扑击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "CALAMITY": {
+    "id": "CALAMITY",
+    "name": "劫难",
+    "description": "每当你打出一张攻击牌时，将一张随机攻击牌添加到你的手牌。"
+  },
+  "CALCIFY": {
+    "id": "CALCIFY",
+    "name": "钙化",
+    "description": "奥斯提的攻击额外造成[CalcifyPower]点伤害。"
+  },
+  "CALCULATED_GAMBLE": {
+    "id": "CALCULATED_GAMBLE",
+    "name": "计算下注",
+    "description": "丢弃你的所有手牌,\n然后抽相同数量的牌。"
+  },
+  "CALL_OF_THE_VOID": {
+    "id": "CALL_OF_THE_VOID",
+    "name": "虚空之唤",
+    "description": "在你的回合开始时，将[Cards]张随机牌添加到你的手牌中。添加的牌会获得虚无。"
+  },
+  "CALTROPS": {
+    "id": "CALTROPS",
+    "name": "铁蒺藜",
+    "description": "每当你被攻击时，对攻击者造成[ThornsPower]点伤害。"
+  },
+  "CAPACITOR": {
+    "id": "CAPACITOR",
+    "name": "扩容",
+    "description": "获得[Repeat]个充能球栏位。"
+  },
+  "CAPTURE_SPIRIT": {
+    "id": "CAPTURE_SPIRIT",
+    "name": "捕捉灵魂",
+    "description": "敌人失去[Damage]点生命。\n将[Cards]张灵魂加入你的抽牌堆。"
+  },
+  "CASCADE": {
+    "id": "CASCADE",
+    "name": "倾泻",
+    "description": "打出你抽牌堆顶部的X[IfUpgraded]张牌。"
+  },
+  "CATASTROPHE": {
+    "id": "CATASTROPHE",
+    "name": "横祸",
+    "description": "从你的抽牌堆中随机打出[Cards]张牌。"
+  },
+  "CELESTIAL_MIGHT": {
+    "id": "CELESTIAL_MIGHT",
+    "name": "天穹之力",
+    "description": "造成[Damage]点伤害[Repeat]次。"
+  },
+  "CHAOS": {
+    "id": "CHAOS",
+    "name": "混沌",
+    "description": "生成[Repeat]个随机充能球。"
+  },
+  "CHARGE": {
+    "id": "CHARGE",
+    "name": "冲锋！！",
+    "description": "选择你抽牌堆中的[Cards]张牌，将其变化为\n[IfUpgraded]。"
+  },
+  "CHARGE_BATTERY": {
+    "id": "CHARGE_BATTERY",
+    "name": "充电",
+    "description": "获得[Block]点格挡。\n在下个回合获得[Energy]。"
+  },
+  "CHILD_OF_THE_STARS": {
+    "id": "CHILD_OF_THE_STARS",
+    "name": "群星之子",
+    "description": "每当你花费{singleStarIcon}时，每花费一点{singleStarIcon}，获得[BlockForStars]点格挡。"
+  },
+  "CHILL": {
+    "id": "CHILL",
+    "name": "冰寒",
+    "description": "当前每有一名敌人，就生成1个冰霜充能球。"
+  },
+  "CHRYSALIS": {
+    "id": "CHRYSALIS",
+    "name": "结茧",
+    "description": "将[Cards]张随机技能牌洗入你的抽牌堆。他们在本场战斗中的[energyPrefix]耗能为0。"
+  },
+  "CINDER": {
+    "id": "CINDER",
+    "name": "余烬",
+    "description": "造成[Damage]点伤害。\n随机消耗1张牌。"
+  },
+  "CLASH": {
+    "id": "CLASH",
+    "name": "交锋",
+    "description": "只有在手牌中每一张牌都是攻击牌时才能被打出。\n造成[Damage]点伤害。"
+  },
+  "CLAW": {
+    "id": "CLAW",
+    "name": "爪击",
+    "description": "造成[Damage]点伤害。\n本场战斗中所有爪击卡牌的伤害增加[Increase]点。"
+  },
+  "CLEANSE": {
+    "id": "CLEANSE",
+    "name": "洁净",
+    "description": "召唤[Summon]。\n从你的抽牌堆中选择一张牌将其消耗。"
+  },
+  "CLOAK_AND_DAGGER": {
+    "id": "CLOAK_AND_DAGGER",
+    "name": "斗篷与匕首",
+    "description": "获得[Block]点格挡。\n将[Cards]张小刀添加到你的手牌。"
+  },
+  "CLOAK_OF_STARS": {
+    "id": "CLOAK_OF_STARS",
+    "name": "群星斗篷",
+    "description": "获得[Block]点格挡。"
+  },
+  "CLUMSY": {
+    "id": "CLUMSY",
+    "name": "笨拙",
+    "description": ""
+  },
+  "COLD_SNAP": {
+    "id": "COLD_SNAP",
+    "name": "寒流",
+    "description": "造成[Damage]点伤害。\n生成1个冰霜充能球。"
+  },
+  "COLLISION_COURSE": {
+    "id": "COLLISION_COURSE",
+    "name": "碰撞轨迹",
+    "description": "造成[Damage]点伤害。\n将一张碎屑添加至你的手牌。"
+  },
+  "COLOSSUS": {
+    "id": "COLOSSUS",
+    "name": "巨像",
+    "description": "获得[Block]点格挡。\n在本回合中，有易伤状态的敌人对你造成的伤害降低50%。"
+  },
+  "COMET": {
+    "id": "COMET",
+    "name": "彗星",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。\n给予[VulnerablePower]层易伤。"
+  },
+  "COMPACT": {
+    "id": "COMPACT",
+    "name": "压缩",
+    "description": "获得[Block]点格挡。\n将你手牌中的全部状态牌变化为[IfUpgraded]。"
+  },
+  "COMPILE_DRIVER": {
+    "id": "COMPILE_DRIVER",
+    "name": "编译冲击",
+    "description": "造成[Damage]点伤害。\n你每有一种不同的充能球，就抽一张牌。[InCombat]张牌）}"
+  },
+  "CONFLAGRATION": {
+    "id": "CONFLAGRATION",
+    "name": "焚烧",
+    "description": "对所有敌人造成[Damage]点伤害[Repeat]次。"
+  },
+  "CONQUEROR": {
+    "id": "CONQUEROR",
+    "name": "征服者",
+    "description": "铸造[Forge]。\n君王之剑在本回合对敌人造成双倍伤害。"
+  },
+  "CONSUMING_SHADOW": {
+    "id": "CONSUMING_SHADOW",
+    "name": "吞噬暗影",
+    "description": "生成[Repeat]个黑暗充能球。\n在你的回合结束时，激发你最左侧的充能球。"
+  },
+  "CONVERGENCE": {
+    "id": "CONVERGENCE",
+    "name": "汇流",
+    "description": "在本回合保留你的手牌。\n在下个回合，\n获得[Energy]与[Stars]。"
+  },
+  "COOLANT": {
+    "id": "COOLANT",
+    "name": "冷却剂",
+    "description": "在你的回合开始时，你每有一种不同的充能球，就获得[CoolantPower]点格挡。"
+  },
+  "COOLHEADED": {
+    "id": "COOLHEADED",
+    "name": "冷静头脑",
+    "description": "生成1个冰霜充能球。\n抽[Cards]张牌。"
+  },
+  "COORDINATE": {
+    "id": "COORDINATE",
+    "name": "协同配合",
+    "description": "在本回合给予其他玩家[StrengthPower]点力量。"
+  },
+  "CORROSIVE_WAVE": {
+    "id": "CORROSIVE_WAVE",
+    "name": "腐蚀波",
+    "description": "打出此牌后，你在本回合每抽到一张牌，就给予所有敌人[CorrosiveWave]层中毒。"
+  },
+  "CORRUPTION": {
+    "id": "CORRUPTION",
+    "name": "腐化",
+    "description": "技能牌消耗变为0[energyPrefix]。\n每当你打出一张技能牌时，将其消耗。"
+  },
+  "COSMIC_INDIFFERENCE": {
+    "id": "COSMIC_INDIFFERENCE",
+    "name": "宇宙冷漠",
+    "description": "获得[Block]点格挡。\n将弃牌堆中的一张牌放到你的抽牌堆的顶部。"
+  },
+  "COUNTDOWN": {
+    "id": "COUNTDOWN",
+    "name": "倒数计时",
+    "description": "在你的回合开始时，给予随机敌人[CountdownPower]层灾厄。"
+  },
+  "CRASH_LANDING": {
+    "id": "CRASH_LANDING",
+    "name": "迫降",
+    "description": "对所有敌人造成[Damage]点伤害。\n用碎屑填满你的手牌。"
+  },
+  "CREATIVE_AI": {
+    "id": "CREATIVE_AI",
+    "name": "创造性AI",
+    "description": "在你的回合开始时，将一张随机能力牌加入你的手牌。"
+  },
+  "CRESCENT_SPEAR": {
+    "id": "CRESCENT_SPEAR",
+    "name": "新月长矛",
+    "description": "造成[CalculatedDamage]点伤害。\n你每有一张拥有{singleStarIcon}耗能的卡牌，这张牌就额外造成[ExtraDamage]点伤害。"
+  },
+  "CRIMSON_MANTLE": {
+    "id": "CRIMSON_MANTLE",
+    "name": "绯红披风",
+    "description": "在你的回合开始时，失去1点生命并获得[CrimsonMantlePower]点格挡。"
+  },
+  "CRUELTY": {
+    "id": "CRUELTY",
+    "name": "残酷",
+    "description": "有易伤状态的敌人额外受到[CrueltyPower]%的伤害。"
+  },
+  "CRUSH_UNDER": {
+    "id": "CRUSH_UNDER",
+    "name": "下砸",
+    "description": "对所有敌人造成[Damage]点伤害。所有敌人在本回合失去[StrengthLoss]点力量。"
+  },
+  "CURSE_OF_THE_BELL": {
+    "id": "CURSE_OF_THE_BELL",
+    "name": "铃铛的诅咒",
+    "description": ""
+  },
+  "DAGGER_SPRAY": {
+    "id": "DAGGER_SPRAY",
+    "name": "匕首雨",
+    "description": "对所有敌人造成[Damage]点伤害两次。"
+  },
+  "DAGGER_THROW": {
+    "id": "DAGGER_THROW",
+    "name": "投掷匕首",
+    "description": "造成[Damage]点伤害。\n抽1张牌。\n丢弃1张牌。"
+  },
+  "DANSE_MACABRE": {
+    "id": "DANSE_MACABRE",
+    "name": "死亡之舞",
+    "description": "每当你打出一张耗能大于等于[Energy]的牌时，获得[DanseMacabrePower]点格挡。"
+  },
+  "DARKNESS": {
+    "id": "DARKNESS",
+    "name": "漆黑",
+    "description": "生成1黑暗充能球。\n触发所有黑暗充能球的被动[IfUpgraded]。"
+  },
+  "DARK_EMBRACE": {
+    "id": "DARK_EMBRACE",
+    "name": "黑暗之拥",
+    "description": "每当有一张牌被消耗时，\n抽1张牌。"
+  },
+  "DARK_SHACKLES": {
+    "id": "DARK_SHACKLES",
+    "name": "黑暗镣铐",
+    "description": "使一名敌人在本回合失去[StrengthLoss]点力量。"
+  },
+  "DASH": {
+    "id": "DASH",
+    "name": "冲刺",
+    "description": "获得[Block]点格挡。\n造成[Damage]点伤害。"
+  },
+  "DEADLY_POISON": {
+    "id": "DEADLY_POISON",
+    "name": "致命毒药",
+    "description": "给予[PoisonPower]层中毒。"
+  },
+  "DEATHBRINGER": {
+    "id": "DEATHBRINGER",
+    "name": "死亡使者",
+    "description": "给予所有敌人[DoomPower]层灾厄和[WeakPower]层虚弱。"
+  },
+  "DEATHS_DOOR": {
+    "id": "DEATHS_DOOR",
+    "name": "死亡之门",
+    "description": "获得[Block]点格挡。\n如果你在本回合中曾给予过灾厄，则额外获得[Repeat]次格挡。"
+  },
+  "DEATH_MARCH": {
+    "id": "DEATH_MARCH",
+    "name": "死亡行军",
+    "description": "造成[CalculatedDamage]点伤害。\n你在回合进行中每抽到一张牌，都会使其额外造成[ExtraDamage]点伤害。"
+  },
+  "DEBILITATE": {
+    "id": "DEBILITATE",
+    "name": "摧残",
+    "description": "造成[Damage]点伤害。\n在接下来的[DebilitatePower]回合内，该敌人身上的易伤与虚弱效果翻倍。"
+  },
+  "DEBT": {
+    "id": "DEBT",
+    "name": "债务",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，你失去[Gold]金币。"
+  },
+  "DECAY": {
+    "id": "DECAY",
+    "name": "腐朽",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中, 你受到[Damage]点伤害。"
+  },
+  "DECISIONS_DECISIONS": {
+    "id": "DECISIONS_DECISIONS",
+    "name": "抉择，抉择",
+    "description": "抽[Cards]张牌。\n选择你手牌中的一张技能牌，并将其打出[Repeat]次。"
+  },
+  "DEFEND_DEFECT": {
+    "id": "DEFEND_DEFECT",
+    "name": "防御",
+    "description": "获得[Block]点格挡。"
+  },
+  "DEFEND_IRONCLAD": {
+    "id": "DEFEND_IRONCLAD",
+    "name": "防御",
+    "description": "获得[Block]点格挡。"
+  },
+  "DEFEND_NECROBINDER": {
+    "id": "DEFEND_NECROBINDER",
+    "name": "防御",
+    "description": "获得[Block]点格挡。"
+  },
+  "DEFEND_REGENT": {
+    "id": "DEFEND_REGENT",
+    "name": "防御",
+    "description": "获得[Block]点格挡。"
+  },
+  "DEFEND_SILENT": {
+    "id": "DEFEND_SILENT",
+    "name": "防御",
+    "description": "获得[Block]点格挡。"
+  },
+  "DEFILE": {
+    "id": "DEFILE",
+    "name": "玷污",
+    "description": "造成[Damage]点伤害。"
+  },
+  "DEFLECT": {
+    "id": "DEFLECT",
+    "name": "偏折",
+    "description": "获得[Block]点格挡。"
+  },
+  "DEFRAGMENT": {
+    "id": "DEFRAGMENT",
+    "name": "碎片整理",
+    "description": "获得[FocusPower]点集中。"
+  },
+  "DEFY": {
+    "id": "DEFY",
+    "name": "违逆",
+    "description": "获得[Block]点格挡。\n给予[WeakPower]层虚弱。"
+  },
+  "DELAY": {
+    "id": "DELAY",
+    "name": "拖延",
+    "description": "获得[Block]点格挡。\n在下个回合，\n获得[Energy]。"
+  },
+  "DEMESNE": {
+    "id": "DEMESNE",
+    "name": "领域",
+    "description": "在你的回合开始时，获得[Energy]并额外多抽[Cards]张牌。"
+  },
+  "DEMONIC_SHIELD": {
+    "id": "DEMONIC_SHIELD",
+    "name": "恶魔护盾",
+    "description": "失去[HpLoss]点生命。\n给予另一位玩家你当前格挡值的格挡。[InCombat]点格挡）|}"
+  },
+  "DEMON_FORM": {
+    "id": "DEMON_FORM",
+    "name": "恶魔形态",
+    "description": "在你的回合开始时，获得[StrengthPower]点力量。"
+  },
+  "DEPRECATED_CARD": {
+    "id": "DEPRECATED_CARD",
+    "name": "弃用卡牌",
+    "description": "这张卡牌在近期的一次更新中被移除。\n抽1张牌。\n将这张牌从你的牌组中移除。"
+  },
+  "DESPAIR": {
+    "id": "DESPAIR",
+    "name": "绝望",
+    "description": "你每给予1层灾厄，就获得1点格挡。"
+  },
+  "DEVASTATE": {
+    "id": "DEVASTATE",
+    "name": "葬送",
+    "description": "造成[Damage]点伤害。"
+  },
+  "DEVOUR_LIFE": {
+    "id": "DEVOUR_LIFE",
+    "name": "吞噬生命",
+    "description": "每当你打出一张灵魂时，召唤[DevourLifePower]。"
+  },
+  "DIRGE": {
+    "id": "DIRGE",
+    "name": "挽歌",
+    "description": "召唤[Summon]X次。\n将X张[IfUpgraded]添加到你的抽牌堆中。"
+  },
+  "DISCOVERY": {
+    "id": "DISCOVERY",
+    "name": "发现",
+    "description": "从3张随机牌中选择1张加入你的手牌。这张牌在本回合可以免费打出。"
+  },
+  "DISINTEGRATION": {
+    "id": "DISINTEGRATION",
+    "name": "瓦解",
+    "description": "在你的回合结束时，受到[DisintegrationPower]点伤害。"
+  },
+  "DISMANTLE": {
+    "id": "DISMANTLE",
+    "name": "拆卸",
+    "description": "造成[Damage]点伤害。\n如果该敌人有易伤状态，则攻击两次。"
+  },
+  "DISTRACTION": {
+    "id": "DISTRACTION",
+    "name": "声东击西",
+    "description": "将一张随机技能牌添加到你的手牌中。这张牌在本回合内可以免费打出。"
+  },
+  "DODGE_AND_ROLL": {
+    "id": "DODGE_AND_ROLL",
+    "name": "闪躲翻滚",
+    "description": "获得[Block]点格挡。\n在下个回合，获得[Block]点格挡。"
+  },
+  "DOMINATE": {
+    "id": "DOMINATE",
+    "name": "主宰",
+    "description": "给予[VulnerablePower]层易伤。\n敌人身上每有一层易伤，就获得[StrengthPerVulnerable]点力量。"
+  },
+  "DOUBLE_ENERGY": {
+    "id": "DOUBLE_ENERGY",
+    "name": "双倍能量",
+    "description": "将你的能量翻倍。"
+  },
+  "DOUBT": {
+    "id": "DOUBT",
+    "name": "疑虑",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，获得[WeakPower]层虚弱。"
+  },
+  "DRAMATIC_ENTRANCE": {
+    "id": "DRAMATIC_ENTRANCE",
+    "name": "闪亮登场",
+    "description": "对所有敌人造成[Damage]点伤害。"
+  },
+  "DREDGE": {
+    "id": "DREDGE",
+    "name": "清淤",
+    "description": "将[Cards]张牌从弃牌堆加入你的手牌。"
+  },
+  "DRUM_OF_BATTLE": {
+    "id": "DRUM_OF_BATTLE",
+    "name": "战鼓",
+    "description": "抽[Cards]张牌。\n这张牌被消耗时，获得[Energy]。"
+  },
+  "DUALCAST": {
+    "id": "DUALCAST",
+    "name": "双重释放",
+    "description": "激发你最右侧的充能球两次。"
+  },
+  "DUAL_WIELD": {
+    "id": "DUAL_WIELD",
+    "name": "双持",
+    "description": "选择一张攻击牌或能力牌。将该牌的[IfUpgraded]张复制品|一张复制品}加入你的手牌。"
+  },
+  "DYING_STAR": {
+    "id": "DYING_STAR",
+    "name": "星灭",
+    "description": "对所有敌人造成[Damage]点伤害。所有敌人在本回合中失去[StrengthLoss]点力量。"
+  },
+  "ECHOING_SLASH": {
+    "id": "ECHOING_SLASH",
+    "name": "回响斩击",
+    "description": "对所有敌人造成[Damage]点伤害。\n每有一名敌人被击杀，就重复此效果。"
+  },
+  "ECHO_FORM": {
+    "id": "ECHO_FORM",
+    "name": "回响形态",
+    "description": "你每回合打出的第一张牌会被打出两次。"
+  },
+  "EIDOLON": {
+    "id": "EIDOLON",
+    "name": "幻景",
+    "description": "消耗所有手牌。\n如果有9张牌被消耗，则获得1层无实体。"
+  },
+  "END_OF_DAYS": {
+    "id": "END_OF_DAYS",
+    "name": "末日降临",
+    "description": "给予所有敌人[DoomPower]层灾厄。\n杀死所有灾厄大于等于当前生命值的敌人。"
+  },
+  "ENERGY_SURGE": {
+    "id": "ENERGY_SURGE",
+    "name": "能量涌动",
+    "description": "所有玩家获得[Energy]。"
+  },
+  "ENFEEBLING_TOUCH": {
+    "id": "ENFEEBLING_TOUCH",
+    "name": "弱化之触",
+    "description": "让一名敌人在本回合内失去[StrengthLoss]点力量。"
+  },
+  "ENLIGHTENMENT": {
+    "id": "ENLIGHTENMENT",
+    "name": "开悟",
+    "description": "在这[IfUpgraded]，你当前手牌中所有牌的耗能降低至1。"
+  },
+  "ENTHRALLED": {
+    "id": "ENTHRALLED",
+    "name": "执迷",
+    "description": "如果这张牌在你的手牌中，你必须优先打出这张牌。"
+  },
+  "ENTRENCH": {
+    "id": "ENTRENCH",
+    "name": "巩固",
+    "description": "将你当前的格挡翻倍。"
+  },
+  "ENTROPY": {
+    "id": "ENTROPY",
+    "name": "熵",
+    "description": "在你的回合开始时，变化你手牌中的[Cards]张牌。"
+  },
+  "ENVENOM": {
+    "id": "ENVENOM",
+    "name": "涂毒",
+    "description": "每有一次攻击造成未被格挡的伤害，就给予[EnvenomPower]层中毒。"
+  },
+  "EQUILIBRIUM": {
+    "id": "EQUILIBRIUM",
+    "name": "均衡",
+    "description": "获得[Block]点格挡。\n在本回合保留你的手牌。"
+  },
+  "ERADICATE": {
+    "id": "ERADICATE",
+    "name": "根除",
+    "description": "造成[Damage]点伤害X次。"
+  },
+  "ESCAPE_PLAN": {
+    "id": "ESCAPE_PLAN",
+    "name": "逃脱计划",
+    "description": "抽1张牌。\n如果抽到的是技能牌，则获得[Block]点格挡。"
+  },
+  "ETERNAL_ARMOR": {
+    "id": "ETERNAL_ARMOR",
+    "name": "永恒铠甲",
+    "description": "获得[PlatingPower]层覆甲。"
+  },
+  "EVIL_EYE": {
+    "id": "EVIL_EYE",
+    "name": "邪眼",
+    "description": "获得[Block]点格挡。\n如果你在本回合消耗过卡牌，则额外获得[Block]点格挡。"
+  },
+  "EXPECT_A_FIGHT": {
+    "id": "EXPECT_A_FIGHT",
+    "name": "跃跃欲试",
+    "description": "你的手牌中每有一张攻击牌，就获得[energyPrefix]。\n你在本回合内\n不能再获得[energyPrefix]。[InCombat]）|}"
+  },
+  "EXPERTISE": {
+    "id": "EXPERTISE",
+    "name": "独门技术",
+    "description": "抽牌直至你的手牌有[Cards]张牌。"
+  },
+  "EXPOSE": {
+    "id": "EXPOSE",
+    "name": "暴露",
+    "description": "去除敌人身上的所有格挡值和人工制品。\n并给予[Power]层易伤。"
+  },
+  "EXTERMINATE": {
+    "id": "EXTERMINATE",
+    "name": "杀灭",
+    "description": "对所有敌人造成[Damage]点伤害[Repeat]次。"
+  },
+  "FALLING_STAR": {
+    "id": "FALLING_STAR",
+    "name": "陨星",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。\n给予[VulnerablePower]层易伤。"
+  },
+  "FAN_OF_KNIVES": {
+    "id": "FAN_OF_KNIVES",
+    "name": "刀扇",
+    "description": "小刀现在会攻击所有敌人。\n将[Shivs]张小刀添加到你的手牌。"
+  },
+  "FASTEN": {
+    "id": "FASTEN",
+    "name": "勒紧",
+    "description": "从“防御”牌中额外获得[ExtraBlock]点格挡。"
+  },
+  "FEAR": {
+    "id": "FEAR",
+    "name": "恐惧",
+    "description": "造成[Damage]点伤害。\n给予[VulnerablePower]层易伤。"
+  },
+  "FEED": {
+    "id": "FEED",
+    "name": "狂宴",
+    "description": "造成[Damage]点伤害。\n斩杀时，永久获得[MaxHp]点最大生命值。"
+  },
+  "FEEDING_FRENZY": {
+    "id": "FEEDING_FRENZY",
+    "name": "疯狂进食",
+    "description": "在本回合内获得[StrengthPower]点力量。"
+  },
+  "FEEL_NO_PAIN": {
+    "id": "FEEL_NO_PAIN",
+    "name": "无惧疼痛",
+    "description": "每当有一张牌被消耗时，获得[Power]点格挡。"
+  },
+  "FERAL": {
+    "id": "FERAL",
+    "name": "野性",
+    "description": "你每回合打出的[FeralPower]张}\n耗能为0[energyPrefix]的攻击牌，\n会放回你的手牌。"
+  },
+  "FETCH": {
+    "id": "FETCH",
+    "name": "取回",
+    "description": "奥斯提造成[OstyDamage]点伤害。\n如果这是这张牌第一次在本回合被打出，则抽[Cards]张牌。"
+  },
+  "FIEND_FIRE": {
+    "id": "FIEND_FIRE",
+    "name": "恶魔之焰",
+    "description": "消耗所有手牌。\n每张被消耗的牌造成[Damage]点伤害。"
+  },
+  "FIGHT_ME": {
+    "id": "FIGHT_ME",
+    "name": "与我一战！",
+    "description": "造成[Damage]点伤害两次。\n获得[StrengthPower]点力量。\n该敌人获得[EnemyStrength]点力量。"
+  },
+  "FIGHT_THROUGH": {
+    "id": "FIGHT_THROUGH",
+    "name": "强撑",
+    "description": "获得[Block]点格挡。\n将2张伤口加入你的弃牌堆。"
+  },
+  "FINESSE": {
+    "id": "FINESSE",
+    "name": "妙计",
+    "description": "获得[Block]点格挡。\n抽1张牌。"
+  },
+  "FINISHER": {
+    "id": "FINISHER",
+    "name": "终结技",
+    "description": "在这个回合内每打出过一张攻击牌，就造成[Damage]点伤害一次。[InCombat]次）|}"
+  },
+  "FISTICUFFS": {
+    "id": "FISTICUFFS",
+    "name": "拳斗",
+    "description": "造成[Damage]点伤害。\n获得等量于所造成伤害的格挡。"
+  },
+  "FLAK_CANNON": {
+    "id": "FLAK_CANNON",
+    "name": "散射炮",
+    "description": "消耗你所有的状态牌。\n每有一张被消耗的牌，就随机对敌人造成[Damage]点伤害。[InCombat]次）|}"
+  },
+  "FLAME_BARRIER": {
+    "id": "FLAME_BARRIER",
+    "name": "火焰屏障",
+    "description": "获得[Block]点格挡。\n你在这个回合每受到一次攻击，都会对攻击者造成[DamageBack]点伤害。"
+  },
+  "FLAME_IN_THE_DARK": {
+    "id": "FLAME_IN_THE_DARK",
+    "name": "暗中之火",
+    "description": "获得[Energy]。\n抽[Cards]张牌。"
+  },
+  "FLANKING": {
+    "id": "FLANKING",
+    "name": "夹击",
+    "description": "一名敌人在本回合受到的来自其他玩家的攻击伤害翻倍。"
+  },
+  "FLASH_OF_STEEL": {
+    "id": "FLASH_OF_STEEL",
+    "name": "亮剑",
+    "description": "造成[Damage]点伤害。\n抽1张牌。"
+  },
+  "FLATTEN": {
+    "id": "FLATTEN",
+    "name": "重压",
+    "description": "奥斯提造成[OstyDamage]点伤害。\n如果奥斯提本回合攻击过，则这张牌的耗能变为0[energyPrefix]。"
+  },
+  "FLECHETTES": {
+    "id": "FLECHETTES",
+    "name": "飞镖",
+    "description": "手牌中每有一张技能牌，造成[Damage]点伤害。[InCombat]次）|}"
+  },
+  "FLICK_FLACK": {
+    "id": "FLICK_FLACK",
+    "name": "翻越撑击",
+    "description": "对所有敌人造成[Damage]点伤害。"
+  },
+  "FOCUSED_STRIKE": {
+    "id": "FOCUSED_STRIKE",
+    "name": "集中打击",
+    "description": "造成[Damage]点伤害。\n在本回合获得[FocusPower]点集中。"
+  },
+  "FOLLY": {
+    "id": "FOLLY",
+    "name": "愚行",
+    "description": ""
+  },
+  "FOOTWORK": {
+    "id": "FOOTWORK",
+    "name": "灵动步法",
+    "description": "获得[DexterityPower]点敏捷。"
+  },
+  "FORBIDDEN_GRIMOIRE": {
+    "id": "FORBIDDEN_GRIMOIRE",
+    "name": "禁忌魔典",
+    "description": "在战斗结束时，你可以从你的牌组中选一张牌移除。"
+  },
+  "FOREGONE_CONCLUSION": {
+    "id": "FOREGONE_CONCLUSION",
+    "name": "既定事项",
+    "description": "在下个回合，从你的抽牌堆中选择[Cards]张牌放入你的手牌。"
+  },
+  "FORGOTTEN_RITUAL": {
+    "id": "FORGOTTEN_RITUAL",
+    "name": "被遗忘的仪式",
+    "description": "如果你在本回合消耗过卡牌，则获得[Energy]。"
+  },
+  "FRANTIC_ESCAPE": {
+    "id": "FRANTIC_ESCAPE",
+    "name": "狂乱逃离",
+    "description": "远离。\n将沙坑的计数加1。\n这张牌的耗能加1。"
+  },
+  "FRIENDSHIP": {
+    "id": "FRIENDSHIP",
+    "name": "友谊",
+    "description": "失去[StrengthPower]点力量。\n在每个回合开始时获得[Energy]。"
+  },
+  "FTL": {
+    "id": "FTL",
+    "name": "超越光速",
+    "description": "造成[Damage]点伤害。\n如果你在这回合打出的牌数小于[PlayMax]张，抽1张牌。"
+  },
+  "FUEL": {
+    "id": "FUEL",
+    "name": "燃料",
+    "description": "获得[Energy]。\n抽[Cards]张牌。"
+  },
+  "FURNACE": {
+    "id": "FURNACE",
+    "name": "熔炉",
+    "description": "在你的回合开始时，铸造[Forge]。"
+  },
+  "FUSION": {
+    "id": "FUSION",
+    "name": "聚变",
+    "description": "生成1个等离子充能球。"
+  },
+  "GAMMA_BLAST": {
+    "id": "GAMMA_BLAST",
+    "name": "伽马爆破",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。\n给予[VulnerablePower]层易伤。"
+  },
+  "GANG_UP": {
+    "id": "GANG_UP",
+    "name": "群起攻之",
+    "description": "造成[CalculatedDamage]点伤害。\n本回合其他玩家每攻击过一次该敌人，该牌造成的伤害就额外增加[ExtraDamage]点。"
+  },
+  "GATHER_LIGHT": {
+    "id": "GATHER_LIGHT",
+    "name": "收集光辉",
+    "description": "获得[Block]点格挡。\n获得[Stars]。"
+  },
+  "GENESIS": {
+    "id": "GENESIS",
+    "name": "创世纪",
+    "description": "在你的回合开始时，获得[StarsPerTurn]。"
+  },
+  "GENETIC_ALGORITHM": {
+    "id": "GENETIC_ALGORITHM",
+    "name": "遗传算法",
+    "description": "获得[Block]点格挡。\n每打出一次，这张牌在本局游戏中的格挡值永久增加[Increase]点。"
+  },
+  "GHOST_EATER": {
+    "id": "GHOST_EATER",
+    "name": "噬魂者",
+    "description": "移除所有灾厄。\n每移除6层灾厄获得[Energy]。"
+  },
+  "GIANT_ROCK": {
+    "id": "GIANT_ROCK",
+    "name": "巨石",
+    "description": "造成[Damage]点伤害。"
+  },
+  "GLACIER": {
+    "id": "GLACIER",
+    "name": "冰川",
+    "description": "获得[Block]点格挡。\n生成2个冰霜充能球。"
+  },
+  "GLASSWORK": {
+    "id": "GLASSWORK",
+    "name": "玻璃工艺",
+    "description": "获得[Block]点格挡。\n生成1个玻璃充能球。"
+  },
+  "GLIMMER": {
+    "id": "GLIMMER",
+    "name": "微光",
+    "description": "抽[Cards]张牌。\n将你手牌中的[PutBack]张牌放到抽牌堆顶部。"
+  },
+  "GLIMPSE_BEYOND": {
+    "id": "GLIMPSE_BEYOND",
+    "name": "彼岸一瞥",
+    "description": "在所有玩家的抽牌堆中加入[Cards]张灵魂。"
+  },
+  "GLITTERSTREAM": {
+    "id": "GLITTERSTREAM",
+    "name": "流光溢彩",
+    "description": "获得[Block]点格挡。\n在下一回合获得[BlockNextTurn]点格挡。"
+  },
+  "GLOW": {
+    "id": "GLOW",
+    "name": "辉光",
+    "description": "获得[Stars]。\n抽[Cards]张牌。\n下一回合抽[Cards]张牌[Cards]。"
+  },
+  "GOLD_AXE": {
+    "id": "GOLD_AXE",
+    "name": "金斧",
+    "description": "造成本场战斗中所打出牌数的伤害。[InCombat]点伤害）|}"
+  },
+  "GOOD_INSTINCTS": {
+    "id": "GOOD_INSTINCTS",
+    "name": "优秀直觉",
+    "description": "获得[Block]点格挡。"
+  },
+  "GO_FOR_THE_EYES": {
+    "id": "GO_FOR_THE_EYES",
+    "name": "眼部攻击",
+    "description": "造成[Damage]点伤害。\n如果敌人的意图是攻击，则给予[WeakPower]层虚弱。"
+  },
+  "GRAND_FINALE": {
+    "id": "GRAND_FINALE",
+    "name": "华丽收场",
+    "description": "只有当你的抽牌堆中没有牌时才能打出。对所有敌人造成[Damage]点伤害。"
+  },
+  "GRAVEBLAST": {
+    "id": "GRAVEBLAST",
+    "name": "坟冢爆射",
+    "description": "造成[Damage]点伤害。\n将弃牌堆中的一张牌放入你的手牌。"
+  },
+  "GRAVE_WARDEN": {
+    "id": "GRAVE_WARDEN",
+    "name": "守墓人",
+    "description": "获得[Block]点格挡。\n将一张灵魂放入你的抽牌堆中。"
+  },
+  "GREED": {
+    "id": "GREED",
+    "name": "贪婪",
+    "description": ""
+  },
+  "GUARDS": {
+    "id": "GUARDS",
+    "name": "护驾！！！",
+    "description": "将你手牌中的任意张牌变化为[IfUpgraded]。"
+  },
+  "GUIDING_STAR": {
+    "id": "GUIDING_STAR",
+    "name": "引导之星",
+    "description": "造成[Damage]点伤害。\n抽[Cards]张牌。"
+  },
+  "GUILTY": {
+    "id": "GUILTY",
+    "name": "愧疚",
+    "description": "在[Combats]场战斗后从你的牌组中移除。"
+  },
+  "GUNK_UP": {
+    "id": "GUNK_UP",
+    "name": "污秽攻击",
+    "description": "造成[Damage]点伤害[Repeat]次。\n在你的弃牌堆中加入一张黏液。"
+  },
+  "HAILSTORM": {
+    "id": "HAILSTORM",
+    "name": "冰雹风暴",
+    "description": "在你的回合结束时，如果你有冰霜充能球，则对所有敌人造成[HailstormPower]点伤害。"
+  },
+  "HAMMER_TIME": {
+    "id": "HAMMER_TIME",
+    "name": "锤子时间",
+    "description": "每当你铸造时，所有盟友也都铸造相同的数值。"
+  },
+  "HAND_OF_GREED": {
+    "id": "HAND_OF_GREED",
+    "name": "贪婪之手",
+    "description": "造成[Damage]点伤害。\n斩杀时，获得[Gold]金币。"
+  },
+  "HAND_TRICK": {
+    "id": "HAND_TRICK",
+    "name": "手上技法",
+    "description": "获得[Block]点格挡。\n在本回合给你手牌中的一张技能牌添加奇巧。"
+  },
+  "HANG": {
+    "id": "HANG",
+    "name": "吊杀",
+    "description": "造成[Damage]点伤害。\n让所有“吊杀”牌对这名敌人造成的伤害翻倍。"
+  },
+  "HAUNT": {
+    "id": "HAUNT",
+    "name": "纠缠",
+    "description": "每当你打出一张灵魂时，随机一名敌人失去[HpLoss]点生命。"
+  },
+  "HAVOC": {
+    "id": "HAVOC",
+    "name": "破灭",
+    "description": "打出抽牌堆顶部的牌并将其消耗。"
+  },
+  "HAZE": {
+    "id": "HAZE",
+    "name": "迷雾",
+    "description": "给予所有敌人[PoisonPower]层中毒。"
+  },
+  "HEADBUTT": {
+    "id": "HEADBUTT",
+    "name": "头槌",
+    "description": "造成[Damage]点伤害。\n将你弃牌堆中的一张牌放到抽牌堆顶部。"
+  },
+  "HEAVENLY_DRILL": {
+    "id": "HEAVENLY_DRILL",
+    "name": "天际钻头",
+    "description": "造成[Damage]点伤害X次。\n如果X的最终数值为[Energy]或以上，则将X的数值翻倍。"
+  },
+  "HEGEMONY": {
+    "id": "HEGEMONY",
+    "name": "霸权",
+    "description": "造成[Damage]点伤害。\n在下个回合获得[Energy]。"
+  },
+  "HEIRLOOM_HAMMER": {
+    "id": "HEIRLOOM_HAMMER",
+    "name": "传承之锤",
+    "description": "造成[Damage]点伤害。\n选择你手牌中的一张无色牌。将这张牌的一张复制品放入你的手牌。"
+  },
+  "HELIX_DRILL": {
+    "id": "HELIX_DRILL",
+    "name": "螺旋钻击",
+    "description": "在本回合中，每个被使用的[energyPrefix]，都会使此牌造成[Damage]点伤害一次。[InCombat]次）|}"
+  },
+  "HELLO_WORLD": {
+    "id": "HELLO_WORLD",
+    "name": "你好世界",
+    "description": "在你的回合开始时，将一张随机普通牌加入你的手牌。"
+  },
+  "HELLRAISER": {
+    "id": "HELLRAISER",
+    "name": "地狱狂徒",
+    "description": "每当你抽到名字中有“打击”的牌时，对一名随机敌人打出这张牌。"
+  },
+  "HEMOKINESIS": {
+    "id": "HEMOKINESIS",
+    "name": "御血术",
+    "description": "失去[HpLoss]点生命。\n造成[Damage]点伤害。"
+  },
+  "HIDDEN_CACHE": {
+    "id": "HIDDEN_CACHE",
+    "name": "隐秘藏品",
+    "description": "获得[Stars]。\n在下个回合获得[StarNextTurnPower]。"
+  },
+  "HIDDEN_DAGGERS": {
+    "id": "HIDDEN_DAGGERS",
+    "name": "隐秘匕首",
+    "description": "丢弃[Cards]张牌。\n将[Shivs]张[IfUpgraded]加入你的手牌。"
+  },
+  "HIDDEN_GEM": {
+    "id": "HIDDEN_GEM",
+    "name": "未掘宝石",
+    "description": "你抽牌堆中的一张没有重放的随机牌获得[Replay]层重放。"
+  },
+  "HIGH_FIVE": {
+    "id": "HIGH_FIVE",
+    "name": "击掌",
+    "description": "奥斯提对所有敌人\n造成[OstyDamage]点伤害并给予它们\n[VulnerablePower]层易伤。"
+  },
+  "HOLOGRAM": {
+    "id": "HOLOGRAM",
+    "name": "全息影像",
+    "description": "获得[Block]点格挡。\n将弃牌堆中的一张牌放入你的手牌。"
+  },
+  "HOTFIX": {
+    "id": "HOTFIX",
+    "name": "热修复",
+    "description": "在本回合获得[FocusPower]点集中。"
+  },
+  "HOWL_FROM_BEYOND": {
+    "id": "HOWL_FROM_BEYOND",
+    "name": "彼岸咆哮",
+    "description": "对所有敌人造成[Damage]点伤害。\n在你的回合结束时，如果这张牌在你的消耗牌堆中，则将其打出。"
+  },
+  "HUDDLE_UP": {
+    "id": "HUDDLE_UP",
+    "name": "抱团",
+    "description": "所有玩家抽[Cards]张牌。"
+  },
+  "HYPERBEAM": {
+    "id": "HYPERBEAM",
+    "name": "超能光束",
+    "description": "对所有敌人造成[Damage]点伤害。\n失去[FocusPower]点集中。"
+  },
+  "ICE_LANCE": {
+    "id": "ICE_LANCE",
+    "name": "冰之长枪",
+    "description": "造成[Damage]点伤害。\n生成[Repeat]个冰霜充能球。"
+  },
+  "IGNITION": {
+    "id": "IGNITION",
+    "name": "引火",
+    "description": "使另一名玩家生成等离子充能球。"
+  },
+  "IMMORTALITY": {
+    "id": "IMMORTALITY",
+    "name": "不朽",
+    "description": "失去[HpLoss]点生命。\n获得[IntangiblePower]层无实体。"
+  },
+  "IMPALE": {
+    "id": "IMPALE",
+    "name": "扎穿",
+    "description": "造成[Damage]点伤害。\n给予[PoisonPower]层中毒。"
+  },
+  "IMPATIENCE": {
+    "id": "IMPATIENCE",
+    "name": "急躁",
+    "description": "如果你的手牌中没有攻击牌，抽[Cards]张牌。"
+  },
+  "IMPERVIOUS": {
+    "id": "IMPERVIOUS",
+    "name": "岿然不动",
+    "description": "获得[Block]点格挡。"
+  },
+  "INFECTION": {
+    "id": "INFECTION",
+    "name": "感染",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，你受到[Damage]点伤害。"
+  },
+  "INFERNAL_BLADE": {
+    "id": "INFERNAL_BLADE",
+    "name": "地狱之刃",
+    "description": "将一张随机攻击牌加入你的手牌。那张牌在本回合内可以免费打出。"
+  },
+  "INFERNO": {
+    "id": "INFERNO",
+    "name": "狱火",
+    "description": "在你的回合开始时，失去1点生命。\n每当你在你的回合内失去生命时，对所有敌人造成[InfernoPower]点伤害。"
+  },
+  "INFINITE_BLADES": {
+    "id": "INFINITE_BLADES",
+    "name": "无尽刀刃",
+    "description": "在你的回合开始时，在你的手牌中加入1张小刀。"
+  },
+  "INFLAME": {
+    "id": "INFLAME",
+    "name": "燃烧",
+    "description": "获得[StrengthPower]点力量。"
+  },
+  "INJURY": {
+    "id": "INJURY",
+    "name": "受伤",
+    "description": ""
+  },
+  "INTERCEPT": {
+    "id": "INTERCEPT",
+    "name": "拦截",
+    "description": "获得[Block]点格挡。\n将本回合所有要对另一名玩家发起的攻击转移到你的身上。"
+  },
+  "INVOKE": {
+    "id": "INVOKE",
+    "name": "唤起",
+    "description": "在下个回合召唤[Summon]并获得[Energy]。"
+  },
+  "IRON_WAVE": {
+    "id": "IRON_WAVE",
+    "name": "铁斩波",
+    "description": "获得[Block]点格挡。\n造成[Damage]点伤害。"
+  },
+  "ITERATION": {
+    "id": "ITERATION",
+    "name": "迭代",
+    "description": "每回合你第一次抽到状态牌时，抽[IterationPower]张牌。"
+  },
+  "I_AM_INVINCIBLE": {
+    "id": "I_AM_INVINCIBLE",
+    "name": "所向无敌",
+    "description": "获得[Block]点格挡。\n在你的回合结束时，如果这张牌位于抽牌堆顶部，则将其打出。"
+  },
+  "JACKPOT": {
+    "id": "JACKPOT",
+    "name": "大奖",
+    "description": "造成[Damage]点伤害。\n将[Cards]张随机[IfUpgraded]0[energyPrefix]的牌加入你的手牌。"
+  },
+  "JACK_OF_ALL_TRADES": {
+    "id": "JACK_OF_ALL_TRADES",
+    "name": "花样百出",
+    "description": "将[Cards]张随机无色牌加入你的手牌。"
+  },
+  "JUGGERNAUT": {
+    "id": "JUGGERNAUT",
+    "name": "势不可当",
+    "description": "每当你获得格挡时，对随机敌人造成[JuggernautPower]点伤害。"
+  },
+  "JUGGLING": {
+    "id": "JUGGLING",
+    "name": "杂耍",
+    "description": "将你在每回合打出的第三张攻击牌的复制品加入你的手牌。"
+  },
+  "KINGLY_KICK": {
+    "id": "KINGLY_KICK",
+    "name": "王者之踢",
+    "description": "造成[Damage]点伤害。\n每当你抽到这张牌时，这张牌的耗能减少1。"
+  },
+  "KINGLY_PUNCH": {
+    "id": "KINGLY_PUNCH",
+    "name": "王者之拳",
+    "description": "造成[Damage]点伤害。\n每当你抽到这张牌时，在这场战斗中其伤害增加[Increase]。"
+  },
+  "KNIFE_TRAP": {
+    "id": "KNIFE_TRAP",
+    "name": "刀刃陷阱",
+    "description": "将你消耗牌堆中的所有小刀[IfUpgraded]对一名敌人打出。[InCombat]张小刀）|}"
+  },
+  "KNOCKDOWN": {
+    "id": "KNOCKDOWN",
+    "name": "击倒",
+    "description": "造成[Damage]点伤害。\n该敌人在本回合受到的来自其他玩家的伤害变为[IfUpgraded]。"
+  },
+  "KNOCKOUT_BLOW": {
+    "id": "KNOCKOUT_BLOW",
+    "name": "决胜一击",
+    "description": "造成[Damage]点伤害。\n如果此牌击杀了敌人，获得[Stars]。"
+  },
+  "KNOW_THY_PLACE": {
+    "id": "KNOW_THY_PLACE",
+    "name": "何人僭越",
+    "description": "给予[WeakPower]层虚弱。\n给予[VulnerablePower]层易伤。"
+  },
+  "LANTERN_KEY": {
+    "id": "LANTERN_KEY",
+    "name": "灯火钥匙",
+    "description": "在下一阶段解锁一个特殊事件。"
+  },
+  "LARGESSE": {
+    "id": "LARGESSE",
+    "name": "慷慨捐助",
+    "description": "将一张随机的[IfUpgraded]无色牌添加至一位其他玩家的手牌中。"
+  },
+  "LEADING_STRIKE": {
+    "id": "LEADING_STRIKE",
+    "name": "先制打击",
+    "description": "造成[Damage]点伤害。\n将[Shivs]张小刀加入你的手牌。"
+  },
+  "LEAP": {
+    "id": "LEAP",
+    "name": "飞跃",
+    "description": "获得[Block]点格挡。"
+  },
+  "LEGION_OF_BONE": {
+    "id": "LEGION_OF_BONE",
+    "name": "骸骨军团",
+    "description": "所有玩家召唤[Summon]。"
+  },
+  "LEG_SWEEP": {
+    "id": "LEG_SWEEP",
+    "name": "扫腿",
+    "description": "给予[WeakPower]层虚弱。\n获得[Block]点格挡。"
+  },
+  "LETHALITY": {
+    "id": "LETHALITY",
+    "name": "致死性",
+    "description": "每回合的第一张攻击牌会造成[LethalityPower]%额外伤害。"
+  },
+  "LIFT": {
+    "id": "LIFT",
+    "name": "托举",
+    "description": "给另一名玩家[Block]点格挡。"
+  },
+  "LIGHTNING_ROD": {
+    "id": "LIGHTNING_ROD",
+    "name": "引雷针",
+    "description": "获得[Block]点格挡。\n在下[LightningRodPower]个回合开始时,生成1个闪电充能球。"
+  },
+  "LOOP": {
+    "id": "LOOP",
+    "name": "循环",
+    "description": "在你的回合开始时，触发你最右侧的一个充能球的被动能力[IfUpgraded]。"
+  },
+  "LUMINESCE": {
+    "id": "LUMINESCE",
+    "name": "冷光",
+    "description": "获得[Energy]。"
+  },
+  "LUNAR_BLAST": {
+    "id": "LUNAR_BLAST",
+    "name": "月面射击",
+    "description": "本回合中每打出过一张技能牌，此牌额外造成[Damage]点伤害一次。[InCombat]次）|}"
+  },
+  "MACHINE_LEARNING": {
+    "id": "MACHINE_LEARNING",
+    "name": "机器学习",
+    "description": "在你的回合开始时，额外抽[Cards]张牌。"
+  },
+  "MAD_SCIENCE": {
+    "id": "MAD_SCIENCE",
+    "name": "疯狂科学",
+    "description": "[CardType]点伤害[Violence]次|}。|获得[Block]点格挡。||？？？}[HasRider]层虚弱。\n给予[SappingVulnerable]层易伤。|}[Choking]点生命。|}[Energized]。|}[Wisdom]张牌|}[Chaos][Expertise]点力量。\n获得[ExpertiseDexterity]点敏捷。|}[Curious][energyPrefix]。|}[Improvement]|[CardType]}"
+  },
+  "MAKE_IT_SO": {
+    "id": "MAKE_IT_SO",
+    "name": "如此甚好",
+    "description": "造成[Damage]点伤害。\n你每在一回合内打出[Cards]张技能牌，就将这张牌放入你的手牌。"
+  },
+  "MALAISE": {
+    "id": "MALAISE",
+    "name": "萎靡",
+    "description": "敌人失去X[IfUpgraded]点力量。给予X[IfUpgraded]层虚弱。"
+  },
+  "MANGLE": {
+    "id": "MANGLE",
+    "name": "凌虐",
+    "description": "造成[Damage]点伤害。\n敌人在本回合失去[StrengthLoss]点力量。"
+  },
+  "MANIFEST_AUTHORITY": {
+    "id": "MANIFEST_AUTHORITY",
+    "name": "君权自授",
+    "description": "获得[Block]点格挡。\n将一张随机[IfUpgraded]无色牌加入你的手牌。"
+  },
+  "MASTER_OF_STRATEGY": {
+    "id": "MASTER_OF_STRATEGY",
+    "name": "战略大师",
+    "description": "抽[Cards]张牌。"
+  },
+  "MASTER_PLANNER": {
+    "id": "MASTER_PLANNER",
+    "name": "谋划专家",
+    "description": "当你打出技能牌时，该牌获得奇巧。"
+  },
+  "MAUL": {
+    "id": "MAUL",
+    "name": "撕咬",
+    "description": "造成[Damage]点伤害两次。\n在这场战斗中，将所有“撕咬”牌的伤害增加[Increase]。"
+  },
+  "MAYHEM": {
+    "id": "MAYHEM",
+    "name": "乱战",
+    "description": "在你的回合开始时，打出你抽牌堆顶部的牌。"
+  },
+  "MELANCHOLY": {
+    "id": "MELANCHOLY",
+    "name": "忧郁",
+    "description": "获得[Block]点格挡。\n每当有任何生物死亡时，这张牌的耗能减少[Energy]。"
+  },
+  "MEMENTO_MORI": {
+    "id": "MEMENTO_MORI",
+    "name": "铭记死亡",
+    "description": "造成[CalculatedDamage]点伤害。\n本回合每丢弃过一张牌，则增加[ExtraDamage]点额外伤害。"
+  },
+  "METAMORPHOSIS": {
+    "id": "METAMORPHOSIS",
+    "name": "羽化",
+    "description": "在你的抽牌堆中加入[Cards]张随机攻击牌。它们在本场战斗中可以被免费打出。"
+  },
+  "METEOR_SHOWER": {
+    "id": "METEOR_SHOWER",
+    "name": "流星雨",
+    "description": "对所有敌人造成[Damage]点伤害。\n给予所有敌人[WeakPower]层虚弱和易伤。"
+  },
+  "METEOR_STRIKE": {
+    "id": "METEOR_STRIKE",
+    "name": "陨石打击",
+    "description": "造成[Damage]点伤害。\n生成3个等离子充能球。"
+  },
+  "MIMIC": {
+    "id": "MIMIC",
+    "name": "拟态",
+    "description": "获得等同于另一位玩家格挡值的格挡。"
+  },
+  "MIND_BLAST": {
+    "id": "MIND_BLAST",
+    "name": "心灵震慑",
+    "description": "造成你抽牌堆中剩余牌数的伤害。[InCombat]点伤害）|}"
+  },
+  "MIND_ROT": {
+    "id": "MIND_ROT",
+    "name": "心灵腐化",
+    "description": "每回合少抽[MindRotPower]张牌。"
+  },
+  "MINION_DIVE_BOMB": {
+    "id": "MINION_DIVE_BOMB",
+    "name": "仆从俯冲",
+    "description": "造成[Damage]点伤害。"
+  },
+  "MINION_SACRIFICE": {
+    "id": "MINION_SACRIFICE",
+    "name": "仆从捐躯",
+    "description": "获得[Block]点格挡。"
+  },
+  "MINION_STRIKE": {
+    "id": "MINION_STRIKE",
+    "name": "仆从打击",
+    "description": "造成[Damage]点伤害。\n抽[Cards]张牌。"
+  },
+  "MIRAGE": {
+    "id": "MIRAGE",
+    "name": "蜃景",
+    "description": "获得等同于所有敌人中毒层数的格挡。[InCombat]点格挡）|}"
+  },
+  "MISERY": {
+    "id": "MISERY",
+    "name": "苦难",
+    "description": "造成[Damage]点伤害。\n给予其他敌人该名敌人身上的所有负面效果。"
+  },
+  "MOCK_ATTACK_CARD": {
+    "id": "MOCK_ATTACK_CARD",
+    "name": "模拟攻击牌",
+    "description": ""
+  },
+  "MOCK_CURSE_CARD": {
+    "id": "MOCK_CURSE_CARD",
+    "name": "模拟诅咒牌",
+    "description": ""
+  },
+  "MOCK_QUEST_CARD": {
+    "id": "MOCK_QUEST_CARD",
+    "name": "临时任务牌",
+    "description": ""
+  },
+  "MOCK_SKILL_CARD": {
+    "id": "MOCK_SKILL_CARD",
+    "name": "模拟技能牌",
+    "description": ""
+  },
+  "MOCK_STATUS_CARD": {
+    "id": "MOCK_STATUS_CARD",
+    "name": "模拟状态牌",
+    "description": ""
+  },
+  "MODDED": {
+    "id": "MODDED",
+    "name": "模组改造",
+    "description": "获得[Repeat]个充能球栏位。\n抽[Cards]张牌。这张牌的耗能加1。"
+  },
+  "MOLTEN_FIST": {
+    "id": "MOLTEN_FIST",
+    "name": "熔融之拳",
+    "description": "造成[Damage]点伤害。\n将该敌人身上的易伤层数翻倍。"
+  },
+  "MOMENTUM_STRIKE": {
+    "id": "MOMENTUM_STRIKE",
+    "name": "趁势打击",
+    "description": "造成[Damage]点伤害。\n这张牌的耗能降为0[energyPrefix]。"
+  },
+  "MONARCHS_GAZE": {
+    "id": "MONARCHS_GAZE",
+    "name": "王之凝视",
+    "description": "每当你攻击敌人的时候，这名敌人在本回合失去[StrengthLoss]点力量。"
+  },
+  "MONOLOGUE": {
+    "id": "MONOLOGUE",
+    "name": "独白",
+    "description": "每当你在本回合打出卡牌时，在本回合获得[Power]点力量。"
+  },
+  "MULTI_CAST": {
+    "id": "MULTI_CAST",
+    "name": "多重释放",
+    "description": "激发你最右侧的充能球[IfUpgraded]次。"
+  },
+  "MURDER": {
+    "id": "MURDER",
+    "name": "谋杀",
+    "description": "造成[CalculatedDamage]点伤害。\n你在本场战斗中每抽过一张牌，此牌就额外造成[ExtraDamage]点伤害。"
+  },
+  "NECRO_MASTERY": {
+    "id": "NECRO_MASTERY",
+    "name": "亡灵精通",
+    "description": "召唤[Summon]。\n每当奥斯提失去生命值时，\n所有敌人失去等量生命值。"
+  },
+  "NEGATIVE_PULSE": {
+    "id": "NEGATIVE_PULSE",
+    "name": "负能量脉冲",
+    "description": "获得[Block]点格挡。\n给予所有敌人[DoomPower]层灾厄。"
+  },
+  "NEUROSURGE": {
+    "id": "NEUROSURGE",
+    "name": "精神过载",
+    "description": "获得[Energy]。\n抽[Cards]张牌。\n在你的回合开始时，给予自身[NeurosurgePower]层灾厄。"
+  },
+  "NEUTRALIZE": {
+    "id": "NEUTRALIZE",
+    "name": "中和",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。"
+  },
+  "NEUTRON_AEGIS": {
+    "id": "NEUTRON_AEGIS",
+    "name": "中子护盾",
+    "description": "获得[PlatingPower]层覆甲。"
+  },
+  "NIGHTMARE": {
+    "id": "NIGHTMARE",
+    "name": "夜魇",
+    "description": "选择一张牌。\n在下个回合将这张牌的3张复制品加入你的手牌。"
+  },
+  "NORMALITY": {
+    "id": "NORMALITY",
+    "name": "凡庸",
+    "description": "你在本回合不能打出超过3张牌。[InCombat]张牌）|}"
+  },
+  "NOSTALGIA": {
+    "id": "NOSTALGIA",
+    "name": "怀旧",
+    "description": "每回合首次打出攻击或技能牌时，将其置于你的抽牌堆顶端。"
+  },
+  "NOT_YET": {
+    "id": "NOT_YET",
+    "name": "时候未到",
+    "description": "回复[Heal]点生命。"
+  },
+  "NOXIOUS_FUMES": {
+    "id": "NOXIOUS_FUMES",
+    "name": "毒雾",
+    "description": "在你的回合开始时，给予所有敌人[PoisonPerTurn]层中毒。"
+  },
+  "NO_ESCAPE": {
+    "id": "NO_ESCAPE",
+    "name": "无处可逃",
+    "description": "给予[CalculationBase]层灾厄，敌人身上每有[DoomThreshold]层灾厄，则额外给予这名敌人[CalculationExtra]层灾厄。[IsTargeting]层灾厄）|}"
+  },
+  "NULL": {
+    "id": "NULL",
+    "name": "空值",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。\n生成1个黑暗充能球。"
+  },
+  "OBLIVION": {
+    "id": "OBLIVION",
+    "name": "湮灭",
+    "description": "打出此牌后，你在本回合内每打出一张牌，就给予该敌人[DoomPower]层灾厄。"
+  },
+  "OFFERING": {
+    "id": "OFFERING",
+    "name": "祭品",
+    "description": "失去[HpLoss]点生命。\n获得[Energy]。\n抽[Cards]张牌。"
+  },
+  "OFF_BY_ONE": {
+    "id": "OFF_BY_ONE",
+    "name": "一线之差",
+    "description": "如果你在结束回合时手牌正好只有1张牌，则在下回合开始时额外获得1点[Energy]。"
+  },
+  "OMNISLICE": {
+    "id": "OMNISLICE",
+    "name": "万向斩",
+    "description": "造成[Damage]点伤害。\n对所有其他敌人造成等量的伤害。"
+  },
+  "ONE_TWO_PUNCH": {
+    "id": "ONE_TWO_PUNCH",
+    "name": "连环拳",
+    "description": "在这个回合，你打出的下[Attacks]张攻击牌会被额外打出一次。"
+  },
+  "ORBIT": {
+    "id": "ORBIT",
+    "name": "环绕轨道",
+    "description": "你每花费[energyPrefix]，\n就获得[Energy]。"
+  },
+  "OUTBREAK": {
+    "id": "OUTBREAK",
+    "name": "毒性爆发",
+    "description": "每当你给予[Repeat]次中毒，就对所有敌人造成[OutbreakPower]点伤害。"
+  },
+  "OUTMANEUVER": {
+    "id": "OUTMANEUVER",
+    "name": "抢占先机",
+    "description": "在下个回合获得[Energy]。"
+  },
+  "OVERCLOCK": {
+    "id": "OVERCLOCK",
+    "name": "超频",
+    "description": "抽[Cards]张牌。\n将一张灼伤加入你的弃牌堆。"
+  },
+  "PACTS_END": {
+    "id": "PACTS_END",
+    "name": "契约终结",
+    "description": "如果你的消耗牌堆拥有大于等于[Cards]张[Cards]，\n则对所有敌人造成[Damage]点伤害。"
+  },
+  "PAELS_STRIKE": {
+    "id": "PAELS_STRIKE",
+    "name": "佩尔的打击",
+    "description": "造成等同于你的牌组数量的伤害。[InCombat]点伤害）|}"
+  },
+  "PAGESTORM": {
+    "id": "PAGESTORM",
+    "name": "书页风暴",
+    "description": "每当你抽到一张虚无牌时, 抽[Cards]张牌。"
+  },
+  "PALE_BLUE_DOT": {
+    "id": "PALE_BLUE_DOT",
+    "name": "暗淡蓝点",
+    "description": "如果你在一回合内打出了大于等于{CardPlay}张牌，在下个回合开始时抽[Cards]张牌。"
+  },
+  "PANACHE": {
+    "id": "PANACHE",
+    "name": "神气制胜",
+    "description": "每当你在一回合内打出五张牌时，对所有敌人造成[PanacheDamage]点伤害。"
+  },
+  "PANIC_BUTTON": {
+    "id": "PANIC_BUTTON",
+    "name": "应急按钮",
+    "description": "获得[Block]点格挡。\n你在接下来的[Turns]回合内无法再从卡牌中获得格挡。"
+  },
+  "PARRY": {
+    "id": "PARRY",
+    "name": "招架",
+    "description": "君王之剑现在能让你获得[ParryPower]点格挡。"
+  },
+  "PARSE": {
+    "id": "PARSE",
+    "name": "领会",
+    "description": "抽[Cards]张牌。"
+  },
+  "PARTICLE_WALL": {
+    "id": "PARTICLE_WALL",
+    "name": "粒子墙",
+    "description": "获得[Block]点格挡。\n将此牌返回你的手牌。"
+  },
+  "PATTER": {
+    "id": "PATTER",
+    "name": "星星点点",
+    "description": "获得[Block]点格挡。\n获得[VigorPower]点活力。"
+  },
+  "PECK": {
+    "id": "PECK",
+    "name": "啄击",
+    "description": "造成[Damage]点伤害[Repeat]次。"
+  },
+  "PERFECTED_STRIKE": {
+    "id": "PERFECTED_STRIKE",
+    "name": "完美打击",
+    "description": "造成[CalculatedDamage]点伤害。\n你每有一张名字中含有“打击”的牌，伤害+[ExtraDamage]。"
+  },
+  "PHANTOM_BLADES": {
+    "id": "PHANTOM_BLADES",
+    "name": "幻影之刃",
+    "description": "小刀获得保留。\n你在每回合打出的第一张小刀额外造成[PhantomBladesPower]点伤害。"
+  },
+  "PHOTON_CUT": {
+    "id": "PHOTON_CUT",
+    "name": "光子切割",
+    "description": "造成[Damage]点伤害。\n抽[Cards]张牌。\n将手牌中的一张牌放到抽牌堆顶部。"
+  },
+  "PIERCING_WAIL": {
+    "id": "PIERCING_WAIL",
+    "name": "尖啸",
+    "description": "所有敌人在本回合失去[StrengthLoss]点力量。"
+  },
+  "PILLAGE": {
+    "id": "PILLAGE",
+    "name": "劫掠",
+    "description": "造成[Damage]点伤害。\n抽牌直到你抽到一张非攻击牌。"
+  },
+  "PILLAR_OF_CREATION": {
+    "id": "PILLAR_OF_CREATION",
+    "name": "创世之柱",
+    "description": "每当你生成一张卡牌, 就获得[Block]点格挡。"
+  },
+  "PINPOINT": {
+    "id": "PINPOINT",
+    "name": "精密瞄准",
+    "description": "造成[Damage]点伤害。\n你在本回合中每打出过一张技能牌，其耗能减少1[energyPrefix]。"
+  },
+  "PITY": {
+    "id": "PITY",
+    "name": "怜悯",
+    "description": "完全回复一名敌人的所有生命。\n每恢复[Hp]点生命，就获得{singleStarIcon}。"
+  },
+  "POISONED_STAB": {
+    "id": "POISONED_STAB",
+    "name": "带毒刺击",
+    "description": "造成[Damage]点伤害。\n给予[PoisonPower]层中毒。"
+  },
+  "POKE": {
+    "id": "POKE",
+    "name": "戳击",
+    "description": "奥斯提造成[OstyDamage]点伤害。"
+  },
+  "POMMEL_STRIKE": {
+    "id": "POMMEL_STRIKE",
+    "name": "剑柄打击",
+    "description": "造成[Damage]点伤害。\n抽[Cards]张牌。"
+  },
+  "POOR_SLEEP": {
+    "id": "POOR_SLEEP",
+    "name": "睡眠不佳",
+    "description": ""
+  },
+  "POUNCE": {
+    "id": "POUNCE",
+    "name": "猛扑",
+    "description": "造成[Damage]点伤害。\n你的下一张技能牌耗能变为0[energyPrefix]。"
+  },
+  "PRECISE_CUT": {
+    "id": "PRECISE_CUT",
+    "name": "精确切击",
+    "description": "造成[CalculatedDamage]点伤害。\n你的手牌中每有一张牌，此牌的伤害就降低[ExtraDamage]点。"
+  },
+  "PREDATOR": {
+    "id": "PREDATOR",
+    "name": "猎杀者",
+    "description": "造成[Damage]点伤害。\n在下个回合抽2张牌。"
+  },
+  "PREPARED": {
+    "id": "PREPARED",
+    "name": "早有准备",
+    "description": "抽[Cards]张牌。\n丢弃[Cards]张牌。"
+  },
+  "PREP_TIME": {
+    "id": "PREP_TIME",
+    "name": "准备时间",
+    "description": "在你的回合开始时，获得[PrepTimePower]点活力。"
+  },
+  "PRIMAL_FORCE": {
+    "id": "PRIMAL_FORCE",
+    "name": "原始力量",
+    "description": "将手牌中的所有攻击牌变化为[IfUpgraded]。"
+  },
+  "PRODUCTION": {
+    "id": "PRODUCTION",
+    "name": "生产制造",
+    "description": "获得[Energy]。"
+  },
+  "PROLONG": {
+    "id": "PROLONG",
+    "name": "延伸",
+    "description": "在下个回合获得等量于你当前格挡值的格挡。"
+  },
+  "PROPHESIZE": {
+    "id": "PROPHESIZE",
+    "name": "预言",
+    "description": "抽[Cards]张牌。"
+  },
+  "PROTECTOR": {
+    "id": "PROTECTOR",
+    "name": "守护者",
+    "description": "奥斯提造成[CalculatedDamage]点伤害。\n额外造成等量于奥斯提最大生命值的伤害。"
+  },
+  "PROWESS": {
+    "id": "PROWESS",
+    "name": "非凡技艺",
+    "description": "获得[StrengthPower]点力量。\n获得[DexterityPower]点敏捷。"
+  },
+  "PULL_AGGRO": {
+    "id": "PULL_AGGRO",
+    "name": "吸引仇恨",
+    "description": "召唤[Summon]。\n获得[Block]点格挡。"
+  },
+  "PULL_FROM_BELOW": {
+    "id": "PULL_FROM_BELOW",
+    "name": "亡魂牵引",
+    "description": "本场战斗中每打出过一张虚无牌，此牌就造成[Damage]点伤害一次。[InCombat]次）|}"
+  },
+  "PURITY": {
+    "id": "PURITY",
+    "name": "净化",
+    "description": "从手牌中选择最多[Cards]张牌消耗。"
+  },
+  "PUTREFY": {
+    "id": "PUTREFY",
+    "name": "腐败",
+    "description": "给予[Power]层虚弱。\n给予[Power]层易伤。"
+  },
+  "PYRE": {
+    "id": "PYRE",
+    "name": "薪火之源",
+    "description": "在回合开始时，获得[Energy]。"
+  },
+  "QUADCAST": {
+    "id": "QUADCAST",
+    "name": "四重释放",
+    "description": "激发你最右侧的充能球[Repeat]次。"
+  },
+  "QUASAR": {
+    "id": "QUASAR",
+    "name": "类星体",
+    "description": "从3张随机[IfUpgraded]无色牌中选择1张加入你的手牌。"
+  },
+  "QUICK_SLASH": {
+    "id": "QUICK_SLASH",
+    "name": "快斩",
+    "description": "造成[Damage]点伤害。\n抽1张牌。"
+  },
+  "RADIATE": {
+    "id": "RADIATE",
+    "name": "辐射",
+    "description": "你在本回合每获得一点[Stars]，此牌就对所有敌人造成[Damage]点伤害一次。[InCombat]次）|}"
+  },
+  "RAGE": {
+    "id": "RAGE",
+    "name": "狂怒",
+    "description": "打出此牌后，你在这个回合内每打出一张攻击牌，获得[Power]点格挡。"
+  },
+  "RAINBOW": {
+    "id": "RAINBOW",
+    "name": "彩虹",
+    "description": "生成1个闪电充能球。\n生成1个冰霜充能球。\n生成1个黑暗充能球。"
+  },
+  "RALLY": {
+    "id": "RALLY",
+    "name": "集结",
+    "description": "所有玩家获得[Block]点格挡。"
+  },
+  "RAMPAGE": {
+    "id": "RAMPAGE",
+    "name": "暴走",
+    "description": "造成[Damage]点伤害。\n将这张牌在本场战斗中的伤害增加[Increase]。"
+  },
+  "RATTLE": {
+    "id": "RATTLE",
+    "name": "猛晃",
+    "description": "奥斯提造成[OstyDamage]点伤害。\n本回合每使用过一次奥斯提攻击牌，此牌就额外造成一次伤害。[InCombat]次）|}"
+  },
+  "REANIMATE": {
+    "id": "REANIMATE",
+    "name": "死者苏生",
+    "description": "召唤[Summon]。"
+  },
+  "REAP": {
+    "id": "REAP",
+    "name": "收割",
+    "description": "造成[Damage]点伤害。"
+  },
+  "REAPER_FORM": {
+    "id": "REAPER_FORM",
+    "name": "死神形态",
+    "description": "每当你的攻击造成伤害时，同时给予等量的灾厄。"
+  },
+  "REAVE": {
+    "id": "REAVE",
+    "name": "剥夺",
+    "description": "造成[Damage]点伤害。\n将一张[IfUpgraded]加入你的抽牌堆。"
+  },
+  "REBOOT": {
+    "id": "REBOOT",
+    "name": "重启",
+    "description": "将你的所有未消耗的卡牌重新洗牌放入抽牌堆。\n抽[Cards]张牌。"
+  },
+  "REBOUND": {
+    "id": "REBOUND",
+    "name": "弹回",
+    "description": "造成[Damage]点伤害。\n将你在本回合打出的下一张牌放置到你的抽牌堆顶部。"
+  },
+  "REFINE_BLADE": {
+    "id": "REFINE_BLADE",
+    "name": "淬炼刀刃",
+    "description": "铸造[Forge]。\n在下个回合获得[Energy]。"
+  },
+  "REFLECT": {
+    "id": "REFLECT",
+    "name": "倒映",
+    "description": "获得[Block]点格挡。\n在本回合将你格挡掉的攻击伤害反弹给攻击者。"
+  },
+  "REFLEX": {
+    "id": "REFLEX",
+    "name": "本能反应",
+    "description": "抽[Cards]张牌。"
+  },
+  "REFRACT": {
+    "id": "REFRACT",
+    "name": "折射",
+    "description": "造成[Damage]点伤害两次。\n生成[Repeat]个玻璃充能球。"
+  },
+  "REGRET": {
+    "id": "REGRET",
+    "name": "悔恨",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，失去相当于手牌数量的生命。"
+  },
+  "RELAX": {
+    "id": "RELAX",
+    "name": "放松",
+    "description": "获得[Block]点格挡。\n下个回合，抽[Cards]张牌并获得[Energy]。"
+  },
+  "REND": {
+    "id": "REND",
+    "name": "撕碎",
+    "description": "造成[CalculatedDamage]点伤害。\n该名敌人身上每有一种负面效果，就额外造成[ExtraDamage]点伤害。"
+  },
+  "RESERVES": {
+    "id": "RESERVES",
+    "name": "储备",
+    "description": "如果你没有足够的[energyPrefix]来出牌，则使用2个{singleStarIcon}来代替每个不足的[energyPrefix]。"
+  },
+  "RESONANCE": {
+    "id": "RESONANCE",
+    "name": "共鸣",
+    "description": "获得[StrengthPower]点力量。所有敌人失去1点力量。"
+  },
+  "RESTLESSNESS": {
+    "id": "RESTLESSNESS",
+    "name": "心神不宁",
+    "description": "如果你的手牌为空，则抽[Cards]张牌并获得[Energy]。"
+  },
+  "RICOCHET": {
+    "id": "RICOCHET",
+    "name": "连续反弹",
+    "description": "随机对敌人造成[Damage]点伤害[Repeat]次。"
+  },
+  "RIGHT_HAND_HAND": {
+    "id": "RIGHT_HAND_HAND",
+    "name": "得力助手",
+    "description": "奥斯提造成[OstyDamage]点伤害。\n每当你打出耗能为[Energy]或以上的牌，将此牌从弃牌堆放回你的手牌。"
+  },
+  "RIP_AND_TEAR": {
+    "id": "RIP_AND_TEAR",
+    "name": "狂乱撕扯",
+    "description": "随机对敌人造成[Damage]点伤害两次。"
+  },
+  "ROCKET_PUNCH": {
+    "id": "ROCKET_PUNCH",
+    "name": "火箭飞拳",
+    "description": "造成[Damage]点伤害。\n抽[Cards]张牌。\n每当你生成状态牌时，此牌的耗能将在下一次打出前降为0[energyPrefix]。"
+  },
+  "ROLLING_BOULDER": {
+    "id": "ROLLING_BOULDER",
+    "name": "滚石",
+    "description": "在你的回合开始时，对所有敌人造成[RollingBoulderPower]点伤害，然后将该伤害增加[IncrementAmount]点。"
+  },
+  "ROYALTIES": {
+    "id": "ROYALTIES",
+    "name": "王国资产",
+    "description": "在战斗结束时，获得[Gold]金币。"
+  },
+  "ROYAL_GAMBLE": {
+    "id": "ROYAL_GAMBLE",
+    "name": "胜券在王",
+    "description": "获得[Stars]{singleStarIcon}。"
+  },
+  "RUPTURE": {
+    "id": "RUPTURE",
+    "name": "撕裂",
+    "description": "每当你在你的回合失去生命值时, 获得[StrengthPower]点力量。"
+  },
+  "SACRIFICE": {
+    "id": "SACRIFICE",
+    "name": "牺牲",
+    "description": "如果奥斯提存活，则他死去，然后你获得等量于其双倍最大生命值的格挡。[InCombat]|0}点格挡）|}"
+  },
+  "SALVO": {
+    "id": "SALVO",
+    "name": "箭雨",
+    "description": "造成[Damage]点伤害。\n在本回合保留你的手牌。"
+  },
+  "SCARE": {
+    "id": "SCARE",
+    "name": "恫吓",
+    "description": "给予所有敌人1层虚弱。"
+  },
+  "SCAVENGE": {
+    "id": "SCAVENGE",
+    "name": "内存清理",
+    "description": "消耗一张牌。\n在下个回合获得[Energy]。"
+  },
+  "SCOURGE": {
+    "id": "SCOURGE",
+    "name": "鞭打",
+    "description": "给予[DoomPower]层灾厄。\n抽[Cards]张牌。"
+  },
+  "SCRAPE": {
+    "id": "SCRAPE",
+    "name": "刮削",
+    "description": "造成[Damage]点伤害。\n抽[Cards]张牌。\n丢弃抽到的牌中耗能不为0[energyPrefix]的牌。"
+  },
+  "SCRAWL": {
+    "id": "SCRAWL",
+    "name": "潦草急就",
+    "description": "抽牌直到抽满手牌。"
+  },
+  "SCULPTING_STRIKE": {
+    "id": "SCULPTING_STRIKE",
+    "name": "雕琢打击",
+    "description": "造成[Damage]点伤害。\n为一张手牌添加虚无。"
+  },
+  "SEANCE": {
+    "id": "SEANCE",
+    "name": "降灵",
+    "description": "将你抽牌堆中的一张牌变化为灵魂。"
+  },
+  "SECOND_WIND": {
+    "id": "SECOND_WIND",
+    "name": "重振精神",
+    "description": "消耗手牌中所有非攻击牌，每张获得[Block]点格挡。"
+  },
+  "SECRET_TECHNIQUE": {
+    "id": "SECRET_TECHNIQUE",
+    "name": "秘密技法",
+    "description": "从抽牌堆中选择一张技能牌放入你的手牌。"
+  },
+  "SECRET_WEAPON": {
+    "id": "SECRET_WEAPON",
+    "name": "秘密武器",
+    "description": "从抽牌堆中选择一张攻击牌放入你的手牌。"
+  },
+  "SEEKER_STRIKE": {
+    "id": "SEEKER_STRIKE",
+    "name": "探寻打击",
+    "description": "造成[Damage]点伤害。\n从抽牌堆的随机[Cards]张牌中选择一张加入你的手牌。"
+  },
+  "SEEKING_EDGE": {
+    "id": "SEEKING_EDGE",
+    "name": "追踪之刃",
+    "description": "铸造[Forge]。\n君王之剑现在会对所有敌人造成伤害。"
+  },
+  "SENTRY_MODE": {
+    "id": "SENTRY_MODE",
+    "name": "哨卫模式",
+    "description": "在你的回合开始时，将[SentryModePower]张扫荡凝视加入你的手牌。"
+  },
+  "SERPENT_FORM": {
+    "id": "SERPENT_FORM",
+    "name": "群蛇形态",
+    "description": "你每打出一张牌，就对随机一名敌人造成[SerpentFormPower]点伤害。"
+  },
+  "SETUP_STRIKE": {
+    "id": "SETUP_STRIKE",
+    "name": "预备打击",
+    "description": "造成[Damage]点伤害。\n在本回合内获得[StrengthPower]点力量。"
+  },
+  "SEVEN_STARS": {
+    "id": "SEVEN_STARS",
+    "name": "七星",
+    "description": "对所有敌人造成[Damage]点伤害[Repeat]次。"
+  },
+  "SEVERANCE": {
+    "id": "SEVERANCE",
+    "name": "切断",
+    "description": "造成[Damage]点伤害。\n将一张灵魂分别加入你的抽牌堆，手牌和弃牌堆中。"
+  },
+  "SHADOWMELD": {
+    "id": "SHADOWMELD",
+    "name": "融入暗影",
+    "description": "本回合你获得的格挡值翻倍。"
+  },
+  "SHADOW_SHIELD": {
+    "id": "SHADOW_SHIELD",
+    "name": "暗影之盾",
+    "description": "获得[Block]点格挡。\n生成1个黑暗充能球。"
+  },
+  "SHADOW_STEP": {
+    "id": "SHADOW_STEP",
+    "name": "暗影步",
+    "description": "丢弃所有手牌。\n在下个回合，你所有的攻击伤害翻倍。"
+  },
+  "SHAME": {
+    "id": "SHAME",
+    "name": "羞耻",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，则获得[Frail]层脆弱。"
+  },
+  "SHARED_FATE": {
+    "id": "SHARED_FATE",
+    "name": "命运同担",
+    "description": "失去[PlayerStrengthLoss]点力量。\n敌人失去[EnemyStrengthLoss]点力量。"
+  },
+  "SHARP_EDGE": {
+    "id": "SHARP_EDGE",
+    "name": "锋利边缘",
+    "description": "当你生成小刀时，将其升级。"
+  },
+  "SHATTER": {
+    "id": "SHATTER",
+    "name": "打碎",
+    "description": "对所有敌人造成[Damage]点伤害。\n激发你的所有充能球两次。"
+  },
+  "SHINING_STRIKE": {
+    "id": "SHINING_STRIKE",
+    "name": "明耀打击",
+    "description": "造成[Damage]点伤害。\n获得[Stars]。\n将这张牌放置于你的抽牌堆顶部。"
+  },
+  "SHIV": {
+    "id": "SHIV",
+    "name": "小刀",
+    "description": "[TargetType]造成[Damage]点伤害。"
+  },
+  "SHOCKWAVE": {
+    "id": "SHOCKWAVE",
+    "name": "震荡波",
+    "description": "给予所有敌人[Power]层虚弱和易伤。"
+  },
+  "SHROUD": {
+    "id": "SHROUD",
+    "name": "厄运之衣",
+    "description": "每当你给予灾厄时，获得[Block]点格挡。"
+  },
+  "SHRUG_IT_OFF": {
+    "id": "SHRUG_IT_OFF",
+    "name": "耸肩无视",
+    "description": "获得[Block]点格挡。\n抽[Cards]张牌。"
+  },
+  "SIC_EM": {
+    "id": "SIC_EM",
+    "name": "紧追不放",
+    "description": "奥斯提造成[OstyDamage]点伤害。\n在本回合内，每当奥斯提攻击这名敌人时，召唤[SicEmPower]。"
+  },
+  "SIGNAL_BOOST": {
+    "id": "SIGNAL_BOOST",
+    "name": "信号增强",
+    "description": "你的下一张能力牌会额外打出一次。"
+  },
+  "SKEWER": {
+    "id": "SKEWER",
+    "name": "串刺",
+    "description": "造成[Damage]点伤害X次。"
+  },
+  "SKIM": {
+    "id": "SKIM",
+    "name": "快速检索",
+    "description": "抽[Cards]张牌。"
+  },
+  "SLEIGHT_OF_FLESH": {
+    "id": "SLEIGHT_OF_FLESH",
+    "name": "血肉戏法",
+    "description": "每当你给予一个敌人负面状态时，使其受到[SleightOfFleshPower]点伤害。"
+  },
+  "SLICE": {
+    "id": "SLICE",
+    "name": "切割",
+    "description": "造成[Damage]点伤害。"
+  },
+  "SLOTH": {
+    "id": "SLOTH",
+    "name": "懒惰",
+    "description": "你在每个回合不能打出超过[SlothPower]张牌。"
+  },
+  "SMOKESTACK": {
+    "id": "SMOKESTACK",
+    "name": "烟囱",
+    "description": "每当你生成一张状态牌时，对所有敌人造成[SmokestackPower]点伤害。"
+  },
+  "SNAKEBITE": {
+    "id": "SNAKEBITE",
+    "name": "蛇咬",
+    "description": "给予[PoisonPower]层中毒。"
+  },
+  "SNAP": {
+    "id": "SNAP",
+    "name": "响指",
+    "description": "奥斯提造成[OstyDamage]点伤害。\n给手牌中的一张牌添加保留。"
+  },
+  "SNEAKY": {
+    "id": "SNEAKY",
+    "name": "鬼祟",
+    "description": "每当其他玩家攻击一名敌人时，获得[SneakyPower]点格挡。"
+  },
+  "SOLAR_STRIKE": {
+    "id": "SOLAR_STRIKE",
+    "name": "太阳打击",
+    "description": "造成[Damage]点伤害。\n获得[Stars]。"
+  },
+  "SOUL": {
+    "id": "SOUL",
+    "name": "灵魂",
+    "description": "抽[Cards]张牌。"
+  },
+  "SOUL_STORM": {
+    "id": "SOUL_STORM",
+    "name": "灵魂风暴",
+    "description": "造成[CalculatedDamage]点伤害。\n你的消耗牌堆中每有一张灵魂，伤害增加[ExtraDamage]。"
+  },
+  "SOVEREIGN_BLADE": {
+    "id": "SOVEREIGN_BLADE",
+    "name": "君王之剑",
+    "description": "[TargetType]造成[Damage]点伤害[Repeat]次}。[GainsBlock]点格挡.|}"
+  },
+  "SOW": {
+    "id": "SOW",
+    "name": "播种",
+    "description": "对所有敌人造成[Damage]点伤害。"
+  },
+  "SPECTRUM_SHIFT": {
+    "id": "SPECTRUM_SHIFT",
+    "name": "光谱偏移",
+    "description": "在你的回合开始时，将[Cards]张随机无色牌添加到你的手牌中。"
+  },
+  "SPEEDSTER": {
+    "id": "SPEEDSTER",
+    "name": "速行者",
+    "description": "每当你在回合进行中抽到一张牌时，对所有敌人造成[SpeedsterPower]点伤害。"
+  },
+  "SPIKED": {
+    "id": "SPIKED",
+    "name": "扎刺",
+    "description": "在你的回合结束时，受到[Damage]点伤害。"
+  },
+  "SPINNER": {
+    "id": "SPINNER",
+    "name": "旋转工艺",
+    "description": "[IfUpgraded]在你的回合开始时，生成1个玻璃充能球。"
+  },
+  "SPIRIT_OF_ASH": {
+    "id": "SPIRIT_OF_ASH",
+    "name": "灰烬之灵",
+    "description": "每当你打出一张虚无牌时，获得[BlockOnExhaust]点格挡。"
+  },
+  "SPITE": {
+    "id": "SPITE",
+    "name": "怨恨",
+    "description": "造成[Damage]点伤害。\n如果你在本回合失去过生命值，\n则攻击[Repeat]次。"
+  },
+  "SPLASH": {
+    "id": "SPLASH",
+    "name": "飞溅",
+    "description": "从3张其他角色的[IfUpgraded]攻击牌中选择1张加入你的手牌。这张牌在本回合免费打出。"
+  },
+  "SPOILS_MAP": {
+    "id": "SPOILS_MAP",
+    "name": "藏宝图",
+    "description": "在下一阶段的地图上，标记一个有[Gold]额外金币的地点。"
+  },
+  "SPOILS_OF_BATTLE": {
+    "id": "SPOILS_OF_BATTLE",
+    "name": "战利品",
+    "description": "铸造[Forge]。\n抽[Cards]张牌。"
+  },
+  "SPORE_MIND": {
+    "id": "SPORE_MIND",
+    "name": "孢子心灵",
+    "description": ""
+  },
+  "SPUR": {
+    "id": "SPUR",
+    "name": "增生",
+    "description": "召唤[Summon]。\n奥斯提回复[Heal]点生命。"
+  },
+  "SQUASH": {
+    "id": "SQUASH",
+    "name": "压扁",
+    "description": "造成[Damage]点伤害。\n给予[VulnerablePower]层易伤。"
+  },
+  "SQUEEZE": {
+    "id": "SQUEEZE",
+    "name": "榨取",
+    "description": "奥斯提造成[CalculatedDamage]点伤害。\n你每有一张奥斯提的攻击牌，这张牌就额外造成[ExtraDamage]点伤害。"
+  },
+  "STACK": {
+    "id": "STACK",
+    "name": "堆栈",
+    "description": "获得等量于与你当前弃牌堆中牌数[IfUpgraded]|}的格挡值。[InCombat]点格挡）|}"
+  },
+  "STAMPEDE": {
+    "id": "STAMPEDE",
+    "name": "惊逃",
+    "description": "在你的回合结束时，随机打出你手牌中的[Power]张攻击牌攻击随机敌人。"
+  },
+  "STARDUST": {
+    "id": "STARDUST",
+    "name": "星尘",
+    "description": "随机对敌人造成[Damage]点伤害X次。"
+  },
+  "STAR_BLAST": {
+    "id": "STAR_BLAST",
+    "name": "星光爆射",
+    "description": "获得[Block]点格挡。\n造成[Damage]点伤害。"
+  },
+  "STAR_SHIELD": {
+    "id": "STAR_SHIELD",
+    "name": "星之盾",
+    "description": "获得[Block]点格挡。\n抽[Cards]张牌。"
+  },
+  "STOKE": {
+    "id": "STOKE",
+    "name": "添柴",
+    "description": "消耗所有手牌。\n每消耗一张牌，将1张随机[IfUpgraded]牌加入你的手牌。"
+  },
+  "STOMP": {
+    "id": "STOMP",
+    "name": "踩踏",
+    "description": "对所有敌人造成[Damage]点伤害。\n你在本回合中每打出过一张攻击牌，其耗能减少1[energyPrefix]。"
+  },
+  "STONE_ARMOR": {
+    "id": "STONE_ARMOR",
+    "name": "岩石铠甲",
+    "description": "获得[PlatingPower]层覆甲。"
+  },
+  "STORM": {
+    "id": "STORM",
+    "name": "雷暴",
+    "description": "每当你打出一张能力牌时，生成[StormPower]个闪电充能球。"
+  },
+  "STORM_OF_STEEL": {
+    "id": "STORM_OF_STEEL",
+    "name": "钢铁风暴",
+    "description": "丢弃所有手牌。\n每丢弃一张牌，就将一张[IfUpgraded]添加至你的手牌。"
+  },
+  "STRANGLE": {
+    "id": "STRANGLE",
+    "name": "紧勒",
+    "description": "造成[Damage]点伤害。\n你在这个回合内每出一张牌，该名敌人都会失去[StranglePower]点生命。"
+  },
+  "STRATAGEM": {
+    "id": "STRATAGEM",
+    "name": "计策",
+    "description": "每当你的抽牌堆打乱洗牌时，选择一张牌放入你的手牌。"
+  },
+  "STRIKE_DEFECT": {
+    "id": "STRIKE_DEFECT",
+    "name": "打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "STRIKE_IRONCLAD": {
+    "id": "STRIKE_IRONCLAD",
+    "name": "打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "STRIKE_NECROBINDER": {
+    "id": "STRIKE_NECROBINDER",
+    "name": "打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "STRIKE_REGENT": {
+    "id": "STRIKE_REGENT",
+    "name": "打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "STRIKE_SILENT": {
+    "id": "STRIKE_SILENT",
+    "name": "打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "SUBROUTINE": {
+    "id": "SUBROUTINE",
+    "name": "子程序",
+    "description": "当你打出一张能力牌时，获得[energyPrefix]。"
+  },
+  "SUCKER_PUNCH": {
+    "id": "SUCKER_PUNCH",
+    "name": "突然一拳",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。"
+  },
+  "SUMMON_FORTH": {
+    "id": "SUMMON_FORTH",
+    "name": "征召上前",
+    "description": "不论何处，将君王之剑放入你的手牌。\n铸造[Forge]。"
+  },
+  "SUNDER": {
+    "id": "SUNDER",
+    "name": "分离",
+    "description": "造成[Damage]点伤害。\n如果这张牌击杀了敌人，则获得[Energy]。"
+  },
+  "SUPERCRITICAL": {
+    "id": "SUPERCRITICAL",
+    "name": "超临界态",
+    "description": "获得[Energy]。"
+  },
+  "SUPERMASSIVE": {
+    "id": "SUPERMASSIVE",
+    "name": "超质量体",
+    "description": "造成[CalculatedDamage]点伤害。\n你在本场战斗中每生成过一张牌，这张牌就额外造成[ExtraDamage]点伤害。"
+  },
+  "SUPPRESS": {
+    "id": "SUPPRESS",
+    "name": "压制",
+    "description": "造成[Damage]点伤害。\n给予[WeakPower]层虚弱。"
+  },
+  "SURVIVOR": {
+    "id": "SURVIVOR",
+    "name": "生存者",
+    "description": "获得[Block]点格挡。\n丢弃1张牌。"
+  },
+  "SWEEPING_BEAM": {
+    "id": "SWEEPING_BEAM",
+    "name": "扫荡射线",
+    "description": "对所有敌人造成[Damage]点伤害。\n抽[Cards]张牌。"
+  },
+  "SWEEPING_GAZE": {
+    "id": "SWEEPING_GAZE",
+    "name": "扫荡凝视",
+    "description": "奥斯提对随机一名敌人造成[OstyDamage]点伤害。"
+  },
+  "SWIFT_STRIKE": {
+    "id": "SWIFT_STRIKE",
+    "name": "迅捷打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "SWORD_BOOMERANG": {
+    "id": "SWORD_BOOMERANG",
+    "name": "飞剑回旋镖",
+    "description": "随机对敌人造成[Damage]点伤害[Repeat]次。"
+  },
+  "SWORD_SAGE": {
+    "id": "SWORD_SAGE",
+    "name": "剑圣",
+    "description": "君王之剑获得重放[SwordSagePower]。"
+  },
+  "SYNCHRONIZE": {
+    "id": "SYNCHRONIZE",
+    "name": "同步",
+    "description": "你每有一种不同的充能球，就在本回合获得[CalculationExtra]点集中。[InCombat]点集中）|}"
+  },
+  "SYNTHESIS": {
+    "id": "SYNTHESIS",
+    "name": "人工合成",
+    "description": "造成[Damage]点伤害。\n你打出的下一张能力牌耗能变为0[energyPrefix]。"
+  },
+  "TACTICIAN": {
+    "id": "TACTICIAN",
+    "name": "战术大师",
+    "description": "获得[Energy]。"
+  },
+  "TAG_TEAM": {
+    "id": "TAG_TEAM",
+    "name": "双打组合",
+    "description": "造成[Damage]点伤害。\n其他玩家的下一张攻击牌将在该名敌人身上额外生效一次。"
+  },
+  "TANK": {
+    "id": "TANK",
+    "name": "肉盾",
+    "description": "承受双倍来自敌人的伤害。\n敌人的伤害对盟友减半。"
+  },
+  "TAUNT": {
+    "id": "TAUNT",
+    "name": "挑衅",
+    "description": "获得[Block]点格挡。\n给予[VulnerablePower]层易伤。"
+  },
+  "TEAR_ASUNDER": {
+    "id": "TEAR_ASUNDER",
+    "name": "扯碎",
+    "description": "造成[Damage]点伤害。\n在本场战斗中，你每失去过一次生命值，这张牌就额外造成一次伤害。[InCombat]次）|}"
+  },
+  "TEMPEST": {
+    "id": "TEMPEST",
+    "name": "暴风雨",
+    "description": "生成[IfUpgraded]个闪电充能球。"
+  },
+  "TERRAFORMING": {
+    "id": "TERRAFORMING",
+    "name": "地形改造",
+    "description": "获得[VigorPower]点活力。"
+  },
+  "TESLA_COIL": {
+    "id": "TESLA_COIL",
+    "name": "特斯拉线圈",
+    "description": "造成[Damage]点伤害。\n对该敌人触发你的所有闪电充能球的被动[IfUpgraded]。"
+  },
+  "TEZCATARAS_MIGHT": {
+    "id": "TEZCATARAS_MIGHT",
+    "name": "特兹卡塔拉之力",
+    "description": "获得[StrengthPower]点力量。\n在你的回合结束时，失去[StrengthLoss]点力量。"
+  },
+  "THE_BOMB": {
+    "id": "THE_BOMB",
+    "name": "炸弹",
+    "description": "在[Turns]回合结束后，对所有敌人造成[BombDamage]点伤害。"
+  },
+  "THE_GAMBIT": {
+    "id": "THE_GAMBIT",
+    "name": "孤注一掷",
+    "description": "获得[Block]点格挡。\n如果你在本场战斗中受到未被格挡的攻击伤害，则立刻死亡。"
+  },
+  "THE_HUNT": {
+    "id": "THE_HUNT",
+    "name": "狩猎",
+    "description": "造成[Damage]点伤害。\n斩杀时，额外获得一次卡牌奖励。"
+  },
+  "THE_SCYTHE": {
+    "id": "THE_SCYTHE",
+    "name": "巨镰",
+    "description": "造成[Damage]点伤害。\n这张牌在本局游戏中的伤害永久性增加[Increase]。"
+  },
+  "THE_SEALED_THRONE": {
+    "id": "THE_SEALED_THRONE",
+    "name": "封印王座",
+    "description": "你每打出一张牌，获得{singleStarIcon}。"
+  },
+  "THE_SMITH": {
+    "id": "THE_SMITH",
+    "name": "铸剑者",
+    "description": "铸造[Forge]。"
+  },
+  "THINKING_AHEAD": {
+    "id": "THINKING_AHEAD",
+    "name": "深谋远虑",
+    "description": "抽[Cards]张牌。\n将手牌中的一张牌放到你的抽牌堆的顶端。"
+  },
+  "THRASH": {
+    "id": "THRASH",
+    "name": "痛殴",
+    "description": "造成[Damage]点伤害两次。\n消耗你的手牌中随机一张攻击牌，并将它的伤害添加给这张牌。"
+  },
+  "THRUMMING_HATCHET": {
+    "id": "THRUMMING_HATCHET",
+    "name": "无休手斧",
+    "description": "造成[Damage]点伤害。\n在你的下个回合开始时，将此卡返回你的手牌。"
+  },
+  "THUNDER": {
+    "id": "THUNDER",
+    "name": "雷霆",
+    "description": "每当你激发闪电充能球时，对被命中的敌人造成[ThunderPower]点伤害。"
+  },
+  "THUNDERCLAP": {
+    "id": "THUNDERCLAP",
+    "name": "闪电霹雳",
+    "description": "对所有敌人造成[Damage]点伤害，给予[VulnerablePower]层易伤。"
+  },
+  "TIMES_UP": {
+    "id": "TIMES_UP",
+    "name": "大限已至",
+    "description": "造成等量于该敌人身上的灾厄层数的伤害。[IsTargeting]点伤害）|}"
+  },
+  "TOOLS_OF_THE_TRADE": {
+    "id": "TOOLS_OF_THE_TRADE",
+    "name": "必备工具",
+    "description": "在你的回合开始时，抽1张牌，丢弃1张牌。"
+  },
+  "TORIC_TOUGHNESS": {
+    "id": "TORIC_TOUGHNESS",
+    "name": "坚韧之环",
+    "description": "获得[Block]点格挡。\n在接下来的[Turns]个回合开始时，获得[Block]点格挡。"
+  },
+  "TOXIC": {
+    "id": "TOXIC",
+    "name": "毒素",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，你受到[Damage]点伤害。"
+  },
+  "TRACKING": {
+    "id": "TRACKING",
+    "name": "跟踪",
+    "description": "对虚弱状态的敌人，你所造成的攻击伤害翻倍。"
+  },
+  "TRAINING_STRIKE": {
+    "id": "TRAINING_STRIKE",
+    "name": "训练打击",
+    "description": "造成[Damage]点伤害。\n斩杀时，茧获得一点经验值。"
+  },
+  "TRANSFIGURE": {
+    "id": "TRANSFIGURE",
+    "name": "重构",
+    "description": "给一张手牌添加重放。\n其耗能增加1[Energy]。"
+  },
+  "TRASH_TO_TREASURE": {
+    "id": "TRASH_TO_TREASURE",
+    "name": "化废为宝",
+    "description": "每当你生成状态牌的时候，随机生成一个充能球。"
+  },
+  "TREMBLE": {
+    "id": "TREMBLE",
+    "name": "战栗",
+    "description": "给予[VulnerablePower]层易伤。"
+  },
+  "TRUE_GRIT": {
+    "id": "TRUE_GRIT",
+    "name": "坚毅",
+    "description": "获得[Block]点格挡。\n[IfUpgraded]消耗1张牌。"
+  },
+  "TURBO": {
+    "id": "TURBO",
+    "name": "内核加速",
+    "description": "获得[Energy]。\n将一张虚空加入你的弃牌堆。"
+  },
+  "TWIN_STRIKE": {
+    "id": "TWIN_STRIKE",
+    "name": "双重打击",
+    "description": "造成[Damage]点伤害两次。"
+  },
+  "TYRANNY": {
+    "id": "TYRANNY",
+    "name": "暴政",
+    "description": "在你的回合开始时，抽一张牌，并从你的手牌中消耗1张牌。"
+  },
+  "ULTIMATE_DEFEND": {
+    "id": "ULTIMATE_DEFEND",
+    "name": "究极防御",
+    "description": "获得[Block]点格挡。"
+  },
+  "ULTIMATE_STRIKE": {
+    "id": "ULTIMATE_STRIKE",
+    "name": "究极打击",
+    "description": "造成[Damage]点伤害。"
+  },
+  "UNDEATH": {
+    "id": "UNDEATH",
+    "name": "不死",
+    "description": "获得[Block]点格挡。\n在弃牌堆放入一张此牌的复制品。"
+  },
+  "UNLEASH": {
+    "id": "UNLEASH",
+    "name": "出击",
+    "description": "奥斯提造成[CalculatedDamage]点伤害。\n这张牌额外造成等量于奥斯提当前生命值的伤害。"
+  },
+  "UNMOVABLE": {
+    "id": "UNMOVABLE",
+    "name": "坚定不移",
+    "description": "翻倍你每回合第一次从卡牌中获得的格挡。"
+  },
+  "UNRELENTING": {
+    "id": "UNRELENTING",
+    "name": "无情猛攻",
+    "description": "造成[Damage]点伤害。\n你打出的下一张攻击牌耗能变为0[energyPrefix]。"
+  },
+  "UNTOUCHABLE": {
+    "id": "UNTOUCHABLE",
+    "name": "触不可及",
+    "description": "获得[Block]点格挡。"
+  },
+  "UPPERCUT": {
+    "id": "UPPERCUT",
+    "name": "上勾拳",
+    "description": "造成[Damage]点伤害。\n给予[Power]层虚弱。\n给予[Power]层易伤。"
+  },
+  "UPROAR": {
+    "id": "UPROAR",
+    "name": "骚动",
+    "description": "造成[Damage]点伤害两次。\n随机打出你的抽牌堆中的1张攻击牌。"
+  },
+  "UP_MY_SLEEVE": {
+    "id": "UP_MY_SLEEVE",
+    "name": "袖里乾坤",
+    "description": "将[Cards]张小刀加入你的手牌。\n这张牌的耗能减少1。"
+  },
+  "VEILPIERCER": {
+    "id": "VEILPIERCER",
+    "name": "刺破帷幕",
+    "description": "造成[Damage]点伤害。\n你打出的下一张虚无牌耗能变为0[energyPrefix]。"
+  },
+  "VENERATE": {
+    "id": "VENERATE",
+    "name": "崇拜",
+    "description": "获得[Stars]。"
+  },
+  "VETERAN": {
+    "id": "VETERAN",
+    "name": "老兵",
+    "description": "获得[Block]点格挡。\n获得[StrengthPower]点力量。"
+  },
+  "VICIOUS": {
+    "id": "VICIOUS",
+    "name": "凶恶",
+    "description": "每当你给予易伤时，抽[Cards]张牌。"
+  },
+  "VISIONS_OF_GRANDEUR": {
+    "id": "VISIONS_OF_GRANDEUR",
+    "name": "伟大愿景",
+    "description": "如果你有[StarThreshold]个{singleStarIcon}，则抽[Cards]张牌。"
+  },
+  "VOID": {
+    "id": "VOID",
+    "name": "虚空",
+    "description": "每当你抽到这张牌时，失去[Energy]。"
+  },
+  "VOID_FORM": {
+    "id": "VOID_FORM",
+    "name": "虚空形态",
+    "description": "结束你的回合。\n你可以免费打出每回合的前[VoidFormPower]张牌。"
+  },
+  "VOLLEY": {
+    "id": "VOLLEY",
+    "name": "连射",
+    "description": "随机对敌人造成[Damage]点伤害X次。"
+  },
+  "VOLTAIC": {
+    "id": "VOLTAIC",
+    "name": "电流相生",
+    "description": "生成等量于你在这场战斗中生成过的闪电充能球数量的闪电充能球。[InCombat]个闪电充能球）|}"
+  },
+  "WARP_SPACE": {
+    "id": "WARP_SPACE",
+    "name": "折跃空间",
+    "description": "将[Cards]张随机牌加入你的抽牌堆。\n在他们被打出之前，耗能减少1。"
+  },
+  "WASTE_AWAY": {
+    "id": "WASTE_AWAY",
+    "name": "衰朽",
+    "description": "每回合失去[WasteAwayPower]点[energyPrefix]。"
+  },
+  "WELL_LAID_PLANS": {
+    "id": "WELL_LAID_PLANS",
+    "name": "计划妥当",
+    "description": "在你的回合结束时，保留最多[RetainAmount]张牌。"
+  },
+  "WHIRLWIND": {
+    "id": "WHIRLWIND",
+    "name": "旋风斩",
+    "description": "对所有敌人造成[Damage]点伤害X次。"
+  },
+  "WHISTLE": {
+    "id": "WHISTLE",
+    "name": "吹哨",
+    "description": "造成[Damage]点伤害。\n击晕该敌人。"
+  },
+  "WHITE_NOISE": {
+    "id": "WHITE_NOISE",
+    "name": "白噪声",
+    "description": "将一张随机能力牌加入你的手牌。这张牌在本回合内免费打出。"
+  },
+  "WISH": {
+    "id": "WISH",
+    "name": "许愿",
+    "description": "将你抽牌堆中的一张牌放入你的手牌。"
+  },
+  "WISP": {
+    "id": "WISP",
+    "name": "鬼火",
+    "description": "获得[Energy]。"
+  },
+  "WITHER": {
+    "id": "WITHER",
+    "name": "凋萎",
+    "description": "在你的回合结束时，如果这张牌在你的手牌中，你受到[Damage]点伤害。"
+  },
+  "WOUND": {
+    "id": "WOUND",
+    "name": "伤口",
+    "description": ""
+  },
+  "WRAITH_FORM": {
+    "id": "WRAITH_FORM",
+    "name": "幽魂形态",
+    "description": "获得[IntangiblePower]无实体。\n在你的回合开始时，失去[WraithFormPower]点敏捷。"
+  },
+  "WRITHE": {
+    "id": "WRITHE",
+    "name": "苦恼",
+    "description": ""
+  },
+  "WROUGHT_IN_WAR": {
+    "id": "WROUGHT_IN_WAR",
+    "name": "战火铸就",
+    "description": "造成[Damage]点伤害。\n铸造[Forge]。"
+  },
+  "ZAP": {
+    "id": "ZAP",
+    "name": "电击",
+    "description": "生成1个闪电充能球。"
+  },
+  "ETERNAL": {
+    "id": "ETERNAL",
+    "name": "永恒",
+    "description": "无法从你的牌组中移除或变化。"
+  },
+  "ETHEREAL": {
+    "id": "ETHEREAL",
+    "name": "虚无",
+    "description": "如果这张牌在这个回合结束时留在你的手牌中，则将其消耗。"
+  },
+  "EXHAUST": {
+    "id": "EXHAUST",
+    "name": "消耗",
+    "description": "在战斗结束前移除。"
+  },
+  "INNATE": {
+    "id": "INNATE",
+    "name": "固有",
+    "description": "每场战斗开始时这张牌会出现在你的手牌。"
+  },
+  "RETAIN": {
+    "id": "RETAIN",
+    "name": "保留",
+    "description": "保留的牌不会在回合结束时被弃掉。"
+  },
+  "SLY": {
+    "id": "SLY",
+    "name": "奇巧",
+    "description": "如果这张牌在你的回合结束前从你的手牌中被丢弃，则免费将其打出。"
+  },
+  "UNPLAYABLE": {
+    "id": "UNPLAYABLE",
+    "name": "不能被打出",
+    "description": "不能被打出的牌无法被打出。"
+  },
+  "UNKNOWN": {
+    "id": "UNKNOWN",
+    "name": "未知",
+    "description": "这个敌人将要进行某种未知行动。"
+  },
+  "OPTION_SACRIFICE": {
+    "id": "OPTION_SACRIFICE",
+    "name": "献祭",
+    "description": ""
+  },
+  "DEFECT": {
+    "id": "DEFECT",
+    "name": "故障机器人",
+    "description": "一具不停改造自己来生存下去的自动机械。\n在不得不战斗时，它会使用充能球科技来作战。"
+  },
+  "DEPRECATED_CHARACTER": {
+    "id": "DEPRECATED_CHARACTER",
+    "name": "已弃用角色",
+    "description": ""
+  },
+  "DEPRIVED": {
+    "id": "DEPRIVED",
+    "name": "被剥夺者",
+    "description": ""
+  },
+  "IRONCLAD": {
+    "id": "IRONCLAD",
+    "name": "铁甲战士",
+    "description": "铁甲军团最后的士兵。\n并非出自自身的意愿，用刀剑与烈焰击溃敌人们。"
+  },
+  "NECROBINDER": {
+    "id": "NECROBINDER",
+    "name": "亡灵契约师",
+    "description": "一位出生在尖塔的巫妖，正在寻求复仇。\n战斗中会召唤她可靠的左手奥斯提。"
+  },
+  "RANDOM_CHARACTER": {
+    "id": "RANDOM_CHARACTER",
+    "name": "随机",
+    "description": "以随机角色开始爬塔之旅。"
+  },
+  "REGENT": {
+    "id": "REGENT",
+    "name": "储君",
+    "description": "群星王座的继承人。\n拥有宇宙的力量，但总是让他的仆从们去做各种事情。"
+  },
+  "SILENT": {
+    "id": "SILENT",
+    "name": "静默猎手",
+    "description": "一位来自尖塔之外的女猎手。\n随时准备刀刺与毒杀任何拦路者。"
+  },
+  "ADROIT": {
+    "id": "ADROIT",
+    "name": "伶俐",
+    "description": "获得[Block]点格挡。"
+  },
+  "CLONE": {
+    "id": "CLONE",
+    "name": "克隆",
+    "description": "这张牌能在休息处被复制。"
+  },
+  "CORRUPTED": {
+    "id": "CORRUPTED",
+    "name": "腐化",
+    "description": "造成的伤害增加50%，但会失去2生命。"
+  },
+  "DEPRECATED_ENCHANTMENT": {
+    "id": "DEPRECATED_ENCHANTMENT",
+    "name": "弃用",
+    "description": "这个附魔已经从游戏中被移除。"
+  },
+  "GLAM": {
+    "id": "GLAM",
+    "name": "华彩",
+    "description": "这张牌每场战斗能够重放一次。"
+  },
+  "GOOPY": {
+    "id": "GOOPY",
+    "name": "黏糊",
+    "description": "这张牌获得消耗。当被打出时，这张牌的格挡值永久增加1点。"
+  },
+  "IMBUED": {
+    "id": "IMBUED",
+    "name": "注能",
+    "description": "这张牌在每场战斗开始时自动打出。"
+  },
+  "INKY": {
+    "id": "INKY",
+    "name": "墨影",
+    "description": "这张牌额外造成{Damage}点伤害，并造成{WeakPower}层虚弱。"
+  },
+  "INSTINCT": {
+    "id": "INSTINCT",
+    "name": "本能",
+    "description": "这张牌的攻击伤害翻倍。"
+  },
+  "MOCK_FREE_ENCHANTMENT": {
+    "id": "MOCK_FREE_ENCHANTMENT",
+    "name": "临时免费附魔",
+    "description": ""
+  },
+  "MOMENTUM": {
+    "id": "MOMENTUM",
+    "name": "动量",
+    "description": "在本场战斗中，每次打出就增加这张牌的攻击伤害{Amount}点。"
+  },
+  "NIMBLE": {
+    "id": "NIMBLE",
+    "name": "灵巧",
+    "description": "这张牌获得的格挡值增加{Amount}点。"
+  },
+  "PERFECT_FIT": {
+    "id": "PERFECT_FIT",
+    "name": "完美契合",
+    "description": "每当这张牌要被洗入抽牌堆时，将其放在抽牌堆顶。"
+  },
+  "ROYALLY_APPROVED": {
+    "id": "ROYALLY_APPROVED",
+    "name": "王室认证",
+    "description": "这张牌拥有固有和保留。"
+  },
+  "SHARP": {
+    "id": "SHARP",
+    "name": "锋利",
+    "description": "这张牌上的伤害值增加{Amount}点。"
+  },
+  "SLITHER": {
+    "id": "SLITHER",
+    "name": "蛇行",
+    "description": "当你抽到这张牌时，使其费用在0到3之间随机变化。"
+  },
+  "SLUMBERING_ESSENCE": {
+    "id": "SLUMBERING_ESSENCE",
+    "name": "沉眠精华",
+    "description": "回合结束时，如果这张牌在你的手牌中，则将其费用降低1点，直到其被打出。"
+  },
+  "SOWN": {
+    "id": "SOWN",
+    "name": "播种",
+    "description": "你在每场战斗中第一次打出这张牌时，获得[Amount]。"
+  },
+  "SPIRAL": {
+    "id": "SPIRAL",
+    "name": "涡旋",
+    "description": "这张牌获得重放1。"
+  },
+  "STEADY": {
+    "id": "STEADY",
+    "name": "稳定",
+    "description": "这张牌获得保留。"
+  },
+  "SWIFT": {
+    "id": "SWIFT",
+    "name": "迅速",
+    "description": "你第一次打出这张牌时，抽{Amount}张牌。"
+  },
+  "TEZCATARAS_EMBER": {
+    "id": "TEZCATARAS_EMBER",
+    "name": "特兹卡塔拉的余烬",
+    "description": "费用为0，造成{Damage} 点额外伤害，且获得永恒。"
+  },
+  "VIGOROUS": {
+    "id": "VIGOROUS",
+    "name": "活力",
+    "description": "第一次打出这张牌时，造成{Amount}点额外伤害。"
+  },
+  "AEONGLASS_BOSS": {
+    "id": "AEONGLASS_BOSS",
+    "name": "永世沙漏",
+    "description": ""
+  },
+  "BOWLBUGS_NORMAL": {
+    "id": "BOWLBUGS_NORMAL",
+    "name": "盛碗虫群",
+    "description": ""
+  },
+  "BYGONE_EFFIGY_ELITE": {
+    "id": "BYGONE_EFFIGY_ELITE",
+    "name": "旧日雕像",
+    "description": ""
+  },
+  "CEREMONIAL_BEAST_BOSS": {
+    "id": "CEREMONIAL_BEAST_BOSS",
+    "name": "仪式兽",
+    "description": ""
+  },
+  "CONSTRUCT_MENAGERIE_NORMAL": {
+    "id": "CONSTRUCT_MENAGERIE_NORMAL",
+    "name": "一些构装体",
+    "description": ""
+  },
+  "CORPSE_SLUGS_NORMAL": {
+    "id": "CORPSE_SLUGS_NORMAL",
+    "name": "许多噬尸蛞蝓",
+    "description": ""
+  },
+  "CORPSE_SLUGS_WEAK": {
+    "id": "CORPSE_SLUGS_WEAK",
+    "name": "一些噬尸蛞蝓",
+    "description": ""
+  },
+  "DECIMILLIPEDE_ELITE": {
+    "id": "DECIMILLIPEDE_ELITE",
+    "name": "残杀千足虫",
+    "description": ""
+  },
+  "DEPRECATED_ENCOUNTER": {
+    "id": "DEPRECATED_ENCOUNTER",
+    "name": "已移除遭遇战",
+    "description": ""
+  },
+  "DEVOTED_SCULPTOR_WEAK": {
+    "id": "DEVOTED_SCULPTOR_WEAK",
+    "name": "虔诚雕刻师",
+    "description": ""
+  },
+  "EXOSKELETONS_NORMAL": {
+    "id": "EXOSKELETONS_NORMAL",
+    "name": "许多外骨骼虫",
+    "description": ""
+  },
+  "EXOSKELETONS_WEAK": {
+    "id": "EXOSKELETONS_WEAK",
+    "name": "外骨骼虫",
+    "description": ""
+  },
+  "FOSSIL_STALKER_NORMAL": {
+    "id": "FOSSIL_STALKER_NORMAL",
+    "name": "化石追踪者",
+    "description": ""
+  },
+  "FROG_KNIGHT_NORMAL": {
+    "id": "FROG_KNIGHT_NORMAL",
+    "name": "青蛙骑士",
+    "description": ""
+  },
+  "FUZZY_WURM_CRAWLER_WEAK": {
+    "id": "FUZZY_WURM_CRAWLER_WEAK",
+    "name": "毛绒伏地虫",
+    "description": ""
+  },
+  "GLOBE_HEAD_NORMAL": {
+    "id": "GLOBE_HEAD_NORMAL",
+    "name": "一个孤单的电球头",
+    "description": ""
+  },
+  "HAUNTED_SHIP_NORMAL": {
+    "id": "HAUNTED_SHIP_NORMAL",
+    "name": "幽灵船",
+    "description": ""
+  },
+  "INFESTED_PRISMS_ELITE": {
+    "id": "INFESTED_PRISMS_ELITE",
+    "name": "感染棱柱",
+    "description": ""
+  },
+  "KNIGHTS_ELITE": {
+    "id": "KNIGHTS_ELITE",
+    "name": "骑士团伙",
+    "description": ""
+  },
+  "KNOWLEDGE_DEMON_BOSS": {
+    "id": "KNOWLEDGE_DEMON_BOSS",
+    "name": "知识恶魔",
+    "description": ""
+  },
+  "LIVING_FOG_NORMAL": {
+    "id": "LIVING_FOG_NORMAL",
+    "name": "邪恶气体",
+    "description": ""
+  },
+  "LOUSE_PROGENITOR_NORMAL": {
+    "id": "LOUSE_PROGENITOR_NORMAL",
+    "name": "虱虫之祖",
+    "description": ""
+  },
+  "MYTES_NORMAL": {
+    "id": "MYTES_NORMAL",
+    "name": "一群异螨",
+    "description": ""
+  },
+  "NIBBITS_WEAK": {
+    "id": "NIBBITS_WEAK",
+    "name": "一只落单的小啃兽",
+    "description": ""
+  },
+  "OVERGROWTH_CRAWLERS": {
+    "id": "OVERGROWTH_CRAWLERS",
+    "name": "密林爬虫",
+    "description": ""
+  },
+  "OVERGROWTH_WILDLIFE": {
+    "id": "OVERGROWTH_WILDLIFE",
+    "name": "密林野生生物",
+    "description": ""
+  },
+  "OWL_MAGISTRATE_NORMAL": {
+    "id": "OWL_MAGISTRATE_NORMAL",
+    "name": "猫头鹰法官",
+    "description": ""
+  },
+  "PHANTASMAL_GARDENERS_ELITE": {
+    "id": "PHANTASMAL_GARDENERS_ELITE",
+    "name": "花园幽灵鳗",
+    "description": ""
+  },
+  "PHROG_PARASITE_ELITE": {
+    "id": "PHROG_PARASITE_ELITE",
+    "name": "异蛙寄生虫",
+    "description": ""
+  },
+  "SCROLLS_OF_BITING_NORMAL": {
+    "id": "SCROLLS_OF_BITING_NORMAL",
+    "name": "许多咬人卷轴",
+    "description": ""
+  },
+  "SCROLLS_OF_BITING_WEAK": {
+    "id": "SCROLLS_OF_BITING_WEAK",
+    "name": "咬人卷轴",
+    "description": ""
+  },
+  "SEAPUNK_NORMAL": {
+    "id": "SEAPUNK_NORMAL",
+    "name": "暗港野生动物",
+    "description": ""
+  },
+  "SEWER_CLAM_NORMAL": {
+    "id": "SEWER_CLAM_NORMAL",
+    "name": "下水道蚌",
+    "description": ""
+  },
+  "SKULKING_COLONY_ELITE": {
+    "id": "SKULKING_COLONY_ELITE",
+    "name": "鬼祟珊瑚群",
+    "description": ""
+  },
+  "SLITHERING_STRANGLER_NORMAL": {
+    "id": "SLITHERING_STRANGLER_NORMAL",
+    "name": "扼杀者与伙伴",
+    "description": ""
+  },
+  "SNAPPING_JAXFRUIT_NORMAL": {
+    "id": "SNAPPING_JAXFRUIT_NORMAL",
+    "name": "密林植物",
+    "description": ""
+  },
+  "TEST_SUBJECT_BOSS": {
+    "id": "TEST_SUBJECT_BOSS",
+    "name": "实验体",
+    "description": ""
+  },
+  "THE_INSATIABLE_BOSS": {
+    "id": "THE_INSATIABLE_BOSS",
+    "name": "无厌沙虫",
+    "description": ""
+  },
+  "THE_KIN_BOSS": {
+    "id": "THE_KIN_BOSS",
+    "name": "同族小队",
+    "description": ""
+  },
+  "THE_LOST_AND_FORGOTTEN_NORMAL": {
+    "id": "THE_LOST_AND_FORGOTTEN_NORMAL",
+    "name": "失落与遗忘之物",
+    "description": ""
+  },
+  "THIEVING_HOPPER_WEAK": {
+    "id": "THIEVING_HOPPER_WEAK",
+    "name": "偷窃草蜢",
+    "description": ""
+  },
+  "TWO_TAILED_RATS_NORMAL": {
+    "id": "TWO_TAILED_RATS_NORMAL",
+    "name": "双尾鼠",
+    "description": ""
+  },
+  "WATERFALL_GIANT_BOSS": {
+    "id": "WATERFALL_GIANT_BOSS",
+    "name": "瀑布巨兽",
+    "description": ""
+  },
+  "BLIGHT0": {
+    "id": "BLIGHT0",
+    "name": "感染",
+    "description": ""
+  },
+  "FLOURISH0": {
+    "id": "FLOURISH0",
+    "name": "兴盛",
+    "description": ""
+  },
+  "INVITATION0": {
+    "id": "INVITATION0",
+    "name": "门扉",
+    "description": ""
+  },
+  "PEACE0": {
+    "id": "PEACE0",
+    "name": "终结",
+    "description": ""
+  },
+  "PREHISTORIA0": {
+    "id": "PREHISTORIA0",
+    "name": "史前",
+    "description": ""
+  },
+  "SEEDS0": {
+    "id": "SEEDS0",
+    "name": "种子",
+    "description": ""
+  },
+  "ABYSSAL_BATHS": {
+    "id": "ABYSSAL_BATHS",
+    "name": "深渊浴场",
+    "description": ""
+  },
+  "AROMA_OF_CHAOS": {
+    "id": "AROMA_OF_CHAOS",
+    "name": "混沌芳香",
+    "description": ""
+  },
+  "BATTLEWORN_DUMMY": {
+    "id": "BATTLEWORN_DUMMY",
+    "name": "战痕累累的训练假人",
+    "description": ""
+  },
+  "BRAIN_LEECH": {
+    "id": "BRAIN_LEECH",
+    "name": "脑蛭",
+    "description": ""
+  },
+  "BUGSLAYER": {
+    "id": "BUGSLAYER",
+    "name": "害虫杀手",
+    "description": ""
+  },
+  "BYRDONIS_NEST": {
+    "id": "BYRDONIS_NEST",
+    "name": "多尼斯异鸟巢",
+    "description": ""
+  },
+  "COLORFUL_PHILOSOPHERS": {
+    "id": "COLORFUL_PHILOSOPHERS",
+    "name": "色彩哲学家",
+    "description": ""
+  },
+  "COLOSSAL_FLOWER": {
+    "id": "COLOSSAL_FLOWER",
+    "name": "巨大花卉",
+    "description": ""
+  },
+  "CRYSTAL_SPHERE": {
+    "id": "CRYSTAL_SPHERE",
+    "name": "水晶球",
+    "description": ""
+  },
+  "DENSE_VEGETATION": {
+    "id": "DENSE_VEGETATION",
+    "name": "茂密的植被",
+    "description": ""
+  },
+  "DOORS_OF_LIGHT_AND_DARK": {
+    "id": "DOORS_OF_LIGHT_AND_DARK",
+    "name": "光与暗的门扉",
+    "description": ""
+  },
+  "DROWNING_BEACON": {
+    "id": "DROWNING_BEACON",
+    "name": "淹水灯塔",
+    "description": ""
+  },
+  "ENDLESS_CONVEYOR": {
+    "id": "ENDLESS_CONVEYOR",
+    "name": "无尽传送带",
+    "description": ""
+  },
+  "FIELD_OF_MAN_SIZED_HOLES": {
+    "id": "FIELD_OF_MAN_SIZED_HOLES",
+    "name": "人形洞穴之地",
+    "description": ""
+  },
+  "GRAVE_OF_THE_FORGOTTEN": {
+    "id": "GRAVE_OF_THE_FORGOTTEN",
+    "name": "遗忘之墓",
+    "description": ""
+  },
+  "HUNGRY_FOR_MUSHROOMS": {
+    "id": "HUNGRY_FOR_MUSHROOMS",
+    "name": "蘑菇饥渴",
+    "description": ""
+  },
+  "INFESTED_AUTOMATON": {
+    "id": "INFESTED_AUTOMATON",
+    "name": "被寄生的自动机械",
+    "description": ""
+  },
+  "JUNGLE_MAZE_ADVENTURE": {
+    "id": "JUNGLE_MAZE_ADVENTURE",
+    "name": "丛林迷宫奇遇",
+    "description": ""
+  },
+  "LOST_WISP": {
+    "id": "LOST_WISP",
+    "name": "迷失鬼火",
+    "description": "你每打出一张能力牌，就对所有敌人造成{Damage}点伤害。"
+  },
+  "LUMINOUS_CHOIR": {
+    "id": "LUMINOUS_CHOIR",
+    "name": "冷光合唱团",
+    "description": ""
+  },
+  "MORPHIC_GROVE": {
+    "id": "MORPHIC_GROVE",
+    "name": "变形灵林谷",
+    "description": ""
+  },
+  "PUNCH_OFF": {
+    "id": "PUNCH_OFF",
+    "name": "重拳出击",
+    "description": ""
+  },
+  "RANWID_THE_ELDER": {
+    "id": "RANWID_THE_ELDER",
+    "name": "长者兰伟德",
+    "description": ""
+  },
+  "REFLECTIONS": {
+    "id": "REFLECTIONS",
+    "name": "镜中倒影  影倒中镜",
+    "description": ""
+  },
+  "RELIC_TRADER": {
+    "id": "RELIC_TRADER",
+    "name": "遗物交换商",
+    "description": ""
+  },
+  "ROOM_FULL_OF_CHEESE": {
+    "id": "ROOM_FULL_OF_CHEESE",
+    "name": "满屋芝士",
+    "description": ""
+  },
+  "ROUND_TEA_PARTY": {
+    "id": "ROUND_TEA_PARTY",
+    "name": "圆桌茶会",
+    "description": ""
+  },
+  "SAPPHIRE_SEED": {
+    "id": "SAPPHIRE_SEED",
+    "name": "蓝宝石种子",
+    "description": ""
+  },
+  "SELF_HELP_BOOK": {
+    "id": "SELF_HELP_BOOK",
+    "name": "自助指南",
+    "description": ""
+  },
+  "SLIPPERY_BRIDGE": {
+    "id": "SLIPPERY_BRIDGE",
+    "name": "滑脚木桥",
+    "description": ""
+  },
+  "SPIRALING_WHIRLPOOL": {
+    "id": "SPIRALING_WHIRLPOOL",
+    "name": "螺旋漩涡",
+    "description": ""
+  },
+  "STONE_OF_ALL_TIME": {
+    "id": "STONE_OF_ALL_TIME",
+    "name": "永恒之石",
+    "description": ""
+  },
+  "SUNKEN_STATUE": {
+    "id": "SUNKEN_STATUE",
+    "name": "沉没雕像",
+    "description": ""
+  },
+  "SUNKEN_TREASURY": {
+    "id": "SUNKEN_TREASURY",
+    "name": "淹水金库",
+    "description": ""
+  },
+  "TABLET_OF_TRUTH": {
+    "id": "TABLET_OF_TRUTH",
+    "name": "真理石板",
+    "description": ""
+  },
+  "TEA_MASTER": {
+    "id": "TEA_MASTER",
+    "name": "茶艺大师",
+    "description": ""
+  },
+  "THE_LANTERN_KEY": {
+    "id": "THE_LANTERN_KEY",
+    "name": "灯火钥匙",
+    "description": ""
+  },
+  "THE_LEGENDS_WERE_TRUE": {
+    "id": "THE_LEGENDS_WERE_TRUE",
+    "name": "传说是真的",
+    "description": ""
+  },
+  "TINKER_TIME": {
+    "id": "TINKER_TIME",
+    "name": "打造时间",
+    "description": ""
+  },
+  "TRASH_HEAP": {
+    "id": "TRASH_HEAP",
+    "name": "垃圾堆",
+    "description": ""
+  },
+  "TRIAL": {
+    "id": "TRIAL",
+    "name": "审判",
+    "description": ""
+  },
+  "UNREST_SITE": {
+    "id": "UNREST_SITE",
+    "name": "无休之处",
+    "description": ""
+  },
+  "WAR_HISTORIAN_REPY": {
+    "id": "WAR_HISTORIAN_REPY",
+    "name": "战史学家 付袭",
+    "description": ""
+  },
+  "WATERLOGGED_SCRIPTORIUM": {
+    "id": "WATERLOGGED_SCRIPTORIUM",
+    "name": "水漫缮写室",
+    "description": ""
+  },
+  "WELLSPRING": {
+    "id": "WELLSPRING",
+    "name": "泉水",
+    "description": ""
+  },
+  "WHISPERING_HOLLOW": {
+    "id": "WHISPERING_HOLLOW",
+    "name": "低语空谷",
+    "description": ""
+  },
+  "WOOD_CARVINGS": {
+    "id": "WOOD_CARVINGS",
+    "name": "木雕",
+    "description": ""
+  },
+  "ZEN_WEAVER": {
+    "id": "ZEN_WEAVER",
+    "name": "修禅织网者",
+    "description": ""
+  },
+  "SINGLE_PLAYER_CUSTOM": {
+    "id": "SINGLE_PLAYER_CUSTOM",
+    "name": "自定义",
+    "description": "从众多混沌的调整项中挑选，打造属于你自己的挑战。"
+  },
+  "SINGLE_PLAYER_DAILY_RUN": {
+    "id": "SINGLE_PLAYER_DAILY_RUN",
+    "name": "每日挑战",
+    "description": "每天将会有一次新的挑战。<br>和其他玩家们竞争较量。"
+  },
+  "SINGLE_PLAYER_STANDARD": {
+    "id": "SINGLE_PLAYER_STANDARD",
+    "name": "标准",
+    "description": "启程去屠戮这座高塔。独自一人。"
+  },
+  "ATTACK": {
+    "id": "ATTACK",
+    "name": "攻势",
+    "description": "这个敌人将要攻击[IsMultiplayer]造成{Damage}点伤害[Repeat]次}。"
+  },
+  "BUFF": {
+    "id": "BUFF",
+    "name": "强化",
+    "description": "这个敌人将要使用一个强化效果。"
+  },
+  "CARD_DEBUFF": {
+    "id": "CARD_DEBUFF",
+    "name": "恶意",
+    "description": "这个敌人将要对你的卡牌施加侵蚀。"
+  },
+  "DEATH_BLOW": {
+    "id": "DEATH_BLOW",
+    "name": "濒死一击",
+    "description": "这个生物试图拉你一起陪葬。它会在被摧毁前攻击你造成{Damage}点伤害。"
+  },
+  "DEBUFF": {
+    "id": "DEBUFF",
+    "name": "策略",
+    "description": "这个敌人将要对你施加一个负面效果。"
+  },
+  "DEFEND": {
+    "id": "DEFEND",
+    "name": "守势",
+    "description": "这个敌人将会在其回合获得格挡。"
+  },
+  "ESCAPE": {
+    "id": "ESCAPE",
+    "name": "懦弱",
+    "description": "这个敌人将会逃跑。"
+  },
+  "HEAL": {
+    "id": "HEAL",
+    "name": "回复",
+    "description": "这个敌人将会回复。"
+  },
+  "SLEEP": {
+    "id": "SLEEP",
+    "name": "沉睡",
+    "description": "这个敌人本回合不会采取任何行动。"
+  },
+  "STATUS": {
+    "id": "STATUS",
+    "name": "策略",
+    "description": "这个敌人将会给你{CardCount}张状态牌。"
+  },
+  "STUN": {
+    "id": "STUN",
+    "name": "击晕",
+    "description": "这个敌人在其下一回合无法行动。"
+  },
+  "SUMMON": {
+    "id": "SUMMON",
+    "name": "召唤",
+    "description": "这个敌人将要召唤怪物。"
+  },
+  "CUSTOM": {
+    "id": "CUSTOM",
+    "name": "自定模式",
+    "description": "可以自行定制需要的特效和各种选项，充分体验游戏乐趣的模式。"
+  },
+  "CUSTOM_MP": {
+    "id": "CUSTOM_MP",
+    "name": "自定模式",
+    "description": "可以自行定制多人游戏中需要的特效和各种选项，充分体验游戏乐趣的模式。"
+  },
+  "DAILY": {
+    "id": "DAILY",
+    "name": "每日挑战",
+    "description": "每天都有一次的全新挑战！\n\n和其他玩家一起比拼最高分吧！"
+  },
+  "DAILY_MP": {
+    "id": "DAILY_MP",
+    "name": "多人每日挑战",
+    "description": "每天都有一次的全新挑战！\n\n和其他爬塔小队们一起比拼最高分吧！"
+  },
+  "ENABLE_TUTORIALS": {
+    "id": "ENABLE_TUTORIALS",
+    "name": "要看教程吗？",
+    "description": "看起来你好像是第一次玩杀戮尖塔！\n\n你想不想要一个简短的教程和一些小贴士来帮你快速上手呢？"
+  },
+  "HOST": {
+    "id": "HOST",
+    "name": "创建",
+    "description": "创建最多 4 人的标准、每日或自定义游戏。"
+  },
+  "INTERNAL_ERROR": {
+    "id": "INTERNAL_ERROR",
+    "name": "内部错误！",
+    "description": "发生了内部错误。请将这个问题汇报给开发者。\n\n更多信息：{info}"
+  },
+  "INVALID_SAVE_POPUP": {
+    "id": "INVALID_SAVE_POPUP",
+    "name": "失效存档！",
+    "description": ""
+  },
+  "JOIN": {
+    "id": "JOIN",
+    "name": "加入",
+    "description": "加入好友所创建的游戏。"
+  },
+  "JOIN_FRIENDS_MENU": {
+    "id": "JOIN_FRIENDS_MENU",
+    "name": "选择你要加入的好友",
+    "description": ""
+  },
+  "LEADERBOARDS": {
+    "id": "LEADERBOARDS",
+    "name": "排行榜",
+    "description": "看看你的分数，来和其他玩家还有你的朋友们一较高下。"
+  },
+  "MODDING_POPUP": {
+    "id": "MODDING_POPUP",
+    "name": "是否要加载模组？",
+    "description": "请不要加载来源不明的模组！模组是可能会损坏你的电脑的！\n\n如果你没有下载过模组，或者您不信任这些模组，请点击“取消”。\n\n如果你点击了加载模组，则需要重新启动游戏。"
+  },
+  "MOD_NOT_LOADED_POPUP": {
+    "id": "MOD_NOT_LOADED_POPUP",
+    "name": "模组尚未完全加载",
+    "description": "检测到新模组，但在重启游戏后他们才能生效。"
+  },
+  "MP_ABANDON": {
+    "id": "MP_ABANDON",
+    "name": "放弃多人存档",
+    "description": "放弃你的上一把多人游戏存档。"
+  },
+  "MP_LOAD": {
+    "id": "MP_LOAD",
+    "name": "读档多人游戏",
+    "description": "继续你的上一局多人游戏。只有曾在这局游戏内的玩家才可以加入。"
+  },
+  "MULTIPLAYER_WARNING_POPUP": {
+    "id": "MULTIPLAYER_WARNING_POPUP",
+    "name": "检测到第一局游戏！",
+    "description": ""
+  },
+  "OPEN_PROFILE_SCREEN": {
+    "id": "OPEN_PROFILE_SCREEN",
+    "name": "存档{Id}",
+    "description": "点击编辑"
+  },
+  "RUN_HISTORY": {
+    "id": "RUN_HISTORY",
+    "name": "历史记录",
+    "description": "回顾你之前屠戮高塔时的尝试。"
+  },
+  "STANDARD": {
+    "id": "STANDARD",
+    "name": "标准模式",
+    "description": "启程去屠戮这座高塔！"
+  },
+  "STANDARD_MP": {
+    "id": "STANDARD_MP",
+    "name": "标准模式",
+    "description": "启程...和朋友们一起屠戮这座高塔！"
+  },
+  "STARTUP_ERROR": {
+    "id": "STARTUP_ERROR",
+    "name": "致命错误！",
+    "description": "在游戏启动期间遇到了问题。\n\n请将此问题报告给开发者们。"
+  },
+  "STATISTICS": {
+    "id": "STATISTICS",
+    "name": "角色数据",
+    "description": "每个角色的进度与数据都可以在此被查看。"
+  },
+  "STEAM_INIT_ERROR": {
+    "id": "STEAM_INIT_ERROR",
+    "name": "Steam错误！",
+    "description": "Steam初始化失败。请确保您是从Steam客户端启动游戏的。\n\n详见：{details}"
+  },
+  "STEAM_STOPPED_ERROR": {
+    "id": "STEAM_STOPPED_ERROR",
+    "name": "Steam错误！",
+    "description": "Steam应用已崩溃。《杀戮尖塔2》可能发生了预料之外的行为。\n\n请尽快从Steam重新启动游戏。"
+  },
+  "TIMEOUT_OVERLAY": {
+    "id": "TIMEOUT_OVERLAY",
+    "name": "连接已中断",
+    "description": "正在等待主机响应..."
+  },
+  "CLEAR_DRAWING": {
+    "id": "CLEAR_DRAWING",
+    "name": "清除绘画",
+    "description": "移除你画的所有内容。"
+  },
+  "DRAWING_BUTTON": {
+    "id": "DRAWING_BUTTON",
+    "name": "DRAWING_BUTTON",
+    "description": "在地图上绘画。"
+  },
+  "ERASING_BUTTON": {
+    "id": "ERASING_BUTTON",
+    "name": "ERASING_BUTTON",
+    "description": "擦除你画出的线条。"
+  },
+  "LEGEND_ENEMY": {
+    "id": "LEGEND_ENEMY",
+    "name": "敌人",
+    "description": ""
+  },
+  "LEGEND_REST": {
+    "id": "LEGEND_REST",
+    "name": "休息",
+    "description": ""
+  },
+  "LEGEND_TREASURE": {
+    "id": "LEGEND_TREASURE",
+    "name": "宝箱",
+    "description": ""
+  },
+  "LEGEND_UNKNOWN": {
+    "id": "LEGEND_UNKNOWN",
+    "name": "未知",
+    "description": ""
+  },
+  "ALL_STAR": {
+    "id": "ALL_STAR",
+    "name": "全明星",
+    "description": "开始时拥有5张无色牌。"
+  },
+  "BIG_GAME_HUNTER": {
+    "id": "BIG_GAME_HUNTER",
+    "name": "精英猎手",
+    "description": "高塔中现在满是精英，且击败它们的奖励变得更好。"
+  },
+  "BINARY": {
+    "id": "BINARY",
+    "name": "两者择一",
+    "description": "卡牌奖励只有2张牌。"
+  },
+  "CURSED_RUN": {
+    "id": "CURSED_RUN",
+    "name": "诅咒局",
+    "description": "在每一阶段开始时，将一张随机诅咒牌加入你的牌组。"
+  },
+  "DRAFT": {
+    "id": "DRAFT",
+    "name": "选牌",
+    "description": "进行10次卡牌奖励的选择来替换你的初始牌组。"
+  },
+  "FLIGHT": {
+    "id": "FLIGHT",
+    "name": "飞行",
+    "description": "在选择每一层房间时可以无视路线。"
+  },
+  "HOARDER": {
+    "id": "HOARDER",
+    "name": "囤积癖",
+    "description": "每当你往牌组中添加牌时，都额外添加2张相同牌。你不能在商人处移除卡牌。"
+  },
+  "INSANITY": {
+    "id": "INSANITY",
+    "name": "精神错乱",
+    "description": "初始牌组将会是30张随机卡牌。"
+  },
+  "MIDAS": {
+    "id": "MIDAS",
+    "name": "点金手",
+    "description": "敌人掉落的金币增加200%，但你不能在休息处锻造升级卡牌。"
+  },
+  "MURDEROUS": {
+    "id": "MURDEROUS",
+    "name": "嗜杀成性",
+    "description": "你在每场战斗开始时获得3点力量，所有敌人在战斗开始时获得3点力量。"
+  },
+  "NIGHT_TERRORS": {
+    "id": "NIGHT_TERRORS",
+    "name": "暗夜惊魂",
+    "description": "在休息处休息会恢复全部生命，但会失去5点最大生命值。"
+  },
+  "SEALED_DECK": {
+    "id": "SEALED_DECK",
+    "name": "现开套牌",
+    "description": "从30张随机牌中选择10张来构筑你的初始牌组。"
+  },
+  "SPECIALIZED": {
+    "id": "SPECIALIZED",
+    "name": "专精",
+    "description": "游戏开始时获得5张相同的牌。"
+  },
+  "TERMINAL": {
+    "id": "TERMINAL",
+    "name": "身患绝症",
+    "description": "你每进入一个新房间都会失去1点最大生命值。你在每场战斗开始时获得5层覆甲。"
+  },
+  "VINTAGE": {
+    "id": "VINTAGE",
+    "name": "上等好货",
+    "description": "普通敌人不再掉落卡牌，而是掉落随机遗物。"
+  },
+  "AEONGLASS": {
+    "id": "AEONGLASS",
+    "name": "永世沙漏",
+    "description": ""
+  },
+  "BOWLBUG_EGG": {
+    "id": "BOWLBUG_EGG",
+    "name": "盛碗虫（卵）",
+    "description": ""
+  },
+  "BOWLBUG_ROCK": {
+    "id": "BOWLBUG_ROCK",
+    "name": "盛碗虫（石）",
+    "description": ""
+  },
+  "BOWLBUG_SILK": {
+    "id": "BOWLBUG_SILK",
+    "name": "盛碗虫（丝）",
+    "description": ""
+  },
+  "BYGONE_EFFIGY": {
+    "id": "BYGONE_EFFIGY",
+    "name": "旧日雕像",
+    "description": ""
+  },
+  "CEREMONIAL_BEAST": {
+    "id": "CEREMONIAL_BEAST",
+    "name": "仪式兽",
+    "description": ""
+  },
+  "COCOON": {
+    "id": "COCOON",
+    "name": "茧",
+    "description": ""
+  },
+  "CORPSE_SLUG": {
+    "id": "CORPSE_SLUG",
+    "name": "噬尸蛞蝓",
+    "description": ""
+  },
+  "DECIMILLIPEDE_SEGMENT": {
+    "id": "DECIMILLIPEDE_SEGMENT",
+    "name": "残杀千足虫",
+    "description": ""
+  },
+  "DEVOTED_SCULPTOR": {
+    "id": "DEVOTED_SCULPTOR",
+    "name": "虔诚雕刻师",
+    "description": ""
+  },
+  "EXOSKELETON": {
+    "id": "EXOSKELETON",
+    "name": "外骨骼虫",
+    "description": ""
+  },
+  "EYE_WITH_TEETH": {
+    "id": "EYE_WITH_TEETH",
+    "name": "利齿之眼",
+    "description": ""
+  },
+  "FOSSIL_STALKER": {
+    "id": "FOSSIL_STALKER",
+    "name": "化石追踪者",
+    "description": ""
+  },
+  "FROG_KNIGHT": {
+    "id": "FROG_KNIGHT",
+    "name": "青蛙骑士",
+    "description": ""
+  },
+  "FUZZY_WURM_CRAWLER": {
+    "id": "FUZZY_WURM_CRAWLER",
+    "name": "毛绒伏地虫",
+    "description": ""
+  },
+  "GAS_BOMB": {
+    "id": "GAS_BOMB",
+    "name": "气态炸弹",
+    "description": ""
+  },
+  "GAZING_MOTH": {
+    "id": "GAZING_MOTH",
+    "name": "凝视蛾",
+    "description": ""
+  },
+  "HAUNTED_SHIP": {
+    "id": "HAUNTED_SHIP",
+    "name": "幽灵船",
+    "description": ""
+  },
+  "INFESTED_PRISM": {
+    "id": "INFESTED_PRISM",
+    "name": "感染棱柱",
+    "description": ""
+  },
+  "KIN_FOLLOWER": {
+    "id": "KIN_FOLLOWER",
+    "name": "同族信徒",
+    "description": ""
+  },
+  "KIN_PRIEST": {
+    "id": "KIN_PRIEST",
+    "name": "同族神官",
+    "description": ""
+  },
+  "KNOWLEDGE_DEMON": {
+    "id": "KNOWLEDGE_DEMON",
+    "name": "知识恶魔",
+    "description": ""
+  },
+  "LIVING_FOG": {
+    "id": "LIVING_FOG",
+    "name": "活雾",
+    "description": ""
+  },
+  "LOUSE_PROGENITOR": {
+    "id": "LOUSE_PROGENITOR",
+    "name": "虱虫之祖",
+    "description": ""
+  },
+  "MYSTERIOUS_KNIGHT": {
+    "id": "MYSTERIOUS_KNIGHT",
+    "name": "神秘骑士",
+    "description": ""
+  },
+  "OWL_MAGISTRATE": {
+    "id": "OWL_MAGISTRATE",
+    "name": "猫头鹰法官",
+    "description": ""
+  },
+  "PAELS_LEGION": {
+    "id": "PAELS_LEGION",
+    "name": "佩尔的士兵",
+    "description": "将你从一张卡牌中获得的格挡翻倍，然后此遗物会休眠{Turns}回合。"
+  },
+  "PHANTASMAL_GARDENER": {
+    "id": "PHANTASMAL_GARDENER",
+    "name": "花园幽灵鳗",
+    "description": ""
+  },
+  "PHROG_PARASITE": {
+    "id": "PHROG_PARASITE",
+    "name": "异蛙寄生虫",
+    "description": ""
+  },
+  "SCROLL_OF_BITING": {
+    "id": "SCROLL_OF_BITING",
+    "name": "咬人卷轴",
+    "description": ""
+  },
+  "SEWER_CLAM": {
+    "id": "SEWER_CLAM",
+    "name": "下水道蚌",
+    "description": ""
+  },
+  "SKULKING_COLONY": {
+    "id": "SKULKING_COLONY",
+    "name": "鬼祟珊瑚群",
+    "description": ""
+  },
+  "SLITHERING_STRANGLER": {
+    "id": "SLITHERING_STRANGLER",
+    "name": "蛇行扼杀者",
+    "description": ""
+  },
+  "SLUMBERING_BEETLE": {
+    "id": "SLUMBERING_BEETLE",
+    "name": "熟睡甲虫",
+    "description": ""
+  },
+  "SNAPPING_JAXFRUIT": {
+    "id": "SNAPPING_JAXFRUIT",
+    "name": "闪光贾克斯果",
+    "description": ""
+  },
+  "TEST_SUBJECT": {
+    "id": "TEST_SUBJECT",
+    "name": "实验体 #C{Count}",
+    "description": ""
+  },
+  "THE_FORGOTTEN": {
+    "id": "THE_FORGOTTEN",
+    "name": "遗忘之物",
+    "description": ""
+  },
+  "THE_INSATIABLE": {
+    "id": "THE_INSATIABLE",
+    "name": "无厌沙虫",
+    "description": ""
+  },
+  "THE_LOST": {
+    "id": "THE_LOST",
+    "name": "失落之物",
+    "description": ""
+  },
+  "THIEVING_HOPPER": {
+    "id": "THIEVING_HOPPER",
+    "name": "偷窃草蜢",
+    "description": ""
+  },
+  "TOUGH_EGG": {
+    "id": "TOUGH_EGG",
+    "name": "结实的卵",
+    "description": ""
+  },
+  "TWO_TAILED_RAT": {
+    "id": "TWO_TAILED_RAT",
+    "name": "双尾鼠",
+    "description": ""
+  },
+  "WATERFALL_GIANT": {
+    "id": "WATERFALL_GIANT",
+    "name": "瀑布巨兽",
+    "description": ""
+  },
+  "DARK_ORB": {
+    "id": "DARK_ORB",
+    "name": "黑暗",
+    "description": "充能球：激发时，对生命值最少的敌人造成伤害。伤害每回合增加。"
+  },
+  "EMPTY_SLOT": {
+    "id": "EMPTY_SLOT",
+    "name": "充能球栏位",
+    "description": "充能球会生成在这些栏位。"
+  },
+  "FROST_ORB": {
+    "id": "FROST_ORB",
+    "name": "冰霜",
+    "description": "充能球：获得格挡。"
+  },
+  "GLASS_ORB": {
+    "id": "GLASS_ORB",
+    "name": "玻璃",
+    "description": "充能球：对所有敌人造成伤害。伤害每回合减少。"
+  },
+  "LIGHTNING_ORB": {
+    "id": "LIGHTNING_ORB",
+    "name": "闪电",
+    "description": "充能球：对随机敌人造成伤害。"
+  },
+  "MOCK_COMBAT_CLEANUP_ORB": {
+    "id": "MOCK_COMBAT_CLEANUP_ORB",
+    "name": "テスト用戦闘クリーンナップ",
+    "description": ""
+  },
+  "PLASMA_ORB": {
+    "id": "PLASMA_ORB",
+    "name": "等离子",
+    "description": "充能球：获得能量。"
+  },
+  "ASHWATER": {
+    "id": "ASHWATER",
+    "name": "灰水",
+    "description": "消耗你手牌中的任意张牌。"
+  },
+  "BEETLE_JUICE": {
+    "id": "BEETLE_JUICE",
+    "name": "甲虫汁",
+    "description": "敌人的攻击在下{Repeat}个回合中造成的伤害减少{DamageDecrease}%。"
+  },
+  "BLESSING_OF_THE_FORGE": {
+    "id": "BLESSING_OF_THE_FORGE",
+    "name": "熔炉的祝福",
+    "description": "在本场战斗中升级你手牌中的所有牌。"
+  },
+  "BONE_BREW": {
+    "id": "BONE_BREW",
+    "name": "骨头酿",
+    "description": "召唤{Summon}。"
+  },
+  "BOTTLED_POTENTIAL": {
+    "id": "BOTTLED_POTENTIAL",
+    "name": "瓶装潜能",
+    "description": "将你的所有牌洗入你的抽牌堆。抽{Cards}张牌。"
+  },
+  "CLARITY": {
+    "id": "CLARITY",
+    "name": "明晰提取物",
+    "description": "抽{Cards}张牌。在你的下{ClarityPower}个回合开始时，额外抽1张牌。"
+  },
+  "COSMIC_CONCOCTION": {
+    "id": "COSMIC_CONCOCTION",
+    "name": "宇宙药剂",
+    "description": "将{Cards}张升级的无色牌加入你的手牌。"
+  },
+  "CURE_ALL": {
+    "id": "CURE_ALL",
+    "name": "痊愈药水",
+    "description": "获得[Energy]。抽{Cards}张牌。"
+  },
+  "DISTILLED_CHAOS": {
+    "id": "DISTILLED_CHAOS",
+    "name": "精炼混沌",
+    "description": "打出你抽牌堆顶部的{Repeat}张牌。"
+  },
+  "DROPLET_OF_PRECOGNITION": {
+    "id": "DROPLET_OF_PRECOGNITION",
+    "name": "预知之滴",
+    "description": "选择你抽牌堆中的一张牌加入你的手牌。"
+  },
+  "DUPLICATOR": {
+    "id": "DUPLICATOR",
+    "name": "复制药水",
+    "description": "本回合，你打出的下一张牌会额外打出一次。"
+  },
+  "ENTROPIC_BREW": {
+    "id": "ENTROPIC_BREW",
+    "name": "混沌药水",
+    "description": "在所有空药水栏位中获得随机药水。"
+  },
+  "ESSENCE_OF_DARKNESS": {
+    "id": "ESSENCE_OF_DARKNESS",
+    "name": "黑暗精华",
+    "description": "生成你充能球栏位数量个黑暗充能球。"
+  },
+  "EXPLOSIVE_AMPOULE": {
+    "id": "EXPLOSIVE_AMPOULE",
+    "name": "爆炸安瓿",
+    "description": "对所有敌人造成{Damage}点伤害。"
+  },
+  "FAIRY_IN_A_BOTTLE": {
+    "id": "FAIRY_IN_A_BOTTLE",
+    "name": "瓶中精灵",
+    "description": "当你的生命值将被减少至0或以下时，改为丢弃这瓶药水，然后将你回复到你最大生命值的30%。"
+  },
+  "FORTIFIER": {
+    "id": "FORTIFIER",
+    "name": "固化药水",
+    "description": "将你的格挡变为三倍。"
+  },
+  "FYSH_OIL": {
+    "id": "FYSH_OIL",
+    "name": "异鱼之油",
+    "description": "获得{StrengthPower}点力量和{DexterityPower}点敏捷。"
+  },
+  "GAMBLERS_BREW": {
+    "id": "GAMBLERS_BREW",
+    "name": "赌徒特酿",
+    "description": "丢弃任意张牌，然后抽相同数量的牌。"
+  },
+  "GHOST_IN_A_JAR": {
+    "id": "GHOST_IN_A_JAR",
+    "name": "罐装幽灵",
+    "description": "获得1层无实体。"
+  },
+  "HEART_OF_IRON": {
+    "id": "HEART_OF_IRON",
+    "name": "铁心药水",
+    "description": "获得{PlatingPower}层覆甲。"
+  },
+  "KINGS_COURAGE": {
+    "id": "KINGS_COURAGE",
+    "name": "王之勇气",
+    "description": "铸造{Forge}。"
+  },
+  "LIQUID_BRONZE": {
+    "id": "LIQUID_BRONZE",
+    "name": "流动铜液",
+    "description": "获得{ThornsPower}点荆棘。"
+  },
+  "LIQUID_MEMORIES": {
+    "id": "LIQUID_MEMORIES",
+    "name": "液态记忆",
+    "description": "将你弃牌堆中的一张牌放入你的手牌。这张牌在本回合可以免费打出。"
+  },
+  "LUCKY_TONIC": {
+    "id": "LUCKY_TONIC",
+    "name": "幸运补剂",
+    "description": "获得{BufferPower}层缓冲。"
+  },
+  "MAZALETHS_GIFT": {
+    "id": "MAZALETHS_GIFT",
+    "name": "马萨雷斯的赠礼",
+    "description": "获得{RitualPower}层仪式。"
+  },
+  "OROBIC_ACID": {
+    "id": "OROBIC_ACID",
+    "name": "欧洛巴斯之酸",
+    "description": "往你的手牌中加入一张随机攻击牌、一张随机技能牌和一张随机能力牌。这些牌在本回合免费。"
+  },
+  "POT_OF_GHOULS": {
+    "id": "POT_OF_GHOULS",
+    "name": "尸鬼瓮",
+    "description": "将{Cards}张灵魂加入你的手牌。"
+  },
+  "POWDERED_DEMISE": {
+    "id": "POWDERED_DEMISE",
+    "name": "消亡粉末",
+    "description": "敌人在自身的每个回合结束时，失去{Demise}点生命。"
+  },
+  "RADIANT_TINCTURE": {
+    "id": "RADIANT_TINCTURE",
+    "name": "明耀酊剂",
+    "description": "获得[Energy]。在你的下{RadiancePower}个回合开始时，额外获得[energyPrefix]。"
+  },
+  "SHIP_IN_A_BOTTLE": {
+    "id": "SHIP_IN_A_BOTTLE",
+    "name": "瓶中船",
+    "description": "获得[Block]点格挡。在下个回合开始时获得[Block]点格挡。"
+  },
+  "SNECKO_OIL": {
+    "id": "SNECKO_OIL",
+    "name": "异蛇之油",
+    "description": "抽{Cards}张牌。在本回合随机化你手牌中所有牌的耗能。"
+  },
+  "SOLDIERS_STEW": {
+    "id": "SOLDIERS_STEW",
+    "name": "士兵炖汤",
+    "description": "在本场战斗中，所有名字中有“打击”的牌获得重放：1。"
+  },
+  "STABLE_SERUM": {
+    "id": "STABLE_SERUM",
+    "name": "稳定血清",
+    "description": "保留你的手牌{Repeat}回合。"
+  },
+  "TOUCH_OF_INSANITY": {
+    "id": "TOUCH_OF_INSANITY",
+    "name": "癫狂之触",
+    "description": "选择你手牌中的一张牌，使其在本场战斗可以免费打出。"
+  },
+  "FOCUS_DOWN": {
+    "id": "FOCUS_DOWN",
+    "name": "集中下降",
+    "description": "在你的回合结束时，失去1点集中。"
+  },
+  "GOLDEN_PEARL": {
+    "id": "GOLDEN_PEARL",
+    "name": "金色珍珠",
+    "description": "拾起时，获得{Gold}金币。"
+  },
+  "GRABBED": {
+    "id": "GRABBED",
+    "name": "抓取",
+    "description": "杀死这只生物时，被偷走的牌会回到你的手牌中。"
+  },
+  "INKED": {
+    "id": "INKED",
+    "name": "墨染",
+    "description": "这个生物从攻击牌中受到的伤害增加2点。"
+  },
+  "MOCK_TEMPORARY_STRENGTH_LOSS": {
+    "id": "MOCK_TEMPORARY_STRENGTH_LOSS",
+    "name": "テスト用一時的筋力低下",
+    "description": ""
+  },
+  "ORB_GENERATOR": {
+    "id": "ORB_GENERATOR",
+    "name": "充能球生成器",
+    "description": "这个敌人能够操控充能球。充能球会在你的回合结束时触发，并且不受正面与负面状态的影响。"
+  },
+  "RESTORE_DEXTERITY": {
+    "id": "RESTORE_DEXTERITY",
+    "name": "敏捷恢复",
+    "description": "在其回合结束时，获得9点敏捷。"
+  },
+  "RESTORE_FOCUS": {
+    "id": "RESTORE_FOCUS",
+    "name": "集中恢复",
+    "description": "在其回合结束时，获得9点集中。"
+  },
+  "SOUL_WITHER": {
+    "id": "SOUL_WITHER",
+    "name": "灵魂枯萎",
+    "description": "在灵魂枢纽对你造成未被格挡的伤害9次之后，对你造成999伤害。"
+  },
+  "TEMPORARY_DEXTERITY_DOWN": {
+    "id": "TEMPORARY_DEXTERITY_DOWN",
+    "name": "TEMPORARY_DEXTERITY_DOWN",
+    "description": "在本回合结束前失去敏捷。"
+  },
+  "TEMPORARY_FOCUS_DOWN": {
+    "id": "TEMPORARY_FOCUS_DOWN",
+    "name": "TEMPORARY_FOCUS_DOWN",
+    "description": "在本回合结束前失去集中。"
+  },
+  "TEMPORARY_STRENGTH_DOWN": {
+    "id": "TEMPORARY_STRENGTH_DOWN",
+    "name": "TEMPORARY_STRENGTH_DOWN",
+    "description": "在本回合结束前失去力量。"
+  },
+  "TEZCATARAS_BLIGHT": {
+    "id": "TEZCATARAS_BLIGHT",
+    "name": "特兹卡塔拉的荒疫",
+    "description": "在本回合结束时，失去1点力量。"
+  },
+  "TORN": {
+    "id": "TORN",
+    "name": "破裂",
+    "description": "每回合少抽1张牌。"
+  },
+  "UNSTABLE": {
+    "id": "UNSTABLE",
+    "name": "不稳定",
+    "description": "你每打出一张攻击牌，这个敌人失去5点生命。"
+  },
+  "UNSTEADY": {
+    "id": "UNSTEADY",
+    "name": "脚下不稳",
+    "description": "当连枷骑士的生命值下降到50%以下时，会被击晕。"
+  },
+  "ALCHEMICAL_COFFER": {
+    "id": "ALCHEMICAL_COFFER",
+    "name": "炼金箱",
+    "description": "拾起时，获得{PotionSlots}个放有随机药水的药水栏位。"
+  },
+  "AMETHYST_AUBERGINE": {
+    "id": "AMETHYST_AUBERGINE",
+    "name": "紫水晶茄子",
+    "description": "敌人额外掉落{Gold}金币。"
+  },
+  "ANCHOR": {
+    "id": "ANCHOR",
+    "name": "锚",
+    "description": "每场战斗开始时获得{Block}点格挡。"
+  },
+  "ARCANE_SCROLL": {
+    "id": "ARCANE_SCROLL",
+    "name": "奥术卷轴",
+    "description": "拾起时，将一张随机稀有牌加入你的牌组。"
+  },
+  "ARCHAIC_TOOTH": {
+    "id": "ARCHAIC_TOOTH",
+    "name": "古老牙齿",
+    "description": "拾起时，将{StarterCard.StringValue:cond:{StarterCard}变化为{AncientCard}|一张初始卡牌变化为先古版本}。"
+  },
+  "ART_OF_WAR": {
+    "id": "ART_OF_WAR",
+    "name": "孙子兵法",
+    "description": "如果你在本回合中没有打出过攻击牌，则在下一回合额外获得1点[Energy]。"
+  },
+  "ASTROLABE": {
+    "id": "ASTROLABE",
+    "name": "星盘",
+    "description": "拾起时，选择{Cards}张牌进行变化，然后将这些牌升级。"
+  },
+  "BEATING_REMNANT": {
+    "id": "BEATING_REMNANT",
+    "name": "律动残余",
+    "description": "你在一回合内失去的生命值不会超过20点。"
+  },
+  "BEAUTIFUL_BRACELET": {
+    "id": "BEAUTIFUL_BRACELET",
+    "name": "华美手镯",
+    "description": "拾起时，从你的牌组中选择{Cards}张牌，附魔：迅捷3。"
+  },
+  "BELLOWS": {
+    "id": "BELLOWS",
+    "name": "风箱",
+    "description": "你在每场战斗开始时的手牌，将被升级。"
+  },
+  "BELT_BUCKLE": {
+    "id": "BELT_BUCKLE",
+    "name": "腰带扣",
+    "description": "当你没有药水时，你额外拥有{DexterityPower}点敏捷。"
+  },
+  "BIG_HAT": {
+    "id": "BIG_HAT",
+    "name": "大帽子",
+    "description": "在每场战斗开始时，将{Cards}张随机虚无牌加入你的手牌。"
+  },
+  "BIG_MUSHROOM": {
+    "id": "BIG_MUSHROOM",
+    "name": "大蘑菇",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。在每场战斗开始时，少抽{Cards}张牌。"
+  },
+  "BIIIG_HUG": {
+    "id": "BIIIG_HUG",
+    "name": "大～抱抱",
+    "description": "拾起时，从你的牌组中移除{Cards}张牌。每当你的抽牌堆打乱洗牌时，将一张煤灰加入你的抽牌堆。"
+  },
+  "BING_BONG": {
+    "id": "BING_BONG",
+    "name": "宾邦",
+    "description": "每当你往牌组中增添卡牌时，都将额外添加一张相同的牌。"
+  },
+  "BLACK_BLOOD": {
+    "id": "BLACK_BLOOD",
+    "name": "黑暗之血",
+    "description": "在战斗结束时，回复{Heal}点生命。"
+  },
+  "BLESSED_ANTLER": {
+    "id": "BLESSED_ANTLER",
+    "name": "赐福鹿角",
+    "description": "在每回合开始时获得[Energy]。在战斗开始时，将{Cards}张晕眩放入你的抽牌堆。"
+  },
+  "BLOOD_SOAKED_ROSE": {
+    "id": "BLOOD_SOAKED_ROSE",
+    "name": "血染玫瑰",
+    "description": "拾起时，将1张执迷加入你的牌组。在回合开始时获得[Energy]。"
+  },
+  "BLOOD_VIAL": {
+    "id": "BLOOD_VIAL",
+    "name": "小血瓶",
+    "description": "在每场战斗开始时，回复{Heal}点生命。"
+  },
+  "BONE_FLUTE": {
+    "id": "BONE_FLUTE",
+    "name": "骨笛",
+    "description": "每当奥斯提攻击时，获得{Block}点格挡。"
+  },
+  "BONE_TEA": {
+    "id": "BONE_TEA",
+    "name": "骨茶",
+    "description": "在你接下来的{Combats}场战斗开始时，升级你的初始手牌。"
+  },
+  "BOOKMARK": {
+    "id": "BOOKMARK",
+    "name": "书签",
+    "description": "每回合结束时，随机一张被保留的牌在被打出前的耗能减少1。"
+  },
+  "BOOK_OF_FIVE_RINGS": {
+    "id": "BOOK_OF_FIVE_RINGS",
+    "name": "五轮书",
+    "description": "你每将{Cards}张牌加入你的牌组时，回复{Heal}点生命。"
+  },
+  "BOOK_REPAIR_KNIFE": {
+    "id": "BOOK_REPAIR_KNIFE",
+    "name": "修书小刀",
+    "description": "每当有一名不是“爪牙”的敌人死于灾厄时，回复{Heal}点生命。"
+  },
+  "BOOMING_CONCH": {
+    "id": "BOOMING_CONCH",
+    "name": "轰鸣海螺",
+    "description": "在精英战的战斗开始时，额外抽{Cards}张牌并获得[Energy]。"
+  },
+  "BOUND_PHYLACTERY": {
+    "id": "BOUND_PHYLACTERY",
+    "name": "缚魂命匣",
+    "description": "在你的回合开始时，召唤{Summon}"
+  },
+  "BOWLER_HAT": {
+    "id": "BOWLER_HAT",
+    "name": "圆顶礼帽",
+    "description": "额外获得[GoldIncrease]%的金币。"
+  },
+  "BREAD": {
+    "id": "BREAD",
+    "name": "面包",
+    "description": "在你的第一个回合开始时，失去[LoseEnergy]。在其余的回合开始时，获得[GainEnergy]。"
+  },
+  "BRILLIANT_SCARF": {
+    "id": "BRILLIANT_SCARF",
+    "name": "艳丽围巾",
+    "description": "你每回合从你的手牌打出的第5张牌可以被免费打出。"
+  },
+  "BRIMSTONE": {
+    "id": "BRIMSTONE",
+    "name": "硫磺",
+    "description": "在你的每个回合开始时，你获得{SelfStrength}点力量，所有敌人获得{EnemyStrength}点力量。"
+  },
+  "BRONZE_SCALES": {
+    "id": "BRONZE_SCALES",
+    "name": "铜质鳞片",
+    "description": "在每场战斗开始时，获得{ThornsPower}点荆棘。"
+  },
+  "BURNING_STICKS": {
+    "id": "BURNING_STICKS",
+    "name": "燃烧木棍",
+    "description": "每场战斗中你第一次消耗技能牌时，将那张牌的复制品加入你的手牌"
+  },
+  "BYRDPIP": {
+    "id": "BYRDPIP",
+    "name": "异鸟宝宝",
+    "description": "拾起时，获得一张异鸟扑击。一只幼年异鸟会在战斗中陪伴你。"
+  },
+  "CALLING_BELL": {
+    "id": "CALLING_BELL",
+    "name": "召唤铃铛",
+    "description": "拾起时，获得一个独特的诅咒和{Relics}件遗物。"
+  },
+  "CANDELABRA": {
+    "id": "CANDELABRA",
+    "name": "烛台",
+    "description": "在你的第2回合开始时，获得[Energy]。"
+  },
+  "CAPTAINS_WHEEL": {
+    "id": "CAPTAINS_WHEEL",
+    "name": "舵盘",
+    "description": "在你的第三回合开始时，获得{Block}点格挡。"
+  },
+  "CAULDRON": {
+    "id": "CAULDRON",
+    "name": "大锅",
+    "description": "拾起时，制作{Potions}瓶随机药水。"
+  },
+  "CENTENNIAL_PUZZLE": {
+    "id": "CENTENNIAL_PUZZLE",
+    "name": "百年积木",
+    "description": "你在每场战斗中第一次损失生命值时，抽{Cards}张牌。"
+  },
+  "CHANDELIER": {
+    "id": "CHANDELIER",
+    "name": "吊灯",
+    "description": "在你的第三回合开始时，获得[Energy]。"
+  },
+  "CHARONS_ASHES": {
+    "id": "CHARONS_ASHES",
+    "name": "卡戎之灰",
+    "description": "每当你消耗一张牌，对所有敌人造成{Damage}点伤害。"
+  },
+  "CHEMICAL_X": {
+    "id": "CHEMICAL_X",
+    "name": "化学物X",
+    "description": "耗能为X的牌的效果数值增加{Increase}点。"
+  },
+  "CHOICES_PARADOX": {
+    "id": "CHOICES_PARADOX",
+    "name": "选择悖论",
+    "description": "在每场战斗开始时，从{Cards}张随机牌中选择1张放入你的手牌。被选中的牌获得保留。"
+  },
+  "CHOSEN_CHEESE": {
+    "id": "CHOSEN_CHEESE",
+    "name": "天选芝士",
+    "description": "在战斗结束时，获得{MaxHp}点最大生命值。"
+  },
+  "CIRCLET": {
+    "id": "CIRCLET",
+    "name": "头环",
+    "description": "这是一个头环。"
+  },
+  "CLAWS": {
+    "id": "CLAWS",
+    "name": "利爪",
+    "description": "拾起时，将至多{Cards}张牌变化为撕咬。"
+  },
+  "CLOAK_CLASP": {
+    "id": "CLOAK_CLASP",
+    "name": "斗篷扣",
+    "description": "在你的回合结束时，每有一张手牌，就获得{Block}点格挡"
+  },
+  "CRACKED_CORE": {
+    "id": "CRACKED_CORE",
+    "name": "破损核心",
+    "description": "在每场战斗开始时，生成{Lightning}个闪电充能球。"
+  },
+  "CROSSBOW": {
+    "id": "CROSSBOW",
+    "name": "十字弓",
+    "description": "在你的回合开始时，将一张随机攻击牌加入你的手牌。这张牌在本回合可以免费打出。"
+  },
+  "CURSED_KETTLE": {
+    "id": "CURSED_KETTLE",
+    "name": "诅咒水壶",
+    "description": "每当你打败一名精英时，当前阶段的其他精英敌人会在战斗开始时获得{StrengthPower}点力量。"
+  },
+  "CURSED_PEARL": {
+    "id": "CURSED_PEARL",
+    "name": "诅咒珍珠",
+    "description": "拾起时，获得一张贪婪，获得{Gold}金币。"
+  },
+  "DARKSTONE_PERIAPT": {
+    "id": "DARKSTONE_PERIAPT",
+    "name": "黑石护符",
+    "description": "每当你获得一张诅咒，就将你的最大生命值提升{MaxHp}。"
+  },
+  "DATA_DISK": {
+    "id": "DATA_DISK",
+    "name": "数据磁盘",
+    "description": "在每场战斗开始时，获得{FocusPower}点集中。"
+  },
+  "DAUGHTER_OF_THE_WIND": {
+    "id": "DAUGHTER_OF_THE_WIND",
+    "name": "风的女儿",
+    "description": "每当你打出一张攻击牌时，获得{Block}点格挡。"
+  },
+  "DELICATE_FROND": {
+    "id": "DELICATE_FROND",
+    "name": "娇嫩蕨草",
+    "description": "在每场战斗开始时，用随机药水将你的空药水栏位填满。"
+  },
+  "DEMON_TONGUE": {
+    "id": "DEMON_TONGUE",
+    "name": "恶魔之舌",
+    "description": "每回合第一次在回合内失去生命值时，回复等量的生命值。"
+  },
+  "DIAMOND_DIADEM": {
+    "id": "DIAMOND_DIADEM",
+    "name": "钻石头冠",
+    "description": "如果你在本回合打出的牌少于等于{CardThreshold}张，则受到敌人的伤害减半。"
+  },
+  "DINGY_RUG": {
+    "id": "DINGY_RUG",
+    "name": "肮脏地毯",
+    "description": "卡牌奖励现在会包括无色牌。"
+  },
+  "DISTINGUISHED_CAPE": {
+    "id": "DISTINGUISHED_CAPE",
+    "name": "卓越斗篷",
+    "description": "拾起时，失去9点最大生命值。将{Cards}张灵体加入你的牌组。"
+  },
+  "DIVINE_DESTINY": {
+    "id": "DIVINE_DESTINY",
+    "name": "天命所归",
+    "description": "在每场战斗开始时，获得[Stars]。"
+  },
+  "DIVINE_RIGHT": {
+    "id": "DIVINE_RIGHT",
+    "name": "天赋君权",
+    "description": "在每场战斗开始时，获得[Stars]。"
+  },
+  "DOLLYS_MIRROR": {
+    "id": "DOLLYS_MIRROR",
+    "name": "多利之镜",
+    "description": "拾起时，从你的牌组中选择一张牌进行复制。"
+  },
+  "DRAGON_FRUIT": {
+    "id": "DRAGON_FRUIT",
+    "name": "火龙果",
+    "description": "每当你获得金币时，提升{MaxHp}点你的最大生命值。"
+  },
+  "DREAM_CATCHER": {
+    "id": "DREAM_CATCHER",
+    "name": "捕梦网",
+    "description": "每当你休息时，可以添加一张牌到你的牌组。"
+  },
+  "DRIFTWOOD": {
+    "id": "DRIFTWOOD",
+    "name": "浮木",
+    "description": "你可以在每一个卡牌奖励中重掷一次。"
+  },
+  "DUSTY_TOME": {
+    "id": "DUSTY_TOME",
+    "name": "尘封魔典",
+    "description": "拾起时，获得一张{AncientCard.StringValue:cond:{}+|先古牌}。"
+  },
+  "ECTOPLASM": {
+    "id": "ECTOPLASM",
+    "name": "灵体外质",
+    "description": "你不能再获得任何金币。在回合开始时获得[Energy]"
+  },
+  "ELECTRIC_SHRYMP": {
+    "id": "ELECTRIC_SHRYMP",
+    "name": "放电异虾",
+    "description": "拾起时，选择一张技能牌为它附魔：注能。"
+  },
+  "EMBER_TEA": {
+    "id": "EMBER_TEA",
+    "name": "余烬茶",
+    "description": "在接下来的{Combats}场战斗开始时，获得{StrengthPower}点力量。"
+  },
+  "EMOTION_CHIP": {
+    "id": "EMOTION_CHIP",
+    "name": "情感芯片",
+    "description": "在每回合开始时，如果你在之前回合受到过伤害，则触发所有充能球的被动效果。"
+  },
+  "EMPTY_CAGE": {
+    "id": "EMPTY_CAGE",
+    "name": "空鸟笼",
+    "description": "拾起时，选择移除牌组中的{Cards}张牌。"
+  },
+  "ENDLESS_APPETITE": {
+    "id": "ENDLESS_APPETITE",
+    "name": "无尽食欲",
+    "description": "每当你消耗一张牌时，获得{StrengthPower}点力量。"
+  },
+  "ETERNAL_FEATHER": {
+    "id": "ETERNAL_FEATHER",
+    "name": "永恒羽毛",
+    "description": "你的牌组中每有{Cards}张牌，当你进入休息处时就会回复{Heal}点生命。"
+  },
+  "FAKE_ANCHOR": {
+    "id": "FAKE_ANCHOR",
+    "name": "锚？？？",
+    "description": "在每场战斗开始时，获得{Block}点格挡。"
+  },
+  "FAKE_BLOOD_VIAL": {
+    "id": "FAKE_BLOOD_VIAL",
+    "name": "小血瓶？？？",
+    "description": "在每场战斗开始时，回复{Heal}点生命。"
+  },
+  "FAKE_HAPPY_FLOWER": {
+    "id": "FAKE_HAPPY_FLOWER",
+    "name": "开心小花？？？",
+    "description": "每{Turns}个回合，获得[Energy]。"
+  },
+  "FAKE_LEES_WAFFLE": {
+    "id": "FAKE_LEES_WAFFLE",
+    "name": "李家华夫饼？？？",
+    "description": "拾起时，回复你{Heal}%的生命值。"
+  },
+  "FAKE_MANGO": {
+    "id": "FAKE_MANGO",
+    "name": "芒果？？？",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "FAKE_ORICHALCUM": {
+    "id": "FAKE_ORICHALCUM",
+    "name": "奥利哈钢？？？",
+    "description": "如果你在回合结束时没有任何格挡，获得{Block}点格挡。"
+  },
+  "FAKE_SNECKO_EYE": {
+    "id": "FAKE_SNECKO_EYE",
+    "name": "异蛇之眼？？？",
+    "description": "每场战斗开始时获得混乱效果。"
+  },
+  "FAKE_STRIKE_DUMMY": {
+    "id": "FAKE_STRIKE_DUMMY",
+    "name": "打击木偶？？？",
+    "description": "名字中有“打击”的卡牌造成{ExtraDamage}点额外伤害。"
+  },
+  "FAKE_VENERABLE_TEA_SET": {
+    "id": "FAKE_VENERABLE_TEA_SET",
+    "name": "古茶具套装？？？",
+    "description": "到达休息处后的下一场战斗开始时额外获得[Energy]。"
+  },
+  "FENCING_MANUAL": {
+    "id": "FENCING_MANUAL",
+    "name": "击剑指南",
+    "description": "在每场战斗开始时，铸造{Forge}。"
+  },
+  "FESTIVE_POPPER": {
+    "id": "FESTIVE_POPPER",
+    "name": "节日拉炮",
+    "description": "在每场战斗开始时，对所有敌人造成{Damage}点伤害。"
+  },
+  "FIDDLE": {
+    "id": "FIDDLE",
+    "name": "小提琴",
+    "description": "在每个回合开始时，额外抽{Cards}张牌。你在回合进行中不再能抽任何牌。"
+  },
+  "FISHING_ROD": {
+    "id": "FISHING_ROD",
+    "name": "钓鱼竿",
+    "description": "每{Combats}场普通战斗，随机升级你牌组中的一张牌。"
+  },
+  "FORGOTTEN_SOUL": {
+    "id": "FORGOTTEN_SOUL",
+    "name": "遗忘之魂",
+    "description": "每当你消耗一张牌，随机对一名敌人造成{Damage}点伤害。"
+  },
+  "FRAGRANT_MUSHROOM": {
+    "id": "FRAGRANT_MUSHROOM",
+    "name": "芳香蘑菇",
+    "description": "拾起时，失去{HpLoss}点生命，然后随机升级{Cards}张牌。"
+  },
+  "FRESNEL_LENS": {
+    "id": "FRESNEL_LENS",
+    "name": "菲涅耳透镜",
+    "description": "每当你将一张带有格挡的牌加入你的牌组时，为那张牌附魔：灵巧{NimbleAmount}"
+  },
+  "FROZEN_EGG": {
+    "id": "FROZEN_EGG",
+    "name": "冻结之蛋",
+    "description": "每当你获得能力牌时，将其升级。"
+  },
+  "FUNERARY_MASK": {
+    "id": "FUNERARY_MASK",
+    "name": "葬礼面具",
+    "description": "在每场战斗开始时，将{Cards}张灵魂加入你的抽牌堆。"
+  },
+  "FUR_COAT": {
+    "id": "FUR_COAT",
+    "name": "皮草大衣",
+    "description": "拾起时，随机标记{Combats}处战斗。这些战斗中的敌人将只有1点生命。"
+  },
+  "GALACTIC_DUST": {
+    "id": "GALACTIC_DUST",
+    "name": "星系尘埃",
+    "description": "每消耗{Stars}点{singleStarIcon}，就获得{Block}格挡。"
+  },
+  "GAMBLING_CHIP": {
+    "id": "GAMBLING_CHIP",
+    "name": "赌博筹码",
+    "description": "在每场战斗开始时，丢弃任意张牌，然后抽相同数量张牌。"
+  },
+  "GAME_PIECE": {
+    "id": "GAME_PIECE",
+    "name": "棋子",
+    "description": "每当你打出能力牌时，抽{Cards}张牌。"
+  },
+  "GHOST_SEED": {
+    "id": "GHOST_SEED",
+    "name": "幽灵种子",
+    "description": "打击和防御获得虚无。"
+  },
+  "GIRYA": {
+    "id": "GIRYA",
+    "name": "壶铃",
+    "description": "你现在能在休息处获得力量。（最多3次）"
+  },
+  "GLASS_EYE": {
+    "id": "GLASS_EYE",
+    "name": "玻璃眼珠",
+    "description": "拾起时，获得2组普通、2组罕见、和1组稀有卡牌奖励。"
+  },
+  "GLITTER": {
+    "id": "GLITTER",
+    "name": "亮片",
+    "description": "为之后的所有卡牌奖励附魔：华彩。"
+  },
+  "GLOWING_ORB": {
+    "id": "GLOWING_ORB",
+    "name": "发光之球",
+    "description": "在精英战的战斗开始时，你额外获得[Energy]。"
+  },
+  "GNARLED_HAMMER": {
+    "id": "GNARLED_HAMMER",
+    "name": "扭曲锤子",
+    "description": "拾起时，从你的牌组中选择至多{Cards}张攻击牌，附魔：锋利[SharpAmount]。"
+  },
+  "GOLDEN_COMPASS": {
+    "id": "GOLDEN_COMPASS",
+    "name": "黄金罗盘",
+    "description": "拾起时，将第2阶段的地图替换为一条特殊的直道。"
+  },
+  "GOLD_PLATED_CABLES": {
+    "id": "GOLD_PLATED_CABLES",
+    "name": "镀金缆线",
+    "description": "你最右侧的充能球会额外触发一次被动效果。"
+  },
+  "GORGET": {
+    "id": "GORGET",
+    "name": "护喉甲",
+    "description": "在每场战斗开始时，获得{PlatingPower}层覆甲。"
+  },
+  "HAND_DRILL": {
+    "id": "HAND_DRILL",
+    "name": "手钻",
+    "description": "每当你突破敌人的格挡时，给予其{VulnerablePower}层易伤。"
+  },
+  "HAPPY_FLOWER": {
+    "id": "HAPPY_FLOWER",
+    "name": "开心小花",
+    "description": "每{Turns}个回合，获得[Energy]。"
+  },
+  "HEFTY_TABLET": {
+    "id": "HEFTY_TABLET",
+    "name": "沉重石板",
+    "description": "拾起时，从{Cards}张稀有牌中选择1张加入你的牌组，同时将1张受伤加入你的牌组。"
+  },
+  "HELICAL_DART": {
+    "id": "HELICAL_DART",
+    "name": "螺线飞镖",
+    "description": "你每打出一张小刀，就在本回合获得{DexterityPower}点敏捷。"
+  },
+  "HISTORY_COURSE": {
+    "id": "HISTORY_COURSE",
+    "name": "历史课",
+    "description": "在你的回合开始时，打出一张你上一回合最后打出的攻击牌或技能牌的复制品。"
+  },
+  "HORN_CLEAT": {
+    "id": "HORN_CLEAT",
+    "name": "船夹板",
+    "description": "在你的第二回合开始时，获得{Block}点格挡。"
+  },
+  "ICE_CREAM": {
+    "id": "ICE_CREAM",
+    "name": "冰淇淋",
+    "description": "多余的能量可以留到下一回合。"
+  },
+  "INFUSED_CORE": {
+    "id": "INFUSED_CORE",
+    "name": "注能核心",
+    "description": "在每场战斗开始时，生成{Lightning}个闪电充能球。闪电充能球额外造成{ExtraDamage}点伤害。"
+  },
+  "INK_BOTTLE": {
+    "id": "INK_BOTTLE",
+    "name": "墨水瓶",
+    "description": "你每打出{CardThreshold}张牌，就抽{Cards}张牌。"
+  },
+  "INTIMIDATING_HELMET": {
+    "id": "INTIMIDATING_HELMET",
+    "name": "骇人头盔",
+    "description": "每当你打出一张耗能大于等于[Energy]的牌，获得{Block}点格挡。"
+  },
+  "IRON_CLUB": {
+    "id": "IRON_CLUB",
+    "name": "铁棒",
+    "description": "你每打出{Cards}张牌，就抽1张牌。"
+  },
+  "IVORY_TILE": {
+    "id": "IVORY_TILE",
+    "name": "象牙麻将牌",
+    "description": "每当你打出一张耗能大于等于[EnergyThreshold]的牌时，获得[Energy]。"
+  },
+  "JEWELED_MASK": {
+    "id": "JEWELED_MASK",
+    "name": "宝石面具",
+    "description": "在每场战斗开始时，将一张随机能力牌从你的抽牌堆放入你的手牌，这张牌在本场战斗可以免费打出。"
+  },
+  "JEWELRY_BOX": {
+    "id": "JEWELRY_BOX",
+    "name": "珠宝盒",
+    "description": "拾起时，将1张神化加入你的牌组。"
+  },
+  "JOSS_PAPER": {
+    "id": "JOSS_PAPER",
+    "name": "金纸",
+    "description": "你每消耗{ExhaustAmount}张牌，就抽{Cards}张牌。"
+  },
+  "JUZU_BRACELET": {
+    "id": "JUZU_BRACELET",
+    "name": "佛珠手链",
+    "description": "你在?房间中不会再遭遇常规战斗。"
+  },
+  "KALEIDOSCOPE": {
+    "id": "KALEIDOSCOPE",
+    "name": "万花筒",
+    "description": "拾起时，获得{Cards}次来自其他角色的卡牌奖励。"
+  },
+  "KIFUDA": {
+    "id": "KIFUDA",
+    "name": "木札",
+    "description": "拾起时，从你的牌组中选择至多{Cards}张牌，附魔：伶俐。"
+  },
+  "KUNAI": {
+    "id": "KUNAI",
+    "name": "苦无",
+    "description": "你每在同一回合内打出{Cards}张攻击牌，就获得{DexterityPower}点敏捷。"
+  },
+  "KUSARIGAMA": {
+    "id": "KUSARIGAMA",
+    "name": "锁镰",
+    "description": "你每在同一回合内打出{Cards}张攻击牌，就随机对一名敌人造成{Damage}点伤害。"
+  },
+  "LANTERN": {
+    "id": "LANTERN",
+    "name": "灯笼",
+    "description": "在每场战斗的第一回合获得[Energy]。"
+  },
+  "LARGE_CAPSULE": {
+    "id": "LARGE_CAPSULE",
+    "name": "巨大扭蛋",
+    "description": "拾起时，获得{Relics}件随机遗物。额外将一对打击和防御，加入你的牌组。"
+  },
+  "LASTING_CANDY": {
+    "id": "LASTING_CANDY",
+    "name": "吃不完的糖",
+    "description": "每两场战斗，你的卡牌奖励就会额外包含一张能力牌。"
+  },
+  "LAVA_LAMP": {
+    "id": "LAVA_LAMP",
+    "name": "熔岩灯",
+    "description": "在战斗结束时，如果你没有受到伤害，则升级你的所有卡牌奖励。"
+  },
+  "LAVA_ROCK": {
+    "id": "LAVA_ROCK",
+    "name": "熔岩石",
+    "description": "第一阶段的Boss敌人额外掉落{Relics}件遗物。"
+  },
+  "LEAD_PAPERWEIGHT": {
+    "id": "LEAD_PAPERWEIGHT",
+    "name": "铅制镇纸",
+    "description": "拾起时，从2张无色牌中选择1张加入你的牌组。"
+  },
+  "LEAFY_POULTICE": {
+    "id": "LEAFY_POULTICE",
+    "name": "树叶药膏",
+    "description": "拾起时，变化你的1张打击和1张防御，然后失去{MaxHp}点最大生命。"
+  },
+  "LEES_WAFFLE": {
+    "id": "LEES_WAFFLE",
+    "name": "李家华夫饼",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}点，并回复所有生命。"
+  },
+  "LETTER_OPENER": {
+    "id": "LETTER_OPENER",
+    "name": "开信刀",
+    "description": "你每在同一回合内打出{Cards}张技能牌，就对所有敌人造成{Damage}点伤害。"
+  },
+  "LIZARD_TAIL": {
+    "id": "LIZARD_TAIL",
+    "name": "蜥蜴尾巴",
+    "description": "当你的生命值将要降低至0或以下时，回复到最大生命值的{Heal}%（仅能起效一次）。"
+  },
+  "LOOMING_FRUIT": {
+    "id": "LOOMING_FRUIT",
+    "name": "布质果实",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "LORDS_PARASOL": {
+    "id": "LORDS_PARASOL",
+    "name": "领主阳伞",
+    "description": "当你遇见商人时，立刻获得他所出售的所有物品。"
+  },
+  "LOST_COFFER": {
+    "id": "LOST_COFFER",
+    "name": "失物盒",
+    "description": "拾起时，获得1次卡牌奖励和1瓶随机药水。"
+  },
+  "LUCKY_FYSH": {
+    "id": "LUCKY_FYSH",
+    "name": "招财异鱼",
+    "description": "每当你将一张卡牌加入你的牌组时，获得{Gold}金币。"
+  },
+  "LUNAR_PASTRY": {
+    "id": "LUNAR_PASTRY",
+    "name": "月亮糕点",
+    "description": "在你的回合结束时，获得[Stars]。"
+  },
+  "MANGO": {
+    "id": "MANGO",
+    "name": "芒果",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "MASSIVE_SCROLL": {
+    "id": "MASSIVE_SCROLL",
+    "name": "巨大卷轴",
+    "description": "拾起时，从3张多人游戏牌中选择1张加入你的牌组。"
+  },
+  "MAW_BANK": {
+    "id": "MAW_BANK",
+    "name": "巨口储蓄罐",
+    "description": "每攀爬一层楼层，就获得{Gold}金币。一旦在商店中花费金币就会使其失效。"
+  },
+  "MEAL_TICKET": {
+    "id": "MEAL_TICKET",
+    "name": "餐券",
+    "description": "每当你进入商店房间时，回复{Heal}点生命。"
+  },
+  "MEAT_CLEAVER": {
+    "id": "MEAT_CLEAVER",
+    "name": "切肉刀",
+    "description": "你可以在休息处进行烹饪。"
+  },
+  "MEAT_ON_THE_BONE": {
+    "id": "MEAT_ON_THE_BONE",
+    "name": "带骨肉",
+    "description": "如果你在战斗结束时生命值等于或低于{HpThreshold}%，回复{Heal}点生命。"
+  },
+  "MEMBERSHIP_CARD": {
+    "id": "MEMBERSHIP_CARD",
+    "name": "会员卡",
+    "description": "所有商品打折{Discount}%！"
+  },
+  "MERCURY_HOURGLASS": {
+    "id": "MERCURY_HOURGLASS",
+    "name": "水银沙漏",
+    "description": "在你的回合开始时，对所有敌人造成{Damage}点伤害。"
+  },
+  "METRONOME": {
+    "id": "METRONOME",
+    "name": "节拍器",
+    "description": "每场战斗中你首次生成{OrbCount}个充能球时，对所有敌人造成{Damage}点伤害。"
+  },
+  "MINIATURE_CANNON": {
+    "id": "MINIATURE_CANNON",
+    "name": "微型大炮",
+    "description": "升级的攻击牌额外造成{ExtraDamage}点伤害。"
+  },
+  "MINIATURE_TENT": {
+    "id": "MINIATURE_TENT",
+    "name": "微型帐篷",
+    "description": "你可以在休息处选择任意数量的选项。"
+  },
+  "MINI_REGENT": {
+    "id": "MINI_REGENT",
+    "name": "迷你储君",
+    "description": "每回合你第一次花费{singleStarIcon}时，获得{StrengthPower}点力量。"
+  },
+  "MOLTEN_EGG": {
+    "id": "MOLTEN_EGG",
+    "name": "熔火之蛋",
+    "description": "每当你获得攻击牌时，将其升级。"
+  },
+  "MR_STRUGGLES": {
+    "id": "MR_STRUGGLES",
+    "name": "抱抱先生",
+    "description": "在你的回合开始时，对所有敌人造成等量于当前回合数的伤害。"
+  },
+  "MUMMIFIED_HAND": {
+    "id": "MUMMIFIED_HAND",
+    "name": "干瘪之手",
+    "description": "你每打出一张能力牌，手牌中就有一张随机牌在这个回合可以免费打出。"
+  },
+  "MUSIC_BOX": {
+    "id": "MUSIC_BOX",
+    "name": "音乐盒",
+    "description": "将你每回合打出的第一张攻击牌的一张虚无复制品加入你的手牌。"
+  },
+  "MYSTERIOUS_COCOON": {
+    "id": "MYSTERIOUS_COCOON",
+    "name": "谜之茧",
+    "description": "在获得{Experience}经验后，将训练打击变化为扎穿。"
+  },
+  "MYSTIC_LIGHTER": {
+    "id": "MYSTIC_LIGHTER",
+    "name": "神秘打火机",
+    "description": "有附魔的攻击牌额外造成{Damage}点伤害。"
+  },
+  "NEW_LEAF": {
+    "id": "NEW_LEAF",
+    "name": "新叶",
+    "description": "拾起时，变化{Cards}张牌。"
+  },
+  "NINJA_SCROLL": {
+    "id": "NINJA_SCROLL",
+    "name": "忍术卷轴",
+    "description": "每场战斗开始时，将{Shivs}张小刀加入你的手牌。"
+  },
+  "NUNCHAKU": {
+    "id": "NUNCHAKU",
+    "name": "双截棍",
+    "description": "你每打出{Cards}张攻击牌，获得[Energy]。"
+  },
+  "NUTRITIOUS_OYSTER": {
+    "id": "NUTRITIOUS_OYSTER",
+    "name": "营养牡蛎",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "NUTRITIOUS_SOUP": {
+    "id": "NUTRITIOUS_SOUP",
+    "name": "营养汤",
+    "description": "拾起时，为你牌组中的所有“打击”附魔：特兹卡塔拉的余烬"
+  },
+  "ODDLY_SMOOTH_STONE": {
+    "id": "ODDLY_SMOOTH_STONE",
+    "name": "意外光滑的石头",
+    "description": "在每场战斗开始时，获得{DexterityPower}点敏捷。"
+  },
+  "OLD_COIN": {
+    "id": "OLD_COIN",
+    "name": "古钱币",
+    "description": "拾起时，获得{Gold}金币。"
+  },
+  "ORANGE_DOUGH": {
+    "id": "ORANGE_DOUGH",
+    "name": "橙色团块",
+    "description": "在每场战斗开始时，将{Cards}张随机无色牌加入你的手牌。"
+  },
+  "ORICHALCUM": {
+    "id": "ORICHALCUM",
+    "name": "奥利哈钢",
+    "description": "如果你在回合结束时没有任何格挡，获得{Block}点格挡。"
+  },
+  "ORNAMENTAL_FAN": {
+    "id": "ORNAMENTAL_FAN",
+    "name": "精致折扇",
+    "description": "你每在同一回合内打出{Cards}张攻击牌，就获得{Block}点格挡。"
+  },
+  "ORRERY": {
+    "id": "ORRERY",
+    "name": "星系仪",
+    "description": "拾起时，获得{Cards}次卡牌奖励"
+  },
+  "PAELS_BLOOD": {
+    "id": "PAELS_BLOOD",
+    "name": "佩尔之血",
+    "description": "在你的回合开始时，额外抽{Cards}张牌"
+  },
+  "PAELS_CLAW": {
+    "id": "PAELS_CLAW",
+    "name": "佩尔之爪",
+    "description": "拾起时，为所有的“防御”附魔：{EnchantmentName}。"
+  },
+  "PAELS_EYE": {
+    "id": "PAELS_EYE",
+    "name": "佩尔之眼",
+    "description": "你在每场战斗中第一次没有打出任何牌就结束回合时，消耗所有手牌然后进行一个额外回合。"
+  },
+  "PAELS_FLESH": {
+    "id": "PAELS_FLESH",
+    "name": "佩尔之肉",
+    "description": "从你的第3回合开始，在回合开始时额外获得[Energy]。"
+  },
+  "PAELS_GROWTH": {
+    "id": "PAELS_GROWTH",
+    "name": "佩尔的增生组织",
+    "description": "拾起时，从牌组中选择一张牌，为其附魔：{EnchantmentName}。"
+  },
+  "PAELS_HORN": {
+    "id": "PAELS_HORN",
+    "name": "佩尔之角",
+    "description": "拾起时，将2张放松加入你的牌组。"
+  },
+  "PAELS_TEARS": {
+    "id": "PAELS_TEARS",
+    "name": "佩尔之泪",
+    "description": "如果你在拥有未花费的[energyPrefix]情况下结束回合，则下个回合额外获得[Energy]。"
+  },
+  "PAELS_TOOTH": {
+    "id": "PAELS_TOOTH",
+    "name": "佩尔之牙",
+    "description": "拾起时，从你的牌组中选择{Cards}张牌移除。在每场战斗结束时，将其中随机1张牌升级然后返还。{CardTitles.StringValue:cond:\n\n被吞噬的牌：\n{}|}"
+  },
+  "PAELS_WING": {
+    "id": "PAELS_WING",
+    "name": "佩尔之翼",
+    "description": "你可以将你的卡牌奖励献祭给佩尔。每献祭{Sacrifices}次，就能获得一件遗物。"
+  },
+  "PANDORAS_BOX": {
+    "id": "PANDORAS_BOX",
+    "name": "潘多拉魔盒",
+    "description": "变化所有“打击”和“防御”。"
+  },
+  "PANTOGRAPH": {
+    "id": "PANTOGRAPH",
+    "name": "缩放仪",
+    "description": "在Boss战开始时，回复{Heal}点生命值。"
+  },
+  "PAPER_KRANE": {
+    "id": "PAPER_KRANE",
+    "name": "纸鹤",
+    "description": "有虚弱状态的敌人造成的伤害降低40%而非25%。"
+  },
+  "PAPER_PHROG": {
+    "id": "PAPER_PHROG",
+    "name": "纸蛙",
+    "description": "有易伤状态的敌人受到的伤害增加75%而非50%。"
+  },
+  "PARRYING_SHIELD": {
+    "id": "PARRYING_SHIELD",
+    "name": "招架盾",
+    "description": "如果你在回合结束时拥有至少{Block}点格挡，则对随机敌人造成{Damage}点伤害。"
+  },
+  "PEAR": {
+    "id": "PEAR",
+    "name": "梨子",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "PENDULUM": {
+    "id": "PENDULUM",
+    "name": "摆动球",
+    "description": "每{Turns}个回合，抽{Cards}张牌"
+  },
+  "PEN_NIB": {
+    "id": "PEN_NIB",
+    "name": "钢笔尖",
+    "description": "你每打出的第10张攻击牌将会造成双倍伤害。"
+  },
+  "PERMAFROST": {
+    "id": "PERMAFROST",
+    "name": "永冻冰晶",
+    "description": "当你在战斗中第一次打出能力牌时，获得{Block}点格挡。"
+  },
+  "PETRIFIED_TOAD": {
+    "id": "PETRIFIED_TOAD",
+    "name": "石化蟾蜍",
+    "description": "在每场战斗开始时，获得一瓶药水形状的石头"
+  },
+  "PHIAL_HOLSTER": {
+    "id": "PHIAL_HOLSTER",
+    "name": "药瓶皮套",
+    "description": "拾起时，获得{PotionSlots}个药水[PotionSlots]并获得{Potions}瓶随机[Potions]。"
+  },
+  "PHILOSOPHERS_STONE": {
+    "id": "PHILOSOPHERS_STONE",
+    "name": "贤者之石",
+    "description": "在每回合开始时获得[Energy]。所有敌人初始获得{StrengthPower}点力量。"
+  },
+  "PHYLACTERY_UNBOUND": {
+    "id": "PHYLACTERY_UNBOUND",
+    "name": "无界命匣",
+    "description": "在每场战斗开始时，召唤{StartOfCombat}。在你的回合开始时，召唤{StartOfTurn}。"
+  },
+  "PLANISPHERE": {
+    "id": "PLANISPHERE",
+    "name": "活动星图",
+    "description": "每当你进入？房间的时候，回复{Heal}点生命。"
+  },
+  "POCKETWATCH": {
+    "id": "POCKETWATCH",
+    "name": "怀表",
+    "description": "当你在本回合打出的牌少于等于{CardThreshold}张时，则在你的下个回合开始时额外抽{Cards}张牌。"
+  },
+  "POLLINOUS_CORE": {
+    "id": "POLLINOUS_CORE",
+    "name": "花粉核心",
+    "description": "每{Turns}个回合，额外抽{Cards}张牌。"
+  },
+  "POMANDER": {
+    "id": "POMANDER",
+    "name": "橙型香盒",
+    "description": "拾起时，升级一张牌。"
+  },
+  "POWER_CELL": {
+    "id": "POWER_CELL",
+    "name": "能量电池",
+    "description": "在每场战斗开始时，将{Cards}张耗能为0的卡牌从你的抽牌堆放入你的手牌。"
+  },
+  "PRAYER_WHEEL": {
+    "id": "PRAYER_WHEEL",
+    "name": "转经轮",
+    "description": "普通敌人额外掉落一次卡牌奖励。"
+  },
+  "PRECARIOUS_SHEARS": {
+    "id": "PRECARIOUS_SHEARS",
+    "name": "松动羊毛剪",
+    "description": "拾起时，从你的牌组中移除{Cards}张牌并失去{Damage}点生命。"
+  },
+  "PRECISE_SCISSORS": {
+    "id": "PRECISE_SCISSORS",
+    "name": "精准剪刀",
+    "description": "拾起时，从你的牌组中移除{Cards}张牌。"
+  },
+  "PRESERVED_FOG": {
+    "id": "PRESERVED_FOG",
+    "name": "腌制活雾",
+    "description": "拾起时，从你的牌组中移除{Cards}张牌。将一张愚行加入你的牌组。"
+  },
+  "PRISMATIC_GEM": {
+    "id": "PRISMATIC_GEM",
+    "name": "棱彩宝石",
+    "description": "在每个回合开始时获得[Energy]。卡牌奖励现在会包含其他颜色的卡牌。"
+  },
+  "PUMPKIN_CANDLE": {
+    "id": "PUMPKIN_CANDLE",
+    "name": "南瓜蜡烛",
+    "description": "在每个回合开始时获得[Energy]。这件遗物会在{CombatCount}场战斗后熄灭。可以在休息处为其添火。"
+  },
+  "PUNCH_DAGGER": {
+    "id": "PUNCH_DAGGER",
+    "name": "拳刃",
+    "description": "拾起时，选择一张攻击牌为它附魔：动量{Momentum}。"
+  },
+  "RADIANT_PEARL": {
+    "id": "RADIANT_PEARL",
+    "name": "发光珍珠",
+    "description": "在每场战斗开始时，将{Cards}张冷光加入你的手牌。"
+  },
+  "RAINBOW_RING": {
+    "id": "RAINBOW_RING",
+    "name": "彩虹戒指",
+    "description": "每回合，你第一次打出攻击牌、技能牌和能力牌各一张时，获得{StrengthPower}点力量和{DexterityPower}点敏捷。"
+  },
+  "RAZOR_TOOTH": {
+    "id": "RAZOR_TOOTH",
+    "name": "剃刀牙",
+    "description": "你打出攻击牌和技能牌时，将其在本场战斗内升级。"
+  },
+  "RED_MASK": {
+    "id": "RED_MASK",
+    "name": "红面具",
+    "description": "在每场战斗开始时，给于所有敌人{WeakPower}层虚弱。"
+  },
+  "RED_SKULL": {
+    "id": "RED_SKULL",
+    "name": "红头骨",
+    "description": "当你的生命值低于或等于{HpThreshold}%时，你额外获得{StrengthPower}点力量"
+  },
+  "RED_VINE_TEA": {
+    "id": "RED_VINE_TEA",
+    "name": "赤藤茶",
+    "description": "在你接下来的{Combats}场战斗开始时，额外抽{Cards}张牌。"
+  },
+  "REGALITE": {
+    "id": "REGALITE",
+    "name": "君王矿石",
+    "description": "每当你生成一张牌时，获得{Block}点格挡。"
+  },
+  "REGAL_PILLOW": {
+    "id": "REGAL_PILLOW",
+    "name": "皇家枕头",
+    "description": "在休息时，额外回复{Heal}点生命。"
+  },
+  "REPTILE_TRINKET": {
+    "id": "REPTILE_TRINKET",
+    "name": "爬行动物饰品",
+    "description": "当你使用药水时，在本回合获得{StrengthPower}力量。"
+  },
+  "RINGING_TRIANGLE": {
+    "id": "RINGING_TRIANGLE",
+    "name": "三角铃鼓",
+    "description": "在每场战斗的第一回合保留你的手牌。"
+  },
+  "RIPPLE_BASIN": {
+    "id": "RIPPLE_BASIN",
+    "name": "波纹水盆",
+    "description": "如果你在本回合中没有打出过攻击牌，则获得{Block}点格挡。"
+  },
+  "ROYAL_POISON": {
+    "id": "ROYAL_POISON",
+    "name": "王室猛毒",
+    "description": "在每场战斗开始时，失去{Damage}点生命。"
+  },
+  "ROYAL_STAMP": {
+    "id": "ROYAL_STAMP",
+    "name": "王室印章",
+    "description": "拾起时，从牌组中选择一张攻击牌或技能牌，为它附魔：{Enchantment}。"
+  },
+  "RUINED_HELMET": {
+    "id": "RUINED_HELMET",
+    "name": "损毁头盔",
+    "description": "你在每场战斗中第一次获得的力量值翻倍。"
+  },
+  "RUNIC_CAPACITOR": {
+    "id": "RUNIC_CAPACITOR",
+    "name": "符文电容器",
+    "description": "每场战斗开始时，获得{Repeat}个额外充能球栏位。"
+  },
+  "RUNIC_PYRAMID": {
+    "id": "RUNIC_PYRAMID",
+    "name": "符文金字塔",
+    "description": "你在回合结束时不再自动丢弃所有手牌。"
+  },
+  "SAI": {
+    "id": "SAI",
+    "name": "钗",
+    "description": "在你的回合开始时，获得{Block}点格挡。"
+  },
+  "SAND_CASTLE": {
+    "id": "SAND_CASTLE",
+    "name": "沙堡",
+    "description": "拾起时，随机升级{Cards}张牌。"
+  },
+  "SCREAMING_FLAGON": {
+    "id": "SCREAMING_FLAGON",
+    "name": "尖叫酒壶",
+    "description": "如果你在回合结束时没有任何手牌，则对所有敌人造成{Damage}点伤害。"
+  },
+  "SCROLL_BOXES": {
+    "id": "SCROLL_BOXES",
+    "name": "卷轴箱",
+    "description": "拾起时，从2个卡牌包中选择1包加入你的牌组。"
+  },
+  "SEAL_OF_GOLD": {
+    "id": "SEAL_OF_GOLD",
+    "name": "黄金印",
+    "description": "在你的回合开始时，花费{Gold}金币来获得[Energy]。"
+  },
+  "SEA_GLASS": {
+    "id": "SEA_GLASS",
+    "name": "海玻璃",
+    "description": "查看{Cards}张来自{Character.StringValue:cond:{}|其他角色}的牌。从中选择任意数量的卡牌加入你的牌组。"
+  },
+  "SELF_FORMING_CLAY": {
+    "id": "SELF_FORMING_CLAY",
+    "name": "自成型黏土",
+    "description": "每当你在战斗中失去生命，就在下回合获得{BlockNextTurn}点格挡。"
+  },
+  "SERE_TALON": {
+    "id": "SERE_TALON",
+    "name": "原初之爪",
+    "description": "拾起时，将{Curses}张随机诅咒牌和{Wishes}张许愿加入你的牌组。"
+  },
+  "SHOVEL": {
+    "id": "SHOVEL",
+    "name": "铲子",
+    "description": "现在你可以在休息处挖掘遗物。"
+  },
+  "SHURIKEN": {
+    "id": "SHURIKEN",
+    "name": "手里剑",
+    "description": "你每在同一回合内打出{Cards}张攻击牌，获得{StrengthPower}点力量。"
+  },
+  "SIGNET_RING": {
+    "id": "SIGNET_RING",
+    "name": "图章戒指",
+    "description": "拾起时，获得{Gold}金币。"
+  },
+  "SILKEN_TRESS": {
+    "id": "SILKEN_TRESS",
+    "name": "华美发束",
+    "description": "拾起时，失去所有金币。为第一次卡牌奖励中的所有牌附魔：华彩。"
+  },
+  "SILVER_CRUCIBLE": {
+    "id": "SILVER_CRUCIBLE",
+    "name": "白银熔炉",
+    "description": "你遇到的前{Cards}次卡牌奖励将是被升级过的。你打开的第一个宝箱将是空的"
+  },
+  "SLING_OF_COURAGE": {
+    "id": "SLING_OF_COURAGE",
+    "name": "勇气投石索",
+    "description": "在与精英敌人战斗时，获得{StrengthPower}点力量。"
+  },
+  "SMALL_CAPSULE": {
+    "id": "SMALL_CAPSULE",
+    "name": "小型扭蛋",
+    "description": "拾起时，获得一件随机遗物。"
+  },
+  "SNECKO_EYE": {
+    "id": "SNECKO_EYE",
+    "name": "异蛇之眼",
+    "description": "每回合多抽{Cards}张牌。每场战斗开始时获得混乱效果。"
+  },
+  "SNECKO_SKULL": {
+    "id": "SNECKO_SKULL",
+    "name": "异蛇头骨",
+    "description": "每当你给予敌人中毒时，所给予的中毒层数增加{PoisonPower}层。"
+  },
+  "SOZU": {
+    "id": "SOZU",
+    "name": "添水",
+    "description": "你无法再获得药水。在每回合开始时获得[Energy]。"
+  },
+  "SPARKLING_ROUGE": {
+    "id": "SPARKLING_ROUGE",
+    "name": "闪亮口红",
+    "description": "在你的第3回合开始时，获得{StrengthPower}点力量和{DexterityPower}点敏捷。"
+  },
+  "SPIKED_GAUNTLETS": {
+    "id": "SPIKED_GAUNTLETS",
+    "name": "带刺手甲",
+    "description": "在每回合开始时获得[Energy]。能力牌的耗能增加1[energyPrefix]。"
+  },
+  "STONE_CALENDAR": {
+    "id": "STONE_CALENDAR",
+    "name": "历石",
+    "description": "在第{DamageTurn}回合结束时，对所有敌人造成{Damage}点伤害。"
+  },
+  "STONE_CRACKER": {
+    "id": "STONE_CRACKER",
+    "name": "碎石钻",
+    "description": "在每场战斗开始时，在本场战斗中随机升级你抽牌堆中的{Cards}张牌。"
+  },
+  "STONE_HUMIDIFIER": {
+    "id": "STONE_HUMIDIFIER",
+    "name": "石炉加湿器",
+    "description": "每当你在休息处休息时，将你的最大生命值提升{MaxHp}点。"
+  },
+  "STORYBOOK": {
+    "id": "STORYBOOK",
+    "name": "故事书",
+    "description": "拾起时，将1张至亮之焰添加到你的牌组中。"
+  },
+  "STRAWBERRY": {
+    "id": "STRAWBERRY",
+    "name": "草莓",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "STRIKE_DUMMY": {
+    "id": "STRIKE_DUMMY",
+    "name": "打击木偶",
+    "description": "名字中有“打击”的卡牌造成{ExtraDamage}点额外伤害。"
+  },
+  "STURDY_CLAMP": {
+    "id": "STURDY_CLAMP",
+    "name": "坚固钳子",
+    "description": "可以跨回合保留最多{Block}点格挡。"
+  },
+  "SWORD_OF_JADE": {
+    "id": "SWORD_OF_JADE",
+    "name": "玉之剑",
+    "description": "在每场战斗开始时，获得{StrengthPower}点力量。"
+  },
+  "SWORD_OF_STONE": {
+    "id": "SWORD_OF_STONE",
+    "name": "石之剑",
+    "description": "在击败{Elites}名精英敌人之后将变化为一件强力遗物。"
+  },
+  "SYMBIOTIC_VIRUS": {
+    "id": "SYMBIOTIC_VIRUS",
+    "name": "共生病毒",
+    "description": "在每场战斗开始时，生成{Dark}个黑暗充能球。"
+  },
+  "TANXS_WHISTLE": {
+    "id": "TANXS_WHISTLE",
+    "name": "坦克斯的哨子",
+    "description": "拾起时，将1张吹哨加入你的牌组。"
+  },
+  "TEA_OF_DISCOURTESY": {
+    "id": "TEA_OF_DISCOURTESY",
+    "name": "无礼之茶",
+    "description": "在下一场战斗开始时，将{DazedCount}张晕眩放入你的抽牌堆。"
+  },
+  "THE_ABACUS": {
+    "id": "THE_ABACUS",
+    "name": "算盘",
+    "description": "你每次将抽牌堆洗牌时，获得{Block}点格挡。"
+  },
+  "THE_BOOT": {
+    "id": "THE_BOOT",
+    "name": "发条靴",
+    "description": "每当你造成小于等于{DamageThreshold}点未被格挡的攻击伤害时，将伤害提升为{DamageMinimum}。"
+  },
+  "THE_COURIER": {
+    "id": "THE_COURIER",
+    "name": "送货员",
+    "description": "商人的卡牌、遗物和药水不再会卖光，并且所有商品打折{Discount}%。"
+  },
+  "THROWING_AXE": {
+    "id": "THROWING_AXE",
+    "name": "投斧",
+    "description": "你在每场战斗中打出的第一张牌会多打出一次。"
+  },
+  "TINGSHA": {
+    "id": "TINGSHA",
+    "name": "铜钹",
+    "description": "你每在你的回合丢弃一张牌，就对一名随机敌人造成{Damage}点伤害。"
+  },
+  "TINY_MAILBOX": {
+    "id": "TINY_MAILBOX",
+    "name": "小邮箱",
+    "description": "每当你休息时，获得2瓶随机药水。"
+  },
+  "TOASTY_MITTENS": {
+    "id": "TOASTY_MITTENS",
+    "name": "烘焙手套",
+    "description": "在你的回合开始时，消耗你抽牌堆顶部的牌并获得{StrengthPower}点力量。"
+  },
+  "TOOLBOX": {
+    "id": "TOOLBOX",
+    "name": "工具箱",
+    "description": "在每场战斗开始时，从{Cards}张随机无色牌中选择1张加入你的手牌。"
+  },
+  "TOUCH_OF_OROBAS": {
+    "id": "TOUCH_OF_OROBAS",
+    "name": "欧洛巴斯之触",
+    "description": "拾起时，将{StarterRelic.StringValue:cond:{StarterRelic}替换为{UpgradedRelic}|你的初始遗物替换为先古版本}。"
+  },
+  "TOUGH_BANDAGES": {
+    "id": "TOUGH_BANDAGES",
+    "name": "结实绷带",
+    "description": "你每在你的回合丢弃一张牌，就获得{Block}点格挡。"
+  },
+  "TOXIC_EGG": {
+    "id": "TOXIC_EGG",
+    "name": "毒素之蛋",
+    "description": "每当你获得技能牌时，将其升级。"
+  },
+  "TOY_BOX": {
+    "id": "TOY_BOX",
+    "name": "玩具盒",
+    "description": "拾起时，获得{Relics}件蜡制遗物。每经过{Combats}场战斗，你最左侧的蜡制遗物将会融化。"
+  },
+  "TRI_BOOMERANG": {
+    "id": "TRI_BOOMERANG",
+    "name": "三刃回旋镖",
+    "description": "从你的牌组中选择{Cards}张攻击牌。为这些牌附魔：本能。"
+  },
+  "TUNGSTEN_ROD": {
+    "id": "TUNGSTEN_ROD",
+    "name": "钨合金棍",
+    "description": "你每次失去生命时，减少失去的生命值{HpLossReduction}点。"
+  },
+  "TUNING_FORK": {
+    "id": "TUNING_FORK",
+    "name": "音叉",
+    "description": "你每打出{Cards}张技能牌，获得{Block}点格挡。"
+  },
+  "TWISTED_FUNNEL": {
+    "id": "TWISTED_FUNNEL",
+    "name": "扭曲漏斗",
+    "description": "在每场战斗开始时，给予所有敌人{PoisonPower}层中毒。"
+  },
+  "UNCEASING_TOP": {
+    "id": "UNCEASING_TOP",
+    "name": "不休陀螺",
+    "description": "在你的回合，当你没有手牌时，抽一张牌。"
+  },
+  "UNDYING_SIGIL": {
+    "id": "UNDYING_SIGIL",
+    "name": "不死符文",
+    "description": "当敌人的灾厄层数大于等于其生命值时，它造成的伤害降低50%。"
+  },
+  "UNSETTLING_LAMP": {
+    "id": "UNSETTLING_LAMP",
+    "name": "不安油灯",
+    "description": "你在每场战斗中第一次打出能给予敌人负面状态的牌时，将其效果翻倍。"
+  },
+  "VAMBRACE": {
+    "id": "VAMBRACE",
+    "name": "臂甲",
+    "description": "每场战斗中，你第一次从卡牌中获得的格挡值翻倍。"
+  },
+  "VELVET_CHOKER": {
+    "id": "VELVET_CHOKER",
+    "name": "天鹅绒颈圈",
+    "description": "在每回合开始时获得[Energy]。你每回合不能打出超过{Cards}张牌。"
+  },
+  "VENERABLE_TEA_SET": {
+    "id": "VENERABLE_TEA_SET",
+    "name": "古茶具套装",
+    "description": "到达休息处后的下一场战斗开始时额外获得[Energy]。"
+  },
+  "VERY_HOT_COCOA": {
+    "id": "VERY_HOT_COCOA",
+    "name": "烫嘴可可",
+    "description": "在每场战斗的第一回合额外获得[Energy]。"
+  },
+  "VEXING_PUZZLEBOX": {
+    "id": "VEXING_PUZZLEBOX",
+    "name": "烦人机关盒",
+    "description": "在每场战斗开始时，将一张随机卡牌加入你的手牌。这张牌在本回合可以免费打出。"
+  },
+  "VINE_BRACELET": {
+    "id": "VINE_BRACELET",
+    "name": "藤蔓手镯",
+    "description": "拾起时，将你的最大生命值提升{MaxHp}。"
+  },
+  "VITRUVIAN_MINION": {
+    "id": "VITRUVIAN_MINION",
+    "name": "维特鲁威仆从",
+    "description": "名字中有“仆从”的卡牌造成双倍的伤害与格挡。"
+  },
+  "WAR_HAMMER": {
+    "id": "WAR_HAMMER",
+    "name": "战锤",
+    "description": "每当你击败一名精英敌人的时候，随机升级{Cards}张牌。"
+  },
+  "WAR_PAINT": {
+    "id": "WAR_PAINT",
+    "name": "战纹涂料",
+    "description": "拾起时，随机升级{Cards}张技能牌。"
+  },
+  "WHETSTONE": {
+    "id": "WHETSTONE",
+    "name": "磨刀石",
+    "description": "拾起时，随机升级{Cards}张攻击牌。"
+  },
+  "WHISPERING_EARRING": {
+    "id": "WHISPERING_EARRING",
+    "name": "低语耳环",
+    "description": "在每个回合开始时，获得[Energy]。瓦库将接管你的第一回合。"
+  },
+  "WHITE_BEAST_STATUE": {
+    "id": "WHITE_BEAST_STATUE",
+    "name": "白兽雕像",
+    "description": "战斗结束后必定掉落药水。"
+  },
+  "WHITE_STAR": {
+    "id": "WHITE_STAR",
+    "name": "白星",
+    "description": "精英敌人额外掉落一次稀有卡牌奖励。"
+  },
+  "WINGED_BOOTS": {
+    "id": "WINGED_BOOTS",
+    "name": "羽翼之靴",
+    "description": "你在选择下一层的房间时有{Rooms}次机会可以无视当前的路线。"
+  },
+  "WING_CHARM": {
+    "id": "WING_CHARM",
+    "name": "羽翼护符",
+    "description": "每次卡牌奖励中，都会有随机一张牌被附魔：迅捷{SwiftAmount}。"
+  },
+  "WONGOS_MYSTERY_TICKET": {
+    "id": "WONGOS_MYSTERY_TICKET",
+    "name": "旺购神秘券",
+    "description": "在{RemainingCombats}场战斗后，获得随机{Repeat}件遗物。"
+  },
+  "WONGO_CUSTOMER_APPRECIATION_BADGE": {
+    "id": "WONGO_CUSTOMER_APPRECIATION_BADGE",
+    "name": "旺购客户感恩徽章",
+    "description": "没有任何作用。"
+  },
+  "YUMMY_COOKIE": {
+    "id": "YUMMY_COOKIE",
+    "name": "美味饼干",
+    "description": "拾起时，升级{Cards}张牌。"
+  },
+  "OPTION_CLONE": {
+    "id": "OPTION_CLONE",
+    "name": "克隆",
+    "description": "将所有带有{EnchantmentName}附魔的牌复制一次。"
+  },
+  "OPTION_COOK": {
+    "id": "OPTION_COOK",
+    "name": "烹饪",
+    "description": "从牌组中移除移除{Cards}并获得{MaxHp}点最大生命值。"
+  },
+  "OPTION_DIG": {
+    "id": "OPTION_DIG",
+    "name": "挖掘",
+    "description": "挖掘一件遗物。"
+  },
+  "OPTION_HATCH": {
+    "id": "OPTION_HATCH",
+    "name": "孵化",
+    "description": "孵化你的多尼斯异鸟蛋。"
+  },
+  "OPTION_HEAL": {
+    "id": "OPTION_HEAL",
+    "name": "休息",
+    "description": "回复最大生命值的30%（{Heal}）。{ExtraText}"
+  },
+  "OPTION_KINDLE": {
+    "id": "OPTION_KINDLE",
+    "name": "添火",
+    "description": "为{RelicName}添加{RekindleAmount}层充能。"
+  },
+  "OPTION_LIFT": {
+    "id": "OPTION_LIFT",
+    "name": "锻炼",
+    "description": "在战斗开始时拥有+1力量。（剩余{LiftsLeft}次）"
+  },
+  "OPTION_MEND": {
+    "id": "OPTION_MEND",
+    "name": "愈合",
+    "description": "回复[HasTarget]|其他角色}最大生命值的30%[HasTarget]）|}。"
+  },
+  "OPTION_SMITH": {
+    "id": "OPTION_SMITH",
+    "name": "锻造",
+    "description": "升级你牌组中的{Count}张牌。"
+  },
+  "BLOCK": {
+    "id": "BLOCK",
+    "name": "格挡",
+    "description": "在下个回合前，阻挡伤害。"
+  },
+  "BOSS": {
+    "id": "BOSS",
+    "name": "BOSS",
+    "description": "在这个阶段的终点，你将和{BossName}战斗。"
+  },
+  "CARD_REWARD": {
+    "id": "CARD_REWARD",
+    "name": "卡牌奖励",
+    "description": "3张随机牌的卡牌包，你可以从中选择1张加入你的牌组。"
+  },
+  "CHANNELING": {
+    "id": "CHANNELING",
+    "name": "生成",
+    "description": "生成充能球会将其放入你的第一个空着的充能球栏位。如果栏位已满，则你的第一个充能球将会被自动激发，腾出栏位。"
+  },
+  "COOK": {
+    "id": "COOK",
+    "name": "烹饪",
+    "description": "在休息处从你的牌组中移除2张牌并获得9点最大生命。"
+  },
+  "DECK": {
+    "id": "DECK",
+    "name": "牌组{Hotkey:choose(None):|（{}）}",
+    "description": "查看你牌组中的所有卡牌。"
+  },
+  "DISCARD_PILE": {
+    "id": "DISCARD_PILE",
+    "name": "弃牌堆{Hotkey:choose(None):|（{}）}",
+    "description": "如果你的抽牌堆为空，则弃牌堆会被洗入抽牌堆。\n\n点击查看你弃牌堆中的卡牌。"
+  },
+  "DOUBLE_BOSS": {
+    "id": "DOUBLE_BOSS",
+    "name": "DOUBLE_BOSS",
+    "description": "在这个阶段的终点，将会和{BossName1}与{BossName2}战斗。"
+  },
+  "DRAW_PILE": {
+    "id": "DRAW_PILE",
+    "name": "抽牌堆{Hotkey:choose(None):|（{}）}",
+    "description": "在每回合开始时，\n你会从这里抽取5张卡牌。\n\n点击这里查看你抽牌堆中的卡牌（顺序打乱）。"
+  },
+  "END_TURN": {
+    "id": "END_TURN",
+    "name": "结束回合{Hotkey:choose(None):|（{}）}",
+    "description": "按下这个按钮将会结束你的回合。\n\n你会丢弃你的手牌、然后敌人进行他们的回合，接着你会再次抽取5张牌、开始你的下一个回合。"
+  },
+  "ENERGY": {
+    "id": "ENERGY",
+    "name": "能量",
+    "description": "能量用于打出你手牌中的卡牌。"
+  },
+  "ENERGY_COUNT": {
+    "id": "ENERGY_COUNT",
+    "name": "能量",
+    "description": "你当前的能量（[energyPrefix]）数。卡牌需要[energyPrefix]才能打出，耗能显示在牌的左上角。"
+  },
+  "EVOKE": {
+    "id": "EVOKE",
+    "name": "激发",
+    "description": "消耗你最右侧的充能球并使用其激发效果。"
+  },
+  "EXHAUST_PILE": {
+    "id": "EXHAUST_PILE",
+    "name": "消耗牌堆{Hotkey:choose(None):|（{}）}",
+    "description": "点击查看在本场战斗中被消耗的卡牌。"
+  },
+  "FATAL": {
+    "id": "FATAL",
+    "name": "斩杀",
+    "description": "当这张牌杀死一名非爪牙敌人时触发。"
+  },
+  "FLOOR": {
+    "id": "FLOOR",
+    "name": "楼层",
+    "description": "你攀爬了多高。"
+  },
+  "FORGE": {
+    "id": "FORGE",
+    "name": "铸造",
+    "description": "每场战斗你第一次铸造时，将君王之剑加入你的手牌。为君王之剑增加额外伤害。"
+  },
+  "HIT_POINTS": {
+    "id": "HIT_POINTS",
+    "name": "生命值（HP）",
+    "description": "当你耗尽生命时，你就会死亡。"
+  },
+  "LINKED_REWARDS": {
+    "id": "LINKED_REWARDS",
+    "name": "相连奖励",
+    "description": "同组重你只能选择1项奖励。"
+  },
+  "MAP": {
+    "id": "MAP",
+    "name": "地图{Hotkey:choose(None):|（{}）}",
+    "description": "检视当前阶段的地图。"
+  },
+  "MONEY_POUCH": {
+    "id": "MONEY_POUCH",
+    "name": "金币",
+    "description": "你所拥有的金币数。它是高塔中的货币。"
+  },
+  "NETWORK_PROBLEM_CLIENT": {
+    "id": "NETWORK_PROBLEM_CLIENT",
+    "name": "连接不佳！",
+    "description": "你和房主（{Player}）的连接状态不佳。\n可能是你或对方的网络存在问题。"
+  },
+  "NETWORK_PROBLEM_HOST": {
+    "id": "NETWORK_PROBLEM_HOST",
+    "name": "连接不佳！",
+    "description": "你和{Player}的连接状态不佳。\n可能是你或对方的网络存在问题。"
+  },
+  "REPLAY_DYNAMIC": {
+    "id": "REPLAY_DYNAMIC",
+    "name": "重放",
+    "description": "将这张牌额外打出{Times}次。"
+  },
+  "REPLAY_STATIC": {
+    "id": "REPLAY_STATIC",
+    "name": "重放",
+    "description": "将这张牌额外打出一次。"
+  },
+  "ROOM_ANCIENT": {
+    "id": "ROOM_ANCIENT",
+    "name": "先古之民",
+    "description": "先古之民居住在这些房间中。\n\n他们会赐予你惊人的奖励、财宝与知识。"
+  },
+  "ROOM_BOSS": {
+    "id": "ROOM_BOSS",
+    "name": "ROOM_BOSS",
+    "description": "整个地区最强大的敌人。\n\n将其击败就可以进入下一阶段。"
+  },
+  "ROOM_ELITE": {
+    "id": "ROOM_ELITE",
+    "name": "精英",
+    "description": "这些房间中有强大的敌人。\n\n击败他们将会获得遗物奖励。"
+  },
+  "ROOM_ENEMY": {
+    "id": "ROOM_ENEMY",
+    "name": "敌人",
+    "description": "这些房间里有好战的敌人们。"
+  },
+  "ROOM_MAP": {
+    "id": "ROOM_MAP",
+    "name": "前厅",
+    "description": "你可以在这里规划你的下一步。"
+  },
+  "ROOM_REST": {
+    "id": "ROOM_REST",
+    "name": "休息处",
+    "description": "在这些房间可以回复一些生命或是升级一张卡牌。"
+  },
+  "ROOM_TREASURE": {
+    "id": "ROOM_TREASURE",
+    "name": "宝箱房",
+    "description": "这些房间中有着众人觊觎的遗物与金币。"
+  },
+  "ROOM_UNKNOWN_ELITE": {
+    "id": "ROOM_UNKNOWN_ELITE",
+    "name": "未知 - 精英",
+    "description": "之前未知的房间，里面有强大的敌人。"
+  },
+  "ROOM_UNKNOWN_ENEMY": {
+    "id": "ROOM_UNKNOWN_ENEMY",
+    "name": "未知 - 敌人",
+    "description": "之前未知的房间，里面有好战的敌人。"
+  },
+  "ROOM_UNKNOWN_TREASURE": {
+    "id": "ROOM_UNKNOWN_TREASURE",
+    "name": "未知 - 财宝",
+    "description": "之前未知的房间，里面有众人觊觎的财宝。"
+  },
+  "SETTINGS": {
+    "id": "SETTINGS",
+    "name": "设置（ESC）",
+    "description": "打开游戏菜单。\n\n可以在这里调整或更新你的视频、声音、和游玩方面的偏好。"
+  },
+  "STAR_COUNT": {
+    "id": "STAR_COUNT",
+    "name": "辉星",
+    "description": "你当前的辉星（{singleStarIcon}）数。储君的部分卡牌可能会需要{singleStarIcon}才能打出。"
+  },
+  "SUMMON_DYNAMIC": {
+    "id": "SUMMON_DYNAMIC",
+    "name": "召唤{Summon}",
+    "description": "以{Summon}生命值召唤奥斯提。\n如果已经召唤，则在本场战斗中将其最大生命值提升{Summon}点。"
+  },
+  "SUMMON_STATIC": {
+    "id": "SUMMON_STATIC",
+    "name": "召唤",
+    "description": "召唤奥斯提。\n如果已经召唤，则在本场战斗提升其最大生命值。"
+  },
+  "TRANSFORM": {
+    "id": "TRANSFORM",
+    "name": "变化",
+    "description": "卡牌被变化时会变成任意稀有度的随机牌。"
+  },
+  "TURN_NUMBER": {
+    "id": "TURN_NUMBER",
+    "name": "TURN_NUMBER",
+    "description": "这场战斗的回合数。"
+  },
+  "TIP_PLAYTIME": {
+    "id": "TIP_PLAYTIME",
+    "name": "TIP_PLAYTIME",
+    "description": "你的游玩时长和你的最速获胜。"
+  },
+  "TIP_WIN_LOSS": {
+    "id": "TIP_WIN_LOSS",
+    "name": "TIP_WIN_LOSS",
+    "description": "所有角色完成的总进阶层数。"
+  },
+  "ALL_CARDS_UPGRADED": {
+    "id": "ALL_CARDS_UPGRADED",
+    "name": "完美牌组",
+    "description": "以全部升级的牌组赢得一局游戏。"
+  },
+  "NECROBINDER_ASCENSION10": {
+    "id": "NECROBINDER_ASCENSION10",
+    "name": "巫妖",
+    "description": "用亡灵契约师赢得一局进阶10的游戏。"
+  },
+  "DARV": {
+    "id": "DARV",
+    "name": "达弗",
+    "description": ""
+  },
+  "NONUPEIPE": {
+    "id": "NONUPEIPE",
+    "name": "诺奴佩普",
+    "description": ""
+  },
+  "OROBAS": {
+    "id": "OROBAS",
+    "name": "欧洛巴斯",
+    "description": ""
+  },
+  "PAEL": {
+    "id": "PAEL",
+    "name": "佩尔",
+    "description": ""
+  },
+  "TANX": {
+    "id": "TANX",
+    "name": "坦克斯",
+    "description": ""
+  },
+  "TEZCATARA": {
+    "id": "TEZCATARA",
+    "name": "特兹卡塔拉",
+    "description": ""
+  },
+  "THE_ARCHITECT": {
+    "id": "THE_ARCHITECT",
+    "name": "建筑师",
+    "description": ""
+  },
+  "VAKUU": {
+    "id": "VAKUU",
+    "name": "瓦库",
+    "description": ""
+  },
+  "DAZED": {
+    "id": "DAZED",
+    "name": "晕眩",
+    "description": ""
+  },
+  "DEBRIS": {
+    "id": "DEBRIS",
+    "name": "碎屑",
+    "description": ""
+  },
+  "SOOT": {
+    "id": "SOOT",
+    "name": "煤灰",
+    "description": ""
+  },
+  "OPTION_REROLL": {
+    "id": "OPTION_REROLL",
+    "name": "重掷",
+    "description": ""
+  },
+  "OPTION_SKIP": {
+    "id": "OPTION_SKIP",
+    "name": "跳过",
+    "description": ""
+  },
+  "AXEBOTS_NORMAL": {
+    "id": "AXEBOTS_NORMAL",
+    "name": "巨斧机器人",
+    "description": ""
+  },
+  "BOWLBUGS_WEAK": {
+    "id": "BOWLBUGS_WEAK",
+    "name": "盛碗虫",
+    "description": ""
+  },
+  "BYRDONIS_ELITE": {
+    "id": "BYRDONIS_ELITE",
+    "name": "多尼斯异鸟",
+    "description": ""
+  },
+  "CHOMPERS_NORMAL": {
+    "id": "CHOMPERS_NORMAL",
+    "name": "一对自动机械",
+    "description": ""
+  },
+  "CUBEX_CONSTRUCT_NORMAL": {
+    "id": "CUBEX_CONSTRUCT_NORMAL",
+    "name": "方柱构装体",
+    "description": ""
+  },
+  "ENTOMANCER_ELITE": {
+    "id": "ENTOMANCER_ELITE",
+    "name": "蜂群术士",
+    "description": ""
+  },
+  "FABRICATOR_NORMAL": {
+    "id": "FABRICATOR_NORMAL",
+    "name": "组装师",
+    "description": ""
+  },
+  "FLYCONID_NORMAL": {
+    "id": "FLYCONID_NORMAL",
+    "name": "真菌与史莱姆",
+    "description": ""
+  },
+  "FLYCONID_WEAK": {
+    "id": "FLYCONID_WEAK",
+    "name": "飞蝇菌子",
+    "description": ""
+  },
+  "FOGMOG_NORMAL": {
+    "id": "FOGMOG_NORMAL",
+    "name": "雾菇",
+    "description": ""
+  },
+  "HUNTER_KILLER_NORMAL": {
+    "id": "HUNTER_KILLER_NORMAL",
+    "name": "猎人杀手",
+    "description": ""
+  },
+  "INKLETS_NORMAL": {
+    "id": "INKLETS_NORMAL",
+    "name": "墨宝",
+    "description": ""
+  },
+  "KAISER_CRAB_BOSS": {
+    "id": "KAISER_CRAB_BOSS",
+    "name": "帝皇蟹",
+    "description": ""
+  },
+  "LAGAVULIN_MATRIARCH_BOSS": {
+    "id": "LAGAVULIN_MATRIARCH_BOSS",
+    "name": "乐加维林族母",
+    "description": ""
+  },
+  "MAWLER_NORMAL": {
+    "id": "MAWLER_NORMAL",
+    "name": "蛮兽",
+    "description": ""
+  },
+  "MECHA_KNIGHT_ELITE": {
+    "id": "MECHA_KNIGHT_ELITE",
+    "name": "机甲骑士",
+    "description": ""
+  },
+  "NIBBITS_NORMAL": {
+    "id": "NIBBITS_NORMAL",
+    "name": "两只小啃兽",
+    "description": ""
+  },
+  "OVICOPTER_NORMAL": {
+    "id": "OVICOPTER_NORMAL",
+    "name": "直飞产卵虫",
+    "description": ""
+  },
+  "PUNCH_CONSTRUCT_NORMAL": {
+    "id": "PUNCH_CONSTRUCT_NORMAL",
+    "name": "拳击构装体",
+    "description": ""
+  },
+  "QUEEN_BOSS": {
+    "id": "QUEEN_BOSS",
+    "name": "女王",
+    "description": ""
+  },
+  "RUBY_RAIDERS_NORMAL": {
+    "id": "RUBY_RAIDERS_NORMAL",
+    "name": "红宝石劫掠者",
+    "description": ""
+  },
+  "SEAPUNK_WEAK": {
+    "id": "SEAPUNK_WEAK",
+    "name": "海洋混混",
+    "description": ""
+  },
+  "SHRINKER_BEETLE_WEAK": {
+    "id": "SHRINKER_BEETLE_WEAK",
+    "name": "缩小甲虫",
+    "description": ""
+  },
+  "SLUDGE_SPINNER_WEAK": {
+    "id": "SLUDGE_SPINNER_WEAK",
+    "name": "淤泥旋螺",
+    "description": ""
+  },
+  "SLUMBERING_BEETLE_NORMAL": {
+    "id": "SLUMBERING_BEETLE_NORMAL",
+    "name": "熟睡派对",
+    "description": ""
+  },
+  "SOUL_FYSH_BOSS": {
+    "id": "SOUL_FYSH_BOSS",
+    "name": "灵魂异鱼",
+    "description": ""
+  },
+  "SOUL_NEXUS_ELITE": {
+    "id": "SOUL_NEXUS_ELITE",
+    "name": "灵魂枢纽",
+    "description": ""
+  },
+  "SPINY_TOAD_NORMAL": {
+    "id": "SPINY_TOAD_NORMAL",
+    "name": "棘刺蟾蜍",
+    "description": ""
+  },
+  "TERROR_EEL_ELITE": {
+    "id": "TERROR_EEL_ELITE",
+    "name": "骇鳗",
+    "description": ""
+  },
+  "THE_OBSCURA_NORMAL": {
+    "id": "THE_OBSCURA_NORMAL",
+    "name": "胧光怪",
+    "description": ""
+  },
+  "TOADPOLES_WEAK": {
+    "id": "TOADPOLES_WEAK",
+    "name": "蟾蜍蝌蚪",
+    "description": ""
+  },
+  "TUNNELER_NORMAL": {
+    "id": "TUNNELER_NORMAL",
+    "name": "地道组合",
+    "description": ""
+  },
+  "TUNNELER_WEAK": {
+    "id": "TUNNELER_WEAK",
+    "name": "地道虫",
+    "description": ""
+  },
+  "TURRET_OPERATOR_WEAK": {
+    "id": "TURRET_OPERATOR_WEAK",
+    "name": "高塔炮手",
+    "description": ""
+  },
+  "VANTOM_BOSS": {
+    "id": "VANTOM_BOSS",
+    "name": "墨影幻灵",
+    "description": ""
+  },
+  "VINE_SHAMBLER_NORMAL": {
+    "id": "VINE_SHAMBLER_NORMAL",
+    "name": "藤蔓蹒跚者",
+    "description": ""
+  },
+  "AMALGAMATOR": {
+    "id": "AMALGAMATOR",
+    "name": "熔合者",
+    "description": ""
+  },
+  "DOLL_ROOM": {
+    "id": "DOLL_ROOM",
+    "name": "玩偶室",
+    "description": ""
+  },
+  "SPIRIT_GRAFTER": {
+    "id": "SPIRIT_GRAFTER",
+    "name": "灵魂嫁接者",
+    "description": ""
+  },
+  "SYMBIOTE": {
+    "id": "SYMBIOTE",
+    "name": "共生体",
+    "description": ""
+  },
+  "THIS_OR_THAT": {
+    "id": "THIS_OR_THAT",
+    "name": "这个还是那个？",
+    "description": ""
+  },
+  "WELCOME_TO_WONGOS": {
+    "id": "WELCOME_TO_WONGOS",
+    "name": "欢迎来到旺购百货",
+    "description": ""
+  },
+  "LEGEND_ANCIENT": {
+    "id": "LEGEND_ANCIENT",
+    "name": "先古之民",
+    "description": ""
+  },
+  "LEGEND_ELITE": {
+    "id": "LEGEND_ELITE",
+    "name": "精英",
+    "description": ""
+  },
+  "ARCHITECT": {
+    "id": "ARCHITECT",
+    "name": "建筑师",
+    "description": ""
+  },
+  "ASSASSIN_RUBY_RAIDER": {
+    "id": "ASSASSIN_RUBY_RAIDER",
+    "name": "劫掠者刺客",
+    "description": ""
+  },
+  "AXEBOT": {
+    "id": "AXEBOT",
+    "name": "巨斧机器人",
+    "description": ""
+  },
+  "AXE_RUBY_RAIDER": {
+    "id": "AXE_RUBY_RAIDER",
+    "name": "劫掠者斧手",
+    "description": ""
+  },
+  "BATTLE_FRIEND_V1": {
+    "id": "BATTLE_FRIEND_V1",
+    "name": "战斗好伙伴V1.0",
+    "description": ""
+  },
+  "BATTLE_FRIEND_V2": {
+    "id": "BATTLE_FRIEND_V2",
+    "name": "战斗好伙伴V2.0",
+    "description": ""
+  },
+  "BATTLE_FRIEND_V3": {
+    "id": "BATTLE_FRIEND_V3",
+    "name": "战斗好伙伴V3.0",
+    "description": ""
+  },
+  "BIG_DUMMY": {
+    "id": "BIG_DUMMY",
+    "name": "大型假人",
+    "description": ""
+  },
+  "BOWLBUG_NECTAR": {
+    "id": "BOWLBUG_NECTAR",
+    "name": "盛碗虫（蜜）",
+    "description": ""
+  },
+  "BRUTE_RUBY_RAIDER": {
+    "id": "BRUTE_RUBY_RAIDER",
+    "name": "劫掠者暴徒",
+    "description": ""
+  },
+  "BYRDONIS": {
+    "id": "BYRDONIS",
+    "name": "多尼斯异鸟",
+    "description": ""
+  },
+  "CHOMPER": {
+    "id": "CHOMPER",
+    "name": "啃咬机",
+    "description": ""
+  },
+  "CROSSBOW_RUBY_RAIDER": {
+    "id": "CROSSBOW_RUBY_RAIDER",
+    "name": "劫掠者弩手",
+    "description": ""
+  },
+  "CRUSHER": {
+    "id": "CRUSHER",
+    "name": "碾碎爪",
+    "description": ""
+  },
+  "CUBEX_CONSTRUCT": {
+    "id": "CUBEX_CONSTRUCT",
+    "name": "立柱构造体",
+    "description": ""
+  },
+  "ENTOMANCER": {
+    "id": "ENTOMANCER",
+    "name": "蜂群术士",
+    "description": ""
+  },
+  "FABRICATOR": {
+    "id": "FABRICATOR",
+    "name": "组装师",
+    "description": ""
+  },
+  "FLAIL_KNIGHT": {
+    "id": "FLAIL_KNIGHT",
+    "name": "连枷骑士",
+    "description": ""
+  },
+  "FLYCONID": {
+    "id": "FLYCONID",
+    "name": "飞蝇菌子",
+    "description": ""
+  },
+  "FOGMOG": {
+    "id": "FOGMOG",
+    "name": "雾菇",
+    "description": ""
+  },
+  "GEM_EATER": {
+    "id": "GEM_EATER",
+    "name": "吞宝石者",
+    "description": ""
+  },
+  "GLOBE_HEAD": {
+    "id": "GLOBE_HEAD",
+    "name": "电球头",
+    "description": ""
+  },
+  "GUARDBOT": {
+    "id": "GUARDBOT",
+    "name": "守护机器人",
+    "description": ""
+  },
+  "HATCHLING": {
+    "id": "HATCHLING",
+    "name": "幼虫",
+    "description": ""
+  },
+  "HUNTER_KILLER": {
+    "id": "HUNTER_KILLER",
+    "name": "猎人杀手",
+    "description": ""
+  },
+  "INKLET": {
+    "id": "INKLET",
+    "name": "墨宝",
+    "description": ""
+  },
+  "LAGAVULIN_MATRIARCH": {
+    "id": "LAGAVULIN_MATRIARCH",
+    "name": "乐加维林族母",
+    "description": ""
+  },
+  "LIVING_SHIELD": {
+    "id": "LIVING_SHIELD",
+    "name": "活体盾",
+    "description": ""
+  },
+  "MAGI_KNIGHT": {
+    "id": "MAGI_KNIGHT",
+    "name": "魔法骑士",
+    "description": ""
+  },
+  "MAWLER": {
+    "id": "MAWLER",
+    "name": "蛮兽",
+    "description": ""
+  },
+  "MECHA_KNIGHT": {
+    "id": "MECHA_KNIGHT",
+    "name": "机甲骑士",
+    "description": ""
+  },
+  "MYTE": {
+    "id": "MYTE",
+    "name": "异螨",
+    "description": ""
+  },
+  "NIBBIT": {
+    "id": "NIBBIT",
+    "name": "小啃兽",
+    "description": ""
+  },
+  "NOISEBOT": {
+    "id": "NOISEBOT",
+    "name": "噪音机器人",
+    "description": ""
+  },
+  "OSTY": {
+    "id": "OSTY",
+    "name": "奥斯提",
+    "description": ""
+  },
+  "OVICOPTER": {
+    "id": "OVICOPTER",
+    "name": "直飞产卵虫",
+    "description": ""
+  },
+  "PARAFRIGHT": {
+    "id": "PARAFRIGHT",
+    "name": "寄生惧魔",
+    "description": ""
+  },
+  "PUNCH_CONSTRUCT": {
+    "id": "PUNCH_CONSTRUCT",
+    "name": "拳击构装体",
+    "description": ""
+  },
+  "QUEEN": {
+    "id": "QUEEN",
+    "name": "女王",
+    "description": ""
+  },
+  "ROCKET": {
+    "id": "ROCKET",
+    "name": "火箭",
+    "description": ""
+  },
+  "SEAPUNK": {
+    "id": "SEAPUNK",
+    "name": "海洋混混",
+    "description": ""
+  },
+  "SHRINKER_BEETLE": {
+    "id": "SHRINKER_BEETLE",
+    "name": "缩小甲虫",
+    "description": ""
+  },
+  "SLUDGE_SPINNER": {
+    "id": "SLUDGE_SPINNER",
+    "name": "淤泥旋螺",
+    "description": ""
+  },
+  "SOUL_FYSH": {
+    "id": "SOUL_FYSH",
+    "name": "灵魂异鱼",
+    "description": ""
+  },
+  "SOUL_NEXUS": {
+    "id": "SOUL_NEXUS",
+    "name": "灵魂枢纽",
+    "description": ""
+  },
+  "SPECTRAL_KNIGHT": {
+    "id": "SPECTRAL_KNIGHT",
+    "name": "幽灵骑士",
+    "description": ""
+  },
+  "SPINY_TOAD": {
+    "id": "SPINY_TOAD",
+    "name": "棘刺蟾蜍",
+    "description": ""
+  },
+  "STABBOT": {
+    "id": "STABBOT",
+    "name": "戳刺机器人",
+    "description": ""
+  },
+  "TERROR_EEL": {
+    "id": "TERROR_EEL",
+    "name": "骇鳗",
+    "description": ""
+  },
+  "THE_ADVERSARY_MK_ONE": {
+    "id": "THE_ADVERSARY_MK_ONE",
+    "name": "对手1型",
+    "description": ""
+  },
+  "THE_ADVERSARY_MK_THREE": {
+    "id": "THE_ADVERSARY_MK_THREE",
+    "name": "对手3型",
+    "description": ""
+  },
+  "THE_ADVERSARY_MK_TWO": {
+    "id": "THE_ADVERSARY_MK_TWO",
+    "name": "对手2型",
+    "description": ""
+  },
+  "THE_ARM": {
+    "id": "THE_ARM",
+    "name": "手臂",
+    "description": ""
+  },
+  "THE_BELL": {
+    "id": "THE_BELL",
+    "name": "铃铛",
+    "description": ""
+  },
+  "THE_DREAMER": {
+    "id": "THE_DREAMER",
+    "name": "梦者",
+    "description": ""
+  },
+  "THE_OBSCURA": {
+    "id": "THE_OBSCURA",
+    "name": "胧光怪",
+    "description": ""
+  },
+  "TOADPOLE": {
+    "id": "TOADPOLE",
+    "name": "蟾蜍蝌蚪",
+    "description": ""
+  },
+  "TORCH_HEAD_AMALGAM": {
+    "id": "TORCH_HEAD_AMALGAM",
+    "name": "火炬头聚合体",
+    "description": ""
+  },
+  "TRACKER_RUBY_RAIDER": {
+    "id": "TRACKER_RUBY_RAIDER",
+    "name": "劫掠者追踪手",
+    "description": ""
+  },
+  "TUNNELER": {
+    "id": "TUNNELER",
+    "name": "地道虫",
+    "description": ""
+  },
+  "TURRET_OPERATOR": {
+    "id": "TURRET_OPERATOR",
+    "name": "高塔炮手",
+    "description": ""
+  },
+  "VANTOM": {
+    "id": "VANTOM",
+    "name": "墨影幻灵",
+    "description": ""
+  },
+  "VINE_SHAMBLER": {
+    "id": "VINE_SHAMBLER",
+    "name": "藤蔓蹒跚者",
+    "description": ""
+  },
+  "WRIGGLER": {
+    "id": "WRIGGLER",
+    "name": "扭动虫",
+    "description": ""
+  },
+  "ZAPBOT": {
+    "id": "ZAPBOT",
+    "name": "电击机器人",
+    "description": ""
+  },
+  "VISUAL_ONLY": {
+    "id": "VISUAL_ONLY",
+    "name": "仅视觉",
+    "description": "仅视觉"
+  }
+}

@@ -349,6 +349,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["超现实", "拼贴", "平涂", "海报", "负空间", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["create-pantone-photo", "gc-minimal-zine-poster"],
         "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch"],
         "input_mode": "text",
@@ -394,6 +395,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["Riso", "丝网印刷", "档案", "海报", "留白", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["gc-minimal-zine-poster", "create-pantone-photo"],
         "conflicts_with": ["surreal-pop-collage", "heytea-style"],
         "input_mode": "text",
@@ -438,6 +440,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["油画", "梵高", "涡流", "星夜", "笔触", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": [],
         "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch", "photo-to-travel-sketch"],
         "input_mode": "text",
@@ -481,6 +484,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["手绘", "速写", "黑笔", "线条", "插画", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["selective-ink-sketch", "photo-to-travel-sketch"],
         "conflicts_with": ["flash4start-light", "surreal-pop-collage"],
         "input_mode": "text",
@@ -524,6 +528,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["水墨", "中国画", "留白", "单色", "印章", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["selective-ink-sketch"],
         "conflicts_with": ["surreal-pop-collage", "flash4start-light", "heytea-style"],
         "input_mode": "text",
@@ -566,6 +571,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["钢笔", "素描", "负空间", "极简", "线条", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["eastern-ink-photo", "antibes-holiday"],
         "conflicts_with": ["surreal-pop-collage", "heytea-style"],
         "input_mode": "text",
@@ -608,6 +614,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["黑胶", "唱片", "产品图", "极简", "音乐", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["gc-minimal-zine-poster"],
         "conflicts_with": ["surreal-pop-collage"],
         "input_mode": "text",
@@ -650,6 +657,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["Pantone", "色卡", "海报", "编辑", "色彩", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["gc-minimal-zine-poster", "photo-riso-poster"],
         "conflicts_with": ["surreal-pop-collage", "heytea-style"],
         "input_mode": "text",
@@ -693,6 +701,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["喜茶", "涂鸦", "促销", "马卡龙", "可爱", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "anime",
         "combines_with": [],
         "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch", "create-pantone-photo"],
         "input_mode": "text",
@@ -736,6 +745,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["Pop Art", "展览", "海报", "丝网印刷", "半调", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["photo-riso-poster", "create-pantone-photo"],
         "conflicts_with": ["eastern-ink-photo", "heytea-style"],
         "input_mode": "text",
@@ -779,6 +789,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["剪影", "拼贴", "二联", "正负片", "手工", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": [],
         "conflicts_with": ["heytea-style", "scene-to-art-lab"],
         "input_mode": "text",
@@ -822,6 +833,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["旅行", "贴纸", "纪念卡", "插画", "日记", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "anime",
         "combines_with": ["card-duo"],
         "conflicts_with": [],
         "input_mode": "text",
@@ -866,6 +878,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["旅行", "双卡", "贴纸", "水粉", "剪纸", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["travel-memory-sticker"],
         "conflicts_with": [],
         "input_mode": "text",
@@ -909,6 +922,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["超现实", "剧场", "色场", "巨物", "电影感", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["surreal-pop-collage"],
         "conflicts_with": ["eastern-ink-photo", "heytea-style"],
         "input_mode": "text",
@@ -952,6 +966,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["装置", "材料艺术", "画廊", "触觉", "浮雕", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": [],
         "conflicts_with": ["heytea-style", "surreal-pop-collage"],
         "input_mode": "text",
@@ -994,6 +1009,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["极简", "插画", "实地考察", "三色", "学术", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["gc-minimal-zine-poster", "selective-ink-sketch"],
         "conflicts_with": ["surreal-pop-collage", "heytea-style"],
         "input_mode": "text",
@@ -1037,6 +1053,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["档案", "印章", "照片", "拼贴", "极简", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["photo-riso-poster"],
         "conflicts_with": ["heytea-style", "surreal-pop-collage"],
         "input_mode": "text",
@@ -1079,6 +1096,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["旅行", "速写", "笔触", "省略", "个人", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["antibes-holiday"],
         "conflicts_with": ["eastern-ink-photo", "flash4start-light"],
         "input_mode": "text",
@@ -1122,6 +1140,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["zine", "明信片", "手绘", "极简", "旅行", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["gc-minimal-zine-poster", "travel-memory-sticker"],
         "conflicts_with": ["heytea-style"],
         "input_mode": "text",
@@ -1167,6 +1186,7 @@ IMAGE_SKILL_CATALOG = [
         "tags": ["zine", "极简", "海报", "留白", "衬线", "风格化图像", "已实测验收"],
         "verified": True,
         "verified_at": "2026-08-25",
+        "recommended_model": "realistic",
         "combines_with": ["photo-riso-poster", "create-pantone-photo", "photo-to-minimal-illustration"],
         "conflicts_with": ["heytea-style", "surreal-pop-collage"],
         "input_mode": "text",
@@ -1200,6 +1220,904 @@ IMAGE_SKILL_CATALOG = [
             "- 负空间 ≥ 75%\n"
             "- 全图仅一个彩色重音\n"
             "- 焦点占比 ≤ 15%\n"
+        ),
+    },
+
+    {
+        "id": "cyberpunk-neon-noir",
+        "name": "赛博朋克霓虹光影",
+        "category": "风格化图像",
+        "description": "沉浸式夜雨赛博朋克美学：霓虹倒影、高饱和蓝紫撞色、湿润路面反光与强负空间。",
+        "version": "1.0.0",
+        "tags": ["赛博朋克", "霓虹", "夜景", "光影", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["surreal-pop-collage"],
+        "conflicts_with": ["eastern-ink-photo", "antibes-holiday"],
+        "input_mode": "text",
+        "quality_checks": [
+            "夜雨沥青路面带霓虹反光",
+            "青蓝与洋红高饱和撞色",
+            "具有沉浸式赛博光影氛围",
+            "负空间 ≥ 50%",
+        ],
+        "prompt": (
+            "# 赛博朋克霓虹光影 (Cyberpunk Neon Noir)\n\n"
+            "## 触发条件\n"
+            "用户要求赛博朋克、霓虹夜景、科幻街头、或「雨夜霓虹」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) cinematic cyberpunk neon noir photography, vertical layout.\n"
+            "2) Night rain-slicked street with vivid cyan and magenta neon light reflections on wet asphalt.\n"
+            "3) Solitary silhouette or iconic focal element near the lower-third, atmospheric volumetric fog.\n"
+            "4) Deep pitch-black shadow contrast, generous negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "glassmorphic-3d-render",
+        "name": "3D 玻璃晶体与全息折射",
+        "category": "风格化图像",
+        "description": "C4D/Octane 级高端三维质感：磨砂透光玻璃、全息镭射七彩光泽、极简留白展现奢华科技感。",
+        "version": "1.0.0",
+        "tags": ["3D渲染", "玻璃", "全息", "C4D", "科技", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["create-pantone-photo"],
+        "conflicts_with": ["photo-riso-poster", "eastern-ink-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "半透明磨砂玻璃材质明显",
+            "有彩虹折射与焦散光斑",
+            "背景纯净淡雅，负空间 ≥ 60%",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 3D 玻璃晶体与全息折射 (Glassmorphic 3D Render)\n\n"
+            "## 触发条件\n"
+            "用户要求 3D 玻璃、C4D 渲染、全息折射、或高端科技三维质感时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) 3d Octane style render, high-end product composition, vertical layout.\n"
+            "2) Floating translucent frosted glass geometric prisms paired with fluid iridescent holographic sphere.\n"
+            "3) Rainbow caustic light refractions and soft shadow dispersion on a clean neutral cream studio background.\n"
+            "4) Premium futuristic tech aesthetic, vast clean negative space over 60%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "bauhaus-minimal-poster",
+        "name": "包豪斯现代主义海报",
+        "category": "风格化图像",
+        "description": "经典包豪斯艺术构成：强红黄蓝三原色撞色、几何构成与严格的建筑网格留白空间。",
+        "version": "1.0.0",
+        "tags": ["包豪斯", "几何", "三原色", "极简", "海报", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["gc-minimal-zine-poster"],
+        "conflicts_with": ["flash4start-light", "photo-to-travel-sketch"],
+        "input_mode": "text",
+        "quality_checks": [
+            "使用红黄蓝经典三原色色块",
+            "具有清晰的几何图形构成",
+            "网格版式负空间 ≥ 60%",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 包豪斯现代主义海报 (Bauhaus Minimal Poster)\n\n"
+            "## 触发条件\n"
+            "用户要求包豪斯风格、几何海报、三原色撞色或现代主义构成时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) Bauhaus modernist poster aesthetic, vertical poster composition on off-white paper canvas.\n"
+            "2) Primary colors: crimson red, cobalt blue, and golden yellow bold flat geometric circles and diagonal bars.\n"
+            "3) Sharp hard-edge color fields, strict architectural grid balance with generous paper negative space.\n"
+            "4) Iconic 1920s modernism, quiet structural tension, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "claymation-3d-tactile",
+        "name": "黏土定格动画质感",
+        "category": "风格化图像",
+        "description": "微距 3D 黏土手工定格质感：自然指纹肌理、软萌粘土建模与景深微距视角。",
+        "version": "1.0.0",
+        "tags": ["黏土", "定格动画", "手工", "微距", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "anime",
+        "combines_with": ["travel-memory-sticker"],
+        "conflicts_with": ["eastern-ink-photo", "selective-ink-sketch"],
+        "input_mode": "text",
+        "quality_checks": [
+            "塑性黏土的自然软萌建模",
+            "表面微弱手压肌理",
+            "微距柔和浅景深",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 黏土定格动画质感 (Claymation 3D Tactile)\n\n"
+            "## 触发条件\n"
+            "用户要求黏土风格、定格动画、粘土手工、或软萌 3D 建模时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) 3d claymation stop-motion photography, vertical studio layout.\n"
+            "2) Cute plasticine clay modeling with subtle handmade finger-press textures and soft matte finish.\n"
+            "3) Macro shallow depth of field, gentle diffuse pastel studio lighting.\n"
+            "4) Clean solid pastel background, high negative space over 50%, charming tactile aesthetic, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+
+    {
+        "id": "love-death-robots-style",
+        "name": "爱死机·暗黑超现实美学",
+        "category": "风格化图像",
+        "description": "《爱死机》(Love Death + Robots) 级暗黑电影特效：高对比度诡谲美学、机械与有机体融合、电影胶片颗粒与浓烈戏剧光影。",
+        "version": "1.0.0",
+        "tags": ["爱死机", "暗黑", "超现实", "电影感", "科幻", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["cyberpunk-neon-noir", "surreal-pop-collage"],
+        "conflicts_with": ["eastern-ink-photo", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "暗黑诡谲的戏剧性电影光影",
+            "机械/金属与有机元素的强张力碰撞",
+            "35mm 电影胶片颗粒感",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 爱死机·暗黑超现实美学 (Love Death + Robots Style)\n\n"
+            "## 触发条件\n"
+            "用户要求爱死机风格、暗黑科幻、诡谲超现实、或「Love Death Robots 电影感」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) cinematic still inspired by Love Death and Robots, dark surrealism, vertical composition.\n"
+            "2) Biomechanical fusion of glossy obsidian metal plates and organic textures; dramatic volumetric haze.\n"
+            "3) High contrast chiaroscuro lighting, deep pitch-black shadows illuminated by a single harsh crimson glow.\n"
+            "4) 35mm film grain, 8k cinematic renders, immersive atmosphere, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "master-cinematic-portrait",
+        "name": "大师光影·超清人像写真",
+        "category": "风格化图像",
+        "description": "伦勃朗级大师光影超清肖像：毛孔级皮肤细节、85mm 焦段浅景深、戏剧性暗调光影与眼神光。",
+        "version": "1.0.0",
+        "tags": ["人像", "写真", "伦勃朗光", "大师级", "超清", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["create-pantone-photo"],
+        "conflicts_with": ["heytea-style", "travel-memory-sticker"],
+        "input_mode": "text",
+        "quality_checks": [
+            "毛孔级超清真实皮肤质感",
+            "经典伦勃朗三角光影或戏剧性侧光",
+            "眼神中有自然灵动的眼神光",
+            "85mm 人像镜浅景深虚化",
+        ],
+        "prompt": (
+            "# 大师光影·超清人像写真 (Master Cinematic Portrait)\n\n"
+            "## 触发条件\n"
+            "用户要求高清人像写真、大师人像、伦勃朗光影、或「真实超清面部写真」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) master photographic portrait, ultra-detailed 8k resolution, vertical composition.\n"
+            "2) Close-up face photography: intricate skin pore detail, subtle freckles, atmospheric catchlights in eyes.\n"
+            "3) Rembrandt chiaroscuro lighting: single directional soft studio light, warm light transitioning into soft deep shadows.\n"
+            "4) 85mm prime lens f/1.4 shallow depth of field, creamy bokeh background, elegant artistic portrait tone, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "cyborg-jewel-portrait",
+        "name": "吉巴罗·金漆珠宝璀璨人像",
+        "category": "风格化图像",
+        "description": "致敬《爱死机·吉巴罗》(Jibaro)：璀璨金箔面贴、奢华珠宝镶嵌、极富冲击力的璀璨奢华与水波光影。",
+        "version": "1.0.0",
+        "tags": ["吉巴罗", "金箔", "珠宝", "璀璨", "人像", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["love-death-robots-style"],
+        "conflicts_with": ["photo-riso-poster", "antibes-holiday"],
+        "input_mode": "text",
+        "quality_checks": [
+            "面部贴有精致金箔与璀璨珠宝",
+            "浓烈对比度与流光溢彩的金金属光泽",
+            "暗色背景与闪耀珠宝形成极大反差",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 吉巴罗·金漆珠宝璀璨人像 (Cyborg Jewel Portrait - Jibaro Style)\n\n"
+            "## 触发条件\n"
+            "用户要求吉巴罗风格、金箔人像、珠宝面贴、或「奢华璀璨艺术写真」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) artistic portrait inspired by Jibaro from Love Death Robots, vertical composition.\n"
+            "2) Intricate gold leaf foil ornamentation and opulent jeweled beads encrusted on face and collarbones.\n"
+            "3) Harsh glittering light sparkling off metallic gold surfaces, dark obsidian water background with subtle ripples.\n"
+            "4) High drama, intoxicating luxury visual impact, vivid specular reflections, 8k resolution, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "avant-garde-editorial-face",
+        "name": "先锋时尚·杂志艺术写真",
+        "category": "风格化图像",
+        "description": "Vogue/Dazed 级先锋时尚杂志封面：硬核环形闪光灯、湿发金属感彩妆、强冲击力表情与先锋艺术构图。",
+        "version": "1.0.0",
+        "tags": ["先锋", "时尚", "杂志", "硬光", "彩妆", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["create-pantone-photo"],
+        "conflicts_with": ["photo-to-travel-sketch", "eastern-ink-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "硬核环形闪光灯的高光刻画",
+            "湿发与先锋金属/高饱和彩妆",
+            "时尚杂志封面级高端氛围",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 先锋时尚·杂志艺术写真 (Avant-Garde Editorial Face)\n\n"
+            "## 触发条件\n"
+            "用户要求先锋时尚、杂志封面写真、硬光彩妆、或「Vogue 级先锋人像」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) avant-garde high-fashion editorial portrait, Vogue style cover photography, vertical composition.\n"
+            "2) Model with wet-look hair, striking metallic chrome face paint, fierce expressive posture.\n"
+            "3) Harsh direct ring-flash lighting casting sharp crisp shadows on a flat muted slate backdrop.\n"
+            "4) Ultra-crisp focus, high contrast fashion aesthetic, clean negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "surreal-dreamscape-dali",
+        "name": "达利·超现实主义梦境",
+        "category": "风格化图像",
+        "description": "达利式梦境超现实油画：融化的时钟/物体、悬浮元素、无垠荒漠地平线与强烈异现实视觉。",
+        "version": "1.0.0",
+        "tags": ["达利", "梦境", "超现实", "融化", "油画", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["surreal-pop-collage"],
+        "conflicts_with": ["photo-to-travel-sketch", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "融化或变形的异质物体",
+            "无垠延伸的荒漠地平线空间",
+            "细腻的古典超现实主义油画肌理",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 达利·超现实主义梦境 (Surreal Dreamscape Dali)\n\n"
+            "## 触发条件\n"
+            "用户要求达利风格、融化梦境、超现实主义画作、或「荒诞梦境艺术」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) surrealist dreamscape oil painting in the style of Salvador Dali, vertical composition.\n"
+            "2) Melting brass pocket watch draped over a barren tree branch; floating glass sphere reflecting an impossible sky.\n"
+            "3) Infinite desert horizon under a twilight sky with long cast shadows under low sun angle.\n"
+            "4) Classical surrealist oil paint texture, poetic bizarre atmosphere, negative space over 60%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+
+    {
+        "id": "zhang-yimou-monochrome-aesthetic",
+        "name": "张艺谋·极致单色压迫美学",
+        "category": "风格化图像",
+        "description": "张艺谋式电影色彩哲学：单一压倒性高饱和主色场（中国红/竹林绿/帝王黄）、极致阵列构图与东方史诗张力。",
+        "version": "1.0.0",
+        "tags": ["张艺谋", "中国红", "电影美学", "单色场", "史诗", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["eastern-ink-photo", "create-pantone-photo"],
+        "conflicts_with": ["heytea-style", "travel-memory-sticker"],
+        "input_mode": "text",
+        "quality_checks": [
+            "全图由单一压倒性主色场支配",
+            "极致对称或东方阵列构图",
+            "具有张艺谋电影《英雄》《大红灯笼》式史诗张力",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 张艺谋·极致单色压迫美学 (Zhang Yimou Monochrome Aesthetic)\n\n"
+            "## 触发条件\n"
+            "用户要求张艺谋风格、中国红大色场、电影史诗美学、或「极致单色压迫感」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) cinematic film still directed by Zhang Yimou, epic oriental aesthetic, vertical composition.\n"
+            "2) Single dominant hyper-saturated color field: radiant crimson red satin hangings dominating 75% of frame.\n"
+            "3) Solitary figure in traditional black silk standing in absolute central symmetry, sharp lighting contrast.\n"
+            "4) Granular 35mm film texture, epic cinematic tension, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "wong-kar-wai-neon-nostalgia",
+        "name": "王家卫·抽帧复古霓虹情绪",
+        "category": "风格化图像",
+        "description": "王家卫电影胶片美学：90年代香港复古霓虹、慢快门动态残影、黄绿与暖橙情绪色调、空气中的寂寞感。",
+        "version": "1.0.0",
+        "tags": ["王家卫", "霓虹", "复古", "胶片", "情绪", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["photo-to-zine-postcard", "cyberpunk-neon-noir"],
+        "conflicts_with": ["eastern-ink-photo", "heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "90年代港片复古黄绿/暖橙调性",
+            "慢快门步态抽帧残影与动态模糊",
+            "浓厚的王家卫式都市寂寞氛围",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 王家卫·抽帧复古霓虹情绪 (Wong Kar-wai Neon Nostalgia)\n\n"
+            "## 触发条件\n"
+            "用户要求王家卫风格、港片复古、抽帧残影、或「重庆森林/花样年华氛围」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) nostalgic cinematic still inspired by Wong Kar-wai films, 1990s Hong Kong mood, vertical layout.\n"
+            "2) Warm amber and moody teal green color grading; subtle step-printed motion blur and slow-shutter streak.\n"
+            "3) Subject in low-lit narrow alley illuminated by glowing retro neon sign; intense emotional melancholy.\n"
+            "4) 35mm grainy film stock, intimate depth of field, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "monet-impressionist-light",
+        "name": "莫奈·印象派日光分色笔触",
+        "category": "风格化图像",
+        "description": "莫奈《日出·印象》《睡莲》级光影笔触：短促可见分色笔触、晨光水面倒影、柔和粉紫与金绿自然光。",
+        "version": "1.0.0",
+        "tags": ["莫奈", "印象派", "睡莲", "光影", "油画", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["flash4start-light"],
+        "conflicts_with": ["cyberpunk-neon-noir", "selective-ink-sketch"],
+        "input_mode": "text",
+        "quality_checks": [
+            "印象派短促自然的可见笔触",
+            "粉紫、湛蓝与金绿的自然日光分色",
+            "通透流动的晨光水影反光",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 莫奈·印象派日光分色笔触 (Monet Impressionist Light)\n\n"
+            "## 触发条件\n"
+            "用户要求莫奈风格、睡莲池、印象派油画、或「莫奈日光水影」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) impressionist oil painting masterpiece in the style of Claude Monet, vertical composition.\n"
+            "2) Visible dabs of broken color strokes in soft lilac, pale cyan, and shimmering golden morning sunlight.\n"
+            "3) Water lily pond with translucent reflections of weeping willows and soft misty morning haze.\n"
+            "4) Luminous natural outdoor light, painterly texture, serene poetic mood, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "tim-burton-gothic-fantasy",
+        "name": "蒂姆伯顿·怪诞黑白哥特奇幻",
+        "category": "风格化图像",
+        "description": "蒂姆·伯顿式哥特美学：扭曲螺旋树干、高对比黑白条纹、幽暗古堡与童话怪诞相融。",
+        "version": "1.0.0",
+        "tags": ["蒂姆伯顿", "哥特", "怪诞", "黑白条纹", "奇幻", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["love-death-robots-style"],
+        "conflicts_with": ["heytea-style", "create-pantone-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "标志性扭曲螺旋线条与哥特建筑",
+            "高对比黑白条纹与幽暗调性",
+            "怪诞与童话感并存的美学张力",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 蒂姆伯顿·怪诞黑白哥特奇幻 (Tim Burton Gothic Fantasy)\n\n"
+            "## 触发条件\n"
+            "用户要求蒂姆伯顿风格、哥特奇幻、黑白条纹、怪诞童话或「剪刀手爱德华/僵尸新娘氛围」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) dark gothic fantasy illustration in the signature style of Tim Burton, vertical composition.\n"
+            "2) Twisted spiral bare trees and crooked gothic silhouettes against a giant pale misty full moon.\n"
+            "3) High contrast black-and-white striped ground patterns with subtle deep violet undertones.\n"
+            "4) Whimsical yet eerie atmosphere, dark fairytale tension, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "wes-anderson-pastel-symmetry",
+        "name": "韦斯安德森·绝对中轴对称与马卡龙撞色",
+        "category": "风格化图像",
+        "description": "韦斯·安德森强迫症美学：绝对平面中轴对称、马卡龙粉黄薄荷绿平涂色调、莫兰迪复古童话构成。",
+        "version": "1.0.0",
+        "tags": ["韦斯安德森", "中轴对称", "马卡龙", "布达佩斯大饭店", "复古", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["create-pantone-photo", "photo-to-minimal-illustration"],
+        "conflicts_with": ["flash4start-light", "cyberpunk-neon-noir"],
+        "input_mode": "text",
+        "quality_checks": [
+            "绝对强迫症中轴对称构图",
+            "马卡龙粉黄或薄荷绿复古莫兰迪配色",
+            "平面剧场感与极致干净的留白",
+            "负空间 ≥ 60%，无文字无水印",
+        ],
+        "prompt": (
+            "# 韦斯安德森·绝对中轴对称与马卡龙撞色 (Wes Anderson Pastel Symmetry)\n\n"
+            "## 触发条件\n"
+            "用户要求韦斯安德森风格、布达佩斯大饭店、中轴对称、马卡龙色调或「强迫症极简构成」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) flat cinematic photography in the style of Wes Anderson, Grand Budapest Hotel aesthetic, vertical layout.\n"
+            "2) Strict absolute central axis symmetry composition; pastel color palette of dusty pink, mustard yellow, and mint green.\n"
+            "3) A single vintage concierge desk positioned dead-center under soft shadowless studio illumination.\n"
+            "4) Precise geometrical balance, charming retro storybook feel, generous negative space over 60%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+
+    {
+        "id": "ghibli-summer-nostalgia",
+        "name": "宫崎骏·吉卜力夏日天空与云海",
+        "category": "风格化图像",
+        "description": "吉卜力手绘动画美学：积雨云云朵、蔚蓝天空、浓郁夏日绿意与清爽治愈手绘光影。",
+        "version": "1.0.0",
+        "tags": ["宫崎骏", "吉卜力", "夏日", "云海", "治愈", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "anime",
+        "combines_with": ["photo-to-minimal-illustration"],
+        "conflicts_with": ["cyberpunk-neon-noir", "love-death-robots-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "吉卜力式手绘积雨云与蔚蓝天空",
+            "浓郁饱满的夏日自然绿意色彩",
+            "清爽温润的手绘动画光影",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 宫崎骏·吉卜力夏日天空与云海 (Ghibli Summer Nostalgia)\n\n"
+            "## 触发条件\n"
+            "用户要求宫崎骏风格、吉卜力动画、天空云海、夏日风情或「久石让音乐般治愈画风」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) Studio Ghibli style hand-drawn anime background illustration, vertical layout.\n"
+            "2) Massive fluffy white cumulonimbus clouds floating in a brilliant turquoise summer sky over lush green hills.\n"
+            "3) Soft warm sunlight filtering through leaves, gentle hand-painted watercolor animation texture.\n"
+            "4) Nostalgic peaceful atmosphere, vibrant natural colors, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "shinkai-hyper-light",
+        "name": "新海诚·超透光云彩与光斑",
+        "category": "风格化图像",
+        "description": "新海诚式极致光影美学：超高明度透光云彩、日落夕阳紫粉霞光、镜头光晕与唯美都市空灵感。",
+        "version": "1.0.0",
+        "tags": ["新海诚", "透光", "霞光", "光斑", "唯美", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "anime",
+        "combines_with": ["cyberpunk-neon-noir"],
+        "conflicts_with": ["eastern-ink-photo", "photo-riso-poster"],
+        "input_mode": "text",
+        "quality_checks": [
+            "超高明度透光云彩与镜头光晕光斑",
+            "紫粉与金黄日落霞光渐变",
+            "极度细腻唯美的现代都市/天空氛围",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 新海诚·超透光云彩与光斑 (Shinkai Hyper Light)\n\n"
+            "## 触发条件\n"
+            "用户要求新海诚风格、秒速五厘米、君之名透光、紫粉夕阳或「极致唯美光斑天空」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) anime scenery in the signature style of Makoto Shinkai, hyper-detailed 8k, vertical layout.\n"
+            "2) Dramatic sunset sky with luminous translucent clouds glowing in radiant purple, magenta, and golden rim light.\n"
+            "3) Lens flare artifacts and sparkling bokeh motes floating across a pristine city skyline view.\n"
+            "4) Breathtaking ethereal light quality, hyper-realistic anime aesthetic, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "picasso-cubist-deconstruction",
+        "name": "毕加索·立体主义面部解构",
+        "category": "风格化图像",
+        "description": "毕加索立体主义美学：多视角几何面部解构、强对比撞色块、抽象线稿与现代艺术冲击力。",
+        "version": "1.0.0",
+        "tags": ["毕加索", "立体主义", "解构", "抽象", "油画", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["surreal-pop-collage", "bauhaus-minimal-poster"],
+        "conflicts_with": ["master-cinematic-portrait", "eastern-ink-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "多视角的立体主义几何解构",
+            "强对比的油画色块与黑线勾勒",
+            "毕加索式先锋现代艺术张力",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 毕加索·立体主义面部解构 (Picasso Cubist Deconstruction)\n\n"
+            "## 触发条件\n"
+            "用户要求毕加索风格、立体主义、几何解构、抽象人像或「先锋现代艺术画作」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) Cubist oil painting portrait in the style of Pablo Picasso, vertical composition.\n"
+            "2) Deconstructed face showing simultaneous front and profile viewpoints in fragmented geometric planes.\n"
+            "3) Bold black outlines separating high contrast color fields of earthy ochre, cobalt blue, and terracota red.\n"
+            "4) Avant-garde fine art canvas texture, striking modern art composition, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "black-myth-dark-ink",
+        "name": "黑神话·暗黑史诗重彩水墨金石",
+        "category": "风格化图像",
+        "description": "《黑神话》级新国风暗黑美学：佛像残垣、重彩浓墨与飞溅金粉、沧桑风化质感与史诗神话沉重感。",
+        "version": "1.0.0",
+        "tags": ["黑神话", "暗黑水墨", "佛像", "金石", "新国风", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["eastern-ink-photo", "zhang-yimou-monochrome-aesthetic"],
+        "conflicts_with": ["heytea-style", "travel-memory-sticker"],
+        "input_mode": "text",
+        "quality_checks": [
+            "暗黑写意浓墨与飞溅金粉颗粒",
+            "佛像残垣与沧桑风化岩石质感",
+            "厚重神秘的新国风史诗氛围",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 黑神话·暗黑史诗重彩水墨金石 (Black Myth Dark Ink)\n\n"
+            "## 触发条件\n"
+            "用户要求黑神话风格、暗黑水墨、佛像残垣、重彩金水墨或「新国风史诗神话」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) dark oriental myth artwork inspired by Black Myth Wukong, vertical composition.\n"
+            "2) Ancient weathered giant stone Buddha statue head submerged in deep black ink wash mist with gold dust specks.\n"
+            "3) Heavy dramatic chiaroscuro lighting, deep pitch-black background with subtle metallic bronze accents.\n"
+            "4) Weathered stone texture, solemn atmospheric epic tone, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "nolan-imax-cold-industrial",
+        "name": "诺兰·IMAX 冷峻硬核工业电影",
+        "category": "风格化图像",
+        "description": "诺兰电影冷色调美学：冰蓝与冷灰主调、IMAX 级巨型工业/机械建筑结构、冷酷实拍质感与宏大沉浸感。",
+        "version": "1.0.0",
+        "tags": ["诺兰", "IMAX", "冷峻", "工业", "电影感", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["reality-restaged"],
+        "conflicts_with": ["heytea-style", "monet-impressionist-light"],
+        "input_mode": "text",
+        "quality_checks": [
+            "冰蓝与冷灰 IMAX 电影色调",
+            "宏大庞大的工业/机械构筑物",
+            "冷酷真实质感与沉浸式冷调打光",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 诺兰·IMAX 冷峻硬核工业电影 (Nolan IMAX Cold Industrial)\n\n"
+            "## 触发条件\n"
+            "用户要求诺兰风格、IMAX 电影感、冷峻工业、星际穿越/信条画面或「冷灰色调宏大结构」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) IMAX cinematic film still directed by Christopher Nolan, 70mm film aesthetic, vertical layout.\n"
+            "2) Massive monumental steel industrial structure under a cold overcast slate-blue sky.\n"
+            "3) Desaturated steel-blue and icy gray color grading, realistic practical lighting effect, overwhelming scale contrast.\n"
+            "4) Crisp 70mm grain, austere practical realism, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+
+    {
+        "id": "dark-macabre-fairytale-comic",
+        "name": "暗黑恐怖漫画童话",
+        "category": "风格化图像",
+        "description": "Mike Mignola 级暗黑漫画恐怖美学：重黑墨阴影、骨骼骷髅、缝合玩偶、枯萎黑玫瑰与血红/毒紫阴郁重音。",
+        "version": "1.0.0",
+        "tags": ["暗黑", "恐怖", "童话", "骷髅", "哥特漫画", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["love-death-robots-style", "tim-burton-gothic-fantasy"],
+        "conflicts_with": ["heytea-style", "create-pantone-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "米格诺拉式强对比重黑墨块阴影",
+            "具有缝合玩偶/骷髅手骨/黑玫瑰等恐怖元素",
+            "带有点缀性的血红或毒紫阴郁重音",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 暗黑恐怖漫画童话 (Dark Macabre Fairytale Comic)\n\n"
+            "## 触发条件\n"
+            "用户要求暗黑恐怖童话、诡异漫画、骷髅手骨、缝合玩偶或「恐怖哥特绘本」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) macabre dark fairytale comic art illustration, in the style of Mike Mignola, vertical layout.\n"
+            "2) Eerie storybook scene: a creepy stitched plush doll with button eyes held by skeletal fingers, surrounded by withered black roses and a crooked raven on a dead branch.\n"
+            "3) High contrast heavy black ink block shadows, stark monochromatic linework with a single sinister accent of deep blood-red.\n"
+            "4) Unsettling gothic fairytale atmosphere, dark horror graphic novel aesthetic, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "studio-fashion-portrait",
+        "name": "商业影棚·飞思中画幅人像写真",
+        "category": "风格化图像",
+        "description": "Vogue/GQ 商业影棚级一亿像素中画幅写真：Broncolor 三点柔光箱、派拉蒙蝴蝶光与透光皮肤毛孔细节。",
+        "version": "1.0.0",
+        "tags": ["影棚", "人像", "中画幅", "蝴蝶光", "商业写真", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["create-pantone-photo"],
+        "conflicts_with": ["heytea-style", "photo-to-travel-sketch"],
+        "input_mode": "text",
+        "quality_checks": [
+            "飞思中画幅 1 亿像素细节与毛孔发丝",
+            "Broncolor 柔光箱与派拉蒙蝴蝶光影",
+            "细腻的皮肤次表面散射 (SSS) 通透感",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 商业影棚·飞思中画幅人像写真 (Studio Fashion Portrait)\n\n"
+            "## 触发条件\n"
+            "用户要求商业影棚人像、飞思中画幅、影棚写真、蝴蝶光或「Vogue 级高端肖像」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) commercial studio fashion portrait, shot on Phase One XF 100MP, 100mm f/2.8 lens, vertical composition.\n"
+            "2) High-fashion portrait of a graceful model: translucent skin with realistic pore texture and subsurface scattering, fine hair glow.\n"
+            "3) Broncolor studio lighting setup: softbox key light creating paramount butterfly lighting, gentle hair rim light.\n"
+            "4) Minimalist matte neutral gray studio backdrop, 8k resolution, elegant luxury editorial mood, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "ldr-bad-travelling-oil",
+        "name": "爱死机·差劲旅行18世纪大航海油画",
+        "category": "风格化图像",
+        "description": "《爱死机·差劲旅行》(Bad Travelling) 级大暗黑大航海油画：风暴大海、18世纪沉重黑灰调、明暗对照与电影感皮褶。",
+        "version": "1.0.0",
+        "tags": ["爱死机", "差劲旅行", "大航海", "油画", "暗黑", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["love-death-robots-style"],
+        "conflicts_with": ["heytea-style"],
+        "input_mode": "text",
+        "quality_checks": [
+            "18世纪大航海暗黑古典油画质感",
+            "风暴中的帆船与沉重灰黑调",
+            "强烈剧场感明暗对照打光 (Chiaroscuro)",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 爱死机·差劲旅行18世纪大航海油画 (LDR Bad Travelling Oil)\n\n"
+            "## 触发条件\n"
+            "用户要求差劲旅行风格、大航海暗黑油画、大卫芬奇爱死机或「风暴帆船油画」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) cinematic film still inspired by Love Death and Robots Bad Travelling, directed by David Fincher, 16:9 widescreen composition.\n"
+            "2) 18th century wooden sailing ship tossing on a stormy midnight ocean under ominous dark tempest clouds.\n"
+            "3) Chiaroscuro oil painting style lighting, harsh lantern light illuminating weathered deck textures and dark sea foam.\n"
+            "4) Deep gloomy charcoal tone, rich impasto oil paint texture, dramatic narrative tension, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "ldr-zima-blue-minimal",
+        "name": "爱死机·齐马蓝绝对单色与几何极简",
+        "category": "风格化图像",
+        "description": "《爱死机·齐马蓝》(Zima Blue) 级哲学极简美学：齐马蓝 (Zima Blue) 绝对纯蓝单色场、锐角几何线条与高留白。",
+        "version": "1.0.0",
+        "tags": ["爱死机", "齐马蓝", "极简", "单色场", "几何", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["gc-minimal-zine-poster", "create-pantone-photo"],
+        "conflicts_with": ["flash4start-light"],
+        "input_mode": "text",
+        "quality_checks": [
+            "具有一个绝对纯净的 Zima Blue (齐马蓝) 几何色场",
+            "张力极强的锐角几何线条构图",
+            "负空间 ≥ 70%",
+            "无文字无水印",
+        ],
+        "prompt": (
+            "# 爱死机·齐马蓝绝对单色与几何极简 (LDR Zima Blue Minimal)\n\n"
+            "## 触发条件\n"
+            "用户要求齐马蓝、Zima Blue、绝对蓝单色场、极简几何或「哲学极简构成」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) minimalist graphic artwork inspired by Love Death and Robots Zima Blue, vertical layout.\n"
+            "2) Flat canvas dominated by a single perfect rectangular color field of iconic Zima Blue (#00A3E0) occupying 70% of frame.\n"
+            "3) Sharp angular dark geometric architectural silhouettes at the bottom edge, flat zero-gradient shading.\n"
+            "4) Supreme philosophical clarity, vast pure negative space over 70%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+
+    {
+        "id": "showa-retro-ultraman-romance",
+        "name": "昭和复古·夕阳特摄浪漫",
+        "category": "风格化图像",
+        "description": "70年代昭和特摄电影美学：黄金黄昏晚霞、巨型怪兽/奥特曼剪影、微缩建筑模型与16mm粗颗粒胶片悲壮浪漫感。",
+        "version": "1.0.0",
+        "tags": ["昭和", "特摄", "夕阳", "奥特曼", "胶片", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["zhang-yimou-monochrome-aesthetic", "wong-kar-wai-neon-nostalgia"],
+        "conflicts_with": ["heytea-style", "glassmorphic-3d-render"],
+        "input_mode": "text",
+        "quality_checks": [
+            "70年代昭和特摄电影粗颗粒胶片感",
+            "夕阳金红霞光与巨大的剪影视觉比例",
+            "具有微缩模型场景感与悲壮浪漫氛围",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 昭和复古·夕阳特摄浪漫 (Showa Retro Ultraman Romance)\n\n"
+            "## 触发条件\n"
+            "用户要求昭和复古、特摄画风、夕阳奥特曼、黄昏怪兽决战或「70年代昭和浪漫」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) 70s Tokusatsu cinematic film still, Ultraman style golden-hour battle scene, 16:9 widescreen.\n"
+            "2) Colossal hero silhouette standing majestically against a giant blazing orange-red sunset sky over Tokyo skyline.\n"
+            "3) Detailed miniature building models with soft atmospheric dust and smoke, warm vintage film grain.\n"
+            "4) Dramatic nostalgic atmosphere, 70s Japanese retro cinematic mood, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "black-white-master-portrait",
+        "name": "黑白经典·高对比艺术影棚肖像",
+        "category": "风格化图像",
+        "description": "梅普尔索普式黑白经典肖像：纯黑白 (Pure Monochrome)、硬核高对比明暗对照、飞思一亿像素毛孔与雕塑感肌理。",
+        "version": "1.0.0",
+        "tags": ["黑白", "肖像", "黑白影棚", "高对比", "大师级", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["studio-fashion-portrait"],
+        "conflicts_with": ["heytea-style", "create-pantone-photo"],
+        "input_mode": "text",
+        "quality_checks": [
+            "纯黑白 (Pure Monochrome) 无杂色彩",
+            "硬核高对比明暗对照 (Chiaroscuro)",
+            "雕塑般的清晰面部骨骼与发丝毛孔",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 黑白经典·高对比艺术影棚肖像 (Black & White Master Portrait)\n\n"
+            "## 触发条件\n"
+            "用户要求黑白人像、纯黑白写真、高对比影棚肖像、或「梅普尔索普黑白摄影」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) master monochrome black-and-white photographic portrait, shot on Phase One 100MP, vertical composition.\n"
+            "2) Close-up portrait: sculpted facial cheekbone structure, intense expressive eyes with natural catchlights, pure black background.\n"
+            "3) High contrast chiaroscuro lighting, sharp directional softbox light transitioning into deep rich blacks.\n"
+            "4) Fine-art monochrome tone, ultra-crisp 8k resolution, timeless artistic mood, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "cthulhu-cosmic-macabre-horror",
+        "name": "克苏鲁·宇宙不可名状恐惧",
+        "category": "风格化图像",
+        "description": "洛夫克拉夫特 (Lovecraft) 宇宙恐惧：深海深渊、隐匿巨大触手、风化石雕残垣与病态深青绿/幽紫异质调性。",
+        "version": "1.0.0",
+        "tags": ["克苏鲁", "宇宙恐怖", "触手", "深渊", "不可名状", "风格化图像", "已实测验收"],
+        "verified": True,
+        "verified_at": "2026-08-26",
+        "recommended_model": "realistic",
+        "combines_with": ["dark-macabre-fairytale-comic", "love-death-robots-style"],
+        "conflicts_with": ["heytea-style", "ghibli-summer-nostalgia"],
+        "input_mode": "text",
+        "quality_checks": [
+            "深海深渊中隐匿出现的庞大触手",
+            "古老风化石雕与巨石建筑遗迹",
+            "病态深青绿与幽紫宇宙恐惧调性",
+            "负空间 ≥ 50%，无文字无水印",
+        ],
+        "prompt": (
+            "# 克苏鲁·宇宙不可名状恐惧 (Cthulhu Cosmic Macabre Horror)\n\n"
+            "## 触发条件\n"
+            "用户要求克苏鲁、宇宙恐怖、深海触手、不可名状、或「洛夫克拉夫特暗黑美学」时激活。\n\n"
+            "## 生图 Prompt 四段式\n"
+            "```\n"
+            "1) cosmic horror illustration inspired by Lovecraftian mythos, 16:9 widescreen layout.\n"
+            "2) Colossal writhing tentacles emerging from a dark abyss sea under a sickly pale green twilight storm sky.\n"
+            "3) Ancient sea-weathered monolithic stone ruins submerged in dark waters with subtle eerie bioluminescent spots.\n"
+            "4) Chilling atmospheric haze, madness cosmic horror aesthetic, deep pitch shadows, negative space over 50%, no text, no watermark.\n"
+            "```\n"
+        ),
+    },
+    {
+        "id": "comfyui-local",
+        "name": "ComfyUI 本地生图",
+        "category": "内容创作",
+        "description": "通过本地 ComfyUI（127.0.0.1:8188）生图，支持文生图/高清修复/参考图生图。默认用一次性文生图工作流。",
+        "bundled": False,
+        "verified": False,
+        "prompt": (
+            "# ComfyUI 本地生图\n\n"
+            "## ⚠️ 核心规则（必须遵守，一条都不能漏）\n"
+            "1. **你有生图能力！** 用 run_command 调用本地 ComfyUI 生图，不要说没有生图工具，不要调用 generate_image 或任何在线生图 API。\n"
+            "2. **每次调用都必须带 --model 参数！** 哪怕你要用默认的动漫模型，也必须显式写 `--model \"AnythingV5V3_v5PrtRE.safetensors\"`，不许省略。根据用户描述从下表选，不许问用户用什么模型、不许让用户提供模型文件名。\n"
+            "3. **参数是 --model（不是 --ckpt、不是 --checkpoint）**，模型名必须完整带 .safetensors 后缀。\n"
+            "4. **必须带 --out 参数**，输出到后端静态目录，图片才能在前端展示。\n"
+            "5. 用户没指定工作流时，默认用 01_快捷出图_T2I.json，不要问选哪个工作流。\n\n"
+            "## 🎨 可用模型（自动选择，不要问用户）\n"
+            "| 用户描述 | --model 参数值 | 适用场景 |\n"
+            "| --- | --- | --- |\n"
+            "| 真人/照片/写实/人像/真实/摄影 | `Realistic_Vision_V5.1_fp16-no-ema.safetensors` | 真人写实，照片质感 |\n"
+            "| 动漫/二次元/卡通/动画/日系 | `AnythingV5V3_v5PrtRE.safetensors` | 二次元通用，色彩鲜艳（默认） |\n"
+            "| 插画/手绘/精致/艺术感/厚涂 | `Counterfeit-V3.0_fp16.safetensors` | 插画质感，细节丰富 |\n\n"
+            "**选择规则：**\n"
+            "- 用户说\"真人\"\"照片\"\"写实\"\"人像\"\"真实\"→ Realistic_Vision\n"
+            "- 用户说\"动漫\"\"二次元\"\"卡通\"\"动画\"\"日系\"→ AnythingV5\n"
+            "- 用户说\"插画\"\"手绘\"\"精致\"\"艺术感\"→ Counterfeit-V3.0\n"
+            "- 用户没说风格但画的是人物/场景 → 默认 AnythingV5\n"
+            "- **模型名必须完整带 .safetensors 后缀，直接复制上表中的值**\n\n"
+            "## 🚀 调用方式（命令模板，--model 和 --out 不能省略）\n"
+            "用 run_command 执行，timeout=120。**把 MODEL_NAME 替换成上表中选的模型文件名：**\n"
+            "```\n"
+            "python \"E:\\BaiduNetdiskDownload\\ComfyUI-aki-v3.2\\ComfyUI\\workflows_opencode\\comfy_call.py\" --workflow 01_快捷出图_T2I.json --out \"E:\\智慧项目\\Mfkagent\\backend\\static\\generated_images\" --model \"MODEL_NAME\" --prompt \"你的提示词\" --neg \"lowres, bad anatomy, worst quality, blurry\" --steps 20 --cfg 7\n"
+            "```\n"
+            "**示例（写实风格用 Realistic_Vision）：**\n"
+            "```\n"
+            "python \"E:\\BaiduNetdiskDownload\\ComfyUI-aki-v3.2\\ComfyUI\\workflows_opencode\\comfy_call.py\" --workflow 01_快捷出图_T2I.json --out \"E:\\智慧项目\\Mfkagent\\backend\\static\\generated_images\" --model \"Realistic_Vision_V5.1_fp16-no-ema.safetensors\" --prompt \"a realistic photo of a cat\" --neg \"lowres, blurry\" --steps 20 --cfg 7\n"
+            "```\n"
+            "## 参数说明\n"
+            "- --workflow：默认 01_快捷出图_T2I.json（用户没指定就用这个）\n"
+            "- --out：**必填**，固定为 E:\\智慧项目\\Mfkagent\\backend\\static\\generated_images\n"
+            "- --model：**必填！每次都必须带！** 从上表自动选择，不许省略，不许问用户\n"
+            "- --prompt：正面提示词（英文效果更好）\n"
+            "- --neg：负面提示词，可选\n"
+            "- --ref：参考图路径，仅 IPAdapter 工作流需要\n"
+            "- --seed：种子，不填随机\n"
+            "- --steps/--cfg：采样步数/引导系数\n"
+            "- --width/--height：出图尺寸\n\n"
+            "## 📤 输出处理（重要）\n"
+            "脚本执行完成后会打印图片的完整本地路径。你需要：\n"
+            "1. 从输出中提取图片**文件名**（如 T2I_快捷出图_00001_.png）\n"
+            "2. 用 markdown 图片格式展示，路径用**相对路径** `/generated_images/文件名`：\n"
+            "   ```\n"
+            "   ![生成的图片](/generated_images/T2I_快捷出图_00001_.png)\n"
+            "   ```\n"
+            "3. 不要输出完整本地路径，必须用 /generated_images/ 开头的相对路径\n\n"
+            "## 故障排查\n"
+            "- 连不上 8188：提示用户启动 ComfyUI（http://127.0.0.1:8188）\n"
+            "- 超时：timeout 设 120s\n"
+            "- 模型画出来的风格不对：检查 --model 是否选对了\n"
         ),
     },
 ]

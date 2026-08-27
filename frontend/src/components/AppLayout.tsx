@@ -162,6 +162,12 @@ export function AppLayout({ children }: AppLayoutProps) {
         "build",
         "standard"
       );
+      useTabStore.getState().openTab({
+        chatId: chat.id,
+        title: chat.title || "新对话",
+        agentId: chat.agent_id,
+        projectId: chat.project_id,
+      }, { forceNewTab: true });
       router.push(`/chat/${chat.id}`);
     } catch (err) {
       console.error("Failed to create new chat tab:", err);

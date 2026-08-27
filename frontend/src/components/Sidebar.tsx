@@ -267,6 +267,18 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
     setContextMenu((prev) => ({ ...prev, visible: false }));
   }, []);
 
+  const handleOpenInNewTab = (chatId: number) => {
+    const targetChat = chats.find((c) => c.id === chatId);
+    useTabStore.getState().openTab({
+      chatId,
+      title: targetChat?.title || "对话",
+      agentId: targetChat?.agent_id,
+      projectId: targetChat?.project_id ?? null,
+    }, { forceNewTab: true });
+    router.push(`/chat/${chatId}`);
+    closeContextMenu();
+  };
+
   const handleDeleteChat = async (id: number) => {
     try {
       await deleteChat(id);
@@ -797,6 +809,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         state={contextMenu}
         chats={chats}
         projects={projects}
+        onOpenInNewTab={handleOpenInNewTab}
         onRenameChat={startRename}
         onPinChat={handlePin}
         onArchiveChat={handleArchiveChat}

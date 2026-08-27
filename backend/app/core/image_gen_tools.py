@@ -126,7 +126,14 @@ def _sf_generate(prompt: str, size: str) -> Optional[List[str]]:
 _COMFY_SCRIPT = r"E:\BaiduNetdiskDownload\ComfyUI-aki-v3.2\ComfyUI\workflows_opencode\comfy_call.py"
 
 
-def _comfyui_generate(prompt: str, size: str = "1024*1024") -> Optional[List[str]]:
+def _comfyui_generate(
+    prompt: str,
+    size: str = "1024*1024",
+    model: Optional[str] = None,
+    hires: bool = False,
+    steps: int = 20,
+    filename: Optional[str] = None,
+) -> Optional[List[str]]:
     """调用本机 ComfyUI REST API (comfy_call.py) 出图。"""
     if not os.path.exists(_COMFY_SCRIPT):
         logger.debug("[image_gen/comfy] comfy_call.py 路径不存在，跳过本地生图")
@@ -138,18 +145,23 @@ def _comfyui_generate(prompt: str, size: str = "1024*1024") -> Optional[List[str
             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
                 w, h = int(parts[0]), int(parts[1])
         python_exe = sys.executable or "python"
+        wf_name = "02_二次渲染高清_T2I_HiRes.json" if hires else "01_快捷出图_T2I.json"
         cmd = [
             python_exe,
             _COMFY_SCRIPT,
-            "--workflow", "01_快捷出图_T2I.json",
+            "--workflow", wf_name,
             "--prompt", prompt,
             "--width", str(w),
             "--height", str(h),
             "--seed", str(int(time.time())),
-            "--steps", "20",
+            "--steps", str(steps or (25 if hires else 20)),
         ]
+        if model:
+            cmd.extend(["--model", model])
+        if filename:
+            cmd.extend(["--filename", filename])
         import subprocess
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if proc.returncode != 0:
             logger.warning("[image_gen/comfy] 进程退出码 %s: %s", proc.returncode, proc.stderr[:200])
             return None
@@ -159,7 +171,7 @@ def _comfyui_generate(prompt: str, size: str = "1024*1024") -> Optional[List[str
             if s.endswith(".png") and os.path.exists(s):
                 paths.append(s)
         if paths:
-            logger.info("[image_gen/comfy] 本生图成功: %s", paths)
+            logger.info("[image_gen/comfy] 本地生图成功: %s", paths)
             return paths
         logger.warning("[image_gen/comfy] 未输出有效图片路径: %s", proc.stdout[:200])
     except Exception as e:  # noqa: BLE001
@@ -268,6 +280,9 @@ def generate_image(
     size: str = "1024*1024",
     n: int = 1,
     model: str = _DEFAULT_MODEL,
+    hires: bool = False,
+    steps: int = 20,
+    filename: Optional[str] = None,
     save_to_project: bool = True,
     chat_id: Optional[int] = None,
 ) -> str:
@@ -277,7 +292,10 @@ def generate_image(
         prompt: 图片描述提示词（必填，中英文均可）
         size: 尺寸，宽*高（如 1024*1024），面积范围 512*512 ~ 2048*2048
         n: 生成张数（1-6，默认 1）
-        model: 千问图像模型（默认 qwen-image-3.0-pro；可用 qwen-image-3.0）
+        model: 模型选择：本地可用 realistic / counterfeit / anime；云端可用 qwen-image-3.0-pro / qwen-image-3.0
+        hires: 是否开启二次高清放大与细节修复
+        steps: 采样步数，默认 20（高清模式建议 25-30）
+        filename: 自定义保存的最终文件名（如 【昭和浪漫_夕阳奥特曼】SHOWA_01.png）
         save_to_project: 是否下载保存到项目 output/generated_images/（需绑定项目）
         chat_id: 会话 id（有值时本地图片返回 /api/chat/{chat_id}/generated_image 代理 URL，
                  前端可直接渲染；无值时返回绝对路径文本）
@@ -297,7 +315,7 @@ def generate_image(
         model = _resolve_model() or _DEFAULT_MODEL
 
     # ── 1. 优先尝试本地 ComfyUI 服务 (127.0.0.1:8188) ──
-    comfy_results = _comfyui_generate(prompt, size or "1024*1024")
+    comfy_results = _comfyui_generate(prompt, size or "1024*1024", model=model, hires=hires, steps=steps, filename=filename)
     if comfy_results:
         results = comfy_results
     else:
@@ -409,16 +427,15 @@ def _dashscope_error(resp: httpx.Response, action: str) -> str:
 
 
 IMAGE_GEN_TOOLS_DEFINITIONS: List[Dict] = [
-    {
+    {\
         "type": "function",
         "function": {
             "name": "generate_image",
             "description": (
-                "根据提示词生成图片（千问 qwen-image 文生图）。"
+                "根据提示词生成图片。底层自动支持本地 ComfyUI 服务（自动切模/高清放大）及云端千问生图。"
                 "图片会保存到项目 output/generated_images/ 目录并返回本地路径"
                 "（未绑定项目时只返回 URL）。"
-                "注意：生成耗时较长（通常 3-10 分钟），提交后需耐心等待结果。"
-                "适合需要配图、示意图、产品图等场景。"
+                "适合需要配图、示意图、产品图、海报及美学风格图等场景。"
             ),
             "parameters": {
                 "type": "object",
@@ -429,7 +446,7 @@ IMAGE_GEN_TOOLS_DEFINITIONS: List[Dict] = [
                     },
                     "size": {
                         "type": "string",
-                        "description": "图片尺寸 宽*高（如 1024*1024），面积范围 512*512 ~ 2048*2048，默认 1024*1024",
+                        "description": "图片尺寸 宽*高（如 1024*1024 / 768*1024 / 1024*768），默认 1024*1024",
                     },
                     "n": {
                         "type": "integer",
@@ -437,7 +454,19 @@ IMAGE_GEN_TOOLS_DEFINITIONS: List[Dict] = [
                     },
                     "model": {
                         "type": "string",
-                        "description": "千问图像模型：qwen-image-3.0-pro（默认，质量优先）或 qwen-image-3.0（速度更快）",
+                        "description": "生图底模：本地 ComfyUI 支持 realistic(写实/水墨/胶片/Pantone)、counterfeit/artistic(精细插画/概念/超现实)、anime(二次元/日漫/贴纸)；云端支持 qwen-image-3.0-pro / qwen-image-3.0",
+                    },
+                    "hires": {
+                        "type": "boolean",
+                        "description": "是否开启二次高清放大与细节修复（适用于高质量海报/印刷级大图），默认 false",
+                    },
+                    "steps": {
+                        "type": "integer",
+                        "description": "采样步数，默认 20（高清模式建议 25-30）",
+                    },
+                    "filename": {
+                        "type": "string",
+                        "description": "自定义最终输出的显式中文/英文文件名（如 【昭和浪漫_夕阳奥特曼】SHOWA_01.png）",
                     },
                     "save_to_project": {
                         "type": "boolean",

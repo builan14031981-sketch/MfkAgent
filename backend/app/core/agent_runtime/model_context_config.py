@@ -103,14 +103,25 @@ def get_model_max_tokens(model_id: str) -> int:
     if db_context and db_context > 0:
         return db_context
 
-    # 3. 回退硬编码字典：精确匹配 > 前缀匹配
+    # 3. 回退硬编码字典：精确匹配 > 前缀/包含匹配
     if model_id in MODEL_CONTEXT_WINDOWS:
         return MODEL_CONTEXT_WINDOWS[model_id]
+
+    # 先做 key 在 model_id 中的模糊识别（如 cliproxy-gemini-3.6-flash 匹配 gemini-3 或 gemini）
+    mid_lower = model_id.lower()
+    if "gemini-1.5-pro" in mid_lower or "gemini-3.1-pro" in mid_lower:
+        return 2000000
+    if "gemini" in mid_lower:
+        return 1048576
+    if "deepseek" in mid_lower:
+        return 1048576
+    if "claude-3-5" in mid_lower or "claude-sonnet" in mid_lower or "claude-opus" in mid_lower:
+        return 1048576
 
     for key, size in MODEL_CONTEXT_WINDOWS.items():
         if key == "default":
             continue
-        if model_id.startswith(key):
+        if mid_lower.startswith(key) or key in mid_lower:
             return size
 
     # 4. 最终兜底

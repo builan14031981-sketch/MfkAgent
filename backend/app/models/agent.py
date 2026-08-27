@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey, Boolean, Float
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, validates
 from datetime import datetime
 from app.core.database import Base
 
@@ -174,6 +174,26 @@ class Agent(Base):
     skills = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # ──── 防御：JSON 字段写入校验 ────
+    # 确保通过 ORM 写入的 skills/capabilities/allowed_tools 始终是列表类型，
+    # 防止传入字符串/None 等非列表值导致后续 JSON 序列化异常或读取失败。
+    # 注意：此校验仅覆盖 ORM 写入路径，手动编辑数据库或直接 SQL 写入不在此列（由启动自检兜底）。
+    @validates("skills", "capabilities", "allowed_tools")
+    def _validate_json_list_fields(self, key, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            # 兼容旧代码可能传入 JSON 字符串的情况，尝试解析
+            try:
+                import json as _json
+                parsed = _json.loads(value)
+                return parsed if isinstance(parsed, list) else []
+            except (ValueError, TypeError):
+                return []
+        if not isinstance(value, list):
+            return []
+        return value
 
 
 class Memory(Base):

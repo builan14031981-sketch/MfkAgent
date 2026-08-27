@@ -23,6 +23,7 @@ AGENT_ORDER = {
     "pianai": 10,
     "research": 11,
     "defense_ppt_expert": 12,
+    "sts2_coach": 13,
 }
 
 # Agent 用途分组：core=核心研发 / assist=辅助智能 / sub=子代理（前端分组展示依据）
@@ -40,6 +41,7 @@ AGENT_GROUP = {
     "writer_narrative": "assist",
     "writer_jiangnan": "assist",
     "defense_ppt_expert": "assist",
+    "sts2_coach": "assist",
     "sub_code_reviewer": "sub",
     "sub_researcher": "sub",
     "sub_file_analyst": "sub",
@@ -103,6 +105,7 @@ class AgentUpdate(BaseModel):
     capabilities: Optional[List[str]] = None
     default_personality_level: Optional[int] = None
     expression_profile: Optional[str] = None
+    skills: Optional[List[str]] = None
 
 
 @router.get("/capability-tags")
@@ -135,6 +138,8 @@ async def update_agent(agent_id: str, update: AgentUpdate):
             agent.default_personality_level = update.default_personality_level
         if update.expression_profile is not None:
             agent.expression_profile = update.expression_profile
+        if update.skills is not None:
+            agent.skills = update.skills
         db.commit()
         db.refresh(agent)
         return _to_info(agent)

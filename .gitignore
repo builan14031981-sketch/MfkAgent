@@ -83,3 +83,15 @@ backup_*/
 Mfkagent_backups/
 _trash/
 
+# Generated image outputs & benchmark reports (added 2026-08-27)
+backend/static/generated_images/
+output/
+_comfy_final.txt
+temp_screenshot.png
+美学SKILL20组公平对比展厅/
+欢迎语库*.md
+docs/
+external_skills/外部Skill接入清单.md
+gen-icons*.js
+
+

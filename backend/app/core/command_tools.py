@@ -42,6 +42,13 @@ logger = logging.getLogger(__name__)
 # 危险的 shell 元字符/重定向，一律拒绝（防注入，纵深防御）
 _FORBIDDEN_RE = re.compile(r"[;&|`$<>]|\(|\)")
 
+def _has_forbidden_chars(command: str) -> bool:
+    cmd_lower = (command or "").lower().strip()
+    if cmd_lower.startswith("powershell") or cmd_lower.startswith("pwsh"):
+        # 对 powershell 命令，允许语法符号 ($ ; () 等)，仅拦截重定向、反引号与管道
+        return bool(re.search(r"[`&|<>]", command))
+    return bool(_FORBIDDEN_RE.search(command))
+
 # 显式 cd 到外部目录（绝对路径 / UNC / .. 逃逸）：工作目录已锚定，直接拦截
 _CD_ESCAPE_RE = re.compile(r"\bcd\s+([A-Za-z]:[\\/]|\\\\|\.\.)", re.I)
 
@@ -82,8 +89,8 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     command = (command or "").strip()
     if not command:
         return "错误: command 不能为空"
-    if _FORBIDDEN_RE.search(command):
-        return "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 run_command（Windows 下不支持 ; 连接）"
+    if _has_forbidden_chars(command):
+        return "错误: 命令包含不允许的字符（& | ` < > 等），拒绝执行。"
     if _CD_ESCAPE_RE.search(command):
         return "错误: 不支持 cd 切换到项目外目录（工作目录已锚定在项目内），请直接使用项目内相对命令"
 
@@ -241,8 +248,8 @@ def execute_command(
     if not project_path:
         return json.dumps({"stdout": "", "stderr": "execute_command 需要绑定项目（project_path 不能为空）", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
 
-    if _FORBIDDEN_RE.search(command):
-        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（; & | ` $ < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 execute_command", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+    if _has_forbidden_chars(command):
+        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（& | ` < > 等），拒绝执行。", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
 
     if _CD_ESCAPE_RE.search(command):
         return json.dumps({"stdout": "", "stderr": "不支持 cd 切换到项目外目录", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
@@ -413,8 +420,8 @@ def run_command_outside(
         return json.dumps({"stdout": "", "stderr": "cwd 不能为空，必须显式指定沙箱外目标目录（绝对路径）", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
     if not os.path.isabs(cwd):
         return json.dumps({"stdout": "", "stderr": f"cwd 必须为绝对路径: {cwd}", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
-    if _FORBIDDEN_RE.search(command):
-        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（; & | ` $ < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 run_command_outside", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
+    if _has_forbidden_chars(command):
+        return json.dumps({"stdout": "", "stderr": "命令包含不允许的字符（& | ` < > 等），拒绝执行。如需连续执行多个命令，请分多次调用 run_command_outside", "exit_code": -1, "execution_time": 0}, ensure_ascii=False)
 
     work_dir = os.path.normpath(cwd)
     if not os.path.isdir(work_dir):

@@ -286,11 +286,14 @@ export function ProjectInitModal({ project, onClose, onCreated }: ProjectInitMod
           </div>
         </div>
 
-        {/* 弹窗内容：内置 ChatInput */}
+        {/* 弹窗内容：内置 ChatInput
+            2026-08-26：overflowY:auto → overflow:visible，否则向上弹出的下拉菜单
+            （ModelSelector/ReasoningSelector/PermissionSelector/ModeSelector/UploadMenu）
+            会被此容器裁剪。textarea 已有 maxHeight:135px，弹窗最外层 overflow:hidden 兜底 */}
         <div style={{
           flex: 1,
           minHeight: 0,
-          overflowY: "auto",
+          overflow: "visible",
           padding: "4px 20px 12px 20px",
         }}>
           <ChatInput

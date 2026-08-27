@@ -40,6 +40,18 @@ from app.core.agent_base_instruction import get_agent_base_instruction
 # 2026-08-16：Skill 全局注入已废弃（会话级调用改由前端 buildContent 注入），不再 import get_enabled_skills_prompt
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
+def _sanitize_prompt_mode(prompt: str, mode: str) -> str:
+    if not prompt:
+        return prompt
+    if mode != 'plan':
+        import re
+        pattern1 = r'<system-reminder>\s*#\s*Plan mode[\s\S]*?</system-reminder>'
+        pattern2 = r'CRITICAL:\s*Plan mode ACTIVE[\s\S]*?you MUST NOT make any edits[^\n]*'
+        prompt = re.sub(pattern1, '', prompt, flags=re.IGNORECASE)
+        prompt = re.sub(pattern2, '', prompt, flags=re.IGNORECASE)
+    return prompt
+
+
 from app.core.tool_runtime.policy import (
     get_execution_policy,
     get_permission_context,
@@ -850,7 +862,7 @@ class ChatContextBuilder:
             if attachment_section:
                 full_prompt += "\n\n" + attachment_section
 
-        return full_prompt
+        return _sanitize_prompt_mode(full_prompt, getattr(effective_chat, 'mode', 'build') or 'build')
 
     async def build(self, input: ContextBuildInput) -> BuiltContext:
         db = SessionLocal()
@@ -861,10 +873,25 @@ class ChatContextBuilder:
 
             # ──── 1. Agent 身份 / 能力 ────
             agent = db.query(Agent).filter(Agent.agent_id == chat.agent_id).first()
-            system_prompt = (
-                agent.identity or agent.system_prompt or DEFAULT_IDENTITY
-            ) if agent else DEFAULT_IDENTITY
-            capabilities = list(agent.capabilities or []) if agent else []
+            # 防御：Agent 的 JSON 字段（capabilities/skills/allowed_tools）若数据损坏
+            # （如手动编辑数据库导致无效 JSON），SQLAlchemy 访问属性时会抛 JSONDecodeError。
+            # 此处兜底：解析失败时用空列表/默认值，不让单条坏数据瘫痪整个聊天。
+            try:
+                system_prompt = (
+                    agent.identity or agent.system_prompt or DEFAULT_IDENTITY
+                ) if agent else DEFAULT_IDENTITY
+                capabilities = list(agent.capabilities or []) if agent else []
+                # 主动访问 skills 字段，若损坏则在此处触发异常并兜底（后续技能注入有独立 try/except）
+                if agent:
+                    _ = list(agent.skills or [])
+            except (ValueError, TypeError) as _e:
+                import logging as _logging
+                _logging.getLogger(__name__).error(
+                    "Agent JSON field corrupted for agent_id=%s, using defaults: %s",
+                    chat.agent_id, _e,
+                )
+                system_prompt = DEFAULT_IDENTITY
+                capabilities = []
 
             # ──── 3. 人格 ────
             personality_level = (

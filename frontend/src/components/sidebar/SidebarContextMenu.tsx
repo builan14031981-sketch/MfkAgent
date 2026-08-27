@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
-import { Edit2, Pin, PinOff, Trash2, FolderOpen, Archive } from "lucide-react";
+import { Edit2, Pin, PinOff, Trash2, FolderOpen, Archive, ExternalLink } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -18,6 +18,7 @@ interface SidebarContextMenuProps {
   state: SidebarContextMenuState;
   chats: Chat[];
   projects: Project[];
+  onOpenInNewTab?: (chatId: number) => void;
   onRenameChat: (chatId: number) => void;
   onPinChat: (chatId: number) => void;
   onArchiveChat: (chatId: number) => void;
@@ -34,6 +35,7 @@ export function SidebarContextMenu({
   state,
   chats,
   projects,
+  onOpenInNewTab,
   onRenameChat,
   onPinChat,
   onArchiveChat,
@@ -96,6 +98,18 @@ export function SidebarContextMenu({
     >
       {isChat ? (
         <>
+          {onOpenInNewTab && (
+            <button
+              onClick={() => {
+                if (state.chatId != null) onOpenInNewTab(state.chatId);
+              }}
+              className="ctx-menu-item"
+              style={menuItemStyle}
+            >
+              <ExternalLink style={{ width: "13px", height: "13px" }} />
+              <span>在顶部新标签页打开</span>
+            </button>
+          )}
           <button
             onClick={() => {
               if (state.chatId != null) onRenameChat(state.chatId);

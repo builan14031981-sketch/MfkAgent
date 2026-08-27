@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <defs>
+      <linearGradient id="mo3" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#0891b2"/><stop offset="100%" stop-color="#0e7490"/>
+      </linearGradient>
+      <linearGradient id="mo3m" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#a5f3fc"/>
+      </linearGradient>
+      <filter id="mo3shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0891b2" flood-opacity="0.4"/>
+      </filter>
+    </defs>
+    <path d="M466.0,256.0 L465.6,338.9 L464.4,365.2 L462.3,384.0 L459.5,399.0 L455.7,411.4 L451.1,422.0 L445.4,431.1 L438.8,438.8 L431.1,445.4 L422.0,451.1 L411.4,455.7 L399.0,459.5 L384.0,462.3 L365.2,464.4 L338.9,465.6 L256.0,466.0 L173.1,465.6 L146.8,464.4 L128.0,462.3 L113.0,459.5 L100.6,455.7 L90.0,451.1 L80.9,445.4 L73.2,438.8 L66.6,431.1 L60.9,422.0 L56.3,411.4 L52.5,399.0 L49.7,384.0 L47.6,365.2 L46.4,338.9 L46.0,256.0 L46.4,173.1 L47.6,146.8 L49.7,128.0 L52.5,113.0 L56.3,100.6 L60.9,90.0 L66.6,80.9 L73.2,73.2 L80.9,66.6 L90.0,60.9 L100.6,56.3 L113.0,52.5 L128.0,49.7 L146.8,47.6 L173.1,46.4 L256.0,46.0 L338.9,46.4 L365.2,47.6 L384.0,49.7 L399.0,52.5 L411.4,56.3 L422.0,60.9 L431.1,66.6 L438.8,73.2 L445.4,80.9 L451.1,90.0 L455.7,100.6 L459.5,113.0 L462.3,128.0 L464.4,146.8 L465.6,173.1 L466.0,256.0 Z" fill="url(#mo3)" filter="url(#mo3shadow)"/>
+    <!-- 环绕轨道 -->
+    <ellipse cx="256" cy="256" rx="150" ry="60" fill="none" stroke="#fff" stroke-width="4" opacity="0.3" transform="rotate(-20 256 256)"/>
+    <ellipse cx="256" cy="256" rx="150" ry="60" fill="none" stroke="#fff" stroke-width="4" opacity="0.2" transform="rotate(20 256 256)"/>
+    <!-- M 字母 -->
+    <path d="M166,340 L166,180 L256,260 L346,180 L346,340 L310,340 L310,230 L256,280 L202,230 L202,340 Z" 
+          fill="url(#mo3m)"/>
+    <!-- 轨道上的Agent节点 -->
+    <circle cx="390" cy="210" r="12" fill="#fbbf24"/>
+    <circle cx="122" cy="302" r="12" fill="#f472b6"/>
+  </svg>

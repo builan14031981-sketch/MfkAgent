@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
+import os
 # 注意：app.api 的 import 已下移到 _ensure_schema() 之后（见下方）。
 # 原因：app.api.models 导入时 model_service 会立即查询 models 表（含新增列），
 # 必须先完成轻量迁移，否则旧库会报 "no such column"。
@@ -258,6 +260,58 @@ def _purge_mimo_key():
 # _purge_mimo_key()  # 已禁用：MiMo 已重新启用
 
 
+def _self_heal_agent_json_fields():
+    """启动自检：遍历所有 Agent，修复损坏的 JSON 字段（skills/capabilities/allowed_tools）。
+
+    背景：Agent 表的 JSON 列若因手动编辑数据库等原因写入了无效 JSON（如 `[" comfyui-local\\]`），
+    SQLAlchemy 读取时会抛 JSONDecodeError，导致所有使用该 Agent 的聊天返回 500。
+    此函数在启动时自动检测并修复为 `[]`，打 ERROR 日志便于审计。
+
+    幂等：仅修复无效 JSON，有效数据不动。
+    """
+    import json as _json
+    from sqlalchemy import text as _text
+    from app.core.database import SessionLocal
+
+    JSON_FIELDS = ("skills", "capabilities", "allowed_tools")
+    db = SessionLocal()
+    try:
+        rows = db.execute(_text("SELECT id, agent_id, name, skills, capabilities, allowed_tools FROM agents")).fetchall()
+        repaired = 0
+        for row in rows:
+            aid, agent_id, name = row[0], row[1], row[2]
+            fixes = {}
+            for i, field in enumerate(JSON_FIELDS, start=3):
+                raw = row[i]
+                if raw is None or raw == "":
+                    continue
+                try:
+                    _json.loads(raw)
+                except (ValueError, TypeError):
+                    fixes[field] = raw
+            if fixes:
+                for field, bad_val in fixes.items():
+                    db.execute(
+                        _text(f"UPDATE agents SET {field} = '[]' WHERE id = :id"),
+                        {"id": aid},
+                    )
+                    logger.error(
+                        "Self-heal: Agent '%s' (id=%s) field '%s' had invalid JSON, reset to []. Bad value: %s",
+                        agent_id, aid, field, repr(bad_val[:100]),
+                    )
+                repaired += 1
+        if repaired:
+            db.commit()
+            logger.info("_self_heal_agent_json_fields: repaired %d agent(s)", repaired)
+        else:
+            logger.info("_self_heal_agent_json_fields: all agent JSON fields valid, no repair needed")
+    except Exception:
+        db.rollback()
+        logger.exception("_self_heal_agent_json_fields failed (non-fatal)")
+    finally:
+        db.close()
+
+
 def _migrate_legacy_memory():
     """一次性迁移：老 Memory 表 user/preference → MemoryItem(agent)，project → MemoryItem(project)。
 
@@ -314,6 +368,9 @@ def _migrate_legacy_todos():
 
 _migrate_legacy_todos()
 
+# 启动自检：修复 Agent 表中损坏的 JSON 字段（防止单条坏数据导致聊天 500）
+_self_heal_agent_json_fields()
+
 app = FastAPI(
     title="MfkAgent API",
     description="MfkAgent - AI工作助手后端API",
@@ -367,6 +424,11 @@ app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"]
 app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"])
 app.include_router(defense_ppt.router, prefix="/api/defense-ppt", tags=["defense-ppt"])
 
+# 静态文件：ComfyUI 生成的图片输出目录，前端用 /generated_images/xxx.png 访问
+_gen_img_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "generated_images")
+os.makedirs(_gen_img_dir, exist_ok=True)
+app.mount("/generated_images", StaticFiles(directory=_gen_img_dir), name="generated_images")
+
 # 关闭时清理所有终端 PTY 会话
 @app.on_event("shutdown")
 async def _shutdown_terminal():
@@ -413,7 +475,24 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     import os
+    import sys
+    import urllib.request
     from app.core.port_manager import find_available_port, write_port_file, clear_port_file
+
+    # 单实例检测：防止多个后端进程并存导致端口漂移和前端访问错乱
+    def _is_mfkagent_running(port: int) -> bool:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as r:
+                body = r.read().decode("utf-8", errors="ignore")
+                return '"status"' in body and "healthy" in body
+        except Exception:
+            return False
+
+    for _check_port in (8001, 8002, 8003, 8004, 8005):
+        if _is_mfkagent_running(_check_port):
+            print(f"[main] MfkAgent 后端已在端口 {_check_port} 运行，跳过启动（避免多实例并存）。")
+            print(f"[main] 如需重启，请先关闭现有进程或访问 http://127.0.0.1:{_check_port}")
+            sys.exit(0)
 
     # Phase 8: 优先使用 Electron 主进程传入的端口（MFK_PORT），否则自动探测
     mfk_port = os.environ.get("MFK_PORT")

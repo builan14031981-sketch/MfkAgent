@@ -160,6 +160,21 @@ _ALLOWED_COMMANDS: List[Tuple[str, List[str]]] = [
 _ALLOWED_PY_MODULES = {"pytest", "unittest", "py_compile", "mypy", "ruff", "flake8"}
 
 
+def _allow_powershell(command: str, argv: List[str]) -> bool:
+    """PowerShell 只读查询检测：当包含 Get-ItemProperty / Get-ChildItem / Select-String / Test-Path 等只读Cmdlet且无写动词时放行。"""
+    cmd = argv[0].lower()
+    if cmd not in ("powershell", "powershell.exe", "pwsh", "pwsh.exe"):
+        return False
+    if any(p.search(command) for p in _DESTRUCTIVE_PATTERNS) or any(p.search(command) for p in _WRITE_PATTERNS):
+        return False
+    readonly_cmdlets = (
+        "get-itemproperty", "get-childitem", "select-string", "test-path",
+        "get-content", "get-item", "write-output", "get-command", "get-process"
+    )
+    cmd_lower = command.lower()
+    return any(kw in cmd_lower for kw in readonly_cmdlets)
+
+
 def _allow_python(argv: List[str]) -> bool:
     if argv[0] != "python":
         return False
@@ -169,6 +184,7 @@ def _allow_python(argv: List[str]) -> bool:
         return True
     if argv[1] == "-m" and len(argv) >= 3 and argv[2] in _ALLOWED_PY_MODULES:
         return True
+
     return False
 
 
@@ -182,6 +198,13 @@ def _allow_netsh(argv: List[str]) -> bool:
 # ---- L1 拒绝模式：shell 元字符 / 不可逆动词 ----
 _FORBIDDEN_RE = re.compile(r"[;&|`$<>]|\(|\)")
 
+def _has_forbidden_chars(command: str) -> bool:
+    cmd_lower = (command or "").lower().strip()
+    if cmd_lower.startswith("powershell") or cmd_lower.startswith("pwsh"):
+        # 对 powershell，允许语法符号 ($ ; () 等)，仅拦截重定向、反引号与管道
+        return bool(re.search(r"[`&|<>]", command))
+    return bool(_FORBIDDEN_RE.search(command))
+
 _DESTRUCTIVE_PATTERNS = [
     re.compile(r"(^|\s)(rm|rmdir|del|erase|format|mkfs|diskpart|shutdown|reboot|taskkill)(\s|$)", re.I),
     re.compile(r"git\s+(reset\s+--hard|clean\s+-f|push\s+--force|filter-branch)\b", re.I),
@@ -191,6 +214,7 @@ _DESTRUCTIVE_PATTERNS = [
 
 # ---- L2 关键字规则：写入/有副作用 ----
 _WRITE_PATTERNS = [
+    re.compile(r"comfy_call\.py", re.I),
     re.compile(r"(^|\s)(pip|pip3|npm|yarn|pnpm|gem|composer)\s+(install|uninstall|remove|update|upgrade|add|i)\b", re.I),
     re.compile(r"(^|\s)(python|py)\s+-m\s+pip\s+(install|uninstall)\b", re.I),
     re.compile(r"git\s+(add|commit|push|merge|rebase|reset|stash|tag)\b", re.I),
@@ -209,10 +233,10 @@ class CommandRiskEngine:
         if not command:
             return RiskDecision(Verdict.DENY, RiskLevel.READ_ONLY, "错误: command 不能为空", command)
 
-        if _FORBIDDEN_RE.search(command):
+        if _has_forbidden_chars(command):
             return RiskDecision(
                 Verdict.DENY, RiskLevel.DESTRUCTIVE,
-                "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行", command,
+                "错误: 命令包含不允许的字符（& | ` < > 等），拒绝执行", command,
             )
 
         argv = re.split(r"\s+", command)
@@ -246,6 +270,8 @@ class CommandRiskEngine:
             return _allow_python(argv)
         if cmd == "netsh":
             return _allow_netsh(argv)
+        if _allow_powershell(" ".join(argv), argv):
+            return True
         for allowed_cmd, prefixes in _ALLOWED_COMMANDS:
             if cmd != allowed_cmd:
                 continue
@@ -275,10 +301,10 @@ class CommandRiskEngine:
         if not command:
             return RiskDecision(Verdict.DENY, RiskLevel.READ_ONLY, "错误: command 不能为空", command)
 
-        if _FORBIDDEN_RE.search(command):
+        if _has_forbidden_chars(command):
             return RiskDecision(
                 Verdict.DENY, RiskLevel.DESTRUCTIVE,
-                "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行", command,
+                "错误: 命令包含不允许的字符（& | ` < > 等），拒绝执行", command,
             )
 
         argv = re.split(r"\s+", command)
@@ -325,16 +351,25 @@ class CommandRiskEngine:
         if not command:
             return RiskDecision(Verdict.DENY, RiskLevel.READ_ONLY, "错误: command 不能为空", command)
 
-        if _FORBIDDEN_RE.search(command):
+        if _has_forbidden_chars(command):
             return RiskDecision(
                 Verdict.DENY, RiskLevel.DESTRUCTIVE,
-                "错误: 命令包含不允许的字符（; & | ` $ < > 等），拒绝执行", command,
+                "错误: 命令包含不允许的字符（& | ` < > 等），拒绝执行", command,
             )
 
+        argv = re.split(r"\s+", command)
+        # 沙箱外只读操作在 plan 模式下允许放行/由用户确认，仅毁灭性/写入命令拦截
         if mode == "plan":
+            if self._is_destructive(command) or self._is_write(command):
+                return RiskDecision(
+                    Verdict.DENY, RiskLevel.DESTRUCTIVE,
+                    "错误: plan 只读模式拒绝执行包含写入/删除的沙箱外命令", command,
+                )
+            if self._is_allowlisted(argv):
+                return RiskDecision(Verdict.ALLOW, RiskLevel.READ_ONLY, "沙箱外只读白名单命令，Plan 模式放行", command)
             return RiskDecision(
-                Verdict.DENY, RiskLevel.DESTRUCTIVE,
-                "错误: plan 只读模式拒绝执行沙箱外命令", command,
+                Verdict.REQUIRE_APPROVAL, RiskLevel.READ_ONLY,
+                "沙箱外只读命令，Plan 模式下需你确认后执行", command,
             )
 
         # 沙箱外命令：恒定 HIGH_RISK → 所有权限模式强制人工审批

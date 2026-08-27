@@ -1,0 +1,6961 @@
+{
+ "Aeonglass": {
+  "id": "Aeonglass",
+  "loc_key": "monsters.AEONGLASS.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 512,
+   "ascension_tough": 535
+  },
+  "moves": [
+   {
+    "id": "EBB_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       26
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "消退"
+   },
+   {
+    "id": "EYE_LASERS_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       11,
+       2
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "眼部激光"
+   },
+   {
+    "id": "INCREASING_INTENSITY_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       1
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "加大力度"
+   }
+  ],
+  "move_cycle": [
+   "EBB_MOVE",
+   "EYE_LASERS_MOVE",
+   "INCREASING_INTENSITY_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "永世沙漏"
+ },
+ "AssassinRubyRaider": {
+  "id": "AssassinRubyRaider",
+  "loc_key": "monsters.ASSASSINRUBYRAIDER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 18,
+   "ascension_tough": 19
+  },
+  "moves": [
+   {
+    "id": "KILLSHOT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "致命射击"
+   }
+  ],
+  "move_cycle": [
+   "KILLSHOT_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "劫掠者刺客"
+ },
+ "Axebot": {
+  "id": "Axebot",
+  "loc_key": "monsters.AXEBOT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 70,
+   "ascension_tough": 76
+  },
+  "moves": [
+   {
+    "id": "BOOT_UP_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "启动"
+   },
+   {
+    "id": "ONE_TWO_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       9,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "name_zh": "两连击"
+   },
+   {
+    "id": "HAMMER_UPPERCUT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "WeakPower",
+      "amount": 2
+     },
+     {
+      "status": "FrailPower",
+      "amount": 2
+     }
+    ],
+    "name_zh": "上勾锤击"
+   }
+  ],
+  "move_cycle": [
+   "BOOT_UP_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "巨斧机器人"
+ },
+ "AxeRubyRaider": {
+  "id": "AxeRubyRaider",
+  "loc_key": "monsters.AXERUBYRAIDER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 20,
+   "ascension_tough": 21
+  },
+  "moves": [
+   {
+    "id": "SWING_1",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       5
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   },
+   {
+    "id": "SWING_2",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       5
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1
+   },
+   {
+    "id": "BIG_SWING",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "大力挥舞"
+   }
+  ],
+  "move_cycle": [
+   "SWING_1",
+   "SWING_2",
+   "BIG_SWING"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "劫掠者斧手"
+ },
+ "BigDummy": {
+  "id": "BigDummy",
+  "loc_key": "monsters.BIGDUMMY.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "无"
+   }
+  ],
+  "move_cycle": [
+   "NOTHING"
+  ],
+  "encounter_types": [
+   "boss",
+   "elite",
+   "normal"
+  ],
+  "name_zh": "大型假人"
+ },
+ "BowlbugEgg": {
+  "id": "BowlbugEgg",
+  "loc_key": "monsters.BOWLBUGEGG.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 21,
+   "ascension_tough": 23
+  },
+  "moves": [
+   {
+    "id": "BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "啃咬"
+   }
+  ],
+  "move_cycle": [
+   "BITE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "盛碗虫（卵）"
+ },
+ "BowlbugNectar": {
+  "id": "BowlbugNectar",
+  "loc_key": "monsters.BOWLBUGNECTAR.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 35,
+   "ascension_tough": 36
+  },
+  "moves": [
+   {
+    "id": "THRASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "撕扯"
+   },
+   {
+    "id": "BUFF_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "强化"
+   },
+   {
+    "id": "THRASH2_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 2
+   }
+  ],
+  "move_cycle": [
+   "THRASH_MOVE",
+   "BUFF_MOVE",
+   "THRASH2_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "盛碗虫（蜜）"
+ },
+ "BowlbugRock": {
+  "id": "BowlbugRock",
+  "loc_key": "monsters.BOWLBUGROCK.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 45,
+   "ascension_tough": 46
+  },
+  "moves": [
+   {
+    "id": "HEADBUTT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "头槌"
+   },
+   {
+    "id": "DIZZY_MOVE",
+    "intents": [
+     {
+      "type": "StunIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "昏头转向"
+   }
+  ],
+  "move_cycle": [
+   "DIZZY_MOVE",
+   "HEADBUTT_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "盛碗虫（石）"
+ },
+ "BowlbugSilk": {
+  "id": "BowlbugSilk",
+  "loc_key": "monsters.BOWLBUGSILK.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 40,
+   "ascension_tough": 41
+  },
+  "moves": [
+   {
+    "id": "THRASH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "name_zh": "撕扯"
+   },
+   {
+    "id": "TOXIC_SPIT_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "毒性喷吐"
+   }
+  ],
+  "move_cycle": [
+   "TOXIC_SPIT_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "盛碗虫（丝）"
+ },
+ "BruteRubyRaider": {
+  "id": "BruteRubyRaider",
+  "loc_key": "monsters.BRUTERUBYRAIDER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 30,
+   "ascension_tough": 31
+  },
+  "moves": [
+   {
+    "id": "BEAT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     }
+    ],
+    "name_zh": "殴打"
+   },
+   {
+    "id": "ROAR_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "怒吼"
+   }
+  ],
+  "move_cycle": [
+   "ROAR_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "劫掠者暴徒"
+ },
+ "BygoneEffigy": {
+  "id": "BygoneEffigy",
+  "loc_key": "monsters.BYGONEEFFIGY.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 127,
+   "ascension_tough": 132
+  },
+  "moves": [
+   {
+    "id": "SLEEP_MOVE",
+    "intents": [
+     {
+      "type": "SleepIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "沉睡"
+   },
+   {
+    "id": "WAKE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "苏醒"
+   },
+   {
+    "id": "SLEEP_MOVE_2",
+    "intents": [
+     {
+      "type": "SleepIntent",
+      "args": []
+     }
+    ]
+   },
+   {
+    "id": "SLASHES_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "斩击"
+   }
+  ],
+  "move_cycle": [
+   "SLEEP_MOVE",
+   "WAKE_MOVE",
+   "SLASHES_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "旧日雕像"
+ },
+ "Byrdonis": {
+  "id": "Byrdonis",
+  "loc_key": "monsters.BYRDONIS.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 81,
+   "ascension_tough": 90
+  },
+  "moves": [
+   {
+    "id": "PECK_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "啄击"
+   },
+   {
+    "id": "SWOOP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "飞扑"
+   }
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "多尼斯异鸟"
+ },
+ "CalcifiedCultist": {
+  "id": "CalcifiedCultist",
+  "loc_key": "monsters.CALCIFIEDCULTIST.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 38,
+   "ascension_tough": 39
+  },
+  "moves": [
+   {
+    "id": "INCANTATION_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "念咒"
+   },
+   {
+    "id": "DARK_STRIKE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       9
+      ]
+     }
+    ],
+    "name_zh": "黑暗打击"
+   }
+  ],
+  "move_cycle": [
+   "INCANTATION_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "钙化邪教徒"
+ },
+ "CeremonialBeast": {
+  "id": "CeremonialBeast",
+  "loc_key": "monsters.CEREMONIALBEAST.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 252,
+   "ascension_tough": 262
+  },
+  "moves": [
+   {
+    "id": "STAMP_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "跺地"
+   },
+   {
+    "id": "PLOW_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "横冲直撞"
+   },
+   {
+    "id": "BEAST_CRY_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "RingingPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "野兽咆哮"
+   },
+   {
+    "id": "STOMP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "name_zh": "踩踏"
+   },
+   {
+    "id": "CRUSH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       17
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "碾碎"
+   }
+  ],
+  "move_cycle": [
+   "STAMP_MOVE",
+   "PLOW_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "仪式兽"
+ },
+ "Chomper": {
+  "id": "Chomper",
+  "loc_key": "monsters.CHOMPER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 60,
+   "ascension_tough": 63
+  },
+  "moves": [
+   {
+    "id": "CLAMP_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "name_zh": "猛夹"
+   },
+   {
+    "id": "SCREECH_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "尖锐鸣叫"
+   }
+  ],
+  "move_cycle": [
+   "SCREECH_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "啃咬机"
+ },
+ "CorpseSlug": {
+  "id": "CorpseSlug",
+  "loc_key": "monsters.CORPSESLUG.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 25,
+   "ascension_tough": 27
+  },
+  "moves": [
+   {
+    "id": "WHIP_SLAP_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       2
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "鞭打"
+   },
+   {
+    "id": "GLOMP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "扑上"
+   },
+   {
+    "id": "GOOP_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "黏液"
+   }
+  ],
+  "move_cycle": [
+   "WHIP_SLAP_MOVE",
+   "GLOMP_MOVE",
+   "GOOP_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "噬尸蛞蝓"
+ },
+ "CrossbowRubyRaider": {
+  "id": "CrossbowRubyRaider",
+  "loc_key": "monsters.CROSSBOWRUBYRAIDER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 18,
+   "ascension_tough": 19
+  },
+  "moves": [
+   {
+    "id": "FIRE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "name_zh": "射击！"
+   },
+   {
+    "id": "RELOAD_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "block": 3,
+    "cycle_order": 0,
+    "name_zh": "装填"
+   }
+  ],
+  "move_cycle": [
+   "RELOAD_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "劫掠者弩手"
+ },
+ "Crusher": {
+  "id": "Crusher",
+  "loc_key": "monsters.CRUSHER.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 209,
+   "ascension_tough": 219
+  },
+  "moves": [
+   {
+    "id": "THRASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "撕扯"
+   },
+   {
+    "id": "ENLARGING_STRIKE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       4
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "巨化打击"
+   },
+   {
+    "id": "BUG_STING_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       6,
+       2
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "WeakPower",
+      "amount": 2
+     },
+     {
+      "status": "FrailPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "虫蛰"
+   },
+   {
+    "id": "ADAPT_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "适应"
+   },
+   {
+    "id": "GUARDED_STRIKE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "block": 18,
+    "cycle_order": 4,
+    "name_zh": "戒备打击"
+   }
+  ],
+  "move_cycle": [
+   "THRASH_MOVE",
+   "ENLARGING_STRIKE_MOVE",
+   "BUG_STING_MOVE",
+   "ADAPT_MOVE",
+   "GUARDED_STRIKE_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "碾碎爪"
+ },
+ "CubexConstruct": {
+  "id": "CubexConstruct",
+  "loc_key": "monsters.CUBEXCONSTRUCT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 65,
+   "ascension_tough": 70
+  },
+  "moves": [
+   {
+    "id": "CHARGE_UP_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "蓄能"
+   },
+   {
+    "id": "REPEATER_BLAST_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "重复轰击"
+   },
+   {
+    "id": "REPEATER_BLAST_MOVE_2",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 2
+   },
+   {
+    "id": "EXPEL_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       5,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 3,
+    "name_zh": "排出"
+   }
+  ],
+  "move_cycle": [
+   "CHARGE_UP_MOVE",
+   "REPEATER_BLAST_MOVE",
+   "REPEATER_BLAST_MOVE_2",
+   "EXPEL_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "立柱构造体"
+ },
+ "DampCultist": {
+  "id": "DampCultist",
+  "loc_key": "monsters.DAMPCULTIST.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 51,
+   "ascension_tough": 52
+  },
+  "moves": [
+   {
+    "id": "INCANTATION_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "念咒"
+   },
+   {
+    "id": "DARK_STRIKE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "name_zh": "黑暗打击"
+   }
+  ],
+  "move_cycle": [
+   "INCANTATION_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "潮湿邪教徒"
+ },
+ "DevotedSculptor": {
+  "id": "DevotedSculptor",
+  "loc_key": "monsters.DEVOTEDSCULPTOR.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 162,
+   "ascension_tough": 172
+  },
+  "moves": [
+   {
+    "id": "FORBIDDEN_INCANTATION_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "禁忌唱诵"
+   },
+   {
+    "id": "SAVAGE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "name_zh": "猛烈攻击"
+   }
+  ],
+  "move_cycle": [
+   "FORBIDDEN_INCANTATION_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "虔诚雕刻师"
+ },
+ "Entomancer": {
+  "id": "Entomancer",
+  "loc_key": "monsters.ENTOMANCER.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 145,
+   "ascension_tough": 155
+  },
+  "moves": [
+   {
+    "id": "PHEROMONE_SPIT_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "PersonalHivePower",
+      "amount": 1
+     },
+     {
+      "status": "StrengthPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "喷射信息素"
+   },
+   {
+    "id": "BEES_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       7
+      ]
+     }
+    ],
+    "name_zh": "蜜——蜂——！"
+   },
+   {
+    "id": "SPEAR_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "矛击！"
+   }
+  ],
+  "move_cycle": [
+   "SPEAR_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "蜂群术士"
+ },
+ "Exoskeleton": {
+  "id": "Exoskeleton",
+  "loc_key": "monsters.EXOSKELETON.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 24,
+   "ascension_tough": 25
+  },
+  "moves": [
+   {
+    "id": "SKITTER_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       1,
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "忙乱"
+   },
+   {
+    "id": "MANDIBLES_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     }
+    ],
+    "name_zh": "啃食"
+   },
+   {
+    "id": "ENRAGE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "name_zh": "激怒"
+   }
+  ],
+  "move_cycle": [
+   "SKITTER_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "外骨骼虫"
+ },
+ "EyeWithTeeth": {
+  "id": "EyeWithTeeth",
+  "loc_key": "monsters.EYEWITHTEETH.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "DISTRACT_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "牵制"
+   }
+  ],
+  "move_cycle": [
+   "DISTRACT_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "利齿之眼"
+ },
+ "Fabricator": {
+  "id": "Fabricator",
+  "loc_key": "monsters.FABRICATOR.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 150,
+   "ascension_tough": 155
+  },
+  "moves": [
+   {
+    "id": "FABRICATE_MOVE",
+    "intents": [
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "组装"
+   },
+   {
+    "id": "FABRICATING_STRIKE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     },
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "组装打击"
+   },
+   {
+    "id": "DISINTEGRATE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     }
+    ],
+    "name_zh": "瓦解"
+   }
+  ],
+  "move_cycle": [
+   "FABRICATE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "组装师"
+ },
+ "FakeMerchantMonster": {
+  "id": "FakeMerchantMonster",
+  "loc_key": "monsters.FAKEMERCHANTMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 165,
+   "ascension_tough": 175
+  },
+  "moves": [
+   {
+    "id": "SWIPE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "顺走"
+   },
+   {
+    "id": "SPEW_COINS_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       2,
+       8
+      ]
+     }
+    ],
+    "hits": 8,
+    "name_zh": "喷吐硬币"
+   },
+   {
+    "id": "THROW_RELIC_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       9
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "投掷遗物"
+   },
+   {
+    "id": "ENRAGE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "name_zh": "激怒"
+   }
+  ],
+  "move_cycle": [
+   "SWIPE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "商人？？？"
+ },
+ "FatGremlin": {
+  "id": "FatGremlin",
+  "loc_key": "monsters.FATGREMLIN.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 13,
+   "ascension_tough": 14
+  },
+  "moves": [
+   {
+    "id": "SPAWNED_MOVE",
+    "intents": [
+     {
+      "type": "StunIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "醒来"
+   },
+   {
+    "id": "FLEE_MOVE",
+    "intents": [
+     {
+      "type": "EscapeIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "逃跑"
+   }
+  ],
+  "move_cycle": [
+   "SPAWNED_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "胖地精"
+ },
+ "FlailKnight": {
+  "id": "FlailKnight",
+  "loc_key": "monsters.FLAILKNIGHT.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 101,
+   "ascension_tough": 108
+  },
+  "moves": [
+   {
+    "id": "WAR_CHANT",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 3
+     }
+    ],
+    "name_zh": "战争吟唱"
+   },
+   {
+    "id": "FLAIL_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       9,
+       2
+      ]
+     }
+    ],
+    "name_zh": "连枷"
+   },
+   {
+    "id": "RAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "name_zh": "撞击"
+   }
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "连枷骑士"
+ },
+ "Flyconid": {
+  "id": "Flyconid",
+  "loc_key": "monsters.FLYCONID.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 47,
+   "ascension_tough": 51
+  },
+  "moves": [
+   {
+    "id": "VULNERABLE_SPORES_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "易伤孢子"
+   },
+   {
+    "id": "FRAIL_SPORES_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "脆弱孢子"
+   },
+   {
+    "id": "SMASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     }
+    ],
+    "name_zh": "猛砸"
+   }
+  ],
+  "move_cycle": [
+   "VULNERABLE_SPORES_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "飞蝇菌子"
+ },
+ "Fogmog": {
+  "id": "Fogmog",
+  "loc_key": "monsters.FOGMOG.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 74,
+   "ascension_tough": 78
+  },
+  "moves": [
+   {
+    "id": "ILLUSION_MOVE",
+    "intents": [
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "虚幻孢子"
+   },
+   {
+    "id": "SWIPE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "重击"
+   },
+   {
+    "id": "SWIPE_RANDOM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 1
+     }
+    ]
+   },
+   {
+    "id": "HEADBUTT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ]
+   }
+  ],
+  "move_cycle": [
+   "ILLUSION_MOVE",
+   "SWIPE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "雾菇"
+ },
+ "FossilStalker": {
+  "id": "FossilStalker",
+  "loc_key": "monsters.FOSSILSTALKER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 51,
+   "ascension_tough": 54
+  },
+  "moves": [
+   {
+    "id": "TACKLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       9
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "冲撞"
+   },
+   {
+    "id": "LATCH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "name_zh": "缠上"
+   },
+   {
+    "id": "LASH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       2
+      ]
+     }
+    ],
+    "name_zh": "甩动"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "化石追踪者"
+ },
+ "FrogKnight": {
+  "id": "FrogKnight",
+  "loc_key": "monsters.FROGKNIGHT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 191,
+   "ascension_tough": 199
+  },
+  "moves": [
+   {
+    "id": "FOR_THE_QUEEN",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 5
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "为了女王"
+   },
+   {
+    "id": "STRIKE_DOWN_EVIL",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       21
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "惩恶一击"
+   },
+   {
+    "id": "TONGUE_LASH",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "吐舌"
+   },
+   {
+    "id": "BEETLE_CHARGE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       35
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "甲虫冲锋"
+   }
+  ],
+  "move_cycle": [
+   "BEETLE_CHARGE",
+   "TONGUE_LASH",
+   "STRIKE_DOWN_EVIL",
+   "FOR_THE_QUEEN"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "青蛙骑士"
+ },
+ "FuzzyWurmCrawler": {
+  "id": "FuzzyWurmCrawler",
+  "loc_key": "monsters.FUZZYWURMCRAWLER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 55,
+   "ascension_tough": 58
+  },
+  "moves": [
+   {
+    "id": "FIRST_ACID_GOOP",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       4
+      ]
+     }
+    ]
+   },
+   {
+    "id": "ACID_GOOP",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       4
+      ]
+     }
+    ],
+    "name_zh": "酸液黏球"
+   },
+   {
+    "id": "INHALE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 7
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "吸入"
+   }
+  ],
+  "move_cycle": [
+   "INHALE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "毛绒伏地虫"
+ },
+ "GasBomb": {
+  "id": "GasBomb",
+  "loc_key": "monsters.GASBOMB.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 7,
+   "ascension_tough": 8
+  },
+  "moves": [
+   {
+    "id": "EXPLODE_MOVE",
+    "intents": [
+     {
+      "type": "DeathBlowIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "爆炸"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "气态炸弹"
+ },
+ "GlobeHead": {
+  "id": "GlobeHead",
+  "loc_key": "monsters.GLOBEHEAD.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 148,
+   "ascension_tough": 158
+  },
+  "moves": [
+   {
+    "id": "THUNDER_STRIKE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       6,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "cycle_order": 0,
+    "name_zh": "生成闪电"
+   },
+   {
+    "id": "SHOCKING_SLAP",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "电击掌"
+   },
+   {
+    "id": "GALVANIC_BURST",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 1
+   }
+  ],
+  "move_cycle": [
+   "THUNDER_STRIKE",
+   "GALVANIC_BURST",
+   "SHOCKING_SLAP"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "电球头"
+ },
+ "GremlinMerc": {
+  "id": "GremlinMerc",
+  "loc_key": "monsters.GREMLINMERC.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 47,
+   "ascension_tough": 51
+  },
+  "moves": [
+   {
+    "id": "GIMME_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       7,
+       2
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "拿来"
+   },
+   {
+    "id": "DOUBLE_SMASH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       6,
+       2
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "双重猛击"
+   },
+   {
+    "id": "HEHE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "嘿嘿"
+   }
+  ],
+  "move_cycle": [
+   "GIMME_MOVE",
+   "DOUBLE_SMASH_MOVE",
+   "HEHE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "地精佣兵"
+ },
+ "Guardbot": {
+  "id": "Guardbot",
+  "loc_key": "monsters.GUARDBOT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 16,
+   "ascension_tough": 17
+  },
+  "moves": [
+   {
+    "id": "GUARD_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "block": 15,
+    "cycle_order": 0,
+    "name_zh": "守护"
+   }
+  ],
+  "move_cycle": [
+   "GUARD_MOVE"
+  ],
+  "name_zh": "守护机器人"
+ },
+ "HauntedShip": {
+  "id": "HauntedShip",
+  "loc_key": "monsters.HAUNTEDSHIP.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 63,
+   "ascension_tough": 67
+  },
+  "moves": [
+   {
+    "id": "SWIPE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "name_zh": "扫击"
+   },
+   {
+    "id": "STOMP_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       3
+      ]
+     }
+    ],
+    "name_zh": "践踏"
+   }
+  ],
+  "move_cycle": [
+   "HAUNT_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "幽灵船"
+ },
+ "HunterKiller": {
+  "id": "HunterKiller",
+  "loc_key": "monsters.HUNTERKILLER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 121,
+   "ascension_tough": 126
+  },
+  "moves": [
+   {
+    "id": "TENDERIZING_GOOP_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "TenderPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "嫩化黏液"
+   },
+   {
+    "id": "BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       17
+      ]
+     }
+    ],
+    "name_zh": "啃咬"
+   },
+   {
+    "id": "PUNCTURE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       7,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "name_zh": "刺穿"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "猎人杀手"
+ },
+ "InfestedPrism": {
+  "id": "InfestedPrism",
+  "loc_key": "monsters.INFESTEDPRISM.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 161,
+   "ascension_tough": 171
+  },
+  "moves": [
+   {
+    "id": "JAB_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "刺击"
+   },
+   {
+    "id": "RADIATE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "辐射"
+   },
+   {
+    "id": "WHIRLWIND_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       5,
+       3
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "旋风"
+   },
+   {
+    "id": "PULSATE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "脉动"
+   }
+  ],
+  "move_cycle": [
+   "JAB_MOVE",
+   "RADIATE_MOVE",
+   "WHIRLWIND_MOVE",
+   "PULSATE_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "感染棱柱"
+ },
+ "Inklet": {
+  "id": "Inklet",
+  "loc_key": "monsters.INKLET.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 11,
+   "ascension_tough": 12
+  },
+  "moves": [
+   {
+    "id": "JAB_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "刺击"
+   },
+   {
+    "id": "WHIRLWIND_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       2,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "cycle_order": 0,
+    "name_zh": "旋风"
+   },
+   {
+    "id": "PIERCING_GAZE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       10
+      ]
+     }
+    ],
+    "name_zh": "锐利凝视"
+   }
+  ],
+  "move_cycle": [
+   "WHIRLWIND_MOVE",
+   "JAB_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "墨宝"
+ },
+ "KinFollower": {
+  "id": "KinFollower",
+  "loc_key": "monsters.KINFOLLOWER.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 58,
+   "ascension_tough": 62
+  },
+  "moves": [
+   {
+    "id": "QUICK_SLASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       5
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "快斩"
+   },
+   {
+    "id": "BOOMERANG_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       2,
+       2
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "回旋镖"
+   },
+   {
+    "id": "POWER_DANCE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "力量之舞"
+   }
+  ],
+  "move_cycle": [
+   "QUICK_SLASH_MOVE",
+   "BOOMERANG_MOVE",
+   "POWER_DANCE_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "同族信徒"
+ },
+ "KinPriest": {
+  "id": "KinPriest",
+  "loc_key": "monsters.KINPRIEST.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 190,
+   "ascension_tough": 199
+  },
+  "moves": [
+   {
+    "id": "ORB_OF_FRAILTY_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "脆弱法球"
+   },
+   {
+    "id": "ORB_OF_WEAKNESS_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "WeakPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "虚弱法球"
+   },
+   {
+    "id": "BEAM_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "cycle_order": 2,
+    "name_zh": "灵魂光束"
+   },
+   {
+    "id": "RITUAL_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "黑暗仪式"
+   }
+  ],
+  "move_cycle": [
+   "ORB_OF_FRAILTY_MOVE",
+   "ORB_OF_WEAKNESS_MOVE",
+   "BEAM_MOVE",
+   "RITUAL_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "同族神官"
+ },
+ "KnowledgeDemon": {
+  "id": "KnowledgeDemon",
+  "loc_key": "monsters.KNOWLEDGEDEMON.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 379,
+   "ascension_tough": 399
+  },
+  "moves": [
+   {
+    "id": "CURSE_OF_KNOWLEDGE_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "知识的诅咒"
+   },
+   {
+    "id": "SLAP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       17
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "抽打"
+   },
+   {
+    "id": "KNOWLEDGE_OVERWHELMING_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       8,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "cycle_order": 2,
+    "name_zh": "知识过载"
+   },
+   {
+    "id": "PONDER_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     },
+     {
+      "type": "HealIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "思考"
+   }
+  ],
+  "move_cycle": [
+   "CURSE_OF_KNOWLEDGE_MOVE",
+   "SLAP_MOVE",
+   "KNOWLEDGE_OVERWHELMING_MOVE",
+   "PONDER_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "知识恶魔"
+ },
+ "LagavulinMatriarch": {
+  "id": "LagavulinMatriarch",
+  "loc_key": "monsters.LAGAVULINMATRIARCH.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 222,
+   "ascension_tough": 233
+  },
+  "moves": [
+   {
+    "id": "SLEEP_MOVE",
+    "intents": [
+     {
+      "type": "SleepIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "沉睡"
+   },
+   {
+    "id": "SLASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       19
+      ]
+     }
+    ],
+    "name_zh": "斩击"
+   },
+   {
+    "id": "SLASH2_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ]
+   },
+   {
+    "id": "DISEMBOWEL_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       9,
+       2
+      ]
+     }
+    ],
+    "name_zh": "开膛破肚"
+   },
+   {
+    "id": "SOUL_SIPHON_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "name_zh": "灵魂汲取"
+   }
+  ],
+  "move_cycle": [
+   "SLEEP_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "乐加维林族母"
+ },
+ "LeafSlimeM": {
+  "id": "LeafSlimeM",
+  "loc_key": "monsters.LEAFSLIMEM.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 32,
+   "ascension_tough": 33
+  },
+  "moves": [
+   {
+    "id": "CLUMP_SHOT",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     }
+    ],
+    "name_zh": "团块射击"
+   },
+   {
+    "id": "STICKY_SHOT",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       2
+      ]
+     }
+    ],
+    "name_zh": "黏糊射击"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "树叶史莱姆（中）"
+ },
+ "LeafSlimeS": {
+  "id": "LeafSlimeS",
+  "loc_key": "monsters.LEAFSLIMES.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 11,
+   "ascension_tough": 12
+  },
+  "moves": [
+   {
+    "id": "TACKLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "name_zh": "冲撞"
+   },
+   {
+    "id": "GOOP_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "name_zh": "黏液"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "树叶史莱姆（小）"
+ },
+ "LivingFog": {
+  "id": "LivingFog",
+  "loc_key": "monsters.LIVINGFOG.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 80,
+   "ascension_tough": 82
+  },
+  "moves": [
+   {
+    "id": "ADVANCED_GAS_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "CardDebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "SmoggyPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "先进毒气"
+   },
+   {
+    "id": "BLOAT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       5
+      ]
+     },
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "膨胀"
+   },
+   {
+    "id": "SUPER_GAS_BLAST_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "超级毒气爆炸"
+   }
+  ],
+  "move_cycle": [
+   "ADVANCED_GAS_MOVE",
+   "BLOAT_MOVE",
+   "SUPER_GAS_BLAST_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "活雾"
+ },
+ "LivingShield": {
+  "id": "LivingShield",
+  "loc_key": "monsters.LIVINGSHIELD.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 55,
+   "ascension_tough": 65
+  },
+  "moves": [
+   {
+    "id": "SHIELD_SLAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "盾击"
+   },
+   {
+    "id": "SMASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "砸击"
+   }
+  ],
+  "move_cycle": [
+   "SHIELD_SLAM_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "活体盾"
+ },
+ "LouseProgenitor": {
+  "id": "LouseProgenitor",
+  "loc_key": "monsters.LOUSEPROGENITOR.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 134,
+   "ascension_tough": 138
+  },
+  "moves": [
+   {
+    "id": "WEB_CANNON_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       9
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "吐网炮"
+   },
+   {
+    "id": "POUNCE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "name_zh": "猛扑"
+   },
+   {
+    "id": "CURL_AND_GROW_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 5
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "蜷身成长"
+   }
+  ],
+  "move_cycle": [
+   "CURL_AND_GROW_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "虱虫之祖"
+ },
+ "MagiKnight": {
+  "id": "MagiKnight",
+  "loc_key": "monsters.MAGIKNIGHT.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 82,
+   "ascension_tough": 89
+  },
+  "moves": [
+   {
+    "id": "POWER_SHIELD_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "强力护盾"
+   },
+   {
+    "id": "DAMPEN_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "抑制"
+   },
+   {
+    "id": "PREP_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3
+   },
+   {
+    "id": "MAGIC_BOMB",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       35
+      ]
+     }
+    ],
+    "cycle_order": 4,
+    "name_zh": "魔法炸弹"
+   },
+   {
+    "id": "RAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       10
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "撞击"
+   }
+  ],
+  "move_cycle": [
+   "POWER_SHIELD_MOVE",
+   "DAMPEN_MOVE",
+   "RAM_MOVE",
+   "PREP_MOVE",
+   "MAGIC_BOMB"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "魔法骑士"
+ },
+ "Mawler": {
+  "id": "Mawler",
+  "loc_key": "monsters.MAWLER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 72,
+   "ascension_tough": 76
+  },
+  "moves": [
+   {
+    "id": "RIP_AND_TEAR_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "name_zh": "狂乱撕扯"
+   },
+   {
+    "id": "ROAR_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VulnerablePower",
+      "amount": 3
+     }
+    ],
+    "name_zh": "怒吼"
+   },
+   {
+    "id": "CLAW_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "name_zh": "爪击"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "蛮兽"
+ },
+ "MechaKnight": {
+  "id": "MechaKnight",
+  "loc_key": "monsters.MECHAKNIGHT.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 300,
+   "ascension_tough": 320
+  },
+  "moves": [
+   {
+    "id": "CHARGE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "冲锋"
+   },
+   {
+    "id": "FLAMETHROWER_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       4
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "喷火器"
+   },
+   {
+    "id": "WINDUP_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "block": 15,
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 5
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "举起蓄力"
+   },
+   {
+    "id": "HEAVY_CLEAVE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "重斩"
+   }
+  ],
+  "move_cycle": [
+   "CHARGE_MOVE",
+   "FLAMETHROWER_MOVE",
+   "WINDUP_MOVE",
+   "HEAVY_CLEAVE_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "机甲骑士"
+ },
+ "MockArtifactMonster": {
+  "id": "MockArtifactMonster",
+  "loc_key": "monsters.MOCKARTIFACTMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters.Mocks",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "NOTHING"
+  ],
+  "encounter_types": [
+   "normal"
+  ]
+ },
+ "MockAttackAndSummonMinionMonster": {
+  "id": "MockAttackAndSummonMinionMonster",
+  "loc_key": "monsters.MOCKATTACKANDSUMMONMINIONMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters.Mocks",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "ATTACK_AND_SUMMON_MINION",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "statuses": [
+     {
+      "status": "MinionPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "攻击并召唤爪牙"
+   }
+  ],
+  "move_cycle": [
+   "ATTACK_AND_SUMMON_MINION"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "攻击并召唤爪牙怪物"
+ },
+ "MockAttackMonster": {
+  "id": "MockAttackMonster",
+  "loc_key": "monsters.MOCKATTACKMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters.Mocks",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "ATTACK",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "攻击"
+   }
+  ],
+  "move_cycle": [
+   "ATTACK"
+  ],
+  "name_zh": "攻击怪物"
+ },
+ "MockIntangibleMonster": {
+  "id": "MockIntangibleMonster",
+  "loc_key": "monsters.MOCKINTANGIBLEMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters.Mocks",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "INTANGIBLE",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "IntangiblePower",
+      "amount": 2
+     }
+    ]
+   },
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "NOTHING"
+  ]
+ },
+ "MockPlatingMonster": {
+  "id": "MockPlatingMonster",
+  "loc_key": "monsters.MOCKPLATINGMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters.Mocks",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "NOTHING"
+  ],
+  "encounter_types": [
+   "normal"
+  ]
+ },
+ "MockReattachMonster": {
+  "id": "MockReattachMonster",
+  "loc_key": "monsters.MOCKREATTACHMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters.Mocks",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ]
+   }
+  ],
+  "move_cycle": [
+   "REATTACH_MOVE"
+  ]
+ },
+ "MultiAttackMoveMonster": {
+  "id": "MultiAttackMoveMonster",
+  "loc_key": "monsters.MULTIATTACKMOVEMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "POKE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       1,
+       5
+      ]
+     }
+    ],
+    "hits": 5,
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "POKE"
+  ]
+ },
+ "Myte": {
+  "id": "Myte",
+  "loc_key": "monsters.MYTE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 61,
+   "ascension_tough": 64
+  },
+  "moves": [
+   {
+    "id": "TOXIC_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       2
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "浓毒"
+   },
+   {
+    "id": "BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "啃咬"
+   },
+   {
+    "id": "SUCK_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       4
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "吸吮"
+   }
+  ],
+  "move_cycle": [
+   "TOXIC_MOVE",
+   "BITE_MOVE",
+   "SUCK_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "异螨"
+ },
+ "Nibbit": {
+  "id": "Nibbit",
+  "loc_key": "monsters.NIBBIT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 42,
+   "ascension_tough": 44
+  },
+  "moves": [
+   {
+    "id": "BUTT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "顶撞"
+   },
+   {
+    "id": "SLICE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 1
+   },
+   {
+    "id": "HISS_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "哈气"
+   }
+  ],
+  "move_cycle": [
+   "BUTT_MOVE",
+   "SLICE_MOVE",
+   "HISS_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "小啃兽"
+ },
+ "Noisebot": {
+  "id": "Noisebot",
+  "loc_key": "monsters.NOISEBOT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 18,
+   "ascension_tough": 19
+  },
+  "moves": [
+   {
+    "id": "NOISE_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       2
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "噪音"
+   }
+  ],
+  "move_cycle": [
+   "NOISE_MOVE"
+  ],
+  "name_zh": "噪音机器人"
+ },
+ "OneHpMonster": {
+  "id": "OneHpMonster",
+  "loc_key": "monsters.ONEHPMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "NOTHING"
+  ]
+ },
+ "Ovicopter": {
+  "id": "Ovicopter",
+  "loc_key": "monsters.OVICOPTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 124,
+   "ascension_tough": 126
+  },
+  "moves": [
+   {
+    "id": "LAY_EGGS_MOVE",
+    "intents": [
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "MinionPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "产卵"
+   },
+   {
+    "id": "SMASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "猛砸"
+   },
+   {
+    "id": "TENDERIZER_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VulnerablePower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "嫩化"
+   },
+   {
+    "id": "NUTRITIONAL_PASTE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "高营养糊糊"
+   }
+  ],
+  "move_cycle": [
+   "LAY_EGGS_MOVE",
+   "SMASH_MOVE",
+   "TENDERIZER_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "直飞产卵虫"
+ },
+ "OwlMagistrate": {
+  "id": "OwlMagistrate",
+  "loc_key": "monsters.OWLMAGISTRATE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 231,
+   "ascension_tough": 247
+  },
+  "moves": [
+   {
+    "id": "MAGISTRATE_SCRUTINY",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "法官审查"
+   },
+   {
+    "id": "PECK_ASSAULT",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       6
+      ]
+     }
+    ],
+    "hits": 6,
+    "cycle_order": 1,
+    "name_zh": "猛啄袭击"
+   },
+   {
+    "id": "JUDICIAL_FLIGHT",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "SoarPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "飞法行为"
+   },
+   {
+    "id": "VERDICT",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       33
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VulnerablePower",
+      "amount": 4
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "裁决"
+   }
+  ],
+  "move_cycle": [
+   "MAGISTRATE_SCRUTINY",
+   "PECK_ASSAULT",
+   "JUDICIAL_FLIGHT",
+   "VERDICT"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "猫头鹰法官"
+ },
+ "Parafright": {
+  "id": "Parafright",
+  "loc_key": "monsters.PARAFRIGHT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "SLAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "砸击"
+   }
+  ],
+  "move_cycle": [
+   "SLAM_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "寄生惧魔"
+ },
+ "PhantasmalGardener": {
+  "id": "PhantasmalGardener",
+  "loc_key": "monsters.PHANTASMALGARDENER.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 26,
+   "ascension_tough": 27
+  },
+  "moves": [
+   {
+    "id": "BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       5
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "啃咬"
+   },
+   {
+    "id": "LASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "甩动"
+   },
+   {
+    "id": "FLAIL_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       1,
+       3
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "猛晃"
+   },
+   {
+    "id": "ENLARGE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "变大"
+   }
+  ],
+  "move_cycle": [
+   "BITE_MOVE",
+   "LASH_MOVE",
+   "FLAIL_MOVE",
+   "ENLARGE_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "花园幽灵鳗"
+ },
+ "PhrogParasite": {
+  "id": "PhrogParasite",
+  "loc_key": "monsters.PHROGPARASITE.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 61,
+   "ascension_tough": 66
+  },
+  "moves": [
+   {
+    "id": "INFECT_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "感染"
+   },
+   {
+    "id": "LASH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       4
+      ]
+     }
+    ],
+    "hits": 4,
+    "cycle_order": 1,
+    "name_zh": "甩动"
+   }
+  ],
+  "move_cycle": [
+   "INFECT_MOVE",
+   "LASH_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "异蛙寄生虫"
+ },
+ "PunchConstruct": {
+  "id": "PunchConstruct",
+  "loc_key": "monsters.PUNCHCONSTRUCT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 55,
+   "ascension_tough": 60
+  },
+  "moves": [
+   {
+    "id": "READY_MOVE",
+    "intents": [
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "block": 10,
+    "name_zh": "准备就绪"
+   },
+   {
+    "id": "STRONG_PUNCH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "name_zh": "强力拳"
+   },
+   {
+    "id": "FAST_PUNCH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       5,
+       2
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "快速拳"
+   }
+  ],
+  "move_cycle": [
+   "FAST_PUNCH_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "拳击构装体"
+ },
+ "Queen": {
+  "id": "Queen",
+  "loc_key": "monsters.QUEEN.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 400,
+   "ascension_tough": 419
+  },
+  "moves": [
+   {
+    "id": "PUPPET_STRINGS_MOVE",
+    "intents": [
+     {
+      "type": "CardDebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "ChainsOfBindingPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 0
+   },
+   {
+    "id": "YOU_ARE_MINE_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 99
+     },
+     {
+      "status": "WeakPower",
+      "amount": 99
+     },
+     {
+      "status": "VulnerablePower",
+      "amount": 99
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "你是我的了"
+   },
+   {
+    "id": "BURN_BRIGHT_FOR_ME_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "为我尽力燃烧吧"
+   },
+   {
+    "id": "OFF_WITH_YOUR_HEAD_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       5
+      ]
+     }
+    ],
+    "hits": 5,
+    "name_zh": "将头砍下"
+   },
+   {
+    "id": "EXECUTION_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "name_zh": "处决"
+   },
+   {
+    "id": "ENRAGE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ]
+   }
+  ],
+  "move_cycle": [
+   "PUPPET_STRINGS_MOVE",
+   "YOU_ARE_MINE_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "女王"
+ },
+ "Rocket": {
+  "id": "Rocket",
+  "loc_key": "monsters.ROCKET.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 199,
+   "ascension_tough": 209
+  },
+  "moves": [
+   {
+    "id": "TARGETING_RETICLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "瞄准十字"
+   },
+   {
+    "id": "PRECISION_BEAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "精准光束"
+   },
+   {
+    "id": "CHARGE_UP_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "蓄能"
+   },
+   {
+    "id": "LASER_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       31
+      ]
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "激光"
+   },
+   {
+    "id": "RECHARGE_MOVE",
+    "intents": [
+     {
+      "type": "SleepIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 4,
+    "name_zh": "重新充能"
+   }
+  ],
+  "move_cycle": [
+   "TARGETING_RETICLE_MOVE",
+   "PRECISION_BEAM_MOVE",
+   "CHARGE_UP_MOVE",
+   "LASER_MOVE",
+   "RECHARGE_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "火箭"
+ },
+ "ScrollOfBiting": {
+  "id": "ScrollOfBiting",
+  "loc_key": "monsters.SCROLLOFBITING.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 30,
+   "ascension_tough": 33
+  },
+  "moves": [
+   {
+    "id": "CHOMP",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "大啃"
+   },
+   {
+    "id": "CHEW",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       5,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 2,
+    "name_zh": "咀嚼"
+   },
+   {
+    "id": "MORE_TEETH",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "更多牙齿"
+   }
+  ],
+  "move_cycle": [
+   "CHOMP",
+   "MORE_TEETH",
+   "CHEW"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "咬人卷轴"
+ },
+ "Seapunk": {
+  "id": "Seapunk",
+  "loc_key": "monsters.SEAPUNK.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 44,
+   "ascension_tough": 47
+  },
+  "moves": [
+   {
+    "id": "SEA_KICK_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "海洋踢"
+   },
+   {
+    "id": "SPINNING_KICK_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       2,
+       4
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "回旋踢"
+   },
+   {
+    "id": "BUBBLE_BURP_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "吐泡泡"
+   }
+  ],
+  "move_cycle": [
+   "SEA_KICK_MOVE",
+   "SPINNING_KICK_MOVE",
+   "BUBBLE_BURP_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "海洋混混"
+ },
+ "SewerClam": {
+  "id": "SewerClam",
+  "loc_key": "monsters.SEWERCLAM.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 56,
+   "ascension_tough": 58
+  },
+  "moves": [
+   {
+    "id": "PRESSURIZE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 4
+     }
+    ],
+    "name_zh": "增压"
+   },
+   {
+    "id": "JET_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       10
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "喷射"
+   }
+  ],
+  "move_cycle": [
+   "JET_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "下水道蚌"
+ },
+ "ShrinkerBeetle": {
+  "id": "ShrinkerBeetle",
+  "loc_key": "monsters.SHRINKERBEETLE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 38,
+   "ascension_tough": 40
+  },
+  "moves": [
+   {
+    "id": "SHRINKER_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "缩小"
+   },
+   {
+    "id": "CHOMP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "大啃"
+   },
+   {
+    "id": "STOMP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "践踏"
+   }
+  ],
+  "move_cycle": [
+   "SHRINKER_MOVE",
+   "CHOMP_MOVE",
+   "STOMP_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "缩小甲虫"
+ },
+ "SingleAttackMoveMonster": {
+  "id": "SingleAttackMoveMonster",
+  "loc_key": "monsters.SINGLEATTACKMOVEMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "POKE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "POKE"
+  ]
+ },
+ "SkulkingColony": {
+  "id": "SkulkingColony",
+  "loc_key": "monsters.SKULKINGCOLONY.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 75,
+   "ascension_tough": 80
+  },
+  "moves": [
+   {
+    "id": "ZOOM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "猛冲"
+   },
+   {
+    "id": "ZOOM_MOVE_2",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 1
+   },
+   {
+    "id": "INERTIA_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       9
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "惯性"
+   },
+   {
+    "id": "PIERCING_STABS_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       7,
+       2
+      ]
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "穿刺戳击"
+   }
+  ],
+  "move_cycle": [
+   "ZOOM_MOVE",
+   "ZOOM_MOVE_2",
+   "INERTIA_MOVE",
+   "PIERCING_STABS_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "鬼祟珊瑚群"
+ },
+ "SlimedBerserker": {
+  "id": "SlimedBerserker",
+  "loc_key": "monsters.SLIMEDBERSERKER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 261,
+   "ascension_tough": 281
+  },
+  "moves": [
+   {
+    "id": "VOMIT_ICHOR_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       10
+      ]
+     }
+    ],
+    "name_zh": "喷吐脓水"
+   },
+   {
+    "id": "LEECHING_HUG_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "WeakPower",
+      "amount": 3
+     },
+     {
+      "status": "StrengthPower",
+      "amount": 3
+     }
+    ],
+    "name_zh": "汲取之拥"
+   },
+   {
+    "id": "SMOTHER_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       30
+      ]
+     }
+    ]
+   },
+   {
+    "id": "FURIOUS_PUMMELING_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       4
+      ]
+     }
+    ],
+    "hits": 4,
+    "cycle_order": 0,
+    "name_zh": "狂怒连击"
+   }
+  ],
+  "move_cycle": [
+   "FURIOUS_PUMMELING_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "史莱姆狂战士"
+ },
+ "SlitheringStrangler": {
+  "id": "SlitheringStrangler",
+  "loc_key": "monsters.SLITHERINGSTRANGLER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 53,
+   "ascension_tough": 54
+  },
+  "moves": [
+   {
+    "id": "CONSTRICT",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "ConstrictPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "缠身"
+   },
+   {
+    "id": "THWACK",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "block": 5,
+    "cycle_order": 0,
+    "name_zh": "重击"
+   },
+   {
+    "id": "LASH",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "name_zh": "甩动"
+   }
+  ],
+  "move_cycle": [
+   "THWACK",
+   "CONSTRICT"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "蛇行扼杀者"
+ },
+ "SludgeSpinner": {
+  "id": "SludgeSpinner",
+  "loc_key": "monsters.SLUDGESPINNER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 37,
+   "ascension_tough": 41
+  },
+  "moves": [
+   {
+    "id": "OIL_SPRAY_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "WeakPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "喷油"
+   },
+   {
+    "id": "SLAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     }
+    ],
+    "name_zh": "砸击"
+   },
+   {
+    "id": "RAGE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 3
+     }
+    ],
+    "name_zh": "狂怒"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "淤泥旋螺"
+ },
+ "SlumberingBeetle": {
+  "id": "SlumberingBeetle",
+  "loc_key": "monsters.SLUMBERINGBEETLE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 86,
+   "ascension_tough": 89
+  },
+  "moves": [
+   {
+    "id": "SNORE_MOVE",
+    "intents": [
+     {
+      "type": "SleepIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "打鼾"
+   },
+   {
+    "id": "ROLL_OUT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "出击"
+   }
+  ],
+  "move_cycle": [
+   "SNORE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "熟睡甲虫"
+ },
+ "SnappingJaxfruit": {
+  "id": "SnappingJaxfruit",
+  "loc_key": "monsters.SNAPPINGJAXFRUIT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 31,
+   "ascension_tough": 34
+  },
+  "moves": [
+   {
+    "id": "ENERGY_ORB_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       3
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "能量球"
+   }
+  ],
+  "move_cycle": [
+   "ENERGY_ORB_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "闪光贾克斯果"
+ },
+ "SneakyGremlin": {
+  "id": "SneakyGremlin",
+  "loc_key": "monsters.SNEAKYGREMLIN.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 10,
+   "ascension_tough": 11
+  },
+  "moves": [
+   {
+    "id": "SPAWNED_MOVE",
+    "intents": [
+     {
+      "type": "StunIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "醒来"
+   },
+   {
+    "id": "TACKLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       9
+      ]
+     }
+    ],
+    "name_zh": "冲撞"
+   }
+  ],
+  "move_cycle": [
+   "SPAWNED_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "卑鄙地精"
+ },
+ "SoulFysh": {
+  "id": "SoulFysh",
+  "loc_key": "monsters.SOULFYSH.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 211,
+   "ascension_tough": 221
+  },
+  "moves": [
+   {
+    "id": "BECKON_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       2
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "呼唤"
+   },
+   {
+    "id": "DE_GAS_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "排气"
+   },
+   {
+    "id": "GAZE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     },
+     {
+      "type": "StatusIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "凝视"
+   },
+   {
+    "id": "FADE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "IntangiblePower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "消逝"
+   },
+   {
+    "id": "SCREAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 4,
+    "name_zh": "尖叫"
+   }
+  ],
+  "move_cycle": [
+   "BECKON_MOVE",
+   "DE_GAS_MOVE",
+   "GAZE_MOVE",
+   "FADE_MOVE",
+   "SCREAM_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "灵魂异鱼"
+ },
+ "SoulNexus": {
+  "id": "SoulNexus",
+  "loc_key": "monsters.SOULNEXUS.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 234,
+   "ascension_tough": 254
+  },
+  "moves": [
+   {
+    "id": "SOUL_BURN_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       29
+      ]
+     }
+    ],
+    "name_zh": "灵魂灼烧"
+   },
+   {
+    "id": "MAELSTROM_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       6,
+       4
+      ]
+     }
+    ],
+    "name_zh": "大漩涡"
+   },
+   {
+    "id": "DRAIN_LIFE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VulnerablePower",
+      "amount": 2
+     },
+     {
+      "status": "WeakPower",
+      "amount": 2
+     }
+    ],
+    "name_zh": "汲取生命"
+   }
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "灵魂枢纽"
+ },
+ "SpectralKnight": {
+  "id": "SpectralKnight",
+  "loc_key": "monsters.SPECTRALKNIGHT.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 93,
+   "ascension_tough": 97
+  },
+  "moves": [
+   {
+    "id": "HEX",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "HexPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "恶咒"
+   },
+   {
+    "id": "SOUL_SLASH",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "灵魂斩击"
+   },
+   {
+    "id": "SOUL_FLAME",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "name_zh": "灵魂火焰"
+   }
+  ],
+  "move_cycle": [
+   "HEX",
+   "SOUL_SLASH"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "幽灵骑士"
+ },
+ "SpinyToad": {
+  "id": "SpinyToad",
+  "loc_key": "monsters.SPINYTOAD.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 116,
+   "ascension_tough": 121
+  },
+  "moves": [
+   {
+    "id": "PROTRUDING_SPIKES_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "ThornsPower",
+      "amount": 5
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "伸出尖刺"
+   },
+   {
+    "id": "SPIKE_EXPLOSION_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       23
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "尖刺爆破"
+   },
+   {
+    "id": "TONGUE_LASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       17
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "吐舌"
+   }
+  ],
+  "move_cycle": [
+   "PROTRUDING_SPIKES_MOVE",
+   "SPIKE_EXPLOSION_MOVE",
+   "TONGUE_LASH_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "棘刺蟾蜍"
+ },
+ "Stabbot": {
+  "id": "Stabbot",
+  "loc_key": "monsters.STABBOT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 18,
+   "ascension_tough": 19
+  },
+  "moves": [
+   {
+    "id": "STAB_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "戳刺"
+   }
+  ],
+  "move_cycle": [
+   "STAB_MOVE"
+  ],
+  "name_zh": "戳刺机器人"
+ },
+ "TenHpMonster": {
+  "id": "TenHpMonster",
+  "loc_key": "monsters.TENHPMONSTER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "NOTHING",
+    "intents": [
+     {
+      "type": "HiddenIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "NOTHING"
+  ]
+ },
+ "TerrorEel": {
+  "id": "TerrorEel",
+  "loc_key": "monsters.TERROREEL.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 140,
+   "ascension_tough": 150
+  },
+  "moves": [
+   {
+    "id": "CRASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "撞击"
+   },
+   {
+    "id": "THRASH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       3
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VigorPower",
+      "amount": 6
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "撕扯"
+   },
+   {
+    "id": "STUN_MOVE",
+    "intents": [
+     {
+      "type": "StunIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   },
+   {
+    "id": "TERROR_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VulnerablePower",
+      "amount": 99
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "恐吓"
+   }
+  ],
+  "move_cycle": [
+   "STUN_MOVE",
+   "TERROR_MOVE",
+   "CRASH_MOVE",
+   "THRASH_MOVE"
+  ],
+  "encounter_types": [
+   "elite"
+  ],
+  "name_zh": "骇鳗"
+ },
+ "TestSubject": {
+  "id": "TestSubject",
+  "loc_key": "monsters.TESTSUBJECT.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       20
+      ]
+     }
+    ],
+    "name_zh": "噬咬"
+   },
+   {
+    "id": "SKULL_BASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "VulnerablePower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "颅骨重击"
+   },
+   {
+    "id": "MULTI_CLAW_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       10
+      ]
+     }
+    ],
+    "name_zh": "多次爪击"
+   },
+   {
+    "id": "PHASE3_LACERATE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       10,
+       3
+      ]
+     }
+    ],
+    "hits": 3,
+    "name_zh": "撕碎"
+   },
+   {
+    "id": "BIG_POUNCE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       45
+      ]
+     }
+    ],
+    "name_zh": "大力猛扑"
+   },
+   {
+    "id": "BURNING_GROWL_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       3
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "燃烧之吼"
+   }
+  ],
+  "move_cycle": [
+   "RESPAWN_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "实验体 #C{Count}"
+ },
+ "TheAdversaryMkOne": {
+  "id": "TheAdversaryMkOne",
+  "loc_key": "monsters.THEADVERSARYMKONE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "moves": [
+   {
+    "id": "SMASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       12
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "砸击"
+   },
+   {
+    "id": "BEAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "光束"
+   },
+   {
+    "id": "BARRAGE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       8,
+       2
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "弹幕"
+   }
+  ],
+  "move_cycle": [
+   "SMASH_MOVE",
+   "BEAM_MOVE",
+   "BARRAGE_MOVE"
+  ],
+  "name_zh": "对手1型"
+ },
+ "TheAdversaryMkThree": {
+  "id": "TheAdversaryMkThree",
+  "loc_key": "monsters.THEADVERSARYMKTHREE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 300,
+   "ascension_tough": 300
+  },
+  "moves": [
+   {
+    "id": "CRASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "冲击"
+   },
+   {
+    "id": "FLAME_BEAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "火焰光束"
+   },
+   {
+    "id": "BARRAGE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       10,
+       2
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 4
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "弹幕"
+   }
+  ],
+  "move_cycle": [
+   "CRASH_MOVE",
+   "FLAME_BEAM_MOVE",
+   "BARRAGE_MOVE"
+  ],
+  "name_zh": "对手3型"
+ },
+ "TheAdversaryMkTwo": {
+  "id": "TheAdversaryMkTwo",
+  "loc_key": "monsters.THEADVERSARYMKTWO.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 200,
+   "ascension_tough": 200
+  },
+  "moves": [
+   {
+    "id": "BASH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "猛击"
+   },
+   {
+    "id": "FLAME_BEAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "火焰光束"
+   },
+   {
+    "id": "BARRAGE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       9,
+       2
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "弹幕"
+   }
+  ],
+  "move_cycle": [
+   "BASH_MOVE",
+   "FLAME_BEAM_MOVE",
+   "BARRAGE_MOVE"
+  ],
+  "name_zh": "对手2型"
+ },
+ "TheForgotten": {
+  "id": "TheForgotten",
+  "loc_key": "monsters.THEFORGOTTEN.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 106,
+   "ascension_tough": 111
+  },
+  "moves": [
+   {
+    "id": "MIASMA",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "block": 8,
+    "name_zh": "瘴气"
+   },
+   {
+    "id": "DREAD",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "恐惧"
+   }
+  ],
+  "move_cycle": [
+   "DREAD"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "遗忘之物"
+ },
+ "TheInsatiable": {
+  "id": "TheInsatiable",
+  "loc_key": "monsters.THEINSATIABLE.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 321,
+   "ascension_tough": 341
+  },
+  "moves": [
+   {
+    "id": "LIQUIFY_GROUND_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     },
+     {
+      "type": "StatusIntent",
+      "args": [
+       6
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "液化地面"
+   },
+   {
+    "id": "THRASH_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       8,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 1,
+    "name_zh": "撕扯"
+   },
+   {
+    "id": "THRASH_MOVE_2",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       8,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 4
+   },
+   {
+    "id": "LUNGING_BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       28
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "前扑啃咬"
+   },
+   {
+    "id": "SALIVATE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "分泌唾液"
+   }
+  ],
+  "move_cycle": [
+   "LIQUIFY_GROUND_MOVE",
+   "THRASH_MOVE",
+   "LUNGING_BITE_MOVE",
+   "SALIVATE_MOVE",
+   "THRASH_MOVE_2"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "无厌沙虫"
+ },
+ "TheLost": {
+  "id": "TheLost",
+  "loc_key": "monsters.THELOST.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 93,
+   "ascension_tough": 99
+  },
+  "moves": [
+   {
+    "id": "DEBILITATING_SMOG",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "致残雾霾"
+   },
+   {
+    "id": "EYE_LASERS",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       4,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 0,
+    "name_zh": "眼部激光"
+   }
+  ],
+  "move_cycle": [
+   "EYE_LASERS"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "失落之物"
+ },
+ "TheObscura": {
+  "id": "TheObscura",
+  "loc_key": "monsters.THEOBSCURA.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 123,
+   "ascension_tough": 129
+  },
+  "moves": [
+   {
+    "id": "ILLUSION_MOVE",
+    "intents": [
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "幻象"
+   },
+   {
+    "id": "PIERCING_GAZE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       10
+      ]
+     }
+    ],
+    "name_zh": "锐利凝视"
+   },
+   {
+    "id": "SAIL_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 3
+     }
+    ],
+    "name_zh": "起航"
+   },
+   {
+    "id": "HARDENING_STRIKE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "硬化攻击"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "胧光怪"
+ },
+ "ThievingHopper": {
+  "id": "ThievingHopper",
+  "loc_key": "monsters.THIEVINGHOPPER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 79,
+   "ascension_tough": 84
+  },
+  "moves": [
+   {
+    "id": "THIEVERY_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       17
+      ]
+     },
+     {
+      "type": "CardDebuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "偷盗"
+   },
+   {
+    "id": "NAB_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "抢夺"
+   },
+   {
+    "id": "HAT_TRICK_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       21
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "帽子戏法"
+   },
+   {
+    "id": "FLUTTER_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FlutterPower",
+      "amount": 5
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "振翅"
+   },
+   {
+    "id": "ESCAPE_MOVE",
+    "intents": [
+     {
+      "type": "EscapeIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 4,
+    "name_zh": "逃跑"
+   }
+  ],
+  "move_cycle": [
+   "THIEVERY_MOVE",
+   "FLUTTER_MOVE",
+   "HAT_TRICK_MOVE",
+   "NAB_MOVE",
+   "ESCAPE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "偷窃草蜢"
+ },
+ "Toadpole": {
+  "id": "Toadpole",
+  "loc_key": "monsters.TOADPOLE.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 21,
+   "ascension_tough": 22
+  },
+  "moves": [
+   {
+    "id": "SPIKE_SPIT_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       3
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "吐刺"
+   },
+   {
+    "id": "WHIRL_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "旋转"
+   },
+   {
+    "id": "SPIKEN_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "带刺"
+   }
+  ],
+  "move_cycle": [
+   "SPIKE_SPIT_MOVE",
+   "WHIRL_MOVE",
+   "SPIKEN_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "蟾蜍蝌蚪"
+ },
+ "TorchHeadAmalgam": {
+  "id": "TorchHeadAmalgam",
+  "loc_key": "monsters.TORCHHEADAMALGAM.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 199,
+   "ascension_tough": 211
+  },
+  "moves": [
+   {
+    "id": "TACKLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "冲撞"
+   },
+   {
+    "id": "TACKLE_2_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       18
+      ]
+     }
+    ],
+    "cycle_order": 1
+   },
+   {
+    "id": "BEAM_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       8,
+       3
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "光束"
+   },
+   {
+    "id": "TACKLE_3_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 3
+   },
+   {
+    "id": "TACKLE_4_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 4
+   }
+  ],
+  "move_cycle": [
+   "TACKLE_MOVE",
+   "TACKLE_2_MOVE",
+   "BEAM_MOVE",
+   "TACKLE_3_MOVE",
+   "TACKLE_4_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "火炬头聚合体"
+ },
+ "ToughEgg": {
+  "id": "ToughEgg",
+  "loc_key": "monsters.TOUGHEGG.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 14,
+   "ascension_tough": 15
+  },
+  "moves": [
+   {
+    "id": "HATCH_MOVE",
+    "intents": [
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "孵化"
+   },
+   {
+    "id": "NIBBLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "啃咬"
+   }
+  ],
+  "move_cycle": [
+   "HATCH_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "结实的卵"
+ },
+ "TrackerRubyRaider": {
+  "id": "TrackerRubyRaider",
+  "loc_key": "monsters.TRACKERRUBYRAIDER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 21,
+   "ascension_tough": 22
+  },
+  "moves": [
+   {
+    "id": "TRACK_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "追踪"
+   },
+   {
+    "id": "HOUNDS_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       1,
+       8
+      ]
+     }
+    ],
+    "name_zh": "放狗"
+   }
+  ],
+  "move_cycle": [
+   "TRACK_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "劫掠者追踪手"
+ },
+ "Tunneler": {
+  "id": "Tunneler",
+  "loc_key": "monsters.TUNNELER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 87,
+   "ascension_tough": 92
+  },
+  "moves": [
+   {
+    "id": "BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "啃咬"
+   },
+   {
+    "id": "BURROW_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     },
+     {
+      "type": "DefendIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "BurrowedPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "钻洞"
+   },
+   {
+    "id": "BELOW_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       23
+      ]
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "下方攻击"
+   },
+   {
+    "id": "DIZZY_MOVE",
+    "intents": [
+     {
+      "type": "StunIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0
+   }
+  ],
+  "move_cycle": [
+   "DIZZY_MOVE",
+   "BITE_MOVE",
+   "BURROW_MOVE",
+   "BELOW_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "地道虫"
+ },
+ "TurretOperator": {
+  "id": "TurretOperator",
+  "loc_key": "monsters.TURRETOPERATOR.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 41,
+   "ascension_tough": 51
+  },
+  "moves": [
+   {
+    "id": "UNLOAD_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       5
+      ]
+     }
+    ],
+    "hits": 5,
+    "cycle_order": 0,
+    "name_zh": "弹雨！"
+   },
+   {
+    "id": "UNLOAD_MOVE_2",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       3,
+       5
+      ]
+     }
+    ],
+    "hits": 5,
+    "cycle_order": 1
+   },
+   {
+    "id": "RELOAD_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "装弹"
+   }
+  ],
+  "move_cycle": [
+   "UNLOAD_MOVE",
+   "UNLOAD_MOVE_2",
+   "RELOAD_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "高塔炮手"
+ },
+ "TwigSlimeM": {
+  "id": "TwigSlimeM",
+  "loc_key": "monsters.TWIGSLIMEM.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 26,
+   "ascension_tough": 27
+  },
+  "moves": [
+   {
+    "id": "POKEY_POUNCE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       11
+      ]
+     }
+    ],
+    "name_zh": "戳刺扑击"
+   },
+   {
+    "id": "STICKY_SHOT_MOVE",
+    "intents": [
+     {
+      "type": "StatusIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "name_zh": "黏糊射击"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "树枝史莱姆（中）"
+ },
+ "TwigSlimeS": {
+  "id": "TwigSlimeS",
+  "loc_key": "monsters.TWIGSLIMES.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 7,
+   "ascension_tough": 8
+  },
+  "moves": [
+   {
+    "id": "TACKLE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       4
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "冲撞"
+   }
+  ],
+  "move_cycle": [
+   "TACKLE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "树枝史莱姆（小）"
+ },
+ "TwoTailedRat": {
+  "id": "TwoTailedRat",
+  "loc_key": "monsters.TWOTAILEDRAT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 17,
+   "ascension_tough": 18
+  },
+  "moves": [
+   {
+    "id": "SCRATCH_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     }
+    ],
+    "name_zh": "抓挠"
+   },
+   {
+    "id": "DISEASE_BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     }
+    ],
+    "name_zh": "疾病啃咬"
+   },
+   {
+    "id": "SCREECH_MOVE",
+    "intents": [
+     {
+      "type": "DebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "FrailPower",
+      "amount": 1
+     }
+    ],
+    "name_zh": "尖声嘶吼"
+   },
+   {
+    "id": "CALL_FOR_BACKUP_MOVE",
+    "intents": [
+     {
+      "type": "SummonIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "呼唤后援"
+   }
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "双尾鼠"
+ },
+ "Vantom": {
+  "id": "Vantom",
+  "loc_key": "monsters.VANTOM.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 173,
+   "ascension_tough": 183
+  },
+  "moves": [
+   {
+    "id": "INK_BLOT_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       7
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "墨迹"
+   },
+   {
+    "id": "INKY_LANCE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       6,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 1,
+    "name_zh": "墨水长枪"
+   },
+   {
+    "id": "DISMEMBER_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       26
+      ]
+     },
+     {
+      "type": "StatusIntent",
+      "args": [
+       3
+      ]
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "肢解"
+   },
+   {
+    "id": "PREPARE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "StrengthPower",
+      "amount": 2
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "准备"
+   }
+  ],
+  "move_cycle": [
+   "INK_BLOT_MOVE",
+   "INKY_LANCE_MOVE",
+   "DISMEMBER_MOVE",
+   "PREPARE_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "墨影幻灵"
+ },
+ "VineShambler": {
+  "id": "VineShambler",
+  "loc_key": "monsters.VINESHAMBLER.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 61,
+   "ascension_tough": 64
+  },
+  "moves": [
+   {
+    "id": "GRASPING_VINES_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       8
+      ]
+     },
+     {
+      "type": "CardDebuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "TangledPower",
+      "amount": 1
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "紧绕藤蔓"
+   },
+   {
+    "id": "SWIPE_MOVE",
+    "intents": [
+     {
+      "type": "MultiAttackIntent",
+      "args": [
+       6,
+       2
+      ]
+     }
+    ],
+    "hits": 2,
+    "cycle_order": 2,
+    "name_zh": "挥击"
+   },
+   {
+    "id": "CHOMP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       16
+      ]
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "大啃"
+   }
+  ],
+  "move_cycle": [
+   "GRASPING_VINES_MOVE",
+   "CHOMP_MOVE",
+   "SWIPE_MOVE"
+  ],
+  "encounter_types": [
+   "normal"
+  ],
+  "name_zh": "藤蔓蹒跚者"
+ },
+ "WaterfallGiant": {
+  "id": "WaterfallGiant",
+  "loc_key": "monsters.WATERFALLGIANT.name",
+  "type": "boss",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 240,
+   "ascension_tough": 250
+  },
+  "moves": [
+   {
+    "id": "PRESSURIZE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "增压"
+   },
+   {
+    "id": "STOMP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       15
+      ]
+     },
+     {
+      "type": "DebuffIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "WeakPower",
+      "amount": 1
+     },
+     {
+      "status": "SteamEruptionPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 1,
+    "name_zh": "践踏"
+   },
+   {
+    "id": "RAM_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       10
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "SteamEruptionPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 2,
+    "name_zh": "撞击"
+   },
+   {
+    "id": "SIPHON_MOVE",
+    "intents": [
+     {
+      "type": "HealIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "SteamEruptionPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 3,
+    "name_zh": "虹吸"
+   },
+   {
+    "id": "PRESSURE_GUN_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": []
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "SteamEruptionPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 4,
+    "name_zh": "压力炮"
+   },
+   {
+    "id": "PRESSURE_UP_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       13
+      ]
+     },
+     {
+      "type": "BuffIntent",
+      "args": []
+     }
+    ],
+    "statuses": [
+     {
+      "status": "SteamEruptionPower",
+      "amount": 3
+     }
+    ],
+    "cycle_order": 5,
+    "name_zh": "增压"
+   },
+   {
+    "id": "EXPLODE_MOVE",
+    "intents": [
+     {
+      "type": "DeathBlowIntent",
+      "args": []
+     }
+    ],
+    "name_zh": "爆炸"
+   }
+  ],
+  "move_cycle": [
+   "PRESSURIZE_MOVE",
+   "STOMP_MOVE",
+   "RAM_MOVE",
+   "SIPHON_MOVE",
+   "PRESSURE_GUN_MOVE",
+   "PRESSURE_UP_MOVE"
+  ],
+  "encounter_types": [
+   "boss"
+  ],
+  "name_zh": "瀑布巨兽"
+ },
+ "Wriggler": {
+  "id": "Wriggler",
+  "loc_key": "monsters.WRIGGLER.name",
+  "type": "elite",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 17,
+   "ascension_tough": 18
+  },
+  "moves": [
+   {
+    "id": "NASTY_BITE_MOVE",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       6
+      ]
+     }
+    ],
+    "name_zh": "污秽啃咬"
+   },
+   {
+    "id": "WRIGGLE_MOVE",
+    "intents": [
+     {
+      "type": "BuffIntent",
+      "args": []
+     },
+     {
+      "type": "StatusIntent",
+      "args": [
+       1
+      ]
+     }
+    ],
+    "name_zh": "扭动"
+   },
+   {
+    "id": "SPAWNED_MOVE",
+    "intents": [
+     {
+      "type": "StunIntent",
+      "args": []
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "生成"
+   }
+  ],
+  "move_cycle": [
+   "SPAWNED_MOVE"
+  ],
+  "encounter_types": [
+   "elite",
+   "normal"
+  ],
+  "name_zh": "扭动虫"
+ },
+ "Zapbot": {
+  "id": "Zapbot",
+  "loc_key": "monsters.ZAPBOT.name",
+  "type": "normal",
+  "namespace": "MegaCrit.Sts2.Core.Models.Monsters",
+  "base_class": "MonsterModel",
+  "hp": {
+   "base": 18,
+   "ascension_tough": 19
+  },
+  "moves": [
+   {
+    "id": "ZAP",
+    "intents": [
+     {
+      "type": "SingleAttackIntent",
+      "args": [
+       14
+      ]
+     }
+    ],
+    "cycle_order": 0,
+    "name_zh": "电击"
+   }
+  ],
+  "move_cycle": [
+   "ZAP"
+  ],
+  "name_zh": "电击机器人"
+ }
+}

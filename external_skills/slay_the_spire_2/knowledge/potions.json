@@ -1,0 +1,396 @@
+{
+ "ASHWATER": {
+  "id": "ASHWATER",
+  "name": "灰水",
+  "name_zh": "灰水",
+  "description": "消耗你手牌中的任意张牌。",
+  "selectionScreenPrompt": "选择任意张牌消耗。"
+ },
+ "ATTACK_POTION": {
+  "id": "ATTACK_POTION",
+  "name": "攻击药水",
+  "name_zh": "攻击药水",
+  "description": "从3张随机攻击牌中选择1张加入你的手牌。这张牌在本回合可以免费打出。"
+ },
+ "BEETLE_JUICE": {
+  "id": "BEETLE_JUICE",
+  "name": "甲虫汁",
+  "name_zh": "甲虫汁",
+  "description": "敌人的攻击在下{Repeat}个回合中造成的伤害减少{DamageDecrease}%。"
+ },
+ "BLESSING_OF_THE_FORGE": {
+  "id": "BLESSING_OF_THE_FORGE",
+  "name": "熔炉的祝福",
+  "name_zh": "熔炉的祝福",
+  "description": "在本场战斗中升级你手牌中的所有牌。"
+ },
+ "BLOCK_POTION": {
+  "id": "BLOCK_POTION",
+  "name": "格挡药水",
+  "name_zh": "格挡药水",
+  "description": "获得{Block}点格挡。"
+ },
+ "BLOOD_POTION": {
+  "id": "BLOOD_POTION",
+  "name": "鲜血药水",
+  "name_zh": "鲜血药水",
+  "description": "回复你最大生命值的{HealPercent}%。"
+ },
+ "BONE_BREW": {
+  "id": "BONE_BREW",
+  "name": "骨头酿",
+  "name_zh": "骨头酿",
+  "description": "召唤{Summon}。"
+ },
+ "BOTTLED_POTENTIAL": {
+  "id": "BOTTLED_POTENTIAL",
+  "name": "瓶装潜能",
+  "name_zh": "瓶装潜能",
+  "description": "将你的所有牌洗入你的抽牌堆。抽{Cards}张牌。"
+ },
+ "CLARITY": {
+  "id": "CLARITY",
+  "name": "明晰提取物",
+  "name_zh": "明晰提取物",
+  "description": "抽{Cards}张牌。在你的下{ClarityPower}个回合开始时，额外抽1张牌。"
+ },
+ "COLORLESS_POTION": {
+  "id": "COLORLESS_POTION",
+  "name": "无色药水",
+  "name_zh": "无色药水",
+  "description": "从3张随机无色牌中选择1张加入你的手牌。这张牌在本回合可以免费打出。"
+ },
+ "COSMIC_CONCOCTION": {
+  "id": "COSMIC_CONCOCTION",
+  "name": "宇宙药剂",
+  "name_zh": "宇宙药剂",
+  "description": "将{Cards}张升级的无色牌加入你的手牌。"
+ },
+ "CUNNING_POTION": {
+  "id": "CUNNING_POTION",
+  "name": "狡诈药水",
+  "name_zh": "狡诈药水",
+  "description": "将{Cards}张小刀+加入你的手牌。"
+ },
+ "CURE_ALL": {
+  "id": "CURE_ALL",
+  "name": "痊愈药水",
+  "name_zh": "痊愈药水",
+  "description": "获得{Energy:energyIcons()}。抽{Cards}张牌。"
+ },
+ "DEPRECATED_POTION": {
+  "id": "DEPRECATED_POTION",
+  "name": "废弃药水",
+  "name_zh": "废弃药水",
+  "description": "这瓶药水已经从游戏中移除。"
+ },
+ "DEXTERITY_POTION": {
+  "id": "DEXTERITY_POTION",
+  "name": "敏捷药水",
+  "name_zh": "敏捷药水",
+  "description": "获得{DexterityPower}点敏捷。"
+ },
+ "DISTILLED_CHAOS": {
+  "id": "DISTILLED_CHAOS",
+  "name": "精炼混沌",
+  "name_zh": "精炼混沌",
+  "description": "打出你抽牌堆顶部的{Repeat}张牌。"
+ },
+ "DROPLET_OF_PRECOGNITION": {
+  "id": "DROPLET_OF_PRECOGNITION",
+  "name": "预知之滴",
+  "name_zh": "预知之滴",
+  "description": "选择你抽牌堆中的一张牌加入你的手牌。",
+  "selectionScreenPrompt": "选择一张牌放入你的手牌。"
+ },
+ "DUPLICATOR": {
+  "id": "DUPLICATOR",
+  "name": "复制药水",
+  "name_zh": "复制药水",
+  "description": "本回合，你打出的下一张牌会额外打出一次。"
+ },
+ "ENERGY_POTION": {
+  "id": "ENERGY_POTION",
+  "name": "能量药水",
+  "name_zh": "能量药水",
+  "description": "获得{Energy:energyIcons()}。"
+ },
+ "ENTROPIC_BREW": {
+  "id": "ENTROPIC_BREW",
+  "name": "混沌药水",
+  "name_zh": "混沌药水",
+  "description": "在所有空药水栏位中获得随机药水。"
+ },
+ "ESSENCE_OF_DARKNESS": {
+  "id": "ESSENCE_OF_DARKNESS",
+  "name": "黑暗精华",
+  "name_zh": "黑暗精华",
+  "description": "生成你充能球栏位数量个黑暗充能球。"
+ },
+ "EXPLOSIVE_AMPOULE": {
+  "id": "EXPLOSIVE_AMPOULE",
+  "name": "爆炸安瓿",
+  "name_zh": "爆炸安瓿",
+  "description": "对所有敌人造成{Damage}点伤害。"
+ },
+ "FAIRY_IN_A_BOTTLE": {
+  "id": "FAIRY_IN_A_BOTTLE",
+  "name": "瓶中精灵",
+  "name_zh": "瓶中精灵",
+  "description": "当你的生命值将被减少至0或以下时，改为丢弃这瓶药水，然后将你回复到你最大生命值的30%。"
+ },
+ "FIRE_POTION": {
+  "id": "FIRE_POTION",
+  "name": "火焰药水",
+  "name_zh": "火焰药水",
+  "description": "造成{Damage}点伤害。"
+ },
+ "FLEX_POTION": {
+  "id": "FLEX_POTION",
+  "name": "肌肉药水",
+  "name_zh": "肌肉药水",
+  "description": "获得{StrengthPower}点力量。在你的这个回合结束时，失去{StrengthPower}点力量。"
+ },
+ "FOCUS_POTION": {
+  "id": "FOCUS_POTION",
+  "name": "集中药水",
+  "name_zh": "集中药水",
+  "description": "获得{FocusPower}点集中。"
+ },
+ "FORTIFIER": {
+  "id": "FORTIFIER",
+  "name": "固化药水",
+  "name_zh": "固化药水",
+  "description": "将你的格挡变为三倍。"
+ },
+ "FOUL_POTION": {
+  "id": "FOUL_POTION",
+  "name": "污浊药水",
+  "name_zh": "污浊药水",
+  "description": "对所有玩家和敌人造成{Damage}点伤害。\n也可以投掷给商人换取{Gold}金币。"
+ },
+ "FRUIT_JUICE": {
+  "id": "FRUIT_JUICE",
+  "name": "果汁",
+  "name_zh": "果汁",
+  "description": "获得{MaxHp}点最大生命值。"
+ },
+ "FYSH_OIL": {
+  "id": "FYSH_OIL",
+  "name": "异鱼之油",
+  "name_zh": "异鱼之油",
+  "description": "获得{StrengthPower}点力量和{DexterityPower}点敏捷。"
+ },
+ "GAMBLERS_BREW": {
+  "id": "GAMBLERS_BREW",
+  "name": "赌徒特酿",
+  "name_zh": "赌徒特酿",
+  "description": "丢弃任意张牌，然后抽相同数量的牌。",
+  "selectionScreenPrompt": "选择任意张牌进行替换。"
+ },
+ "GHOST_IN_A_JAR": {
+  "id": "GHOST_IN_A_JAR",
+  "name": "罐装幽灵",
+  "name_zh": "罐装幽灵",
+  "description": "获得1层无实体。"
+ },
+ "GIGANTIFICATION_POTION": {
+  "id": "GIGANTIFICATION_POTION",
+  "name": "超巨化药水",
+  "name_zh": "超巨化药水",
+  "description": "你打出的下一张攻击牌将会造成三倍伤害。"
+ },
+ "GLOWWATER_POTION": {
+  "id": "GLOWWATER_POTION",
+  "name": "发光水",
+  "name_zh": "发光水",
+  "description": "消耗你的手牌。抽{Cards}张牌。"
+ },
+ "HEART_OF_IRON": {
+  "id": "HEART_OF_IRON",
+  "name": "铁心药水",
+  "name_zh": "铁心药水",
+  "description": "获得{PlatingPower}层覆甲。"
+ },
+ "KINGS_COURAGE": {
+  "id": "KINGS_COURAGE",
+  "name": "王之勇气",
+  "name_zh": "王之勇气",
+  "description": "铸造{Forge}。"
+ },
+ "LIQUID_BRONZE": {
+  "id": "LIQUID_BRONZE",
+  "name": "流动铜液",
+  "name_zh": "流动铜液",
+  "description": "获得{ThornsPower}点荆棘。"
+ },
+ "LIQUID_MEMORIES": {
+  "id": "LIQUID_MEMORIES",
+  "name": "液态记忆",
+  "name_zh": "液态记忆",
+  "description": "将你弃牌堆中的一张牌放入你的手牌。这张牌在本回合可以免费打出。",
+  "selectionScreenPrompt": "选择一张牌放入你的手牌。"
+ },
+ "LUCKY_TONIC": {
+  "id": "LUCKY_TONIC",
+  "name": "幸运补剂",
+  "name_zh": "幸运补剂",
+  "description": "获得{BufferPower}层缓冲。"
+ },
+ "MAZALETHS_GIFT": {
+  "id": "MAZALETHS_GIFT",
+  "name": "马萨雷斯的赠礼",
+  "name_zh": "马萨雷斯的赠礼",
+  "description": "获得{RitualPower}层仪式。"
+ },
+ "MOCK_DISCARD_AND_ADD_SHIVS_POTION": {
+  "id": "MOCK_DISCARD_AND_ADD_SHIVS_POTION",
+  "name": "试用弃牌与小刀药水",
+  "name_zh": "试用弃牌与小刀药水"
+ },
+ "OROBIC_ACID": {
+  "id": "OROBIC_ACID",
+  "name": "欧洛巴斯之酸",
+  "name_zh": "欧洛巴斯之酸",
+  "description": "往你的手牌中加入一张随机攻击牌、一张随机技能牌和一张随机能力牌。这些牌在本回合免费。"
+ },
+ "POISON_POTION": {
+  "id": "POISON_POTION",
+  "name": "毒药水",
+  "name_zh": "毒药水",
+  "description": "给予{PoisonPower}层中毒。"
+ },
+ "POTION_OF_BINDING": {
+  "id": "POTION_OF_BINDING",
+  "name": "缚魂药水",
+  "name_zh": "缚魂药水",
+  "description": "给予所有敌人{WeakPower:diff()}层虚弱和{VulnerablePower:diff()}层易伤。"
+ },
+ "POTION_OF_CAPACITY": {
+  "id": "POTION_OF_CAPACITY",
+  "name": "扩容药水",
+  "name_zh": "扩容药水",
+  "description": "获得{Repeat}个充能球栏位。"
+ },
+ "POTION_OF_DOOM": {
+  "id": "POTION_OF_DOOM",
+  "name": "灾厄药水",
+  "name_zh": "灾厄药水",
+  "description": "给予{DoomPower}层灾厄。"
+ },
+ "POTION_SHAPED_ROCK": {
+  "id": "POTION_SHAPED_ROCK",
+  "name": "药水形状的石头",
+  "name_zh": "药水形状的石头",
+  "description": "造成{Damage}点伤害。"
+ },
+ "POT_OF_GHOULS": {
+  "id": "POT_OF_GHOULS",
+  "name": "尸鬼瓮",
+  "name_zh": "尸鬼瓮",
+  "description": "将{Cards}张灵魂加入你的手牌。"
+ },
+ "POWDERED_DEMISE": {
+  "id": "POWDERED_DEMISE",
+  "name": "消亡粉末",
+  "name_zh": "消亡粉末",
+  "description": "敌人在自身的每个回合结束时，失去{Demise}点生命。"
+ },
+ "POWER_POTION": {
+  "id": "POWER_POTION",
+  "name": "能力药水",
+  "name_zh": "能力药水",
+  "description": "从3张随机能力牌中选择1张加入你的手牌。这张牌在本回合可以免费打出。"
+ },
+ "RADIANT_TINCTURE": {
+  "id": "RADIANT_TINCTURE",
+  "name": "明耀酊剂",
+  "name_zh": "明耀酊剂",
+  "description": "获得{Energy:energyIcons()}。在你的下{RadiancePower}个回合开始时，额外获得{energyPrefix:energyIcons(1)}。"
+ },
+ "REGEN_POTION": {
+  "id": "REGEN_POTION",
+  "name": "再生药水",
+  "name_zh": "再生药水",
+  "description": "获得{RegenPower}层再生。"
+ },
+ "SHACKLING_POTION": {
+  "id": "SHACKLING_POTION",
+  "name": "镣铐药水",
+  "name_zh": "镣铐药水",
+  "description": "所有敌人在这个回合失去{StrengthPower}点力量。"
+ },
+ "SHIP_IN_A_BOTTLE": {
+  "id": "SHIP_IN_A_BOTTLE",
+  "name": "瓶中船",
+  "name_zh": "瓶中船",
+  "description": "获得{Block:diff()}点格挡。在下个回合开始时获得{Block:diff()}点格挡。"
+ },
+ "SKILL_POTION": {
+  "id": "SKILL_POTION",
+  "name": "技能药水",
+  "name_zh": "技能药水",
+  "description": "从3张随机技能牌中选择1张加入你的手牌。这张牌在本回合可以免费打出。"
+ },
+ "SNECKO_OIL": {
+  "id": "SNECKO_OIL",
+  "name": "异蛇之油",
+  "name_zh": "异蛇之油",
+  "description": "抽{Cards}张牌。在本回合随机化你手牌中所有牌的耗能。"
+ },
+ "SOLDIERS_STEW": {
+  "id": "SOLDIERS_STEW",
+  "name": "士兵炖汤",
+  "name_zh": "士兵炖汤",
+  "description": "在本场战斗中，所有名字中有“打击”的牌获得重放：1。"
+ },
+ "SPEED_POTION": {
+  "id": "SPEED_POTION",
+  "name": "速度药水",
+  "name_zh": "速度药水",
+  "description": "获得{DexterityPower}点敏捷。在你的这个回合结束时，失去{DexterityPower}点敏捷。"
+ },
+ "STABLE_SERUM": {
+  "id": "STABLE_SERUM",
+  "name": "稳定血清",
+  "name_zh": "稳定血清",
+  "description": "保留你的手牌{Repeat}回合。"
+ },
+ "STAR_POTION": {
+  "id": "STAR_POTION",
+  "name": "星星药水",
+  "name_zh": "星星药水",
+  "description": "获得{Stars:starIcons()}。"
+ },
+ "STRENGTH_POTION": {
+  "id": "STRENGTH_POTION",
+  "name": "力量药水",
+  "name_zh": "力量药水",
+  "description": "获得{StrengthPower}点力量。"
+ },
+ "SWIFT_POTION": {
+  "id": "SWIFT_POTION",
+  "name": "迅捷药水",
+  "name_zh": "迅捷药水",
+  "description": "抽{Cards}张牌。"
+ },
+ "TOUCH_OF_INSANITY": {
+  "id": "TOUCH_OF_INSANITY",
+  "name": "癫狂之触",
+  "name_zh": "癫狂之触",
+  "description": "选择你手牌中的一张牌，使其在本场战斗可以免费打出。",
+  "selectionScreenPrompt": "选择一张牌使其免费。"
+ },
+ "VULNERABLE_POTION": {
+  "id": "VULNERABLE_POTION",
+  "name": "易伤药水",
+  "name_zh": "易伤药水",
+  "description": "给予{VulnerablePower}层易伤。"
+ },
+ "WEAK_POTION": {
+  "id": "WEAK_POTION",
+  "name": "虚弱药水",
+  "name_zh": "虚弱药水",
+  "description": "给予{WeakPower}层虚弱。"
+ }
+}

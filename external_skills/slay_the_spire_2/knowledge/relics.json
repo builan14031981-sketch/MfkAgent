@@ -1,0 +1,2135 @@
+{
+ "AKABEKO": {
+  "id": "AKABEKO",
+  "name": "赤牛",
+  "name_zh": "赤牛",
+  "description": "在每场战斗开始时，获得{VigorPower}点活力。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ALCHEMICAL_COFFER": {
+  "id": "ALCHEMICAL_COFFER",
+  "name": "炼金箱",
+  "name_zh": "炼金箱",
+  "description": "拾起时，获得{PotionSlots}个放有随机药水的药水栏位。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "AMETHYST_AUBERGINE": {
+  "id": "AMETHYST_AUBERGINE",
+  "name": "紫水晶茄子",
+  "name_zh": "紫水晶茄子",
+  "description": "敌人额外掉落{Gold}金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ANCHOR": {
+  "id": "ANCHOR",
+  "name": "锚",
+  "name_zh": "锚",
+  "description": "每场战斗开始时获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ARCANE_SCROLL": {
+  "id": "ARCANE_SCROLL",
+  "name": "奥术卷轴",
+  "name_zh": "奥术卷轴",
+  "description": "拾起时，将一张随机稀有牌加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ARCHAIC_TOOTH": {
+  "id": "ARCHAIC_TOOTH",
+  "name": "古老牙齿",
+  "name_zh": "古老牙齿",
+  "description": "拾起时，将{StarterCard.StringValue:cond:{StarterCard}变化为{AncientCard}|一张初始卡牌变化为先古版本}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ART_OF_WAR": {
+  "id": "ART_OF_WAR",
+  "name": "孙子兵法",
+  "name_zh": "孙子兵法",
+  "description": "如果你在本回合中没有打出过攻击牌，则在下一回合额外获得1点{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ASTROLABE": {
+  "id": "ASTROLABE",
+  "name": "星盘",
+  "name_zh": "星盘",
+  "description": "拾起时，选择{Cards}张牌进行变化，然后将这些牌升级。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BAG_OF_MARBLES": {
+  "id": "BAG_OF_MARBLES",
+  "name": "弹珠袋",
+  "name_zh": "弹珠袋",
+  "description": "在每场战斗开始时，给予所有敌人{VulnerablePower}层易伤。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BAG_OF_PREPARATION": {
+  "id": "BAG_OF_PREPARATION",
+  "name": "准备背包",
+  "name_zh": "准备背包",
+  "description": "在每场战斗开始时，额外抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BEATING_REMNANT": {
+  "id": "BEATING_REMNANT",
+  "name": "律动残余",
+  "name_zh": "律动残余",
+  "description": "你在一回合内失去的生命值不会超过20点。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BEAUTIFUL_BRACELET": {
+  "id": "BEAUTIFUL_BRACELET",
+  "name": "华美手镯",
+  "name_zh": "华美手镯",
+  "description": "拾起时，从你的牌组中选择{Cards}张牌，附魔：迅捷3。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BELLOWS": {
+  "id": "BELLOWS",
+  "name": "风箱",
+  "name_zh": "风箱",
+  "description": "你在每场战斗开始时的手牌，将被升级。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BELT_BUCKLE": {
+  "id": "BELT_BUCKLE",
+  "name": "腰带扣",
+  "name_zh": "腰带扣",
+  "description": "当你没有药水时，你额外拥有{DexterityPower}点敏捷。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BIG_HAT": {
+  "id": "BIG_HAT",
+  "name": "大帽子",
+  "name_zh": "大帽子",
+  "description": "在每场战斗开始时，将{Cards}张随机虚无牌加入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BIG_MUSHROOM": {
+  "id": "BIG_MUSHROOM",
+  "name": "大蘑菇",
+  "name_zh": "大蘑菇",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。在每场战斗开始时，少抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BIIIG_HUG": {
+  "id": "BIIIG_HUG",
+  "name": "大～抱抱",
+  "name_zh": "大～抱抱",
+  "description": "拾起时，从你的牌组中移除{Cards}张牌。每当你的抽牌堆打乱洗牌时，将一张煤灰加入你的抽牌堆。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BING_BONG": {
+  "id": "BING_BONG",
+  "name": "宾邦",
+  "name_zh": "宾邦",
+  "description": "每当你往牌组中增添卡牌时，都将额外添加一张相同的牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BLACK_BLOOD": {
+  "id": "BLACK_BLOOD",
+  "name": "黑暗之血",
+  "name_zh": "黑暗之血",
+  "description": "在战斗结束时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BLACK_STAR": {
+  "id": "BLACK_STAR",
+  "name": "黑星",
+  "name_zh": "黑星",
+  "description": "精英敌人在被打败时多掉落一件遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BLESSED_ANTLER": {
+  "id": "BLESSED_ANTLER",
+  "name": "赐福鹿角",
+  "name_zh": "赐福鹿角",
+  "description": "在每回合开始时获得{Energy:energyIcons()}。在战斗开始时，将{Cards}张晕眩放入你的抽牌堆。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BLOOD_SOAKED_ROSE": {
+  "id": "BLOOD_SOAKED_ROSE",
+  "name": "血染玫瑰",
+  "name_zh": "血染玫瑰",
+  "description": "拾起时，将1张执迷加入你的牌组。在回合开始时获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BLOOD_VIAL": {
+  "id": "BLOOD_VIAL",
+  "name": "小血瓶",
+  "name_zh": "小血瓶",
+  "description": "在每场战斗开始时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BONE_FLUTE": {
+  "id": "BONE_FLUTE",
+  "name": "骨笛",
+  "name_zh": "骨笛",
+  "description": "每当奥斯提攻击时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BONE_TEA": {
+  "id": "BONE_TEA",
+  "name": "骨茶",
+  "name_zh": "骨茶",
+  "description": "在你接下来的{Combats}场战斗开始时，升级你的初始手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BOOKMARK": {
+  "id": "BOOKMARK",
+  "name": "书签",
+  "name_zh": "书签",
+  "description": "每回合结束时，随机一张被保留的牌在被打出前的耗能减少1。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BOOK_OF_FIVE_RINGS": {
+  "id": "BOOK_OF_FIVE_RINGS",
+  "name": "五轮书",
+  "name_zh": "五轮书",
+  "description": "你每将{Cards}张牌加入你的牌组时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BOOK_REPAIR_KNIFE": {
+  "id": "BOOK_REPAIR_KNIFE",
+  "name": "修书小刀",
+  "name_zh": "修书小刀",
+  "description": "每当有一名不是“爪牙”的敌人死于灾厄时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BOOMING_CONCH": {
+  "id": "BOOMING_CONCH",
+  "name": "轰鸣海螺",
+  "name_zh": "轰鸣海螺",
+  "description": "在精英战的战斗开始时，额外抽{Cards}张牌并获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BOUND_PHYLACTERY": {
+  "id": "BOUND_PHYLACTERY",
+  "name": "缚魂命匣",
+  "name_zh": "缚魂命匣",
+  "description": "在你的回合开始时，召唤{Summon}",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BOWLER_HAT": {
+  "id": "BOWLER_HAT",
+  "name": "圆顶礼帽",
+  "name_zh": "圆顶礼帽",
+  "description": "额外获得{GoldIncrease:percentMore()}%的金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BREAD": {
+  "id": "BREAD",
+  "name": "面包",
+  "name_zh": "面包",
+  "description": "在你的第一个回合开始时，失去{LoseEnergy:energyIcons()}。在其余的回合开始时，获得{GainEnergy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BRILLIANT_SCARF": {
+  "id": "BRILLIANT_SCARF",
+  "name": "艳丽围巾",
+  "name_zh": "艳丽围巾",
+  "description": "你每回合从你的手牌打出的第5张牌可以被免费打出。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BRIMSTONE": {
+  "id": "BRIMSTONE",
+  "name": "硫磺",
+  "name_zh": "硫磺",
+  "description": "在你的每个回合开始时，你获得{SelfStrength}点力量，所有敌人获得{EnemyStrength}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BRONZE_SCALES": {
+  "id": "BRONZE_SCALES",
+  "name": "铜质鳞片",
+  "name_zh": "铜质鳞片",
+  "description": "在每场战斗开始时，获得{ThornsPower}点荆棘。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BURNING_BLOOD": {
+  "id": "BURNING_BLOOD",
+  "name": "燃烧之血",
+  "name_zh": "燃烧之血",
+  "description": "在战斗结束时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BURNING_STICKS": {
+  "id": "BURNING_STICKS",
+  "name": "燃烧木棍",
+  "name_zh": "燃烧木棍",
+  "description": "每场战斗中你第一次消耗技能牌时，将那张牌的复制品加入你的手牌",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "BYRDPIP": {
+  "id": "BYRDPIP",
+  "name": "异鸟宝宝",
+  "name_zh": "异鸟宝宝",
+  "description": "拾起时，获得一张异鸟扑击。一只幼年异鸟会在战斗中陪伴你。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CALLING_BELL": {
+  "id": "CALLING_BELL",
+  "name": "召唤铃铛",
+  "name_zh": "召唤铃铛",
+  "description": "拾起时，获得一个独特的诅咒和{Relics}件遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CANDELABRA": {
+  "id": "CANDELABRA",
+  "name": "烛台",
+  "name_zh": "烛台",
+  "description": "在你的第2回合开始时，获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CAPTAINS_WHEEL": {
+  "id": "CAPTAINS_WHEEL",
+  "name": "舵盘",
+  "name_zh": "舵盘",
+  "description": "在你的第三回合开始时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CAULDRON": {
+  "id": "CAULDRON",
+  "name": "大锅",
+  "name_zh": "大锅",
+  "description": "拾起时，制作{Potions}瓶随机药水。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CENTENNIAL_PUZZLE": {
+  "id": "CENTENNIAL_PUZZLE",
+  "name": "百年积木",
+  "name_zh": "百年积木",
+  "description": "你在每场战斗中第一次损失生命值时，抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CHANDELIER": {
+  "id": "CHANDELIER",
+  "name": "吊灯",
+  "name_zh": "吊灯",
+  "description": "在你的第三回合开始时，获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CHARONS_ASHES": {
+  "id": "CHARONS_ASHES",
+  "name": "卡戎之灰",
+  "name_zh": "卡戎之灰",
+  "description": "每当你消耗一张牌，对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CHEMICAL_X": {
+  "id": "CHEMICAL_X",
+  "name": "化学物X",
+  "name_zh": "化学物X",
+  "description": "耗能为X的牌的效果数值增加{Increase}点。",
+  "flavor": "警告：严禁与糖、香料还有一切美好的味道混合在一起。"
+ },
+ "CHOICES_PARADOX": {
+  "id": "CHOICES_PARADOX",
+  "name": "选择悖论",
+  "name_zh": "选择悖论",
+  "description": "在每场战斗开始时，从{Cards}张随机牌中选择1张放入你的手牌。被选中的牌获得保留。",
+  "flavor": "这个遗物的细节将在未来揭晓……",
+  "selectionScreenPrompt": "选择一张牌加入你的手牌。"
+ },
+ "CHOSEN_CHEESE": {
+  "id": "CHOSEN_CHEESE",
+  "name": "天选芝士",
+  "name_zh": "天选芝士",
+  "description": "在战斗结束时，获得{MaxHp}点最大生命值。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CIRCLET": {
+  "id": "CIRCLET",
+  "name": "头环",
+  "name_zh": "头环",
+  "description": "这是一个头环。",
+  "flavor": "一件有趣的遗物，只有当高塔中出现问题，或没有更多遗物可被发现时才会出现。"
+ },
+ "CLAWS": {
+  "id": "CLAWS",
+  "name": "利爪",
+  "name_zh": "利爪",
+  "description": "拾起时，将至多{Cards}张牌变化为撕咬。",
+  "flavor": "这个遗物的细节将在未来揭晓……",
+  "selectionScreenPrompt": "选择要变化为撕咬的卡牌"
+ },
+ "CLOAK_CLASP": {
+  "id": "CLOAK_CLASP",
+  "name": "斗篷扣",
+  "name_zh": "斗篷扣",
+  "description": "在你的回合结束时，每有一张手牌，就获得{Block}点格挡",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CRACKED_CORE": {
+  "id": "CRACKED_CORE",
+  "name": "破损核心",
+  "name_zh": "破损核心",
+  "description": "在每场战斗开始时，生成{Lightning}个闪电充能球。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CROSSBOW": {
+  "id": "CROSSBOW",
+  "name": "十字弓",
+  "name_zh": "十字弓",
+  "description": "在你的回合开始时，将一张随机攻击牌加入你的手牌。这张牌在本回合可以免费打出。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CURSED_KETTLE": {
+  "id": "CURSED_KETTLE",
+  "name": "诅咒水壶",
+  "name_zh": "诅咒水壶",
+  "description": "每当你打败一名精英时，当前阶段的其他精英敌人会在战斗开始时获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "CURSED_PEARL": {
+  "id": "CURSED_PEARL",
+  "name": "诅咒珍珠",
+  "name_zh": "诅咒珍珠",
+  "description": "拾起时，获得一张贪婪，获得{Gold}金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DARKSTONE_PERIAPT": {
+  "id": "DARKSTONE_PERIAPT",
+  "name": "黑石护符",
+  "name_zh": "黑石护符",
+  "description": "每当你获得一张诅咒，就将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DATA_DISK": {
+  "id": "DATA_DISK",
+  "name": "数据磁盘",
+  "name_zh": "数据磁盘",
+  "description": "在每场战斗开始时，获得{FocusPower}点集中。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DAUGHTER_OF_THE_WIND": {
+  "id": "DAUGHTER_OF_THE_WIND",
+  "name": "风的女儿",
+  "name_zh": "风的女儿",
+  "description": "每当你打出一张攻击牌时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DELICATE_FROND": {
+  "id": "DELICATE_FROND",
+  "name": "娇嫩蕨草",
+  "name_zh": "娇嫩蕨草",
+  "description": "在每场战斗开始时，用随机药水将你的空药水栏位填满。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DEMON_TONGUE": {
+  "id": "DEMON_TONGUE",
+  "name": "恶魔之舌",
+  "name_zh": "恶魔之舌",
+  "description": "每回合第一次在回合内失去生命值时，回复等量的生命值。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DEPRECATED_RELIC": {
+  "id": "DEPRECATED_RELIC",
+  "name": "弃用遗物",
+  "name_zh": "弃用遗物",
+  "description": "这件遗物已经从游戏中被移除。它在这里仅做纪念意义。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DIAMOND_DIADEM": {
+  "id": "DIAMOND_DIADEM",
+  "name": "钻石头冠",
+  "name_zh": "钻石头冠",
+  "description": "如果你在本回合打出的牌少于等于{CardThreshold}张，则受到敌人的伤害减半。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DINGY_RUG": {
+  "id": "DINGY_RUG",
+  "name": "肮脏地毯",
+  "name_zh": "肮脏地毯",
+  "description": "卡牌奖励现在会包括无色牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DISTINGUISHED_CAPE": {
+  "id": "DISTINGUISHED_CAPE",
+  "name": "卓越斗篷",
+  "name_zh": "卓越斗篷",
+  "description": "拾起时，失去9点最大生命值。将{Cards}张灵体加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DIVINE_DESTINY": {
+  "id": "DIVINE_DESTINY",
+  "name": "天命所归",
+  "name_zh": "天命所归",
+  "description": "在每场战斗开始时，获得{Stars:starIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DIVINE_RIGHT": {
+  "id": "DIVINE_RIGHT",
+  "name": "天赋君权",
+  "name_zh": "天赋君权",
+  "description": "在每场战斗开始时，获得{Stars:starIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DOLLYS_MIRROR": {
+  "id": "DOLLYS_MIRROR",
+  "name": "多利之镜",
+  "name_zh": "多利之镜",
+  "description": "拾起时，从你的牌组中选择一张牌进行复制。",
+  "flavor": "这个遗物的细节将在未来揭晓……",
+  "selectionScreenPrompt": "选择1张牌进行复制"
+ },
+ "DRAGON_FRUIT": {
+  "id": "DRAGON_FRUIT",
+  "name": "火龙果",
+  "name_zh": "火龙果",
+  "description": "每当你获得金币时，提升{MaxHp}点你的最大生命值。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DREAM_CATCHER": {
+  "id": "DREAM_CATCHER",
+  "name": "捕梦网",
+  "name_zh": "捕梦网",
+  "description": "每当你休息时，可以添加一张牌到你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DRIFTWOOD": {
+  "id": "DRIFTWOOD",
+  "name": "浮木",
+  "name_zh": "浮木",
+  "description": "你可以在每一个卡牌奖励中重掷一次。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "DUSTY_TOME": {
+  "id": "DUSTY_TOME",
+  "name": "尘封魔典",
+  "name_zh": "尘封魔典",
+  "description": "拾起时，获得一张{AncientCard.StringValue:cond:{}+|先古牌}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ECTOPLASM": {
+  "id": "ECTOPLASM",
+  "name": "灵体外质",
+  "name_zh": "灵体外质",
+  "description": "你不能再获得任何金币。在回合开始时获得{Energy:energyIcons()}",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ELECTRIC_SHRYMP": {
+  "id": "ELECTRIC_SHRYMP",
+  "name": "放电异虾",
+  "name_zh": "放电异虾",
+  "description": "拾起时，选择一张技能牌为它附魔：注能。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "EMBER_TEA": {
+  "id": "EMBER_TEA",
+  "name": "余烬茶",
+  "name_zh": "余烬茶",
+  "description": "在接下来的{Combats}场战斗开始时，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "EMOTION_CHIP": {
+  "id": "EMOTION_CHIP",
+  "name": "情感芯片",
+  "name_zh": "情感芯片",
+  "description": "在每回合开始时，如果你在之前回合受到过伤害，则触发所有充能球的被动效果。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "EMPTY_CAGE": {
+  "id": "EMPTY_CAGE",
+  "name": "空鸟笼",
+  "name_zh": "空鸟笼",
+  "description": "拾起时，选择移除牌组中的{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ENDLESS_APPETITE": {
+  "id": "ENDLESS_APPETITE",
+  "name": "无尽食欲",
+  "name_zh": "无尽食欲",
+  "description": "每当你消耗一张牌时，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ETERNAL_FEATHER": {
+  "id": "ETERNAL_FEATHER",
+  "name": "永恒羽毛",
+  "name_zh": "永恒羽毛",
+  "description": "你的牌组中每有{Cards}张牌，当你进入休息处时就会回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_ANCHOR": {
+  "id": "FAKE_ANCHOR",
+  "name": "锚？？？",
+  "name_zh": "锚？？？",
+  "description": "在每场战斗开始时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_BLOOD_VIAL": {
+  "id": "FAKE_BLOOD_VIAL",
+  "name": "小血瓶？？？",
+  "name_zh": "小血瓶？？？",
+  "description": "在每场战斗开始时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_HAPPY_FLOWER": {
+  "id": "FAKE_HAPPY_FLOWER",
+  "name": "开心小花？？？",
+  "name_zh": "开心小花？？？",
+  "description": "每{Turns}个回合，获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_LEES_WAFFLE": {
+  "id": "FAKE_LEES_WAFFLE",
+  "name": "李家华夫饼？？？",
+  "name_zh": "李家华夫饼？？？",
+  "description": "拾起时，回复你{Heal}%的生命值。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_MANGO": {
+  "id": "FAKE_MANGO",
+  "name": "芒果？？？",
+  "name_zh": "芒果？？？",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_MERCHANTS_RUG": {
+  "id": "FAKE_MERCHANTS_RUG",
+  "name": "商人的地毯？？？",
+  "name_zh": "商人的地毯？？？",
+  "description": "低劣的仿制品。没有任何作用。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_ORICHALCUM": {
+  "id": "FAKE_ORICHALCUM",
+  "name": "奥利哈钢？？？",
+  "name_zh": "奥利哈钢？？？",
+  "description": "如果你在回合结束时没有任何格挡，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_SNECKO_EYE": {
+  "id": "FAKE_SNECKO_EYE",
+  "name": "异蛇之眼？？？",
+  "name_zh": "异蛇之眼？？？",
+  "description": "每场战斗开始时获得混乱效果。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_STRIKE_DUMMY": {
+  "id": "FAKE_STRIKE_DUMMY",
+  "name": "打击木偶？？？",
+  "name_zh": "打击木偶？？？",
+  "description": "名字中有“打击”的卡牌造成{ExtraDamage}点额外伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FAKE_VENERABLE_TEA_SET": {
+  "id": "FAKE_VENERABLE_TEA_SET",
+  "name": "古茶具套装？？？",
+  "name_zh": "古茶具套装？？？",
+  "description": "到达休息处后的下一场战斗开始时额外获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FENCING_MANUAL": {
+  "id": "FENCING_MANUAL",
+  "name": "击剑指南",
+  "name_zh": "击剑指南",
+  "description": "在每场战斗开始时，铸造{Forge}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FESTIVE_POPPER": {
+  "id": "FESTIVE_POPPER",
+  "name": "节日拉炮",
+  "name_zh": "节日拉炮",
+  "description": "在每场战斗开始时，对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FIDDLE": {
+  "id": "FIDDLE",
+  "name": "小提琴",
+  "name_zh": "小提琴",
+  "description": "在每个回合开始时，额外抽{Cards}张牌。你在回合进行中不再能抽任何牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FISHING_ROD": {
+  "id": "FISHING_ROD",
+  "name": "钓鱼竿",
+  "name_zh": "钓鱼竿",
+  "description": "每{Combats}场普通战斗，随机升级你牌组中的一张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FORGOTTEN_SOUL": {
+  "id": "FORGOTTEN_SOUL",
+  "name": "遗忘之魂",
+  "name_zh": "遗忘之魂",
+  "description": "每当你消耗一张牌，随机对一名敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FRAGRANT_MUSHROOM": {
+  "id": "FRAGRANT_MUSHROOM",
+  "name": "芳香蘑菇",
+  "name_zh": "芳香蘑菇",
+  "description": "拾起时，失去{HpLoss}点生命，然后随机升级{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FRESNEL_LENS": {
+  "id": "FRESNEL_LENS",
+  "name": "菲涅耳透镜",
+  "name_zh": "菲涅耳透镜",
+  "description": "每当你将一张带有格挡的牌加入你的牌组时，为那张牌附魔：灵巧{NimbleAmount}",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FROZEN_EGG": {
+  "id": "FROZEN_EGG",
+  "name": "冻结之蛋",
+  "name_zh": "冻结之蛋",
+  "description": "每当你获得能力牌时，将其升级。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FUNERARY_MASK": {
+  "id": "FUNERARY_MASK",
+  "name": "葬礼面具",
+  "name_zh": "葬礼面具",
+  "description": "在每场战斗开始时，将{Cards}张灵魂加入你的抽牌堆。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "FUR_COAT": {
+  "id": "FUR_COAT",
+  "name": "皮草大衣",
+  "name_zh": "皮草大衣",
+  "description": "拾起时，随机标记{Combats}处战斗。这些战斗中的敌人将只有1点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GALACTIC_DUST": {
+  "id": "GALACTIC_DUST",
+  "name": "星系尘埃",
+  "name_zh": "星系尘埃",
+  "description": "每消耗{Stars}点{singleStarIcon}，就获得{Block}格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GAMBLING_CHIP": {
+  "id": "GAMBLING_CHIP",
+  "name": "赌博筹码",
+  "name_zh": "赌博筹码",
+  "description": "在每场战斗开始时，丢弃任意张牌，然后抽相同数量张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……",
+  "selectionScreenPrompt": "选择任意张牌来替换。"
+ },
+ "GAME_PIECE": {
+  "id": "GAME_PIECE",
+  "name": "棋子",
+  "name_zh": "棋子",
+  "description": "每当你打出能力牌时，抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GHOST_SEED": {
+  "id": "GHOST_SEED",
+  "name": "幽灵种子",
+  "name_zh": "幽灵种子",
+  "description": "打击和防御获得虚无。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GIRYA": {
+  "id": "GIRYA",
+  "name": "壶铃",
+  "name_zh": "壶铃",
+  "description": "你现在能在休息处获得力量。（最多3次）",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GLASS_EYE": {
+  "id": "GLASS_EYE",
+  "name": "玻璃眼珠",
+  "name_zh": "玻璃眼珠",
+  "description": "拾起时，获得2组普通、2组罕见、和1组稀有卡牌奖励。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GLITTER": {
+  "id": "GLITTER",
+  "name": "亮片",
+  "name_zh": "亮片",
+  "description": "为之后的所有卡牌奖励附魔：华彩。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GLOWING_ORB": {
+  "id": "GLOWING_ORB",
+  "name": "发光之球",
+  "name_zh": "发光之球",
+  "description": "在精英战的战斗开始时，你额外获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GNARLED_HAMMER": {
+  "id": "GNARLED_HAMMER",
+  "name": "扭曲锤子",
+  "name_zh": "扭曲锤子",
+  "description": "拾起时，从你的牌组中选择至多{Cards}张攻击牌，附魔：锋利{SharpAmount:diff()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GOLDEN_COMPASS": {
+  "id": "GOLDEN_COMPASS",
+  "name": "黄金罗盘",
+  "name_zh": "黄金罗盘",
+  "description": "拾起时，将第2阶段的地图替换为一条特殊的直道。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GOLDEN_PEARL": {
+  "id": "GOLDEN_PEARL",
+  "name": "金色珍珠",
+  "name_zh": "金色珍珠",
+  "description": "拾起时，获得{Gold}金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GOLD_PLATED_CABLES": {
+  "id": "GOLD_PLATED_CABLES",
+  "name": "镀金缆线",
+  "name_zh": "镀金缆线",
+  "description": "你最右侧的充能球会额外触发一次被动效果。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GORGET": {
+  "id": "GORGET",
+  "name": "护喉甲",
+  "name_zh": "护喉甲",
+  "description": "在每场战斗开始时，获得{PlatingPower}层覆甲。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "GREMLIN_HORN": {
+  "id": "GREMLIN_HORN",
+  "name": "地精之角",
+  "name_zh": "地精之角",
+  "description": "每当有一名敌人死亡时，获得{Energy:energyIcons()}并抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "HAND_DRILL": {
+  "id": "HAND_DRILL",
+  "name": "手钻",
+  "name_zh": "手钻",
+  "description": "每当你突破敌人的格挡时，给予其{VulnerablePower}层易伤。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "HAPPY_FLOWER": {
+  "id": "HAPPY_FLOWER",
+  "name": "开心小花",
+  "name_zh": "开心小花",
+  "description": "每{Turns}个回合，获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "HEFTY_TABLET": {
+  "id": "HEFTY_TABLET",
+  "name": "沉重石板",
+  "name_zh": "沉重石板",
+  "description": "拾起时，从{Cards}张稀有牌中选择1张加入你的牌组，同时将1张受伤加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "HELICAL_DART": {
+  "id": "HELICAL_DART",
+  "name": "螺线飞镖",
+  "name_zh": "螺线飞镖",
+  "description": "你每打出一张小刀，就在本回合获得{DexterityPower}点敏捷。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "HISTORY_COURSE": {
+  "id": "HISTORY_COURSE",
+  "name": "历史课",
+  "name_zh": "历史课",
+  "description": "在你的回合开始时，打出一张你上一回合最后打出的攻击牌或技能牌的复制品。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "HORN_CLEAT": {
+  "id": "HORN_CLEAT",
+  "name": "船夹板",
+  "name_zh": "船夹板",
+  "description": "在你的第二回合开始时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ICE_CREAM": {
+  "id": "ICE_CREAM",
+  "name": "冰淇淋",
+  "name_zh": "冰淇淋",
+  "description": "多余的能量可以留到下一回合。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "INFUSED_CORE": {
+  "id": "INFUSED_CORE",
+  "name": "注能核心",
+  "name_zh": "注能核心",
+  "description": "在每场战斗开始时，生成{Lightning}个闪电充能球。闪电充能球额外造成{ExtraDamage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "INK_BOTTLE": {
+  "id": "INK_BOTTLE",
+  "name": "墨水瓶",
+  "name_zh": "墨水瓶",
+  "description": "你每打出{CardThreshold}张牌，就抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "INTIMIDATING_HELMET": {
+  "id": "INTIMIDATING_HELMET",
+  "name": "骇人头盔",
+  "name_zh": "骇人头盔",
+  "description": "每当你打出一张耗能大于等于{Energy:energyIcons()}的牌，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "IRON_CLUB": {
+  "id": "IRON_CLUB",
+  "name": "铁棒",
+  "name_zh": "铁棒",
+  "description": "你每打出{Cards}张牌，就抽1张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "IVORY_TILE": {
+  "id": "IVORY_TILE",
+  "name": "象牙麻将牌",
+  "name_zh": "象牙麻将牌",
+  "description": "每当你打出一张耗能大于等于{EnergyThreshold:energyIcons()}的牌时，获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "JEWELED_MASK": {
+  "id": "JEWELED_MASK",
+  "name": "宝石面具",
+  "name_zh": "宝石面具",
+  "description": "在每场战斗开始时，将一张随机能力牌从你的抽牌堆放入你的手牌，这张牌在本场战斗可以免费打出。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "JEWELRY_BOX": {
+  "id": "JEWELRY_BOX",
+  "name": "珠宝盒",
+  "name_zh": "珠宝盒",
+  "description": "拾起时，将1张神化加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "JOSS_PAPER": {
+  "id": "JOSS_PAPER",
+  "name": "金纸",
+  "name_zh": "金纸",
+  "description": "你每消耗{ExhaustAmount}张牌，就抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "JUZU_BRACELET": {
+  "id": "JUZU_BRACELET",
+  "name": "佛珠手链",
+  "name_zh": "佛珠手链",
+  "description": "你在?房间中不会再遭遇常规战斗。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "KALEIDOSCOPE": {
+  "id": "KALEIDOSCOPE",
+  "name": "万花筒",
+  "name_zh": "万花筒",
+  "description": "拾起时，获得{Cards}次来自其他角色的卡牌奖励。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "KIFUDA": {
+  "id": "KIFUDA",
+  "name": "木札",
+  "name_zh": "木札",
+  "description": "拾起时，从你的牌组中选择至多{Cards}张牌，附魔：伶俐。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "KUNAI": {
+  "id": "KUNAI",
+  "name": "苦无",
+  "name_zh": "苦无",
+  "description": "你每在同一回合内打出{Cards}张攻击牌，就获得{DexterityPower}点敏捷。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "KUSARIGAMA": {
+  "id": "KUSARIGAMA",
+  "name": "锁镰",
+  "name_zh": "锁镰",
+  "description": "你每在同一回合内打出{Cards}张攻击牌，就随机对一名敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LANTERN": {
+  "id": "LANTERN",
+  "name": "灯笼",
+  "name_zh": "灯笼",
+  "description": "在每场战斗的第一回合获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LARGE_CAPSULE": {
+  "id": "LARGE_CAPSULE",
+  "name": "巨大扭蛋",
+  "name_zh": "巨大扭蛋",
+  "description": "拾起时，获得{Relics}件随机遗物。额外将一对打击和防御，加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LASTING_CANDY": {
+  "id": "LASTING_CANDY",
+  "name": "吃不完的糖",
+  "name_zh": "吃不完的糖",
+  "description": "每两场战斗，你的卡牌奖励就会额外包含一张能力牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LAVA_LAMP": {
+  "id": "LAVA_LAMP",
+  "name": "熔岩灯",
+  "name_zh": "熔岩灯",
+  "description": "在战斗结束时，如果你没有受到伤害，则升级你的所有卡牌奖励。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LAVA_ROCK": {
+  "id": "LAVA_ROCK",
+  "name": "熔岩石",
+  "name_zh": "熔岩石",
+  "description": "第一阶段的Boss敌人额外掉落{Relics}件遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LEAD_PAPERWEIGHT": {
+  "id": "LEAD_PAPERWEIGHT",
+  "name": "铅制镇纸",
+  "name_zh": "铅制镇纸",
+  "description": "拾起时，从2张无色牌中选择1张加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LEAFY_POULTICE": {
+  "id": "LEAFY_POULTICE",
+  "name": "树叶药膏",
+  "name_zh": "树叶药膏",
+  "description": "拾起时，变化你的1张打击和1张防御，然后失去{MaxHp}点最大生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LEES_WAFFLE": {
+  "id": "LEES_WAFFLE",
+  "name": "李家华夫饼",
+  "name_zh": "李家华夫饼",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}点，并回复所有生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LETTER_OPENER": {
+  "id": "LETTER_OPENER",
+  "name": "开信刀",
+  "name_zh": "开信刀",
+  "description": "你每在同一回合内打出{Cards}张技能牌，就对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LIZARD_TAIL": {
+  "id": "LIZARD_TAIL",
+  "name": "蜥蜴尾巴",
+  "name_zh": "蜥蜴尾巴",
+  "description": "当你的生命值将要降低至0或以下时，回复到最大生命值的{Heal}%（仅能起效一次）。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LOOMING_FRUIT": {
+  "id": "LOOMING_FRUIT",
+  "name": "布质果实",
+  "name_zh": "布质果实",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LORDS_PARASOL": {
+  "id": "LORDS_PARASOL",
+  "name": "领主阳伞",
+  "name_zh": "领主阳伞",
+  "description": "当你遇见商人时，立刻获得他所出售的所有物品。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LOST_COFFER": {
+  "id": "LOST_COFFER",
+  "name": "失物盒",
+  "name_zh": "失物盒",
+  "description": "拾起时，获得1次卡牌奖励和1瓶随机药水。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LOST_WISP": {
+  "id": "LOST_WISP",
+  "name": "迷失鬼火",
+  "name_zh": "迷失鬼火",
+  "description": "你每打出一张能力牌，就对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LUCKY_FYSH": {
+  "id": "LUCKY_FYSH",
+  "name": "招财异鱼",
+  "name_zh": "招财异鱼",
+  "description": "每当你将一张卡牌加入你的牌组时，获得{Gold}金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "LUNAR_PASTRY": {
+  "id": "LUNAR_PASTRY",
+  "name": "月亮糕点",
+  "name_zh": "月亮糕点",
+  "description": "在你的回合结束时，获得{Stars:starIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MANGO": {
+  "id": "MANGO",
+  "name": "芒果",
+  "name_zh": "芒果",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MASSIVE_SCROLL": {
+  "id": "MASSIVE_SCROLL",
+  "name": "巨大卷轴",
+  "name_zh": "巨大卷轴",
+  "description": "拾起时，从3张多人游戏牌中选择1张加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MAW_BANK": {
+  "id": "MAW_BANK",
+  "name": "巨口储蓄罐",
+  "name_zh": "巨口储蓄罐",
+  "description": "每攀爬一层楼层，就获得{Gold}金币。一旦在商店中花费金币就会使其失效。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MEAL_TICKET": {
+  "id": "MEAL_TICKET",
+  "name": "餐券",
+  "name_zh": "餐券",
+  "description": "每当你进入商店房间时，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MEAT_CLEAVER": {
+  "id": "MEAT_CLEAVER",
+  "name": "切肉刀",
+  "name_zh": "切肉刀",
+  "description": "你可以在休息处进行烹饪。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MEAT_ON_THE_BONE": {
+  "id": "MEAT_ON_THE_BONE",
+  "name": "带骨肉",
+  "name_zh": "带骨肉",
+  "description": "如果你在战斗结束时生命值等于或低于{HpThreshold}%，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MEMBERSHIP_CARD": {
+  "id": "MEMBERSHIP_CARD",
+  "name": "会员卡",
+  "name_zh": "会员卡",
+  "description": "所有商品打折{Discount}%！",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MERCURY_HOURGLASS": {
+  "id": "MERCURY_HOURGLASS",
+  "name": "水银沙漏",
+  "name_zh": "水银沙漏",
+  "description": "在你的回合开始时，对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "METRONOME": {
+  "id": "METRONOME",
+  "name": "节拍器",
+  "name_zh": "节拍器",
+  "description": "每场战斗中你首次生成{OrbCount}个充能球时，对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MINIATURE_CANNON": {
+  "id": "MINIATURE_CANNON",
+  "name": "微型大炮",
+  "name_zh": "微型大炮",
+  "description": "升级的攻击牌额外造成{ExtraDamage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MINIATURE_TENT": {
+  "id": "MINIATURE_TENT",
+  "name": "微型帐篷",
+  "name_zh": "微型帐篷",
+  "description": "你可以在休息处选择任意数量的选项。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MINI_REGENT": {
+  "id": "MINI_REGENT",
+  "name": "迷你储君",
+  "name_zh": "迷你储君",
+  "description": "每回合你第一次花费{singleStarIcon}时，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MOLTEN_EGG": {
+  "id": "MOLTEN_EGG",
+  "name": "熔火之蛋",
+  "name_zh": "熔火之蛋",
+  "description": "每当你获得攻击牌时，将其升级。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MR_STRUGGLES": {
+  "id": "MR_STRUGGLES",
+  "name": "抱抱先生",
+  "name_zh": "抱抱先生",
+  "description": "在你的回合开始时，对所有敌人造成等量于当前回合数的伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MUMMIFIED_HAND": {
+  "id": "MUMMIFIED_HAND",
+  "name": "干瘪之手",
+  "name_zh": "干瘪之手",
+  "description": "你每打出一张能力牌，手牌中就有一张随机牌在这个回合可以免费打出。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MUSIC_BOX": {
+  "id": "MUSIC_BOX",
+  "name": "音乐盒",
+  "name_zh": "音乐盒",
+  "description": "将你每回合打出的第一张攻击牌的一张虚无复制品加入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MYSTERIOUS_COCOON": {
+  "id": "MYSTERIOUS_COCOON",
+  "name": "谜之茧",
+  "name_zh": "谜之茧",
+  "description": "在获得{Experience}经验后，将训练打击变化为扎穿。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "MYSTIC_LIGHTER": {
+  "id": "MYSTIC_LIGHTER",
+  "name": "神秘打火机",
+  "name_zh": "神秘打火机",
+  "description": "有附魔的攻击牌额外造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NEOWS_BONES": {
+  "id": "NEOWS_BONES",
+  "name": "涅奥骨骰",
+  "name_zh": "涅奥骨骰",
+  "description": "拾起时，获得{Relics}件随机涅奥{Relics:plural:遗物|遗物}。将{Curses}张随机{Curses:plural:诅咒|诅咒}加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NEOWS_TALISMAN": {
+  "id": "NEOWS_TALISMAN",
+  "name": "涅奥的护符",
+  "name_zh": "涅奥的护符",
+  "description": "拾起时，升级你的1张打击和1张防御。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NEOWS_TORMENT": {
+  "id": "NEOWS_TORMENT",
+  "name": "涅奥的苦痛",
+  "name_zh": "涅奥的苦痛",
+  "description": "拾起时，将1张涅奥之怒加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NEW_LEAF": {
+  "id": "NEW_LEAF",
+  "name": "新叶",
+  "name_zh": "新叶",
+  "description": "拾起时，变化{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NINJA_SCROLL": {
+  "id": "NINJA_SCROLL",
+  "name": "忍术卷轴",
+  "name_zh": "忍术卷轴",
+  "description": "每场战斗开始时，将{Shivs}张小刀加入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NUNCHAKU": {
+  "id": "NUNCHAKU",
+  "name": "双截棍",
+  "name_zh": "双截棍",
+  "description": "你每打出{Cards}张攻击牌，获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NUTRITIOUS_OYSTER": {
+  "id": "NUTRITIOUS_OYSTER",
+  "name": "营养牡蛎",
+  "name_zh": "营养牡蛎",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "NUTRITIOUS_SOUP": {
+  "id": "NUTRITIOUS_SOUP",
+  "name": "营养汤",
+  "name_zh": "营养汤",
+  "description": "拾起时，为你牌组中的所有“打击”附魔：特兹卡塔拉的余烬",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ODDLY_SMOOTH_STONE": {
+  "id": "ODDLY_SMOOTH_STONE",
+  "name": "意外光滑的石头",
+  "name_zh": "意外光滑的石头",
+  "description": "在每场战斗开始时，获得{DexterityPower}点敏捷。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "OLD_COIN": {
+  "id": "OLD_COIN",
+  "name": "古钱币",
+  "name_zh": "古钱币",
+  "description": "拾起时，获得{Gold}金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ORANGE_DOUGH": {
+  "id": "ORANGE_DOUGH",
+  "name": "橙色团块",
+  "name_zh": "橙色团块",
+  "description": "在每场战斗开始时，将{Cards}张随机无色牌加入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ORICHALCUM": {
+  "id": "ORICHALCUM",
+  "name": "奥利哈钢",
+  "name_zh": "奥利哈钢",
+  "description": "如果你在回合结束时没有任何格挡，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ORNAMENTAL_FAN": {
+  "id": "ORNAMENTAL_FAN",
+  "name": "精致折扇",
+  "name_zh": "精致折扇",
+  "description": "你每在同一回合内打出{Cards}张攻击牌，就获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ORRERY": {
+  "id": "ORRERY",
+  "name": "星系仪",
+  "name_zh": "星系仪",
+  "description": "拾起时，获得{Cards}次卡牌奖励",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_BLOOD": {
+  "id": "PAELS_BLOOD",
+  "name": "佩尔之血",
+  "name_zh": "佩尔之血",
+  "description": "在你的回合开始时，额外抽{Cards}张牌",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_CLAW": {
+  "id": "PAELS_CLAW",
+  "name": "佩尔之爪",
+  "name_zh": "佩尔之爪",
+  "description": "拾起时，为所有的“防御”附魔：{EnchantmentName}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_EYE": {
+  "id": "PAELS_EYE",
+  "name": "佩尔之眼",
+  "name_zh": "佩尔之眼",
+  "description": "你在每场战斗中第一次没有打出任何牌就结束回合时，消耗所有手牌然后进行一个额外回合。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_FLESH": {
+  "id": "PAELS_FLESH",
+  "name": "佩尔之肉",
+  "name_zh": "佩尔之肉",
+  "description": "从你的第3回合开始，在回合开始时额外获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_GROWTH": {
+  "id": "PAELS_GROWTH",
+  "name": "佩尔的增生组织",
+  "name_zh": "佩尔的增生组织",
+  "description": "拾起时，从牌组中选择一张牌，为其附魔：{EnchantmentName}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_HORN": {
+  "id": "PAELS_HORN",
+  "name": "佩尔之角",
+  "name_zh": "佩尔之角",
+  "description": "拾起时，将2张放松加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_LEGION": {
+  "id": "PAELS_LEGION",
+  "name": "佩尔的士兵",
+  "name_zh": "佩尔的士兵",
+  "description": "将你从一张卡牌中获得的格挡翻倍，然后此遗物会休眠{Turns}回合。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_TEARS": {
+  "id": "PAELS_TEARS",
+  "name": "佩尔之泪",
+  "name_zh": "佩尔之泪",
+  "description": "如果你在拥有未花费的{energyPrefix:energyIcons(1)}情况下结束回合，则下个回合额外获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_TOOTH": {
+  "id": "PAELS_TOOTH",
+  "name": "佩尔之牙",
+  "name_zh": "佩尔之牙",
+  "description": "拾起时，从你的牌组中选择{Cards}张牌移除。在每场战斗结束时，将其中随机1张牌升级然后返还。{CardTitles.StringValue:cond:\n\n被吞噬的牌：\n{}|}",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAELS_WING": {
+  "id": "PAELS_WING",
+  "name": "佩尔之翼",
+  "name_zh": "佩尔之翼",
+  "description": "你可以将你的卡牌奖励献祭给佩尔。每献祭{Sacrifices}次，就能获得一件遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PANDORAS_BOX": {
+  "id": "PANDORAS_BOX",
+  "name": "潘多拉魔盒",
+  "name_zh": "潘多拉魔盒",
+  "description": "变化所有“打击”和“防御”。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PANTOGRAPH": {
+  "id": "PANTOGRAPH",
+  "name": "缩放仪",
+  "name_zh": "缩放仪",
+  "description": "在Boss战开始时，回复{Heal}点生命值。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAPER_KRANE": {
+  "id": "PAPER_KRANE",
+  "name": "纸鹤",
+  "name_zh": "纸鹤",
+  "description": "有虚弱状态的敌人造成的伤害降低40%而非25%。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PAPER_PHROG": {
+  "id": "PAPER_PHROG",
+  "name": "纸蛙",
+  "name_zh": "纸蛙",
+  "description": "有易伤状态的敌人受到的伤害增加75%而非50%。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PARRYING_SHIELD": {
+  "id": "PARRYING_SHIELD",
+  "name": "招架盾",
+  "name_zh": "招架盾",
+  "description": "如果你在回合结束时拥有至少{Block}点格挡，则对随机敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PEAR": {
+  "id": "PEAR",
+  "name": "梨子",
+  "name_zh": "梨子",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PENDULUM": {
+  "id": "PENDULUM",
+  "name": "摆动球",
+  "name_zh": "摆动球",
+  "description": "每{Turns}个回合，抽{Cards}张牌",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PEN_NIB": {
+  "id": "PEN_NIB",
+  "name": "钢笔尖",
+  "name_zh": "钢笔尖",
+  "description": "你每打出的第10张攻击牌将会造成双倍伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PERMAFROST": {
+  "id": "PERMAFROST",
+  "name": "永冻冰晶",
+  "name_zh": "永冻冰晶",
+  "description": "当你在战斗中第一次打出能力牌时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PETRIFIED_TOAD": {
+  "id": "PETRIFIED_TOAD",
+  "name": "石化蟾蜍",
+  "name_zh": "石化蟾蜍",
+  "description": "在每场战斗开始时，获得一瓶药水形状的石头",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PHIAL_HOLSTER": {
+  "id": "PHIAL_HOLSTER",
+  "name": "药瓶皮套",
+  "name_zh": "药瓶皮套",
+  "description": "拾起时，获得{PotionSlots}个药水{PotionSlots:plural:栏位|栏位}并获得{Potions}瓶随机{Potions:plural:药水|药水}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PHILOSOPHERS_STONE": {
+  "id": "PHILOSOPHERS_STONE",
+  "name": "贤者之石",
+  "name_zh": "贤者之石",
+  "description": "在每回合开始时获得{Energy:energyIcons()}。所有敌人初始获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PHYLACTERY_UNBOUND": {
+  "id": "PHYLACTERY_UNBOUND",
+  "name": "无界命匣",
+  "name_zh": "无界命匣",
+  "description": "在每场战斗开始时，召唤{StartOfCombat}。在你的回合开始时，召唤{StartOfTurn}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PLANISPHERE": {
+  "id": "PLANISPHERE",
+  "name": "活动星图",
+  "name_zh": "活动星图",
+  "description": "每当你进入？房间的时候，回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "POCKETWATCH": {
+  "id": "POCKETWATCH",
+  "name": "怀表",
+  "name_zh": "怀表",
+  "description": "当你在本回合打出的牌少于等于{CardThreshold}张时，则在你的下个回合开始时额外抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "POLLINOUS_CORE": {
+  "id": "POLLINOUS_CORE",
+  "name": "花粉核心",
+  "name_zh": "花粉核心",
+  "description": "每{Turns}个回合，额外抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "POMANDER": {
+  "id": "POMANDER",
+  "name": "橙型香盒",
+  "name_zh": "橙型香盒",
+  "description": "拾起时，升级一张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "POTION_BELT": {
+  "id": "POTION_BELT",
+  "name": "药水腰带",
+  "name_zh": "药水腰带",
+  "description": "拾起时，获得{PotionSlots}个药水栏位。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "POWER_CELL": {
+  "id": "POWER_CELL",
+  "name": "能量电池",
+  "name_zh": "能量电池",
+  "description": "在每场战斗开始时，将{Cards}张耗能为0的卡牌从你的抽牌堆放入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PRAYER_WHEEL": {
+  "id": "PRAYER_WHEEL",
+  "name": "转经轮",
+  "name_zh": "转经轮",
+  "description": "普通敌人额外掉落一次卡牌奖励。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PRECARIOUS_SHEARS": {
+  "id": "PRECARIOUS_SHEARS",
+  "name": "松动羊毛剪",
+  "name_zh": "松动羊毛剪",
+  "description": "拾起时，从你的牌组中移除{Cards}张牌并失去{Damage}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PRECISE_SCISSORS": {
+  "id": "PRECISE_SCISSORS",
+  "name": "精准剪刀",
+  "name_zh": "精准剪刀",
+  "description": "拾起时，从你的牌组中移除{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PRESERVED_FOG": {
+  "id": "PRESERVED_FOG",
+  "name": "腌制活雾",
+  "name_zh": "腌制活雾",
+  "description": "拾起时，从你的牌组中移除{Cards}张牌。将一张愚行加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PRISMATIC_GEM": {
+  "id": "PRISMATIC_GEM",
+  "name": "棱彩宝石",
+  "name_zh": "棱彩宝石",
+  "description": "在每个回合开始时获得{Energy:energyIcons()}。卡牌奖励现在会包含其他颜色的卡牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PUMPKIN_CANDLE": {
+  "id": "PUMPKIN_CANDLE",
+  "name": "南瓜蜡烛",
+  "name_zh": "南瓜蜡烛",
+  "description": "在每个回合开始时获得{Energy:energyIcons()}。这件遗物会在{CombatCount}场战斗后熄灭。可以在休息处为其添火。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "PUNCH_DAGGER": {
+  "id": "PUNCH_DAGGER",
+  "name": "拳刃",
+  "name_zh": "拳刃",
+  "description": "拾起时，选择一张攻击牌为它附魔：动量{Momentum}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RADIANT_PEARL": {
+  "id": "RADIANT_PEARL",
+  "name": "发光珍珠",
+  "name_zh": "发光珍珠",
+  "description": "在每场战斗开始时，将{Cards}张冷光加入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RAINBOW_RING": {
+  "id": "RAINBOW_RING",
+  "name": "彩虹戒指",
+  "name_zh": "彩虹戒指",
+  "description": "每回合，你第一次打出攻击牌、技能牌和能力牌各一张时，获得{StrengthPower}点力量和{DexterityPower}点敏捷。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RAZOR_TOOTH": {
+  "id": "RAZOR_TOOTH",
+  "name": "剃刀牙",
+  "name_zh": "剃刀牙",
+  "description": "你打出攻击牌和技能牌时，将其在本场战斗内升级。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RED_MASK": {
+  "id": "RED_MASK",
+  "name": "红面具",
+  "name_zh": "红面具",
+  "description": "在每场战斗开始时，给于所有敌人{WeakPower}层虚弱。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RED_SKULL": {
+  "id": "RED_SKULL",
+  "name": "红头骨",
+  "name_zh": "红头骨",
+  "description": "当你的生命值低于或等于{HpThreshold}%时，你额外获得{StrengthPower}点力量",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RED_VINE_TEA": {
+  "id": "RED_VINE_TEA",
+  "name": "赤藤茶",
+  "name_zh": "赤藤茶",
+  "description": "在你接下来的{Combats}场战斗开始时，额外抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "REGALITE": {
+  "id": "REGALITE",
+  "name": "君王矿石",
+  "name_zh": "君王矿石",
+  "description": "每当你生成一张牌时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "REGAL_PILLOW": {
+  "id": "REGAL_PILLOW",
+  "name": "皇家枕头",
+  "name_zh": "皇家枕头",
+  "description": "在休息时，额外回复{Heal}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "REPTILE_TRINKET": {
+  "id": "REPTILE_TRINKET",
+  "name": "爬行动物饰品",
+  "name_zh": "爬行动物饰品",
+  "description": "当你使用药水时，在本回合获得{StrengthPower}力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RINGING_TRIANGLE": {
+  "id": "RINGING_TRIANGLE",
+  "name": "三角铃鼓",
+  "name_zh": "三角铃鼓",
+  "description": "在每场战斗的第一回合保留你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RING_OF_THE_DRAKE": {
+  "id": "RING_OF_THE_DRAKE",
+  "name": "长蛇戒指",
+  "name_zh": "长蛇戒指",
+  "description": "在战斗开始时的前{Turns}个回合，你额外抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RING_OF_THE_SNAKE": {
+  "id": "RING_OF_THE_SNAKE",
+  "name": "蛇之戒指",
+  "name_zh": "蛇之戒指",
+  "description": "在每场战斗开始时，额外抽{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RIPPLE_BASIN": {
+  "id": "RIPPLE_BASIN",
+  "name": "波纹水盆",
+  "name_zh": "波纹水盆",
+  "description": "如果你在本回合中没有打出过攻击牌，则获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ROYAL_POISON": {
+  "id": "ROYAL_POISON",
+  "name": "王室猛毒",
+  "name_zh": "王室猛毒",
+  "description": "在每场战斗开始时，失去{Damage}点生命。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "ROYAL_STAMP": {
+  "id": "ROYAL_STAMP",
+  "name": "王室印章",
+  "name_zh": "王室印章",
+  "description": "拾起时，从牌组中选择一张攻击牌或技能牌，为它附魔：{Enchantment}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RUINED_HELMET": {
+  "id": "RUINED_HELMET",
+  "name": "损毁头盔",
+  "name_zh": "损毁头盔",
+  "description": "你在每场战斗中第一次获得的力量值翻倍。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RUNIC_CAPACITOR": {
+  "id": "RUNIC_CAPACITOR",
+  "name": "符文电容器",
+  "name_zh": "符文电容器",
+  "description": "每场战斗开始时，获得{Repeat}个额外充能球栏位。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "RUNIC_PYRAMID": {
+  "id": "RUNIC_PYRAMID",
+  "name": "符文金字塔",
+  "name_zh": "符文金字塔",
+  "description": "你在回合结束时不再自动丢弃所有手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SAI": {
+  "id": "SAI",
+  "name": "钗",
+  "name_zh": "钗",
+  "description": "在你的回合开始时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SAND_CASTLE": {
+  "id": "SAND_CASTLE",
+  "name": "沙堡",
+  "name_zh": "沙堡",
+  "description": "拾起时，随机升级{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SCREAMING_FLAGON": {
+  "id": "SCREAMING_FLAGON",
+  "name": "尖叫酒壶",
+  "name_zh": "尖叫酒壶",
+  "description": "如果你在回合结束时没有任何手牌，则对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SCROLL_BOXES": {
+  "id": "SCROLL_BOXES",
+  "name": "卷轴箱",
+  "name_zh": "卷轴箱",
+  "description": "拾起时，从2个卡牌包中选择1包加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SEAL_OF_GOLD": {
+  "id": "SEAL_OF_GOLD",
+  "name": "黄金印",
+  "name_zh": "黄金印",
+  "description": "在你的回合开始时，花费{Gold}金币来获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SEA_GLASS": {
+  "id": "SEA_GLASS",
+  "name": "海玻璃",
+  "name_zh": "海玻璃",
+  "description": "查看{Cards}张来自{Character.StringValue:cond:{}|其他角色}的牌。从中选择任意数量的卡牌加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……",
+  "selectionScreenPrompt": "选择任意张牌加入你的牌组。"
+ },
+ "SELF_FORMING_CLAY": {
+  "id": "SELF_FORMING_CLAY",
+  "name": "自成型黏土",
+  "name_zh": "自成型黏土",
+  "description": "每当你在战斗中失去生命，就在下回合获得{BlockNextTurn}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SERE_TALON": {
+  "id": "SERE_TALON",
+  "name": "原初之爪",
+  "name_zh": "原初之爪",
+  "description": "拾起时，将{Curses}张随机诅咒牌和{Wishes}张许愿加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SHOVEL": {
+  "id": "SHOVEL",
+  "name": "铲子",
+  "name_zh": "铲子",
+  "description": "现在你可以在休息处挖掘遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SHURIKEN": {
+  "id": "SHURIKEN",
+  "name": "手里剑",
+  "name_zh": "手里剑",
+  "description": "你每在同一回合内打出{Cards}张攻击牌，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SIGNET_RING": {
+  "id": "SIGNET_RING",
+  "name": "图章戒指",
+  "name_zh": "图章戒指",
+  "description": "拾起时，获得{Gold}金币。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SILKEN_TRESS": {
+  "id": "SILKEN_TRESS",
+  "name": "华美发束",
+  "name_zh": "华美发束",
+  "description": "拾起时，失去所有金币。为第一次卡牌奖励中的所有牌附魔：华彩。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SILVER_CRUCIBLE": {
+  "id": "SILVER_CRUCIBLE",
+  "name": "白银熔炉",
+  "name_zh": "白银熔炉",
+  "description": "你遇到的前{Cards}次卡牌奖励将是被升级过的。你打开的第一个宝箱将是空的",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SLING_OF_COURAGE": {
+  "id": "SLING_OF_COURAGE",
+  "name": "勇气投石索",
+  "name_zh": "勇气投石索",
+  "description": "在与精英敌人战斗时，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SMALL_CAPSULE": {
+  "id": "SMALL_CAPSULE",
+  "name": "小型扭蛋",
+  "name_zh": "小型扭蛋",
+  "description": "拾起时，获得一件随机遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SNECKO_EYE": {
+  "id": "SNECKO_EYE",
+  "name": "异蛇之眼",
+  "name_zh": "异蛇之眼",
+  "description": "每回合多抽{Cards}张牌。每场战斗开始时获得混乱效果。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SNECKO_SKULL": {
+  "id": "SNECKO_SKULL",
+  "name": "异蛇头骨",
+  "name_zh": "异蛇头骨",
+  "description": "每当你给予敌人中毒时，所给予的中毒层数增加{PoisonPower}层。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SOZU": {
+  "id": "SOZU",
+  "name": "添水",
+  "name_zh": "添水",
+  "description": "你无法再获得药水。在每回合开始时获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SPARKLING_ROUGE": {
+  "id": "SPARKLING_ROUGE",
+  "name": "闪亮口红",
+  "name_zh": "闪亮口红",
+  "description": "在你的第3回合开始时，获得{StrengthPower}点力量和{DexterityPower}点敏捷。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SPIKED_GAUNTLETS": {
+  "id": "SPIKED_GAUNTLETS",
+  "name": "带刺手甲",
+  "name_zh": "带刺手甲",
+  "description": "在每回合开始时获得{Energy:energyIcons()}。能力牌的耗能增加1{energyPrefix:energyIcons(1)}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STONE_CALENDAR": {
+  "id": "STONE_CALENDAR",
+  "name": "历石",
+  "name_zh": "历石",
+  "description": "在第{DamageTurn}回合结束时，对所有敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STONE_CRACKER": {
+  "id": "STONE_CRACKER",
+  "name": "碎石钻",
+  "name_zh": "碎石钻",
+  "description": "在每场战斗开始时，在本场战斗中随机升级你抽牌堆中的{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STONE_HUMIDIFIER": {
+  "id": "STONE_HUMIDIFIER",
+  "name": "石炉加湿器",
+  "name_zh": "石炉加湿器",
+  "description": "每当你在休息处休息时，将你的最大生命值提升{MaxHp}点。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STORYBOOK": {
+  "id": "STORYBOOK",
+  "name": "故事书",
+  "name_zh": "故事书",
+  "description": "拾起时，将1张至亮之焰添加到你的牌组中。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STRAWBERRY": {
+  "id": "STRAWBERRY",
+  "name": "草莓",
+  "name_zh": "草莓",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STRIKE_DUMMY": {
+  "id": "STRIKE_DUMMY",
+  "name": "打击木偶",
+  "name_zh": "打击木偶",
+  "description": "名字中有“打击”的卡牌造成{ExtraDamage}点额外伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "STURDY_CLAMP": {
+  "id": "STURDY_CLAMP",
+  "name": "坚固钳子",
+  "name_zh": "坚固钳子",
+  "description": "可以跨回合保留最多{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SWORD_OF_JADE": {
+  "id": "SWORD_OF_JADE",
+  "name": "玉之剑",
+  "name_zh": "玉之剑",
+  "description": "在每场战斗开始时，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SWORD_OF_STONE": {
+  "id": "SWORD_OF_STONE",
+  "name": "石之剑",
+  "name_zh": "石之剑",
+  "description": "在击败{Elites}名精英敌人之后将变化为一件强力遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "SYMBIOTIC_VIRUS": {
+  "id": "SYMBIOTIC_VIRUS",
+  "name": "共生病毒",
+  "name_zh": "共生病毒",
+  "description": "在每场战斗开始时，生成{Dark}个黑暗充能球。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TANXS_WHISTLE": {
+  "id": "TANXS_WHISTLE",
+  "name": "坦克斯的哨子",
+  "name_zh": "坦克斯的哨子",
+  "description": "拾起时，将1张吹哨加入你的牌组。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TEA_OF_DISCOURTESY": {
+  "id": "TEA_OF_DISCOURTESY",
+  "name": "无礼之茶",
+  "name_zh": "无礼之茶",
+  "description": "在下一场战斗开始时，将{DazedCount}张晕眩放入你的抽牌堆。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "THE_ABACUS": {
+  "id": "THE_ABACUS",
+  "name": "算盘",
+  "name_zh": "算盘",
+  "description": "你每次将抽牌堆洗牌时，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "THE_BOOT": {
+  "id": "THE_BOOT",
+  "name": "发条靴",
+  "name_zh": "发条靴",
+  "description": "每当你造成小于等于{DamageThreshold}点未被格挡的攻击伤害时，将伤害提升为{DamageMinimum}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "THE_COURIER": {
+  "id": "THE_COURIER",
+  "name": "送货员",
+  "name_zh": "送货员",
+  "description": "商人的卡牌、遗物和药水不再会卖光，并且所有商品打折{Discount}%。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "THROWING_AXE": {
+  "id": "THROWING_AXE",
+  "name": "投斧",
+  "name_zh": "投斧",
+  "description": "你在每场战斗中打出的第一张牌会多打出一次。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TINGSHA": {
+  "id": "TINGSHA",
+  "name": "铜钹",
+  "name_zh": "铜钹",
+  "description": "你每在你的回合丢弃一张牌，就对一名随机敌人造成{Damage}点伤害。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TINY_MAILBOX": {
+  "id": "TINY_MAILBOX",
+  "name": "小邮箱",
+  "name_zh": "小邮箱",
+  "description": "每当你休息时，获得2瓶随机药水。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TOASTY_MITTENS": {
+  "id": "TOASTY_MITTENS",
+  "name": "烘焙手套",
+  "name_zh": "烘焙手套",
+  "description": "在你的回合开始时，消耗你抽牌堆顶部的牌并获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TOOLBOX": {
+  "id": "TOOLBOX",
+  "name": "工具箱",
+  "name_zh": "工具箱",
+  "description": "在每场战斗开始时，从{Cards}张随机无色牌中选择1张加入你的手牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TOUCH_OF_OROBAS": {
+  "id": "TOUCH_OF_OROBAS",
+  "name": "欧洛巴斯之触",
+  "name_zh": "欧洛巴斯之触",
+  "description": "拾起时，将{StarterRelic.StringValue:cond:{StarterRelic}替换为{UpgradedRelic}|你的初始遗物替换为先古版本}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TOUGH_BANDAGES": {
+  "id": "TOUGH_BANDAGES",
+  "name": "结实绷带",
+  "name_zh": "结实绷带",
+  "description": "你每在你的回合丢弃一张牌，就获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TOXIC_EGG": {
+  "id": "TOXIC_EGG",
+  "name": "毒素之蛋",
+  "name_zh": "毒素之蛋",
+  "description": "每当你获得技能牌时，将其升级。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TOY_BOX": {
+  "id": "TOY_BOX",
+  "name": "玩具盒",
+  "name_zh": "玩具盒",
+  "description": "拾起时，获得{Relics}件蜡制遗物。每经过{Combats}场战斗，你最左侧的蜡制遗物将会融化。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TRI_BOOMERANG": {
+  "id": "TRI_BOOMERANG",
+  "name": "三刃回旋镖",
+  "name_zh": "三刃回旋镖",
+  "description": "从你的牌组中选择{Cards}张攻击牌。为这些牌附魔：本能。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TUNGSTEN_ROD": {
+  "id": "TUNGSTEN_ROD",
+  "name": "钨合金棍",
+  "name_zh": "钨合金棍",
+  "description": "你每次失去生命时，减少失去的生命值{HpLossReduction}点。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TUNING_FORK": {
+  "id": "TUNING_FORK",
+  "name": "音叉",
+  "name_zh": "音叉",
+  "description": "你每打出{Cards}张技能牌，获得{Block}点格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "TWISTED_FUNNEL": {
+  "id": "TWISTED_FUNNEL",
+  "name": "扭曲漏斗",
+  "name_zh": "扭曲漏斗",
+  "description": "在每场战斗开始时，给予所有敌人{PoisonPower}层中毒。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "UNCEASING_TOP": {
+  "id": "UNCEASING_TOP",
+  "name": "不休陀螺",
+  "name_zh": "不休陀螺",
+  "description": "在你的回合，当你没有手牌时，抽一张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "UNDYING_SIGIL": {
+  "id": "UNDYING_SIGIL",
+  "name": "不死符文",
+  "name_zh": "不死符文",
+  "description": "当敌人的灾厄层数大于等于其生命值时，它造成的伤害降低50%。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "UNSETTLING_LAMP": {
+  "id": "UNSETTLING_LAMP",
+  "name": "不安油灯",
+  "name_zh": "不安油灯",
+  "description": "你在每场战斗中第一次打出能给予敌人负面状态的牌时，将其效果翻倍。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VAJRA": {
+  "id": "VAJRA",
+  "name": "金刚杵",
+  "name_zh": "金刚杵",
+  "description": "在每场战斗开始时，获得{StrengthPower}点力量。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VAMBRACE": {
+  "id": "VAMBRACE",
+  "name": "臂甲",
+  "name_zh": "臂甲",
+  "description": "每场战斗中，你第一次从卡牌中获得的格挡值翻倍。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VELVET_CHOKER": {
+  "id": "VELVET_CHOKER",
+  "name": "天鹅绒颈圈",
+  "name_zh": "天鹅绒颈圈",
+  "description": "在每回合开始时获得{Energy:energyIcons()}。你每回合不能打出超过{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VENERABLE_TEA_SET": {
+  "id": "VENERABLE_TEA_SET",
+  "name": "古茶具套装",
+  "name_zh": "古茶具套装",
+  "description": "到达休息处后的下一场战斗开始时额外获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VERY_HOT_COCOA": {
+  "id": "VERY_HOT_COCOA",
+  "name": "烫嘴可可",
+  "name_zh": "烫嘴可可",
+  "description": "在每场战斗的第一回合额外获得{Energy:energyIcons()}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VEXING_PUZZLEBOX": {
+  "id": "VEXING_PUZZLEBOX",
+  "name": "烦人机关盒",
+  "name_zh": "烦人机关盒",
+  "description": "在每场战斗开始时，将一张随机卡牌加入你的手牌。这张牌在本回合可以免费打出。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VINE_BRACELET": {
+  "id": "VINE_BRACELET",
+  "name": "藤蔓手镯",
+  "name_zh": "藤蔓手镯",
+  "description": "拾起时，将你的最大生命值提升{MaxHp}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "VITRUVIAN_MINION": {
+  "id": "VITRUVIAN_MINION",
+  "name": "维特鲁威仆从",
+  "name_zh": "维特鲁威仆从",
+  "description": "名字中有“仆从”的卡牌造成双倍的伤害与格挡。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WAR_HAMMER": {
+  "id": "WAR_HAMMER",
+  "name": "战锤",
+  "name_zh": "战锤",
+  "description": "每当你击败一名精英敌人的时候，随机升级{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WAR_PAINT": {
+  "id": "WAR_PAINT",
+  "name": "战纹涂料",
+  "name_zh": "战纹涂料",
+  "description": "拾起时，随机升级{Cards}张技能牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WHETSTONE": {
+  "id": "WHETSTONE",
+  "name": "磨刀石",
+  "name_zh": "磨刀石",
+  "description": "拾起时，随机升级{Cards}张攻击牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WHISPERING_EARRING": {
+  "id": "WHISPERING_EARRING",
+  "name": "低语耳环",
+  "name_zh": "低语耳环",
+  "description": "在每个回合开始时，获得{Energy:energyIcons()}。瓦库将接管你的第一回合。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WHITE_BEAST_STATUE": {
+  "id": "WHITE_BEAST_STATUE",
+  "name": "白兽雕像",
+  "name_zh": "白兽雕像",
+  "description": "战斗结束后必定掉落药水。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WHITE_STAR": {
+  "id": "WHITE_STAR",
+  "name": "白星",
+  "name_zh": "白星",
+  "description": "精英敌人额外掉落一次稀有卡牌奖励。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WINGED_BOOTS": {
+  "id": "WINGED_BOOTS",
+  "name": "羽翼之靴",
+  "name_zh": "羽翼之靴",
+  "description": "你在选择下一层的房间时有{Rooms}次机会可以无视当前的路线。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WING_CHARM": {
+  "id": "WING_CHARM",
+  "name": "羽翼护符",
+  "name_zh": "羽翼护符",
+  "description": "每次卡牌奖励中，都会有随机一张牌被附魔：迅捷{SwiftAmount}。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WONGOS_MYSTERY_TICKET": {
+  "id": "WONGOS_MYSTERY_TICKET",
+  "name": "旺购神秘券",
+  "name_zh": "旺购神秘券",
+  "description": "在{RemainingCombats}场战斗后，获得随机{Repeat}件遗物。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "WONGO_CUSTOMER_APPRECIATION_BADGE": {
+  "id": "WONGO_CUSTOMER_APPRECIATION_BADGE",
+  "name": "旺购客户感恩徽章",
+  "name_zh": "旺购客户感恩徽章",
+  "description": "没有任何作用。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ },
+ "YUMMY_COOKIE": {
+  "id": "YUMMY_COOKIE",
+  "name": "美味饼干",
+  "name_zh": "美味饼干",
+  "description": "拾起时，升级{Cards}张牌。",
+  "flavor": "这个遗物的细节将在未来揭晓……"
+ }
+}

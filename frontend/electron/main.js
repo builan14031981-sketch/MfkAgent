@@ -496,9 +496,18 @@ function registerIpcHandlers() {
   console.log("[Electron] IPC handler 'open-path' registered");
 
   // 自定义区域截图：类似 QQ/豆包的截图工具，拖拽选区域后返回图片文件
+  // 优化：截图前自动隐藏主窗口，确保能截取窗口后方内容；结束后（无论成功/取消/异常）自动恢复
   ipcMain.handle("start-screenshot", async () => {
+    const winValid = mainWindow && !mainWindow.isDestroyed();
+    const wasVisible = winValid && mainWindow.isVisible();
     try {
-      console.log("[Electron] start-screenshot: begin");
+      console.log("[Electron] start-screenshot: begin, hide main window:", wasVisible);
+      // 截图前隐藏主窗口，让用户能截取窗口后方的内容
+      if (wasVisible) {
+        mainWindow.hide();
+        // 等待窗口真正从屏幕消失（Windows 隐藏动画 + 渲染同步，约 150-200ms）
+        await new Promise((r) => setTimeout(r, 200));
+      }
       const result = await startScreenshot();
       if (!result) {
         console.log("[Electron] start-screenshot: cancelled by user");
@@ -509,6 +518,13 @@ function registerIpcHandlers() {
     } catch (err) {
       console.error("[Electron] start-screenshot failed:", err);
       return { success: false, error: err.message };
+    } finally {
+      // 无论成功/取消/异常，都恢复主窗口显示并聚焦
+      if (wasVisible && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        console.log("[Electron] start-screenshot: main window restored");
+      }
     }
   });
   console.log("[Electron] IPC handler 'start-screenshot' registered");

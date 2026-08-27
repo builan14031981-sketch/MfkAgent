@@ -10,7 +10,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { AgentIcon } from "@/components/AgentIcon";
 import { useAgents } from "@/hooks/useAgents";
 import { useTranslation } from "@/hooks/useTranslation";
-import { getAttachmentImageUrl } from "@/lib/api";
+import { getAttachmentImageUrl, getCurrentApiBase } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
 import { formatTimeOnly } from "@/lib/timeFormat";
 
@@ -969,7 +969,9 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
         }}>
           {generatedImages.map((img, i) => {
             const isSingle = generatedImages.length === 1;
-            const urls = generatedImages.map((x) => x.src);
+            // 相对路径（/开头）拼接后端地址，避免请求到前端 dev server
+            const resolvedSrc = img.src.startsWith("/") ? `${getCurrentApiBase() || "http://127.0.0.1:8001"}${img.src}` : img.src;
+            const urls = generatedImages.map((x) => x.src.startsWith("/") ? `${getCurrentApiBase() || "http://127.0.0.1:8001"}${x.src}` : x.src);
             return (
               <div
                 key={img.src}
@@ -989,7 +991,7 @@ export const ChatMessage = memo(function ChatMessage({ message, currentAgent, du
                 }}
               >
                 <img
-                  src={img.src}
+                  src={resolvedSrc}
                   alt={img.alt}
                   title="点击查看大图"
                   style={{

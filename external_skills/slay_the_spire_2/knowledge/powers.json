@@ -1,0 +1,1387 @@
+{
+  "DRAIN_POWER": {
+    "id": "DRAIN_POWER",
+    "name": "能量汲取",
+    "description": "造成[Damage]点伤害。\n随机升级你弃牌堆中的[Cards]张牌。"
+  },
+  "MOCK_POWER_CARD": {
+    "id": "MOCK_POWER_CARD",
+    "name": "模拟能力牌",
+    "description": ""
+  },
+  "SOULS_POWER": {
+    "id": "SOULS_POWER",
+    "name": "灵魂之力",
+    "description": "这张牌失去消耗。"
+  },
+  "DEBUFF_STRONG": {
+    "id": "DEBUFF_STRONG",
+    "name": "策略",
+    "description": "这个敌人将要对你施加一个强大的负面效果。"
+  },
+  "ACCELERANT_POWER": {
+    "id": "ACCELERANT_POWER",
+    "name": "触媒",
+    "description": "中毒会多触发一次。"
+  },
+  "ACCURACY_POWER": {
+    "id": "ACCURACY_POWER",
+    "name": "精准",
+    "description": "小刀造成额外伤害。"
+  },
+  "ADAPTABLE_POWER": {
+    "id": "ADAPTABLE_POWER",
+    "name": "适者生存",
+    "description": "当这个怪物将要被击败时，它会复活变得更加强大。"
+  },
+  "ADAPTATION_POWER": {
+    "id": "ADAPTATION_POWER",
+    "name": "适应",
+    "description": "每当你获得格挡时，在本回合获得3点敏捷。"
+  },
+  "AFTERIMAGE_POWER": {
+    "id": "AFTERIMAGE_POWER",
+    "name": "余像",
+    "description": "你每打出一张牌，都获得1点格挡。"
+  },
+  "AGGRESSION_POWER": {
+    "id": "AGGRESSION_POWER",
+    "name": "好勇斗狠",
+    "description": "在你的回合开始时，将你弃牌堆的一张随机攻击牌放入你的手牌并将其在本场战斗中升级。"
+  },
+  "ARSENAL_POWER": {
+    "id": "ARSENAL_POWER",
+    "name": "武器库",
+    "description": "每当你生成一张牌，就获得1点力量。"
+  },
+  "ARTIFACT_POWER": {
+    "id": "ARTIFACT_POWER",
+    "name": "人工制品",
+    "description": "免疫负面效果。"
+  },
+  "ASLEEP_POWER": {
+    "id": "ASLEEP_POWER",
+    "name": "沉睡",
+    "description": ""
+  },
+  "AUTOMATION_POWER": {
+    "id": "AUTOMATION_POWER",
+    "name": "自动化",
+    "description": "你每抽10张牌时，获得能量。"
+  },
+  "A_THOUSAND_CUTS_POWER": {
+    "id": "A_THOUSAND_CUTS_POWER",
+    "name": "凌迟",
+    "description": "你每打出一张牌，就对所有敌人造成1点伤害。"
+  },
+  "BACK_ATTACK_LEFT_POWER": {
+    "id": "BACK_ATTACK_LEFT_POWER",
+    "name": "后方攻击",
+    "description": "从后方对你攻击时，造成的伤害增加50%。"
+  },
+  "BACK_ATTACK_RIGHT_POWER": {
+    "id": "BACK_ATTACK_RIGHT_POWER",
+    "name": "后方攻击",
+    "description": "从后方对你攻击时，造成的伤害增加50%。"
+  },
+  "BARRICADE_POWER": {
+    "id": "BARRICADE_POWER",
+    "name": "壁垒",
+    "description": "格挡不会在你的回合开始时被移除。"
+  },
+  "BATTLEWORN_DUMMY_TIME_LIMIT_POWER": {
+    "id": "BATTLEWORN_DUMMY_TIME_LIMIT_POWER",
+    "name": "时间限制",
+    "description": "你还有3个回合来击败战斗好伙伴。"
+  },
+  "BEACON_OF_HOPE_POWER": {
+    "id": "BEACON_OF_HOPE_POWER",
+    "name": "希望灯塔",
+    "description": "每当你在你的回合获得格挡时，其他玩家获得相应一半的格挡。"
+  },
+  "BIASED_COGNITION_POWER": {
+    "id": "BIASED_COGNITION_POWER",
+    "name": "偏差认知",
+    "description": "在你的回合开始时，失去1点集中。"
+  },
+  "BLACK_HOLE_POWER": {
+    "id": "BLACK_HOLE_POWER",
+    "name": "黑洞",
+    "description": "每当你花费或获得{singleStarIcon}时，对所有敌人造成3点伤害。"
+  },
+  "BLOCK_NEXT_TURN_POWER": {
+    "id": "BLOCK_NEXT_TURN_POWER",
+    "name": "下回合格挡",
+    "description": "在你的下个回合开始时，获得4点格挡。"
+  },
+  "BLUR_POWER": {
+    "id": "BLUR_POWER",
+    "name": "残影",
+    "description": "你的下一回合开始时格挡不会消失。"
+  },
+  "BORROWED_TIME_POWER": {
+    "id": "BORROWED_TIME_POWER",
+    "name": "预借时间",
+    "description": "卡牌在本回合耗能增加一。"
+  },
+  "BUFFER_POWER": {
+    "id": "BUFFER_POWER",
+    "name": "缓冲",
+    "description": "阻止下一次你受到的生命值损伤。"
+  },
+  "BURROWED_POWER": {
+    "id": "BURROWED_POWER",
+    "name": "埋地",
+    "description": "格挡不会在其回合开始时移除。如果所有格挡被移除，则将其击晕。"
+  },
+  "BURST_POWER": {
+    "id": "BURST_POWER",
+    "name": "爆发",
+    "description": "本回合，你的下一张技能牌会多打出一次。"
+  },
+  "CALAMITY_POWER": {
+    "id": "CALAMITY_POWER",
+    "name": "劫难",
+    "description": "每当你打出一张攻击牌时，将一张随机攻击牌添加到你的手牌。"
+  },
+  "CALCIFY_POWER": {
+    "id": "CALCIFY_POWER",
+    "name": "钙化",
+    "description": "奥斯提的攻击造成额外伤害。"
+  },
+  "CALL_OF_THE_VOID_POWER": {
+    "id": "CALL_OF_THE_VOID_POWER",
+    "name": "虚空之唤",
+    "description": "在你的回合开始时，将1张随机牌添加到你的手牌并给予其虚无。"
+  },
+  "CHAINS_OF_BINDING_POWER": {
+    "id": "CHAINS_OF_BINDING_POWER",
+    "name": "魂缚锁链",
+    "description": "每回合抽到的前3张牌将会被侵蚀为魂缚。"
+  },
+  "CHILD_OF_THE_STARS_POWER": {
+    "id": "CHILD_OF_THE_STARS_POWER",
+    "name": "群星之子",
+    "description": "每花费一点{singleStarIcon}，获得1点格挡。"
+  },
+  "CLARITY_POWER": {
+    "id": "CLARITY_POWER",
+    "name": "明晰",
+    "description": "在你的下一个回合开始时，额外抽1张牌。"
+  },
+  "COLOSSUS_POWER": {
+    "id": "COLOSSUS_POWER",
+    "name": "巨像",
+    "description": "本回合，你从易伤敌人处受到的伤害减少50%。"
+  },
+  "CONFUSED_POWER": {
+    "id": "CONFUSED_POWER",
+    "name": "混乱",
+    "description": "你的卡牌耗能会在抽取时变化，范围为0到3。"
+  },
+  "CONQUEROR_POWER": {
+    "id": "CONQUEROR_POWER",
+    "name": "征服者",
+    "description": "君王之剑在本回合对该敌人造成双倍伤害。"
+  },
+  "CONSTRICT_POWER": {
+    "id": "CONSTRICT_POWER",
+    "name": "紧缠",
+    "description": "蛇行扼杀者存活时，在你的回合结束时受到1点伤害。"
+  },
+  "CONSUMING_SHADOW_POWER": {
+    "id": "CONSUMING_SHADOW_POWER",
+    "name": "吞噬暗影",
+    "description": "在你的回合结束时，激发你最左侧的充能球。"
+  },
+  "CONTRACTILITY_POWER": {
+    "id": "CONTRACTILITY_POWER",
+    "name": "伸缩力",
+    "description": "在下个回合获得0点格挡。"
+  },
+  "COOLANT_POWER": {
+    "id": "COOLANT_POWER",
+    "name": "冷却剂",
+    "description": "在你的回合开始时，每有一种不同的充能球获得3点格挡。"
+  },
+  "CORROSIVE_WAVE_POWER": {
+    "id": "CORROSIVE_WAVE_POWER",
+    "name": "腐蚀波",
+    "description": "你在本回合每抽到一张牌，就给予所有敌人2点中毒。"
+  },
+  "CORRUPTION_POWER": {
+    "id": "CORRUPTION_POWER",
+    "name": "腐化",
+    "description": "所有技能牌耗能变为0。\n所有技能牌在打出时被消耗。"
+  },
+  "COUNTDOWN_POWER": {
+    "id": "COUNTDOWN_POWER",
+    "name": "倒数计时",
+    "description": "在你的回合开始时，给予随机敌人6层灾厄。"
+  },
+  "COVERED_POWER": {
+    "id": "COVERED_POWER",
+    "name": "掩护",
+    "description": "有盟友在掩护你。所有朝向你的攻击会被改为瞄准对方。"
+  },
+  "CRAB_RAGE_POWER": {
+    "id": "CRAB_RAGE_POWER",
+    "name": "蟹之怒",
+    "description": "当有盟友死亡时，这个生物获得5点力量和99点格挡。"
+  },
+  "CREATIVE_AI_POWER": {
+    "id": "CREATIVE_AI_POWER",
+    "name": "创造性AI",
+    "description": "在你的回合开始时，将一张随机能力牌添加到你的手牌。"
+  },
+  "CRIMSON_MANTLE_POWER": {
+    "id": "CRIMSON_MANTLE_POWER",
+    "name": "绯红披风",
+    "description": "在你的回合开始时，失去生命并获得格挡。"
+  },
+  "CRUELTY_POWER": {
+    "id": "CRUELTY_POWER",
+    "name": "残酷",
+    "description": "以上敌人受到额外伤害。"
+  },
+  "CURIOUS_POWER": {
+    "id": "CURIOUS_POWER",
+    "name": "好奇",
+    "description": "能力牌的耗能减少1[energyPrefix]。"
+  },
+  "CURL_UP_POWER": {
+    "id": "CURL_UP_POWER",
+    "name": "蜷身",
+    "description": "受到伤害时，蜷起身子并获得格挡。（每场战斗一次）"
+  },
+  "DAMPEN_POWER": {
+    "id": "DAMPEN_POWER",
+    "name": "抑制",
+    "description": "魔法骑士存活时，你的所有卡牌被降级。"
+  },
+  "DANSE_MACABRE_POWER": {
+    "id": "DANSE_MACABRE_POWER",
+    "name": "死亡之舞",
+    "description": "每当你打出一张耗能为2或更高的牌时，获得7点格挡。"
+  },
+  "DARK_EMBRACE_POWER": {
+    "id": "DARK_EMBRACE_POWER",
+    "name": "黑暗之拥",
+    "description": "每当有一张牌被消耗时，抽1张牌。"
+  },
+  "DEBILITATE_POWER": {
+    "id": "DEBILITATE_POWER",
+    "name": "摧残",
+    "description": "2回合内，易伤和虚弱的效果变为两倍。"
+  },
+  "DECREE_OF_ENTROPY_POWER": {
+    "id": "DECREE_OF_ENTROPY_POWER",
+    "name": "熵之律令",
+    "description": "在你的回合开始时，将1张升级过的随机卡牌添加到你的手牌。"
+  },
+  "DECREE_OF_UNMAKING_POWER": {
+    "id": "DECREE_OF_UNMAKING_POWER",
+    "name": "亡之律令",
+    "description": "每当你伤害一名敌人时，给予其一个随机负面效果。"
+  },
+  "DEMESNE_POWER": {
+    "id": "DEMESNE_POWER",
+    "name": "领域",
+    "description": "在你的回合开始时，获得1点能量并额外抽1张牌。"
+  },
+  "DEMISE_POWER": {
+    "id": "DEMISE_POWER",
+    "name": "消亡",
+    "description": "这个生物在其回合结束时失去生命。"
+  },
+  "DEMON_FORM_POWER": {
+    "id": "DEMON_FORM_POWER",
+    "name": "恶魔形态",
+    "description": "在你的回合开始时，获得2点力量。"
+  },
+  "DESPAIR_POWER": {
+    "id": "DESPAIR_POWER",
+    "name": "绝望",
+    "description": "你每给予1点灾厄，都获得1点格挡。"
+  },
+  "DEVOUR_LIFE_POWER": {
+    "id": "DEVOUR_LIFE_POWER",
+    "name": "吞噬生命",
+    "description": "每当你打出一张灵魂时，召唤1。"
+  },
+  "DEXTERITY_DOWN_POWER": {
+    "id": "DEXTERITY_DOWN_POWER",
+    "name": "敏捷下降",
+    "description": "本回合结束时，失去敏捷。"
+  },
+  "DEXTERITY_POWER": {
+    "id": "DEXTERITY_POWER",
+    "name": "敏捷",
+    "description": "敏捷会增加从卡牌中获得的格挡。"
+  },
+  "DIAMOND_DIADEM_POWER": {
+    "id": "DIAMOND_DIADEM_POWER",
+    "name": "钻石头冠",
+    "description": "敌人在本回合造成的伤害减少50%。"
+  },
+  "DIE_FOR_YOU_POWER": {
+    "id": "DIE_FOR_YOU_POWER",
+    "name": "为你而死",
+    "description": "奥斯提会吸收所有未被格挡的攻击伤害。"
+  },
+  "DISINTEGRATION_POWER": {
+    "id": "DISINTEGRATION_POWER",
+    "name": "瓦解",
+    "description": "在你的回合结束时，受到5点伤害。"
+  },
+  "DOOM_POWER": {
+    "id": "DOOM_POWER",
+    "name": "灾厄",
+    "description": "在敌人的回合结束时，如果其灾厄值等于或大于其生命，则其直接死亡。"
+  },
+  "DOUBLE_DAMAGE_POWER": {
+    "id": "DOUBLE_DAMAGE_POWER",
+    "name": "双倍伤害",
+    "description": "本回合，攻击造成双倍伤害。"
+  },
+  "DRAW_CARDS_NEXT_TURN_POWER": {
+    "id": "DRAW_CARDS_NEXT_TURN_POWER",
+    "name": "下回合抽牌",
+    "description": "在你的下回合开始时，额外抽1张牌。"
+  },
+  "DUPLICATION_POWER": {
+    "id": "DUPLICATION_POWER",
+    "name": "复制",
+    "description": "你下一张打出的牌会多打出一次。"
+  },
+  "ECHO_FORM_POWER": {
+    "id": "ECHO_FORM_POWER",
+    "name": "回响形态",
+    "description": "你每回合打出的第一张牌会多打出一次。"
+  },
+  "ENERGY_NEXT_TURN_POWER": {
+    "id": "ENERGY_NEXT_TURN_POWER",
+    "name": "下回合能量",
+    "description": "在下回合额外获得能量。"
+  },
+  "ENRAGE_POWER": {
+    "id": "ENRAGE_POWER",
+    "name": "激怒",
+    "description": "每当你打出一张技能牌时，获得2点力量。"
+  },
+  "ENTROPY_POWER": {
+    "id": "ENTROPY_POWER",
+    "name": "熵",
+    "description": "在你的回合开始时，变化你手牌中的1张牌。"
+  },
+  "ENVENOM_POWER": {
+    "id": "ENVENOM_POWER",
+    "name": "涂毒",
+    "description": "每当你造成未被格挡的伤害时，给予1层中毒。"
+  },
+  "ESCAPE_ARTIST_POWER": {
+    "id": "ESCAPE_ARTIST_POWER",
+    "name": "逃脱大师",
+    "description": "在4回合后离开战斗。"
+  },
+  "FAN_OF_KNIVES_POWER": {
+    "id": "FAN_OF_KNIVES_POWER",
+    "name": "刀扇",
+    "description": "小刀会命中所有敌人。"
+  },
+  "FASTEN_POWER": {
+    "id": "FASTEN_POWER",
+    "name": "勒紧",
+    "description": "从“防御”牌中额外获得4点格挡。"
+  },
+  "FEEL_NO_PAIN_POWER": {
+    "id": "FEEL_NO_PAIN_POWER",
+    "name": "无惧疼痛",
+    "description": "每当有一张牌被消耗时，获得3点格挡。"
+  },
+  "FERAL_POWER": {
+    "id": "FERAL_POWER",
+    "name": "野性",
+    "description": "每回合你第一次打出0[energyPrefix]攻击牌时，将其放回你的手牌中。"
+  },
+  "FLAME_BARRIER_POWER": {
+    "id": "FLAME_BARRIER_POWER",
+    "name": "火焰屏障",
+    "description": "本回合你每次受到攻击时，反击造成4点伤害。"
+  },
+  "FLANKING_POWER": {
+    "id": "FLANKING_POWER",
+    "name": "夹击",
+    "description": "其他盟友在本回合对这名敌人造成2倍攻击伤害。"
+  },
+  "FLUTTER_POWER": {
+    "id": "FLUTTER_POWER",
+    "name": "振翅",
+    "description": "从攻击牌中受到的伤害减少50%。"
+  },
+  "FOCUS_POWER": {
+    "id": "FOCUS_POWER",
+    "name": "集中",
+    "description": "提升充能球的效力。"
+  },
+  "FORBIDDEN_GRIMOIRE_POWER": {
+    "id": "FORBIDDEN_GRIMOIRE_POWER",
+    "name": "禁忌魔典",
+    "description": "在战斗结束时，从你的牌组中移除一张牌。"
+  },
+  "FOREGONE_CONCLUSION_POWER": {
+    "id": "FOREGONE_CONCLUSION_POWER",
+    "name": "既定事项",
+    "description": "下回合，将你抽牌堆中的3张牌放入你的手牌。"
+  },
+  "FRAIL_POWER": {
+    "id": "FRAIL_POWER",
+    "name": "脆弱",
+    "description": "脆弱时，从卡牌中获得的格挡值减少25%。"
+  },
+  "FREE_ATTACK_POWER": {
+    "id": "FREE_ATTACK_POWER",
+    "name": "免费攻击",
+    "description": "你的下一张攻击牌耗能为0[energyPrefix]。"
+  },
+  "FREE_POWER_POWER": {
+    "id": "FREE_POWER_POWER",
+    "name": "免费能力",
+    "description": "你的下一张能力牌耗能为0 [energyPrefix]。"
+  },
+  "FREE_SKILL_POWER": {
+    "id": "FREE_SKILL_POWER",
+    "name": "免费技能",
+    "description": "你的下一张技能牌耗能为0[energyPrefix]。"
+  },
+  "FRIENDSHIP_POWER": {
+    "id": "FRIENDSHIP_POWER",
+    "name": "友谊",
+    "description": "每回合开始时获得1点能量。"
+  },
+  "FURNACE_POWER": {
+    "id": "FURNACE_POWER",
+    "name": "熔炉",
+    "description": "在你的回合开始时，铸造5。"
+  },
+  "GALVANIC_POWER": {
+    "id": "GALVANIC_POWER",
+    "name": "流电",
+    "description": "能力牌被侵蚀为流电。"
+  },
+  "GENESIS_POWER": {
+    "id": "GENESIS_POWER",
+    "name": "创世纪",
+    "description": "在你的回合开始时，获得{singleStarIcon}。"
+  },
+  "GIGANTIFICATION_POWER": {
+    "id": "GIGANTIFICATION_POWER",
+    "name": "超巨化",
+    "description": "你打出的下一张攻击牌造成三倍伤害。"
+  },
+  "GRAVITY_POWER": {
+    "id": "GRAVITY_POWER",
+    "name": "引力",
+    "description": "本回合，你每打出一张牌，对所有敌人造成2点伤害。"
+  },
+  "GUARDED_POWER": {
+    "id": "GUARDED_POWER",
+    "name": "护卫",
+    "description": "从敌人处受到的伤害减半。"
+  },
+  "HAILSTORM_POWER": {
+    "id": "HAILSTORM_POWER",
+    "name": "冰雹风暴",
+    "description": "在你的回合结束时，如果你有冰霜充能球，则对所有敌人造成6点伤害。"
+  },
+  "HAMMER_TIME_POWER": {
+    "id": "HAMMER_TIME_POWER",
+    "name": "锤子时间",
+    "description": "每当你铸造时，所有盟友也铸造相同数值。"
+  },
+  "HANG_POWER": {
+    "id": "HANG_POWER",
+    "name": "吊杀",
+    "description": "所有吊杀牌对这名敌人造成2倍伤害。"
+  },
+  "HARDENED_SHELL_POWER": {
+    "id": "HARDENED_SHELL_POWER",
+    "name": "硬化外壳",
+    "description": "这个生物每回合失去的生命值不会超过20点。"
+  },
+  "HARD_TO_KILL_POWER": {
+    "id": "HARD_TO_KILL_POWER",
+    "name": "难以杀灭",
+    "description": "外骨骼虫受到的所有伤害和生命减少效果不会超过9点。"
+  },
+  "HATCH_POWER": {
+    "id": "HATCH_POWER",
+    "name": "孵化",
+    "description": "X回合后孵化。"
+  },
+  "HAUNT_POWER": {
+    "id": "HAUNT_POWER",
+    "name": "纠缠",
+    "description": "每当你打出一张灵魂时，一个随机敌人失去3点生命。"
+  },
+  "HEATSINKS_POWER": {
+    "id": "HEATSINKS_POWER",
+    "name": "散热片",
+    "description": "你每打出一张能力牌时，抽1张牌。"
+  },
+  "HEIST_POWER": {
+    "id": "HEIST_POWER",
+    "name": "盗窃",
+    "description": "被击杀时，返还所有偷走的金币。"
+  },
+  "HELLO_WORLD_POWER": {
+    "id": "HELLO_WORLD_POWER",
+    "name": "你好世界",
+    "description": "在你的回合开始时，将1张随机普通牌加入你的手牌。"
+  },
+  "HELLRAISER_POWER": {
+    "id": "HELLRAISER_POWER",
+    "name": "地狱狂徒",
+    "description": "每当你抽到名字中有“打击”的牌时，对一名随机敌人打出这张牌。"
+  },
+  "HEX_POWER": {
+    "id": "HEX_POWER",
+    "name": "恶咒",
+    "description": "幽灵骑士存活时，你的所有卡牌都拥有虚无。"
+  },
+  "HIGH_VOLTAGE_POWER": {
+    "id": "HIGH_VOLTAGE_POWER",
+    "name": "高电压",
+    "description": "这个生物的回合结束时，会获得2点力量。"
+  },
+  "ILLUSION_POWER": {
+    "id": "ILLUSION_POWER",
+    "name": "幻象",
+    "description": "死亡时，下回合会以完整生命值复活。"
+  },
+  "IMBALANCED_POWER": {
+    "id": "IMBALANCED_POWER",
+    "name": "失衡",
+    "description": "如果这个生物的攻击被任意玩家完全格挡，则它将被击晕。"
+  },
+  "IMPROVEMENT_POWER": {
+    "id": "IMPROVEMENT_POWER",
+    "name": "改善",
+    "description": "在战斗结束时，随机升级一张牌。"
+  },
+  "INFERNO_POWER": {
+    "id": "INFERNO_POWER",
+    "name": "狱火",
+    "description": "在你的回合开始时，失去1点生命。每当你在自己的回合中失去生命时，对所有敌人造成4点伤害。"
+  },
+  "INFESTED_POWER": {
+    "id": "INFESTED_POWER",
+    "name": "寄生物",
+    "description": "死亡时，召唤……某种东西。"
+  },
+  "INFINITE_BLADES_POWER": {
+    "id": "INFINITE_BLADES_POWER",
+    "name": "无尽刀刃",
+    "description": "在你的回合开始时，在你的手牌中加入一张小刀。"
+  },
+  "INTANGIBLE_POWER": {
+    "id": "INTANGIBLE_POWER",
+    "name": "无实体",
+    "description": "将本回合受到的所有伤害和生命减少效果降低为1。"
+  },
+  "INTERCEPT_POWER": {
+    "id": "INTERCEPT_POWER",
+    "name": "拦截",
+    "description": "你正在掩护另一名玩家。本回合所有对其发起的攻击都会转移到你的身上。"
+  },
+  "ITERATION_POWER": {
+    "id": "ITERATION_POWER",
+    "name": "迭代",
+    "description": "每回合你第一次抽到状态牌时，抽更多牌。"
+  },
+  "JUGGERNAUT_POWER": {
+    "id": "JUGGERNAUT_POWER",
+    "name": "势不可当",
+    "description": "每当你获得格挡时，对随机敌人造成6点伤害。"
+  },
+  "JUGGLING_POWER": {
+    "id": "JUGGLING_POWER",
+    "name": "杂耍",
+    "description": "将你在每回合打出的第三张攻击牌的复制品加入你的手牌。"
+  },
+  "KNOCKDOWN_POWER": {
+    "id": "KNOCKDOWN_POWER",
+    "name": "击倒",
+    "description": "该敌人在本回合受到的来自其他玩家的伤害变为{Amount}倍。"
+  },
+  "LEADERSHIP_POWER": {
+    "id": "LEADERSHIP_POWER",
+    "name": "领袖气质",
+    "description": "所有其他盟友造成1点额外伤害。"
+  },
+  "LETHALITY_POWER": {
+    "id": "LETHALITY_POWER",
+    "name": "致死性",
+    "description": "每回合的第一张攻击牌会造成50%额外伤害。"
+  },
+  "LIGHTNING_ROD_POWER": {
+    "id": "LIGHTNING_ROD_POWER",
+    "name": "引雷针",
+    "description": "在下2个回合开始时，生成1个闪电充能球。"
+  },
+  "LOOP_POWER": {
+    "id": "LOOP_POWER",
+    "name": "循环",
+    "description": "在你的回合开始时，触发你最右侧充能球的被动能力。"
+  },
+  "MACHINE_LEARNING_POWER": {
+    "id": "MACHINE_LEARNING_POWER",
+    "name": "机器学习",
+    "description": "在你的回合开始时，额外抽1张牌。"
+  },
+  "MAGIC_BOMB_POWER": {
+    "id": "MAGIC_BOMB_POWER",
+    "name": "魔法炸弹",
+    "description": "在你的回合结束时受到20点伤害。如果魔法骑士死亡，消除这一效果。"
+  },
+  "MASTER_PLANNER_POWER": {
+    "id": "MASTER_PLANNER_POWER",
+    "name": "谋划专家",
+    "description": "当你打出技能牌时，该牌获得奇巧。"
+  },
+  "MAYHEM_POWER": {
+    "id": "MAYHEM_POWER",
+    "name": "乱战",
+    "description": "在你的回合开始时，打出你抽牌堆顶部的牌。"
+  },
+  "MELANCHOLY_POWER": {
+    "id": "MELANCHOLY_POWER",
+    "name": "忧郁",
+    "description": "每次给予灾厄时，额外给予2层。"
+  },
+  "MIND_ROT_POWER": {
+    "id": "MIND_ROT_POWER",
+    "name": "心灵腐化",
+    "description": "每回合少抽1张牌。"
+  },
+  "MINION_POWER": {
+    "id": "MINION_POWER",
+    "name": "爪牙",
+    "description": "爪牙会在他们的领导者死亡时放弃战斗。"
+  },
+  "MOCK_CLONE_CARDS_ON_PLAY_POWER": {
+    "id": "MOCK_CLONE_CARDS_ON_PLAY_POWER",
+    "name": "テスト用クローンカード",
+    "description": ""
+  },
+  "MOCK_DO_NOT_SCALE_IN_MULTIPLAYER_POWER": {
+    "id": "MOCK_DO_NOT_SCALE_IN_MULTIPLAYER_POWER",
+    "name": "テスト用マルチプレイスケール停止",
+    "description": ""
+  },
+  "MOCK_EXTRA_TURN_POWER": {
+    "id": "MOCK_EXTRA_TURN_POWER",
+    "name": "テスト用追加ターン",
+    "description": ""
+  },
+  "MOCK_FREE_CARDS_POWER": {
+    "id": "MOCK_FREE_CARDS_POWER",
+    "name": "テスト用フリーカード",
+    "description": ""
+  },
+  "MOCK_GAIN_BLOCK_ON_ATTACK_POWER": {
+    "id": "MOCK_GAIN_BLOCK_ON_ATTACK_POWER",
+    "name": "テスト用アタックブロック",
+    "description": ""
+  },
+  "MOCK_INVINCIBLE_ON_DEATH_POWER": {
+    "id": "MOCK_INVINCIBLE_ON_DEATH_POWER",
+    "name": "テスト用死亡時無敵",
+    "description": ""
+  },
+  "MOCK_MODIFY_ENERGY_COST_POWER": {
+    "id": "MOCK_MODIFY_ENERGY_COST_POWER",
+    "name": "テスト用エナジーコスト変更",
+    "description": ""
+  },
+  "MOCK_MODIFY_STAR_COST_POWER": {
+    "id": "MOCK_MODIFY_STAR_COST_POWER",
+    "name": "テスト用スターコスト変更",
+    "description": ""
+  },
+  "MOCK_PHASE_OBSERVER_POWER": {
+    "id": "MOCK_PHASE_OBSERVER_POWER",
+    "name": "テスト用フェーズ監視",
+    "description": ""
+  },
+  "MOCK_PREVENT_DEATH_POWER": {
+    "id": "MOCK_PREVENT_DEATH_POWER",
+    "name": "テスト用死亡回避",
+    "description": ""
+  },
+  "MOCK_REMOVE_DRAWN_CARDS_FROM_COMBAT_POWER": {
+    "id": "MOCK_REMOVE_DRAWN_CARDS_FROM_COMBAT_POWER",
+    "name": "テスト用戦闘中に引いたカードを削除",
+    "description": ""
+  },
+  "MOCK_RESET_COMBAT_ON_SHUFFLE_POWER": {
+    "id": "MOCK_RESET_COMBAT_ON_SHUFFLE_POWER",
+    "name": "テスト用シャッフル時戦闘リセット",
+    "description": ""
+  },
+  "MOCK_REVIVE_POWER": {
+    "id": "MOCK_REVIVE_POWER",
+    "name": "テスト用復活",
+    "description": ""
+  },
+  "MOCK_SCALE_IN_MULTIPLAYER_POWER": {
+    "id": "MOCK_SCALE_IN_MULTIPLAYER_POWER",
+    "name": "テスト用マルチプレイスケール",
+    "description": ""
+  },
+  "MOCK_UNHITTABLE_POWER": {
+    "id": "MOCK_UNHITTABLE_POWER",
+    "name": "テスト用命中回避",
+    "description": ""
+  },
+  "MONARCHS_GAZE_POWER": {
+    "id": "MONARCHS_GAZE_POWER",
+    "name": "王之凝视",
+    "description": "每当你攻击敌人时，这名敌人在本回合失去1点力量。"
+  },
+  "MONOLOGUE_POWER": {
+    "id": "MONOLOGUE_POWER",
+    "name": "独白",
+    "description": "每当你在本回合打出卡牌时，在本回合获得1点力量。"
+  },
+  "NECRO_MASTERY_POWER": {
+    "id": "NECRO_MASTERY_POWER",
+    "name": "亡灵精通",
+    "description": "每当奥斯提失去生命值时，所有敌人失去等量生命值。"
+  },
+  "NEMESIS_POWER": {
+    "id": "NEMESIS_POWER",
+    "name": "天罚",
+    "description": "每两个回合结束时，获得1层无实体。"
+  },
+  "NEUROSURGE_POWER": {
+    "id": "NEUROSURGE_POWER",
+    "name": "精神过载",
+    "description": "在你的回合开始时，给予自身3层灾厄。"
+  },
+  "NIGHTMARE_POWER": {
+    "id": "NIGHTMARE_POWER",
+    "name": "夜魇",
+    "description": "在下个回合，将所选牌的3张复制品加入你的手牌。"
+  },
+  "NOSTALGIA_POWER": {
+    "id": "NOSTALGIA_POWER",
+    "name": "怀旧",
+    "description": "每回合被打出第一张攻击或技能牌，将其放置于你的抽牌堆顶端。"
+  },
+  "NOXIOUS_FUMES_POWER": {
+    "id": "NOXIOUS_FUMES_POWER",
+    "name": "毒雾",
+    "description": "在你的回合开始时，给予所有敌人2层中毒。"
+  },
+  "NO_BLOCK_POWER": {
+    "id": "NO_BLOCK_POWER",
+    "name": "不可格挡",
+    "description": "你无法从卡牌中获得格挡。"
+  },
+  "NO_DRAW_POWER": {
+    "id": "NO_DRAW_POWER",
+    "name": "不可抽牌",
+    "description": "你在本回合无法再抽更多牌。"
+  },
+  "NO_ENERGY_GAIN_POWER": {
+    "id": "NO_ENERGY_GAIN_POWER",
+    "name": "无法获得能量",
+    "description": "你在本回合无法再获得更多[energyPrefix]。"
+  },
+  "NO_ESCAPE_POWER": {
+    "id": "NO_ESCAPE_POWER",
+    "name": "无处可逃",
+    "description": "在3个回合后，获得50层灾厄。"
+  },
+  "OBLIVION_POWER": {
+    "id": "OBLIVION_POWER",
+    "name": "湮灭",
+    "description": "你在本回合内每打出一张牌，就给予该敌人1层灾厄。"
+  },
+  "ONE_TWO_PUNCH_POWER": {
+    "id": "ONE_TWO_PUNCH_POWER",
+    "name": "连环拳",
+    "description": "本回合，你的下一张攻击牌会多打出一次。"
+  },
+  "ORBIT_POWER": {
+    "id": "ORBIT_POWER",
+    "name": "环绕轨道",
+    "description": "你每花费4点能量，就获得1点能量。"
+  },
+  "OUTBREAK_POWER": {
+    "id": "OUTBREAK_POWER",
+    "name": "毒性爆发",
+    "description": "你每给予中毒10次时，对所有敌人造成伤害。"
+  },
+  "PAGESTORM_POWER": {
+    "id": "PAGESTORM_POWER",
+    "name": "书页风暴",
+    "description": "每当你抽到一张虚无牌时，抽1张牌。"
+  },
+  "PAINFUL_STABS_POWER": {
+    "id": "PAINFUL_STABS_POWER",
+    "name": "疼痛戳刺",
+    "description": "每次你受到未被格挡的伤害时，将1张伤口洗入你的弃牌堆。"
+  },
+  "PALE_BLUE_DOT_POWER": {
+    "id": "PALE_BLUE_DOT_POWER",
+    "name": "暗淡蓝点",
+    "description": "当你在一回合内打出足够数量的牌时，就在下一回合开始时额外抽牌。"
+  },
+  "PANACHE_POWER": {
+    "id": "PANACHE_POWER",
+    "name": "神气制胜",
+    "description": "如果你在本回合内打出5张牌，则对所有敌人造成伤害。"
+  },
+  "PAPER_CUTS_POWER": {
+    "id": "PAPER_CUTS_POWER",
+    "name": "纸伤难愈",
+    "description": "每当这个生物对你造成未被格挡的伤害时，你失去1点最大生命。"
+  },
+  "PARRY_POWER": {
+    "id": "PARRY_POWER",
+    "name": "招架",
+    "description": "君王之剑现在能让你获得格挡。"
+  },
+  "PERSONAL_HIVE_POWER": {
+    "id": "PERSONAL_HIVE_POWER",
+    "name": "人体蜂房",
+    "description": "每当这个敌人被攻击命中时，在你的抽牌堆中加入晕眩。"
+  },
+  "PHANTOM_BLADES_POWER": {
+    "id": "PHANTOM_BLADES_POWER",
+    "name": "幻影之刃",
+    "description": "小刀获得保留。\n你每回合打出的第一张小刀伤害增加9。"
+  },
+  "PILLAR_OF_CREATION_POWER": {
+    "id": "PILLAR_OF_CREATION_POWER",
+    "name": "创世之柱",
+    "description": "每当你创造一张牌时，获得5点格挡。"
+  },
+  "PLATING_POWER": {
+    "id": "PLATING_POWER",
+    "name": "覆甲",
+    "description": "在你的回合结束时获得格挡。覆甲会在你的回合开始时减少1层。"
+  },
+  "PLOW_POWER": {
+    "id": "PLOW_POWER",
+    "name": "横冲直撞",
+    "description": "这个生物的生命值第一次下降到150或更低时，将其击晕。"
+  },
+  "POISON_POWER": {
+    "id": "POISON_POWER",
+    "name": "中毒",
+    "description": "中毒的生物会在自身回合开始时失去生命。中毒层数每回合减少1。"
+  },
+  "POSSESS_SPEED_POWER": {
+    "id": "POSSESS_SPEED_POWER",
+    "name": "抢夺速度",
+    "description": "被击杀时，将偷窃的所有敏捷返还给玩家。"
+  },
+  "POSSESS_STRENGTH_POWER": {
+    "id": "POSSESS_STRENGTH_POWER",
+    "name": "抢夺力量",
+    "description": "被击杀时，将偷窃的所有力量返还给玩家。"
+  },
+  "PREP_TIME_POWER": {
+    "id": "PREP_TIME_POWER",
+    "name": "准备时间",
+    "description": "在你的回合开始时，获得4点活力。"
+  },
+  "PYRE_POWER": {
+    "id": "PYRE_POWER",
+    "name": "薪火之源",
+    "description": "在每回合开始时获得1点能量。"
+  },
+  "RADIANCE_POWER": {
+    "id": "RADIANCE_POWER",
+    "name": "明耀",
+    "description": "在下回合额外获得1点能量。"
+  },
+  "RAGE_POWER": {
+    "id": "RAGE_POWER",
+    "name": "狂怒",
+    "description": "本回合，你每打出一张攻击牌就获得3点格挡。"
+  },
+  "RAMPART_POWER": {
+    "id": "RAMPART_POWER",
+    "name": "盾墙",
+    "description": "在玩家回合开始时，高塔炮手获得25点格挡。"
+  },
+  "RAVENOUS_POWER": {
+    "id": "RAVENOUS_POWER",
+    "name": "饥饿",
+    "description": "当有敌人死亡时，噬尸蛞蝓会立即吃下尸体，在本回合被击晕然后获得1点力量。"
+  },
+  "READ_THE_BONES_POWER": {
+    "id": "READ_THE_BONES_POWER",
+    "name": "识骨知数",
+    "description": "每当你召唤时，抽1张牌。"
+  },
+  "REAPER_FORM_POWER": {
+    "id": "REAPER_FORM_POWER",
+    "name": "死神形态",
+    "description": "每当你的攻击造成伤害时，同时给予等量的灾厄。"
+  },
+  "REATTACH_POWER": {
+    "id": "REATTACH_POWER",
+    "name": "接续",
+    "description": "如果身体还有存活的其他部分，则在2回合后以25点生命复活。"
+  },
+  "REBOUND_POWER": {
+    "id": "REBOUND_POWER",
+    "name": "弹回",
+    "description": "将你在本回合打出的下一张牌放置到你的抽牌堆顶部。"
+  },
+  "REFLECTIVE_FORTRESS_POWER": {
+    "id": "REFLECTIVE_FORTRESS_POWER",
+    "name": "逆反要塞",
+    "description": "每当你完全格挡一次攻击时，将被格挡的伤害反弹给攻击者。"
+  },
+  "REFLECT_POWER": {
+    "id": "REFLECT_POWER",
+    "name": "倒映",
+    "description": "被格挡的伤害会反弹到攻击者身上。"
+  },
+  "REGEN_POWER": {
+    "id": "REGEN_POWER",
+    "name": "再生",
+    "description": "再生会在你的回合结束时回复相应生命。每回合再生的数值会减少1。"
+  },
+  "RESERVES_POWER": {
+    "id": "RESERVES_POWER",
+    "name": "储备",
+    "description": "如果你没有足够的能量打出一张牌，每一点能量可以用2颗{singleStarIcon}来替代。"
+  },
+  "RETAIN_HAND_POWER": {
+    "id": "RETAIN_HAND_POWER",
+    "name": "保留手牌",
+    "description": "在2回合内保留你的手牌。"
+  },
+  "RINGING_POWER": {
+    "id": "RINGING_POWER",
+    "name": "昏眩",
+    "description": "本回合你只能打出1张牌。"
+  },
+  "RITUAL_POWER": {
+    "id": "RITUAL_POWER",
+    "name": "仪式",
+    "description": "在你的回合结束时获得力量。"
+  },
+  "ROLLING_BOULDER_POWER": {
+    "id": "ROLLING_BOULDER_POWER",
+    "name": "滚石",
+    "description": "在你的回合开始时，对所有敌人造成5点伤害，然后将此伤害增加5。"
+  },
+  "ROYALTIES_POWER": {
+    "id": "ROYALTIES_POWER",
+    "name": "王国资产",
+    "description": "在战斗结束时，获得25金币。"
+  },
+  "RUPTURE_POWER": {
+    "id": "RUPTURE_POWER",
+    "name": "撕裂",
+    "description": "每当你在自身回合失去生命时，获得1点力量。"
+  },
+  "SANDPIT_POWER": {
+    "id": "SANDPIT_POWER",
+    "name": "沙坑",
+    "description": "无厌沙虫的能力。"
+  },
+  "SEEKING_EDGE_POWER": {
+    "id": "SEEKING_EDGE_POWER",
+    "name": "追踪之刃",
+    "description": "君王之剑现在会对所有敌人造成伤害。"
+  },
+  "SELF_FORMING_CLAY_POWER": {
+    "id": "SELF_FORMING_CLAY_POWER",
+    "name": "自成型黏土",
+    "description": "在下回合获得3点格挡。"
+  },
+  "SENTRY_MODE_POWER": {
+    "id": "SENTRY_MODE_POWER",
+    "name": "哨卫模式",
+    "description": "在你的回合开始时，将1张扫荡凝视加入你的手牌。"
+  },
+  "SERPENT_FORM_POWER": {
+    "id": "SERPENT_FORM_POWER",
+    "name": "群蛇形态",
+    "description": "你每打出一张牌，就对随机一名敌人造成4点伤害。"
+  },
+  "SHADOWMELD_POWER": {
+    "id": "SHADOWMELD_POWER",
+    "name": "融入暗影",
+    "description": "本回合你获得的格挡值翻倍。"
+  },
+  "SHADOW_STEP_POWER": {
+    "id": "SHADOW_STEP_POWER",
+    "name": "暗影步",
+    "description": "在下个回合，攻击造成双倍伤害。"
+  },
+  "SHARP_EDGE_POWER": {
+    "id": "SHARP_EDGE_POWER",
+    "name": "锋利边缘",
+    "description": "当你生成小刀时，将其升级。"
+  },
+  "SHRIEK_POWER": {
+    "id": "SHRIEK_POWER",
+    "name": "尖叫",
+    "description": "这个生物的生命值第一次降到50%或以下时，会被击晕。"
+  },
+  "SHRINK_POWER": {
+    "id": "SHRINK_POWER",
+    "name": "缩小",
+    "description": "这个生物的攻击伤害在3回合内减少30%。"
+  },
+  "SHROUD_POWER": {
+    "id": "SHROUD_POWER",
+    "name": "厄运之衣",
+    "description": "你每次给予灾厄时，获得3点格挡。"
+  },
+  "SIC_EM_POWER": {
+    "id": "SIC_EM_POWER",
+    "name": "紧追不放",
+    "description": "本回合，每当奥斯提命中这个敌人时，召唤3。"
+  },
+  "SIGNAL_BOOST_POWER": {
+    "id": "SIGNAL_BOOST_POWER",
+    "name": "信号增强",
+    "description": "你的下一张能力牌会额外打出一次。"
+  },
+  "SKITTISH_POWER": {
+    "id": "SKITTISH_POWER",
+    "name": "胆小",
+    "description": "这个生物每回合第一次被命中时，获得1点格挡。"
+  },
+  "SLEIGHT_OF_FLESH_POWER": {
+    "id": "SLEIGHT_OF_FLESH_POWER",
+    "name": "血肉戏法",
+    "description": "每当你给予一个敌人负面状态时，使其受到13点伤害。"
+  },
+  "SLIPPERY_POWER": {
+    "id": "SLIPPERY_POWER",
+    "name": "滑溜",
+    "description": "这个生物下一次要失去生命值时，只会失去1点生命。"
+  },
+  "SLOTH_POWER": {
+    "id": "SLOTH_POWER",
+    "name": "懒惰",
+    "description": "你在每个回合不能打出超过3张牌。"
+  },
+  "SLOW_POWER": {
+    "id": "SLOW_POWER",
+    "name": "缓慢",
+    "description": "你在本回合内每打出一张牌，该敌人本回合从攻击牌中受到的伤害增加10%。"
+  },
+  "SLUMBER_POWER": {
+    "id": "SLUMBER_POWER",
+    "name": "熟睡",
+    "description": "在一定回合经过后或失去生命3次后苏醒。"
+  },
+  "SMOGGY_POWER": {
+    "id": "SMOGGY_POWER",
+    "name": "烟雾弥漫",
+    "description": "每回合你只能打出1张技能牌。"
+  },
+  "SMOKESTACK_POWER": {
+    "id": "SMOKESTACK_POWER",
+    "name": "烟囱",
+    "description": "每当你生成一张状态牌时，对所有敌人造成伤害。"
+  },
+  "SNEAKY_POWER": {
+    "id": "SNEAKY_POWER",
+    "name": "鬼祟",
+    "description": "每当另一名玩家攻击敌人时，获得格挡。"
+  },
+  "SOAR_POWER": {
+    "id": "SOAR_POWER",
+    "name": "翱翔",
+    "description": "在落地之前受到的伤害减少50%。"
+  },
+  "SOW_POWER": {
+    "id": "SOW_POWER",
+    "name": "播种",
+    "description": "在本回合保留你手牌中的1张随机牌。"
+  },
+  "SPECTRUM_SHIFT_POWER": {
+    "id": "SPECTRUM_SHIFT_POWER",
+    "name": "光谱偏移",
+    "description": "在你的回合开始时，将1张随机无色牌添加到你的手牌中。"
+  },
+  "SPEEDSTER_POWER": {
+    "id": "SPEEDSTER_POWER",
+    "name": "速行者",
+    "description": "每当你在回合中抽到一张牌时，对所有敌人造成1点伤害。"
+  },
+  "SPINNER_POWER": {
+    "id": "SPINNER_POWER",
+    "name": "旋转工艺",
+    "description": "在你的回合开始时，生成1个玻璃充能球。"
+  },
+  "SPIRIT_OF_ASH_POWER": {
+    "id": "SPIRIT_OF_ASH_POWER",
+    "name": "灰烬之灵",
+    "description": "每当你打出一张虚无牌时，获得4点格挡。"
+  },
+  "STAMPEDE_POWER": {
+    "id": "STAMPEDE_POWER",
+    "name": "惊逃",
+    "description": "在你的回合结束时，随机打出你手牌中的1张攻击牌攻击随机敌人。"
+  },
+  "STAR_NEXT_TURN_POWER": {
+    "id": "STAR_NEXT_TURN_POWER",
+    "name": "下回合辉星",
+    "description": "在下回合获得1{singleStarIcon}。"
+  },
+  "STEAM_ERUPTION_POWER": {
+    "id": "STEAM_ERUPTION_POWER",
+    "name": "蒸汽喷发",
+    "description": "被击杀时，在你的下一回合结束时造成伤害。"
+  },
+  "STOCK_POWER": {
+    "id": "STOCK_POWER",
+    "name": "库存",
+    "description": "被击杀时，召唤一个全新的巨斧机器人。"
+  },
+  "STORM_POWER": {
+    "id": "STORM_POWER",
+    "name": "雷暴",
+    "description": "你每打出一张能力牌，就生成1个闪电充能球。"
+  },
+  "STRANGLE_POWER": {
+    "id": "STRANGLE_POWER",
+    "name": "紧勒",
+    "description": "本回合，你每次打出牌时，这名敌人失去2点生命。"
+  },
+  "STRATAGEM_POWER": {
+    "id": "STRATAGEM_POWER",
+    "name": "计策",
+    "description": "你每次洗牌抽牌堆时，从中选择1张牌放入你的手牌。"
+  },
+  "STRENGTH_POWER": {
+    "id": "STRENGTH_POWER",
+    "name": "力量",
+    "description": "力量会增加攻击牌造成的伤害。"
+  },
+  "SUBROUTINE_POWER": {
+    "id": "SUBROUTINE_POWER",
+    "name": "子程序",
+    "description": "你每次打出能力牌时，都获得1[energyPrefix]。"
+  },
+  "SUCK_POWER": {
+    "id": "SUCK_POWER",
+    "name": "吮吸",
+    "description": "这个生物每次造成未被格挡的伤害时，都会获得1点力量。"
+  },
+  "SUMMON_NEXT_TURN_POWER": {
+    "id": "SUMMON_NEXT_TURN_POWER",
+    "name": "下回合召唤",
+    "description": "在你的下回合开始时，召唤2。"
+  },
+  "SURPRISE_POWER": {
+    "id": "SURPRISE_POWER",
+    "name": "意外",
+    "description": "这个生物有点不太对劲……"
+  },
+  "SURROUNDED_POWER": {
+    "id": "SURROUNDED_POWER",
+    "name": "遭到包围",
+    "description": "被从后方攻击时受到的伤害增加50%。使用有目标的卡牌或药水来改变你的朝向。"
+  },
+  "SWIPE_POWER": {
+    "id": "SWIPE_POWER",
+    "name": "顺走",
+    "description": "击杀这名敌人时，会取回被偷走的卡牌。"
+  },
+  "SWORD_SAGE_POWER": {
+    "id": "SWORD_SAGE_POWER",
+    "name": "剑圣",
+    "description": "君王之剑获得重放1。"
+  },
+  "TAG_TEAM_POWER": {
+    "id": "TAG_TEAM_POWER",
+    "name": "多人组队",
+    "description": "另一名玩家对该敌人的下一张攻击牌会多打出{Amount}次。"
+  },
+  "TAINTED_POWER": {
+    "id": "TAINTED_POWER",
+    "name": "污染",
+    "description": "在本回合受到额外的攻击伤害。"
+  },
+  "TANGLED_POWER": {
+    "id": "TANGLED_POWER",
+    "name": "缠结",
+    "description": "本回合，攻击牌的能量费用增加1。"
+  },
+  "TANK_POWER": {
+    "id": "TANK_POWER",
+    "name": "肉盾",
+    "description": "自身受到敌人伤害加倍。盟友受到敌人伤害减半。"
+  },
+  "TAUNT_POWER": {
+    "id": "TAUNT_POWER",
+    "name": "挑衅",
+    "description": "当有敌人攻击你时，给予其1层易伤。"
+  },
+  "TEMPORARY_DEXTERITY_POWER": {
+    "id": "TEMPORARY_DEXTERITY_POWER",
+    "name": "TEMPORARY_DEXTERITY_POWER",
+    "description": "在本回合结束前获得敏捷。"
+  },
+  "TEMPORARY_FOCUS_POWER": {
+    "id": "TEMPORARY_FOCUS_POWER",
+    "name": "TEMPORARY_FOCUS_POWER",
+    "description": "在本回合结束前获得集中。"
+  },
+  "TEMPORARY_STRENGTH_POWER": {
+    "id": "TEMPORARY_STRENGTH_POWER",
+    "name": "TEMPORARY_STRENGTH_POWER",
+    "description": "在本回合结束前获得力量。"
+  },
+  "TENDER_POWER": {
+    "id": "TENDER_POWER",
+    "name": "柔嫩",
+    "description": "本回合，你每打出一张牌，就失去1点力量和1点敏捷。"
+  },
+  "TERRITORIAL_POWER": {
+    "id": "TERRITORIAL_POWER",
+    "name": "领地意识",
+    "description": "这个生物在自身回合结束时，会获得1点力量。"
+  },
+  "THE_BOMB_POWER": {
+    "id": "THE_BOMB_POWER",
+    "name": "炸弹",
+    "description": "在第3回合结束时，对所有敌人造成40点伤害。"
+  },
+  "THE_GAMBIT_POWER": {
+    "id": "THE_GAMBIT_POWER",
+    "name": "孤注一掷",
+    "description": "如果你在这场战斗中受到未被格挡的攻击伤害，则立即死亡。"
+  },
+  "THE_HUNT_POWER": {
+    "id": "THE_HUNT_POWER",
+    "name": "狩猎",
+    "description": "在战斗结束时额外获得1份卡牌奖励。"
+  },
+  "THE_SEALED_THRONE_POWER": {
+    "id": "THE_SEALED_THRONE_POWER",
+    "name": "封印王座",
+    "description": "你每打出一张牌，获得{singleStarIcon}。"
+  },
+  "THIEVERY_POWER": {
+    "id": "THIEVERY_POWER",
+    "name": "偷窃",
+    "description": "攻击时偷走金币。"
+  },
+  "THORNS_POWER": {
+    "id": "THORNS_POWER",
+    "name": "荆棘",
+    "description": "当被攻击命中时，反击造成伤害。"
+  },
+  "THUNDER_POWER": {
+    "id": "THUNDER_POWER",
+    "name": "雷霆",
+    "description": "每当你激发闪电充能球时，对命中的敌人造成8点伤害。"
+  },
+  "TOOLS_OF_THE_TRADE_POWER": {
+    "id": "TOOLS_OF_THE_TRADE_POWER",
+    "name": "必备工具",
+    "description": "在你的回合开始时，抽1张牌并丢弃1张牌。"
+  },
+  "TORIC_TOUGHNESS_POWER": {
+    "id": "TORIC_TOUGHNESS_POWER",
+    "name": "坚韧之环",
+    "description": "在下2个回合开始时获得5点格挡。"
+  },
+  "TRACKING_POWER": {
+    "id": "TRACKING_POWER",
+    "name": "跟踪",
+    "description": "虚弱的敌人从攻击牌中受到2倍伤害。"
+  },
+  "TRASH_TO_TREASURE_POWER": {
+    "id": "TRASH_TO_TREASURE_POWER",
+    "name": "化废为宝",
+    "description": "每当你生成状态牌的时候，随机生成1个充能球。"
+  },
+  "TYRANNY_POWER": {
+    "id": "TYRANNY_POWER",
+    "name": "暴政",
+    "description": "在你的回合开始时，抽一张牌然后消耗你的一张手牌。"
+  },
+  "UNMOVABLE_POWER": {
+    "id": "UNMOVABLE_POWER",
+    "name": "不动",
+    "description": "每个回合你第一次从卡牌中获得格挡时，将数值翻倍。"
+  },
+  "VEILPIERCER_POWER": {
+    "id": "VEILPIERCER_POWER",
+    "name": "刺破帷幕",
+    "description": "你打出的下一张虚无牌耗能为0。"
+  },
+  "VICIOUS_POWER": {
+    "id": "VICIOUS_POWER",
+    "name": "凶恶",
+    "description": "每当你给予易伤, 抽1张牌。"
+  },
+  "VIGOR_POWER": {
+    "id": "VIGOR_POWER",
+    "name": "活力",
+    "description": "你的下一张攻击牌伤害增加。"
+  },
+  "VITAL_SPARK_POWER": {
+    "id": "VITAL_SPARK_POWER",
+    "name": "活力火花",
+    "description": "所有技能牌都拥有污染2。"
+  },
+  "VOID_FORM_POWER": {
+    "id": "VOID_FORM_POWER",
+    "name": "虚空形态",
+    "description": "每回合你打出的前2张牌会免费打出。"
+  },
+  "VULNERABLE_POWER": {
+    "id": "VULNERABLE_POWER",
+    "name": "易伤",
+    "description": "易伤的生物从攻击中受到的伤害增加50%。"
+  },
+  "WASTE_AWAY_POWER": {
+    "id": "WASTE_AWAY_POWER",
+    "name": "衰朽",
+    "description": "每回合获得的能量减少1点。"
+  },
+  "WEAK_POWER": {
+    "id": "WEAK_POWER",
+    "name": "虚弱",
+    "description": "虚弱的生物造成的攻击伤害减少25%。"
+  },
+  "WELL_LAID_PLANS_POWER": {
+    "id": "WELL_LAID_PLANS_POWER",
+    "name": "计划妥当",
+    "description": "在你的回合结束时，保留最多1张手牌。"
+  },
+  "WINGED_JUMP_POWER": {
+    "id": "WINGED_JUMP_POWER",
+    "name": "翱翔之跃",
+    "description": "在你的回合开始时，给予所有敌人1层易伤。"
+  },
+  "WITHERING_PRESENCE_POWER": {
+    "id": "WITHERING_PRESENCE_POWER",
+    "name": "凋萎存在",
+    "description": "你每打出6张牌，将一张凋萎加入你的手牌。"
+  },
+  "WRAITH_FORM_POWER": {
+    "id": "WRAITH_FORM_POWER",
+    "name": "幽魂形态",
+    "description": "在你的回合开始时，失去1点敏捷。"
+  }
+}

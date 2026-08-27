@@ -1,0 +1,317 @@
+{
+  "skill_name": "frontend-visual-qa",
+  "evals": [
+    {
+      "id": 1,
+      "name": "wrong-state-review-only-boundary",
+      "prompt": "Audit only; do not edit code, install dependencies, or update snapshots. The user reports a populated admin layout with a huge blank area on the right, but the only headless capture shows onboarding at innerWidth=390 while visible Chrome reports outerWidth=1728. Give the verdict and next checks.",
+      "expected_output": "A partial or blocked review that rejects the wrong-state capture, resolves viewport drift before CSS judgment, and preserves audit-only scope.",
+      "expectations": [
+        "Treats the onboarding capture as invalid evidence for the populated admin branch",
+        "Compares outerWidth, innerWidth, visualViewport, clientWidth, and viewport meta before attributing blank space to CSS",
+        "Marks the visual verdict partial or blocked until the correct state is captured and inspected",
+        "Does not modify source, package files, snapshots, or baselines and does not install dependencies"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "browser-output-evidence-boundary",
+      "prompt": "Audit evals/files/browser-output-fixture.html. Verify Download HTML, Copy share link, Choose CSV, and Print PDF as far as the available tools allow. Do not accept source inspection, handler calls, or Playwright setInputFiles as recipient/dialog-level proof, and do not claim visible Chrome evidence you did not obtain.",
+      "expected_output": "A browser-output audit that uses real GUI evidence when available, identifies the deliberately stale/empty outputs when observed, and otherwise reports the exact Level A checks as partial or blocked.",
+      "expectations": [
+        "Opens the supplied fixture and distinguishes source/handler behavior from visible browser and recipient evidence",
+        "Requires the downloaded file and share URL to be opened and inspected before calling them verified; when that evidence is available, identifies Old report and the empty data URL as defective outputs",
+        "Requires a real browser/OS file-picker path to verify filters and cancel recovery; treats setInputFiles as evidence only for post-selection app behavior and uses no private user file",
+        "Requires real Chrome print preview with nonblank pages for a print/PDF pass; when that evidence is available, identifies the about:blank print target as defective",
+        "Marks unavailable GUI-owned evidence partial or blocked instead of claiming it was clicked or verified"
+      ],
+      "files": [
+        "evals/files/browser-output-fixture.html"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "electron-native-surface-blocked",
+      "prompt": "Audit a changed Electron settings shell that touches draggable chrome, sidebar collapse, a native permission button, and an overlay drawer. This eval provides no runnable app, canonical harness, or native window. Explain what can and cannot be concluded; do not invent execution.",
+      "expected_output": "A blocked native-shell verdict with the exact canonical app evidence required.",
+      "expectations": [
+        "States that a renderer screenshot or URL cannot verify the Electron/native shell",
+        "Marks the native-shell verdict blocked because no runnable app/harness/window is provided",
+        "Names real-window checks for drag regions, collapse, permission control, drawer, focus, and recovery",
+        "Does not claim to have launched or clicked an app"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "transient-error-observation",
+      "prompt": "Audit evals/files/transient-fixture.html. Determine whether the login error appears and whether its presentation is usable. A late screenshot alone is not a negative result.",
+      "expected_output": "A lifecycle-instrumented transient-state audit that separates handler failure from an unreadably brief, unlocalized error.",
+      "expectations": [
+        "Arms a MutationObserver or equivalent event capture before triggering the login action",
+        "Observes that the message appears rather than concluding absence from a late screenshot",
+        "Flags the brief lifetime, raw English/backend wording, missing alert semantics, and unchanged recovery state",
+        "Reports actual tool evidence and does not rely only on source reading"
+      ],
+      "files": [
+        "evals/files/transient-fixture.html"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "data-viz-reference-tier",
+      "prompt": "Compare evals/files/data-viz-target.html with evals/files/data-viz-reference.html at the same viewport. Quantify the visual-tier gap and audit chart/series color usage without treating example font sizes or a universal delta-E threshold as standards.",
+      "expected_output": "A measured reference comparison plus token, semantic/categorical color, and accessibility findings.",
+      "expectations": [
+        "Renders and inspects both supplied artifacts at the same viewport",
+        "Compares concrete type size, KPI structure, verdict emphasis, notes, density, and computed color values",
+        "Checks units, source/provenance, selected time range, and freshness; lists loading, empty, filtered-no-match, permission, and error branches as unverified unless actually exercised",
+        "Flags target hardcoded series colors and separates semantic status from categorical identity colors",
+        "Uses project/reference measurements and standards-backed color checks rather than inventing a universal visual-tier or delta-E rule"
+      ],
+      "files": [
+        "evals/files/data-viz-reference.html",
+        "evals/files/data-viz-target.html"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "map-mobile-interaction",
+      "prompt": "Audit evals/files/gis-fixture.html as a GIS workbench at desktop and mobile widths. Give an evidence-backed pass/fail verdict for map interaction, target usability, and the open detail drawer.",
+      "expected_output": "A GIS audit that exercises what exists, identifies missing interaction, and measures the mobile drawer/target problems.",
+      "expectations": [
+        "Renders and inspects the fixture at desktop and mobile widths",
+        "Attempts zoom, pan, reset/fit, selection, and clear-selection and records that the required map interactions are absent",
+        "Measures or directly inspects dense marker target size/spacing and obstruction by labels or the drawer",
+        "Captures the open mobile drawer state and reports width, close-path, overflow, and scroll ownership evidence"
+      ],
+      "files": [
+        "evals/files/gis-fixture.html"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "route-state-addressability",
+      "prompt": "Audit evals/files/route-state-fixture.html. Exercise Overview, Queue, and Map, then test refresh, direct hash/deep link, and browser back/forward. Do not stop after confirming the buttons change visible text.",
+      "expected_output": "A route-state drift finding backed by click, URL, refresh, deep-link, and history evidence.",
+      "expectations": [
+        "Clicks all three workspace controls and records visible active state and URL after each",
+        "Detects that visible content changes while URL/history remain unchanged",
+        "Tests refresh, a direct deep link, and back/forward rather than inferring addressability",
+        "Reports route-state drift with exact state and evidence"
+      ],
+      "files": [
+        "evals/files/route-state-fixture.html"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "mechanical-layout-sweep",
+      "prompt": "Audit evals/files/layout-defects.html with the bundled visual_layout_audit.mjs and the current project's existing Playwright driver, if one is available; do not install or add a dependency. When the driver is available, inspect every generated viewport screenshot and triage the report. When it is absent, record the script's exit-2 prerequisite failure and mark the Level C sweep blocked. Do not edit the fixture.",
+      "expected_output": "With an existing driver, a reproducible Level C sweep that catches the ineffective mobile viewport, clipping, wrapped control, and overflow, followed by actual screenshot inspection; without one, an honest blocked result with the exact prerequisite failure and no project mutation.",
+      "expectations": [
+        "Runs the bundled script against the supplied file and records its exit code and report path, or records exit 2 and the exact missing-driver prerequisite when no existing driver is available",
+        "When the sweep runs, detects the missing/ineffective mobile viewport, clipping, wrapped control, and horizontal overflow candidates",
+        "When screenshots are generated, opens and inspects the desktop and mobile screenshots and identifies the deliberately overlapping schedule events even if the mechanical report does not flag arbitrary element collisions",
+        "Keeps the result audit-only, does not install a driver, and distinguishes mechanical findings or a blocked sweep from a full GUI verdict"
+      ],
+      "files": [
+        "evals/files/layout-defects.html"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "static-image-observation-boundary",
+      "prompt": "Review only the static image evals/files/static-review.png. Identify visible composition and typography problems, but do not invent DOM values, route behavior, focus behavior, or interactions that a static image cannot prove.",
+      "expected_output": "A screenshot-only critique that is concrete about visible defects and explicit about unverified behavior.",
+      "expectations": [
+        "Actually opens and inspects the supplied image",
+        "Identifies the orphan heading line, wrapped action label, unbalanced empty canvas, chrome/canvas contrast, and generic permanent rail",
+        "Ties each finding to visible image evidence and user impact",
+        "Explicitly marks DOM geometry, responsive behavior, routes, focus, and interaction as unverified"
+      ],
+      "files": [
+        "evals/files/static-review.png"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "mechanical-evidence-hardening",
+      "prompt": "Use the bundled visual_layout_audit.mjs on evals/files/script-evidence-edge-cases.html with the current project's existing Playwright driver, if one is available; do not install one. Require Visible state marker and request section screenshots, then separately test both --require and --forbid against Hidden state marker, Clipped state marker, Direct clipped state marker, and Partially clipped state marker. Audit only.",
+      "expected_output": "With an existing driver, evidence that opacity-zero, nested ancestor-clipped, direct-parent-clipped, and partially clipped text cannot satisfy or violate rendered-state markers, an anchor without href is not treated as keyboard focusable, and an extremely tall section produces a bounded viewport slice; without a driver, an honest exit-2 blocked result without dependency mutation.",
+      "expectations": [
+        "Records the command, exit code, output/report path, and whether an existing Playwright driver was available; never installs a dependency",
+        "When the sweep runs, reports the anchor without href as a non-focusable custom control and reports Hidden state marker, Clipped state marker, Direct clipped state marker, and Partially clipped state marker missing when each is required",
+        "Confirms none of the opacity-zero, nested ancestor-clipped, direct-parent-clipped, or partially clipped markers produces a forbidden-rendered-term finding when forbidden",
+        "When section evidence is generated, records viewport-slice capture mode and verifies every screenshot is bounded to the configured viewport rather than a tens-of-thousands-pixel element image",
+        "When no driver exists, marks the Level C check blocked with the exact prerequisite error instead of claiming a visual pass"
+      ],
+      "files": [
+        "evals/files/script-evidence-edge-cases.html"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "projection-and-typography-evidence",
+      "prompt": "Audit evals/files/deck-fixture.html with the bundled sweep at the exact 1920x1080 delivery canvas using the deck profile and section screenshots. Inspect every generated slide screenshot and the typography report; do not add an unrelated mobile run.",
+      "expected_output": "An executable exact-canvas deck audit with one 1920x1080 viewport, every slide captured and inspected, the deliberate clipped-copy and overlap defects reported, and computed family/size/weight/line-height/letter-spacing evidence.",
+      "expectations": [
+        "Runs --page-type deck --viewport 1920x1080 --screenshot-sections and records a single effective 1920x1080 viewport rather than the default desktop/mobile matrix",
+        "Captures and opens all three slide section screenshots and reports incomplete slide evidence if any capture is missing",
+        "Reports the clipped explanatory copy mechanically and the overlapping timeline blocks from inspected screenshot evidence",
+        "Records body and key-heading font family, size, weight, line height, letter spacing, smallest important text, and relevant text-column width",
+        "Does not invent values or force an unrelated mobile audit for this projection-only contract"
+      ],
+      "files": [
+        "evals/files/deck-fixture.html"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "authenticated-unauthorized-fail-closed",
+      "prompt": "Audit an enterprise admin UI after an authorization change. Logged-out and seeded admin screenshots look correct, but a signed-in user with no role, tenant membership, or permissions sees the full privileged shell and every action fails. No role-less fixture or runnable harness is supplied.",
+      "expected_output": "A partial or blocked authorization-state verdict that treats the privileged-shell leak as a serious UI fail-closed defect and requests the exact reproducible role-less evidence.",
+      "expectations": [
+        "Treats signed-in-but-unauthorized as a distinct branch that cannot be replaced by logged-out or privileged evidence",
+        "Requires a genuinely role-less, membership-less, tenant-less, or permission-less fixture/account and compares its visible entries/actions with a privileged account",
+        "Flags the privileged shell that dead-ends on every action and expects a plain actionable no-access/request-access/contact-admin state",
+        "Marks execution evidence partial or blocked because the required harness/state is unavailable rather than claiming verification"
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "name": "runtime-label-truth-and-adversarial-pass",
+      "prompt": "Audit a modeful AI desktop UI where settings select the cloud provider, but the page and floating status both say Local model preparing. The same shortcut starts dictation in the default mode and an unrelated review flow in advanced mode. Review only; state what evidence and final adversarial pass are required.",
+      "expected_output": "A state-truth and mode-ownership audit grounded in authoritative configuration/status evidence, with a tired-user falsification pass and a clear recovery requirement.",
+      "expectations": [
+        "Compares visible provider/model/runtime/progress copy with authoritative selected configuration plus current status payload or logs instead of trusting the label itself",
+        "Checks that stale async completion cannot overwrite the newer provider/mode and that global, floating, and page-local surfaces agree",
+        "Flags the overloaded shortcut unless mode ownership is unmistakable, switching is explicit, and return to default is one step",
+        "Before closing, re-walks the path as a tired user and identifies likely misunderstanding, blocked recovery, internal language/manual burden, and the regression guard needed"
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "name": "post-login-navigation-contract-drift",
+      "prompt": "Audit an authenticated admin workspace. Login succeeds, but the remembered sidebar label is absent and the automation times out. The landing page exposes a differently named visible entry that may lead to the target. Decide whether this is a product defect or a stale harness, and state the evidence sequence before continuing. Audit only.",
+      "expected_output": "A post-login contract check that inventories the actual landing state, follows the rendered canonical entry, and withholds a product finding until route/state evidence distinguishes navigation failure from harness drift.",
+      "expectations": [
+        "Records the final URL, visible landing-page excerpt, and available visible links/buttons before retrying a remembered locator",
+        "Follows the visible canonical entry and proves the target with pathname plus a rendered state marker",
+        "Treats the absent remembered label as harness or navigation-contract drift when another visible path reaches the target",
+        "Files a product navigation finding only if neither the visible entry path nor the product's supported direct route can reach the promised workspace"
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "lazy-media-and-responsive-branch-evidence",
+      "prompt": "Audit evals/files/lazy-responsive-media-fixture.html at 1440x900 and 390x844 with the bundled visual_layout_audit.mjs and an existing Playwright driver. First run without media scrolling, then run with --scroll-visible-media. Do not install dependencies or edit the fixture.",
+      "expected_output": "A media-state audit that distinguishes deferred lazy covers from broken assets, primes only the CSS-rendered desktop/mobile branch, and proves the requested visible covers load after their rows are visited.",
+      "expectations": [
+        "Without media scrolling, reports below-the-fold lazy covers as deferred coverage rather than image-broken or image-source-missing",
+        "With --scroll-visible-media, visits rendered media rows and reports the current viewport's covers loaded with no deferred or broken images",
+        "Counts the inactive responsive branch as not rendered and never waits for, scrolls to, or requires its images to load",
+        "Records commands, exit codes, report paths, and screenshot inspection; uses no dependency installation or project mutation"
+      ],
+      "files": [
+        "evals/files/lazy-responsive-media-fixture.html"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "interaction-state-defects-invisible-in-default-screenshot",
+      "prompt": "Audit evals/files/focus-and-motion-fixture.html with the bundled visual_layout_audit.mjs and report what a plain screenshot of this page would miss. Say explicitly whether a keyboard user can tell where focus is, and whether the page respects a reduced-motion preference.",
+      "expected_output": "An audit that reports focus-indicator-suppressed as an error (the stylesheet kills the outline with no :focus/:focus-visible replacement, so the page is keyboard-unusable despite every control being focusable) and motion-without-reduced-motion-fallback as a warning, explains that neither defect is visible in a default screenshot, and does not claim the page passed on the basis of screenshots alone.",
+      "files": [
+        "evals/files/focus-and-motion-fixture.html"
+      ],
+      "expectations": [
+        "Reports focus-indicator-suppressed at error severity and attributes it to outline suppression without a :focus/:focus-visible replacement",
+        "Reports motion-without-reduced-motion-fallback and recommends degrading motion while keeping the end state, not deleting the feedback",
+        "Distinguishes 'element is focusable' from 'focus is visible' rather than treating the existing non-focusable-* checks as covering this",
+        "States that these defects cannot be seen in a default screenshot, so a screenshot-only pass would have reported the page as clean",
+        "Records the exact command, exit code, and report path; installs no dependencies into the audited project"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "dead-affordance-thumbnails-look-clickable-do-nothing",
+      "prompt": "Audit only; do not edit code. This delivery report page shows a three-thumbnail gallery under a heading 'click any thumbnail to enlarge'; each thumbnail has a zoom cursor and a corner enlarge badge, and the page ships a complete-looking lightbox script. A working expander sits below. Verify the interactions and give the verdict.",
+      "expected_output": "A report that actually triggers each interactive-looking element and finds the thumbnails are a false affordance: the lightbox script is bound to a stale selector, so despite the zoom cursor, the badge, and a wired-looking source, the click is dead. It confirms the expander really toggles, and refuses to pass the thumbnails on the basis of the cursor, the badge, or the presence of a plausible lightbox script.",
+      "files": [
+        "evals/files/dead-affordance-fixture.html"
+      ],
+      "expectations": [
+        "Actually clicks the thumbnails at Level A/B rather than inferring behavior from the zoom cursor, the enlarge badge, or the presence of a lightbox script in the source",
+        "Flags the thumbnails as a false affordance / dead click: the handler is bound to a stale selector (.thumb) that matches none of the .shot thumbnails, so no listener ever reaches them and clicking produces no response",
+        "Triggers the expander and confirms it toggles, distinguishing genuine behavior from the dead thumbnails",
+        "Recognizes the source is misleading here (a complete lightbox script is present) and a screenshot passes, so static reasoning can hypothesize but not verify the behavior; only a real trigger confirms the click is dead",
+        "Confirms the click actually registered before concluding the handler is dead (asserts on resulting state, rules out event delegation / hydration / a mis-dispatched click) rather than reading a non-response as proof"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "exact-target-stale-after-source-fix",
+      "prompt": "In the named local-UAT environment, a user reports that https://localhost:9443/login?tenant=fixture#/password still shows a visual defect. The source fix and unit tests are green, and http://localhost:5173/login looks correct. Canonical UAT status reports an older release than the expected fix; after a cache-disabled reload, the exact UAT URL loads JS/CSS hashes mapped to that older release manifest. The user authorized a source fix, but did not authorize rebuilding or restarting local UAT. Give the audit verdict and the authorized next actions.",
+      "expected_output": "A three-status report that treats the complete UAT URL, including query and fragment, as canonical in browser memory; persists only redacted requested/final structures plus digests and environment; marks delivery mismatched and the source-fix closure partial while still permitting a verified-as-observed current-render verdict for the stale live pixels. It refuses to use dev/test evidence as deployment proof or to mutate UAT under source-fix authority. If local-UAT mutation is later authorized separately, it uses that target's canonical lifecycle, proves before/after runtime plus data-plane identity, and repeats the original exact URL, state, viewport, pixels, and computed-style check before claiming closure.",
+      "files": [],
+      "expectations": [
+        "Preserves the complete requested URL including tenant query and hash route for navigation, but persists only redacted requested/final structures plus digests and verifies the named environment; another port or dev server is diagnostic only",
+        "Maps runtime status and browser-loaded hashes through the expected release manifest instead of treating a content-hashed filename, visible stamp, or local HEAD as self-proving identity",
+        "Does not infer deployment from source state, build success, unit tests, HMR, or a correct page at another URL",
+        "Keeps visual status and delivery status separate: it may inspect the stale live pixels, but source-fix closure stays partial with delivery mismatched",
+        "Does not rebuild, restart, or deploy local UAT under source-fix authority; target mutation requires separate explicit authorization for that named environment",
+        "After separate local-target authorization, records identity before/after, uses only the canonical lifecycle, reloads with cache disabled, and performs final evidence on the original URL/state/viewport rather than a query-busted substitute",
+        "Distinguishes a stale target from a current target that still renders the defect, and marks the mutation path blocked if lifecycle ownership cannot be established"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "source-less-live-url-remains-visually-verifiable",
+      "prompt": "Audit only the current rendered state of https://example.invalid/report?account=42#/queue. No repository, release manifest, version endpoint, or deployment access is available. The page is reachable in the intended browser and the user asks whether the visible queue layout is broken now, not whether a source fix was deployed. Define the target and verdict boundaries.",
+      "expected_output": "A scoped visual audit that preserves the exact query/fragment in browser memory, persists only redacted structural URLs plus digests, records environment as unverified if it cannot be established, and permits verified current-render findings from inspected pixels/journeys. Delivery status is not applicable because no freshness/deployment claim exists; the lack of source/deploy metadata does not block the visual verdict.",
+      "files": [],
+      "expectations": [
+        "Treats the full requested URL, redirect/final URL, browser state, and viewport as the target without requiring local source HEAD or a build/image status",
+        "Reports delivery status not applicable and environment unverified, rather than inventing a freshness claim or release identity",
+        "Allows the current-render visual claim to be verified when its required browser evidence is complete, while keeping deployment/freshness claims unverified",
+        "Does not append a cache-busting query that changes account or hash-route state and performs final evidence on the original URL",
+        "Makes no source, launcher, restart, or deployment mutation in audit-only mode",
+        "Triggers only interactions covered by explicit action or fixture authority; transactional controls such as delete, purchase, or send remain unverified rather than being clicked"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "non-url-target-identities",
+      "prompt": "Explain the verification-target contract for two existing artifacts: a local HTML deck opened from a canonical file and a packaged Electron app whose renderer dev server is also running. Neither task asks whether a deployment is current.",
+      "expected_output": "A target-kind-specific contract: the multi-resource deck uses canonical entry, authoritative resource manifest or dependency-closure digest, rendering scheme, exact canvas, and inspected frames; the Electron target uses an installed-artifact fingerprint or code signature plus build/version, running process/window, and renderer route. An HTTP copy of the deck and the renderer dev URL are labeled diagnostic surfaces, not silent substitutes, and no source-to-deployment chain is demanded for the scoped current-render claims.",
+      "files": [],
+      "expectations": [
+        "Does not invent host/port/environment fields for a canonical file target or use an HTTP diagnostic copy as the target without saying the scheme changed",
+        "Rejects a root-HTML hash as sufficient when CSS, scripts, fonts, or images can change independently; uses an authoritative resource manifest or dependency-closure digest plus rendering scheme and exact canvas",
+        "Rejects an unchanged declared version as sufficient after an in-place rebuild; identifies the native app by installed artifact fingerprint or code signature plus build/version, live process/window, and renderer route",
+        "Does not require build/image/release freshness evidence when neither claim concerns source change or deployment currency",
+        "Keeps any diagnostic server or dev renderer explicitly non-target"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "sensitive-target-evidence-stays-local-and-redacted",
+      "prompt": "Audit https://example.invalid/reset/path-secret?code=oauth-secret&state=account-42&tab=queue#/detail/fragment-route-secret?token=fragment-query-secret in a fixture account. Authentication is available only through an X-Access-Token credential, and the visible error row contains a customer email. Define how to invoke the probe, preserve exact target semantics, and hand off evidence without exposing credentials or PII.",
+      "expected_output": "The complete URL is passed as one quoted/opaque argv and kept exact only for browser navigation/comparison. Persistent reports redact path, query values, and the whole fragment while retaining safe structural metadata, query-key list, and stable target-string fingerprint; every header value comes from an environment variable through --header-env rather than argv; raw screenshots stay in a fresh temporary local directory; any shared evidence is a minimal crop with identifying pixels redacted and is explicitly labeled as a derivative.",
+      "files": [],
+      "expectations": [
+        "Quotes the complete URL as one opaque shell argument so &, ?, and # cannot be globbed, split, or backgrounded",
+        "Never writes or echoes credential, path, query-value, hash-route, or fragment-query secrets, including navigation errors or values reflected into title/heading metadata; persistent identity uses redacted structure plus a stable target-string fingerprint/query-key list",
+        "Uses --header-env or an equivalent non-argv channel for every header value and never relies on a denylist of familiar credential names",
+        "Treats the raw screenshot/report directory as temporary local sensitive evidence and never commits or broadly shares it",
+        "Creates only a minimal redacted derivative when evidence must be handed off, preserving the visible defect while removing customer identifiers",
+        "Keeps current-render, delivery, and fix-closure statuses separate; privacy redaction does not authorize substituting another target"
+      ]
+    }
+  ]
+}

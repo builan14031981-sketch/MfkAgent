@@ -84,10 +84,10 @@ def get_plan_mode_policy() -> str:
     return """## Plan 模式（只读模式）
 
 当前处于 Plan 模式，只能执行只读操作（Plan 与 Build 的区别是修改权限，不是工具能力）：
-- 允许：read_file / list_files / search_files / git_status / git_diff / git_log / run_command（只读命令，含测试与环境检查）
+- 允许：read_file / list_files / search_files / git_status / git_diff / git_log / run_command / run_outside_command（只读命令、盘符扫描、环境与本地文件调研）
 - 禁止：write_file / delete / rename / git_commit 等任何修改操作，禁止修改数据库与配置
 
-如果需要修改代码，请先分析并给出建议，等用户确认后再切换到 Build 模式。"""
+在 Plan 模式下搜集调研信息（如寻找本地软件/游戏安装路径、读取电脑文件进行分析）是安全且被允许的。如果需要修改代码，请先分析并给出建议，等用户确认后再切换到 Build 模式。"""
 
 
 def build_policy(chat, agent_capabilities=None) -> str:

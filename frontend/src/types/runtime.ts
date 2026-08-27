@@ -58,8 +58,8 @@ export interface UserChoiceRequest {
   allow_custom: boolean;
   chat_id?: number;
   created_at?: string;
-  /** 用户操作后的状态：selected=N | skipped=true | timeout=true */
-  resolvedAction?: { kind: "selected"; selected: number } | { kind: "skipped" } | { kind: "timeout" };
+  /** 用户操作后的状态：selected=N | custom=文本 | skipped=true | timeout=true */
+  resolvedAction?: { kind: "selected"; selected: number } | { kind: "custom"; custom_text: string } | { kind: "skipped" } | { kind: "timeout" };
 }
 
 /** G6-A：LLM 每轮思考结束后的 Token 消耗与上下文水位事件（不进入 timeline 渲染） */

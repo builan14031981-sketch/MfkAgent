@@ -63,6 +63,7 @@ class ModelConfigAdapter:
                     model_name=m.upstream,
                     api_key=api_key,
                     api_base=api_base,
+                    context_window=m.context_window,
                     supports_vision=_detect_supports_vision(m.upstream, p.supports_vision, m.supports_vision),
                     supports_tools=True,
                 )

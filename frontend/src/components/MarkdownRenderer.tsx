@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Copy, Check, FileText } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isFilePath, useFilePathInteraction, CLOSE_FILE_CTX_MENU } from "@/hooks/useFilePathInteraction";
-import { getCurrentApiBase } from "@/lib/api";
+import { getCurrentApiBase, API_BASE } from "@/lib/api";
 
 interface MarkdownRendererProps {
   content: string;
@@ -318,7 +318,9 @@ function ImageLine({ alt, src }: { alt: string; src: string }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const isExternal = /^https?:/.test(src);
-  const resolvedSrc = src.startsWith("/") ? `${getCurrentApiBase()}${src}` : src;
+  // 相对路径必须拼上后端地址；getCurrentApiBase() 在端口探测完成前可能返回空，用 API_BASE 兜底
+  const apiBase = getCurrentApiBase() || API_BASE || "http://127.0.0.1:8001";
+  const resolvedSrc = src.startsWith("/") ? `${apiBase}${src}` : src;
   return (
     <div style={{ margin: "6px 0" }}>
       {error ? (

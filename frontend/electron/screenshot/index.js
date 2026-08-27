@@ -1,6 +1,14 @@
 /**
  * 截图模块入口
- * 极致性能架构：并发预捕获 + 全内存裁剪 + 零磁盘阻塞
+ * 优化后架构：串行捕获（先截后显）+ 全内存裁剪 + 零磁盘阻塞
+ *
+ * 时序说明：
+ * 1. 先捕获全屏图像（此时主窗口已隐藏，遮罩尚未显示，屏幕干净无 UI 元素）
+ * 2. 再显示遮罩窗口，让用户拖选区域
+ * 3. 用户确认后，从内存中已捕获的图像裁剪，毫秒级返回
+ *
+ * 串行相比原并发方案的收益：彻底消除遮罩十字线/提示文字/工具栏被截入的风险；
+ * 性能差异可忽略（遮罩窗口预创建，show() 瞬时，捕获耗时两种方案都需等待）。
  */
 
 const { captureAllScreens } = require("./capture-screen");
@@ -9,32 +17,25 @@ const { cropSelection } = require("./image-processor");
 
 /**
  * 启动截图流程
- * 1. 并发启动屏幕捕获与遮罩窗口显示（在用户拖选时，全屏捕获已在后台就绪）
- * 2. 用户点击确认瞬间，直接从内存中读取图像并裁剪
- * 3. 毫秒级生成 base64 data URL 返回渲染进程
- *
  * @returns {Promise<{filePath:string, dataUrl:string, width:number, height:number}|null>}
  */
 async function startScreenshot() {
   try {
-    // 1. 并发启动：一边展示遮罩选框，一边预先捕获全屏图像
-    const capturePromise = captureAllScreens();
-    const selectionPromise = showOverlayWindow();
-
-    // 2. 等待用户完成选区并点击确认
-    const selection = await selectionPromise;
-    if (!selection) {
-      // 用户取消
-      return null;
-    }
-
-    // 3. 此时全屏捕获通常早已在后台完成，直接取结果
-    const screens = await capturePromise;
+    // 1. 先捕获所有显示器的全屏图像（全内存，零磁盘 I/O）
+    //    此时主窗口已由调用方隐藏，遮罩窗口尚未显示，截图内容干净
+    const screens = await captureAllScreens();
     if (!screens || screens.length === 0) {
       throw new Error("No screens captured");
     }
 
-    // 4. 纯内存毫秒级裁剪与 DataURL 生成（~5ms）
+    // 2. 显示遮罩窗口，等待用户拖选区域并确认
+    const selection = await showOverlayWindow();
+    if (!selection) {
+      // 用户取消（ESC / 右键 / 取消按钮）
+      return null;
+    }
+
+    // 3. 从已捕获的内存图像中裁剪，毫秒级生成 DataURL（~5ms）
     const result = await cropSelection(screens, selection);
     return result;
   } catch (err) {
