@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-    <rect width="512" height="512" rx="112" fill="#f1f5f9"/>
-    <!-- 顶面 -->
-    <polygon points="256,100 400,180 256,260 112,180" fill="#818cf8"/>
-    <!-- 左面 -->
-    <polygon points="112,180 256,260 256,420 112,340" fill="#6366f1"/>
-    <!-- 右面 -->
-    <polygon points="400,180 256,260 256,420 400,340" fill="#4f46e5"/>
-  </svg>
