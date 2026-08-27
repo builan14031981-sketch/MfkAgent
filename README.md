@@ -8,9 +8,35 @@
 
 ## 📌 项目简介 (Introduction)
 
-**MfkAgent** 是一款专为开发者、设计师与高级 Geek 打造的**全能型 AI 协作桌面工作站（Desktop Agent Workspace）**。
+**MfkAgent** 是一款面向普通用户极致易用、同时对专业开发者具备极高扩展上限的**全能型 AI 协作桌面工作站（Desktop Agent Workspace）**。
 
 它摒弃了传统 Web 端问答对话框的浅层交互模式，采用 **Electron + Next.js 16 + FastAPI + SQLite** 架构，深度融合 **Anthropic MCP (Model Context Protocol)** 协议标准、**豆包级无感隐窗截图**、**双流短路路由引擎**与 **L1-L3 闭环视觉自检**，旨在提供**零门槛开箱即用、强安全沙箱管控、高质感人机协同**的终极 Agent 体验。
+
+---
+
+## 💡 设计哲学：极致易用与专业深度兼备 (Design Philosophy)
+
+MfkAgent 遵循 **“渐进式复杂性 (Progressive Disclosure)”** 的设计原则，在易用性与专业度之间取得了极致平衡：
+
+* **🌱 对小白极度友好 (Zero-Threshold for Beginners)**
+  - **零 Key 门槛**：内置免费 API 聚合网关与免费模型通道，下载双击即可对话，无需繁琐配置。
+  - **直觉化交互**：集成**豆包级一键隐窗截图**与 **UserChoice 结构化决策卡片**，无需学习 Prompt 提示词工程，点击卡片即可高效指挥 Agent。
+  - **人味语气 (Persona V1)**：自然口语化沟通，告别机械死板的 AI 客服腔调。
+
+* **🛠️ 对专业用户深度接纳 (High Ceiling for Power Users & Developers)**
+  - **MCP 生态扩展**：原生支持 Anthropic MCP (Model Context Protocol) 协议，无缝接入浏览器自动化 (Playwright) 与第三方工具。
+  - **三态安全沙箱**：内置 Plan/Build 权限隔离模式、命令行三态风险引擎与磁盘配额防护，满足工程级代码重构与运维部署需求。
+  - **L1-L3 视觉质量闭环**：针对前端 UI 设计与代码提供从语法编译、样式网格到大模型视觉观感的三重自动化校验。
+
+---
+
+## 💼 简历亮点提炼 (Resume Highlights)
+
+> 如果您正在寻找可用于**简历项目描述**的高含金量表达，本项目提供以下切入点：
+
+- **渐进式复杂性产品设计 (Progressive Disclosure)**：针对非技术用户打造零配置开箱即用体验（免费网关+卡片点选交互+隐窗截图），降低 Prompt 使用门槛；同时为专业开发者提供 Anthropic MCP 协议扩展、Playwright 浏览器自动化与沙箱三态安全阻断，兼顾极低门槛与专业工程上限。
+- **人机交互 (HMI) 创新**：设计 `UserChoice` 结构化决策交互组件，将自由文本协商降维为图形卡片点选（标星推荐/单多选/快捷键），显著提升用户决策效率。
+- **自动化质量控制闭环**：为前端 Agent 构建 **L1 语法编译 + L2 CSS 变量 Token 校验 + L3 VL 视觉大模型评审** 三级自检机制，确保生成界面无缝融入项目原质感。
 
 ---
 
