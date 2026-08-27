@@ -92,6 +92,14 @@ temp_screenshot.png
 欢迎语库*.md
 docs/
 归档/
+Agent/
+_agent_cap_test/
+_benchmark/
+_ui_selfcheck/
+.ui_selfcheck/
+.rivet/
+backend/Archive/
+backend/output/
 *.backup
 *.db*
 external_skills/外部Skill接入清单.md
