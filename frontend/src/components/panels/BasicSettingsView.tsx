@@ -959,6 +959,28 @@ function GeneralBasic(props: SettingsViewProps) {
           />
         </div>
       )}
+
+      {/* 浏览器主页：右侧浏览器标签的默认打开网址 */}
+      <div style={{ marginBottom: "18px" }}>
+        <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: "0 0 6px 0" }}>
+          {t("settings.general.browserHomepage.title")}
+        </h3>
+        <p style={{ fontSize: "12px", color: "var(--text-level-4)", margin: "0 0 8px 0" }}>
+          {t("settings.general.browserHomepage.desc")}
+        </p>
+        <input
+          type="text"
+          value={settings?.browser_homepage ?? ""}
+          onChange={(e) => onUpdate("browser_homepage", e.target.value)}
+          placeholder="https://example.com"
+          spellCheck={false}
+          style={{
+            width: "100%", padding: "7px 10px", borderRadius: "var(--radius-sm)",
+            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
+            fontSize: "13px", color: "var(--text-level-2)", outline: "none",
+          }}
+        />
+      </div>
     </>
   );
 }

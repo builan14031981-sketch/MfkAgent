@@ -400,7 +400,11 @@
                                                       "customPlaceholder":  "Type a quote...",
                                                       "customAdd":  "Add quote",
                                                       "customMaxHint":  "Up to 5"
-                                                  }
+                                                  },
+                     "browserHomepage":  {
+                                             "title":  "Browser Homepage",
+                                             "desc":  "Default URL opened in the right-side browser tab; leave empty to disable"
+                                         }
                                  },
                      "tts":  {
                                  "title":  "Text-to-Speech",
@@ -828,6 +832,20 @@
                      "requireApproval":  "Dangerous command, confirm to run",
                      "executeAnyway":  "Run anyway",
                      "processExited":  "[process exited]"
+                 },
+    "browser":  {
+                     "title":  "Browser",
+                     "back":  "Back",
+                     "forward":  "Forward",
+                     "reload":  "Reload",
+                     "placeholder":  "Enter URL and press Enter",
+                     "crossOrigin":  "Cross-origin page: address sync unavailable",
+                     "loading":  "Loading...",
+                     "needProject":  "Previewing this file requires a linked project",
+                     "needHomepage":  "No browser homepage set",
+                     "needHomepageDesc":  "Set a default URL in Settings -> General, or type a URL in the address bar",
+                     "loadFailed":  "Page failed to load. Check the URL or your network.",
+                     "retry":  "Retry"
                  },
     "artifact":  {
                      "title":  "Artifacts",

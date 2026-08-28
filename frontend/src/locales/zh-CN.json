@@ -400,7 +400,11 @@
                                                       "customPlaceholder":  "输入一句台词...",
                                                       "customAdd":  "添加台词",
                                                       "customMaxHint":  "最多 5 条"
-                                                  }
+                                                  },
+                     "browserHomepage":  {
+                                             "title":  "浏览器主页",
+                                             "desc":  "右侧浏览器标签的默认打开网址；留空则不启用主页"
+                                         }
                                  },
                      "tts":  {
                                  "title":  "语音朗读",
@@ -828,6 +832,20 @@
                      "requireApproval":  "危险命令，确认执行",
                      "executeAnyway":  "仍然执行",
                      "processExited":  "[进程已退出]"
+                 },
+    "browser":  {
+                     "title":  "浏览器",
+                     "back":  "后退",
+                     "forward":  "前进",
+                     "reload":  "刷新",
+                     "placeholder":  "输入网址，回车访问",
+                     "crossOrigin":  "跨域页面无法同步地址",
+                     "loading":  "加载中...",
+                     "needProject":  "预览该文件需要关联项目",
+                     "needHomepage":  "尚未设置浏览器主页",
+                     "needHomepageDesc":  "可在「设置 → 通用」中设置默认打开的网址，或直接在地址栏输入网址访问",
+                     "loadFailed":  "页面加载失败，请检查网址或网络",
+                     "retry":  "重试"
                  },
     "artifact":  {
                      "title":  "产出物",

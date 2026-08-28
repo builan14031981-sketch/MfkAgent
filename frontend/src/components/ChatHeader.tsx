@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useRef, useEffect, useCallback } from "react";
-import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink, TerminalSquare, Package, Globe, Download, Plus } from "lucide-react";
+import { Folder, FolderPlus, ChevronDown, ArrowRightLeft, Unlink, Download } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import type { Agent } from "@/hooks/useAgents";
@@ -10,7 +10,6 @@ import type { TokenUsageEvent } from "@/types/runtime";
 import { AgentIcon } from "@/components/AgentIcon";
 import { ContextDashboard } from "@/components/ContextDashboard";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useDockStore } from "@/lib/dockStore";
 
 interface ChatHeaderProps {
   chat: Chat | undefined;
@@ -84,21 +83,12 @@ export const ChatHeader = memo(function ChatHeader({
   onSwitchProject,
   onUnbindProject,
   onSelectDirectory,
-  onNewChat,
 }: ChatHeaderProps) {
   const { t } = useTranslation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-
-  // 标签式右侧面板：终端 / 产出物 右上角入口（订阅标签激活态以切换按钮高亮）
-  const toggleTab = useDockStore((s) => s.toggleTab);
-  const activeTab = useDockStore((s) => s.activeTab);
-  const dockTabs = useDockStore((s) => s.tabs);
-  const terminalOpen = dockTabs.terminal;
-  const artifactOpen = dockTabs.artifacts;
-  const browserOpen = dockTabs.browser;
 
   // 点击外部关闭下拉
   useEffect(() => {
@@ -164,7 +154,6 @@ export const ChatHeader = memo(function ChatHeader({
         alignItems: "center",
         gap: "8px",
       }}>
-        {/* 2026-08-12：去除流式期间 AgentOrb 动画，思考状态由思考面板 Loader2 唯一表达，避免双动画 */}
         {agent && (
           <AgentIcon id={agent.id} size={18} style={{ color: "var(--text-level-3)" }} />
         )}
@@ -413,87 +402,6 @@ export const ChatHeader = memo(function ChatHeader({
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <Download style={{ width: "14px", height: "14px" }} />
-          </button>
-          {/* 产出物入口：切换"产出物"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
-          <button
-            onClick={() => toggleTab("artifacts")}
-            title={t("artifact.title")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "24px",
-              height: "24px",
-              padding: 0,
-              borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: artifactOpen && activeTab === "artifacts" ? "var(--bg-level-4)" : "transparent",
-              cursor: "pointer",
-              color: artifactOpen && activeTab === "artifacts" ? "var(--color-primary)" : "var(--text-level-3)",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-4)";
-            }}
-            onMouseLeave={(e) => {
-              if (!(artifactOpen && activeTab === "artifacts")) e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <Package style={{ width: "15px", height: "15px" }} />
-          </button>
-          {/* 终端入口：切换"终端"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
-          <button
-            onClick={() => toggleTab("terminal")}
-            title={t("terminal.title")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "24px",
-              height: "24px",
-              padding: 0,
-              borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: terminalOpen && activeTab === "terminal" ? "var(--bg-level-4)" : "transparent",
-              cursor: "pointer",
-              color: terminalOpen && activeTab === "terminal" ? "var(--color-primary)" : "var(--text-level-3)",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-4)";
-            }}
-            onMouseLeave={(e) => {
-              if (!(terminalOpen && activeTab === "terminal")) e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <TerminalSquare style={{ width: "15px", height: "15px" }} />
-          </button>
-          {/* 浏览器入口：切换"浏览器"标签（打开/激活/关闭），仅当该标签打开且激活时高亮 */}
-          <button
-            onClick={() => toggleTab("browser")}
-            title={t("browser.title")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "24px",
-              height: "24px",
-              padding: 0,
-              borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: browserOpen && activeTab === "browser" ? "var(--bg-level-4)" : "transparent",
-              cursor: "pointer",
-              color: browserOpen && activeTab === "browser" ? "var(--color-primary)" : "var(--text-level-3)",
-              transition: "all 0.15s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-4)";
-            }}
-            onMouseLeave={(e) => {
-              if (!(browserOpen && activeTab === "browser")) e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <Globe style={{ width: "15px", height: "15px" }} />
           </button>
         </div>
       )}

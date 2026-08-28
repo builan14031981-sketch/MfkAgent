@@ -2,9 +2,10 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, X, MessageSquare, Copy, ArrowRightToLine, Ban } from "lucide-react";
+import { Plus, X, MessageSquare, Copy, ArrowRightToLine, Ban, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useTabStore } from "@/lib/tabStore";
 import { useStreamStore } from "@/lib/streamStore";
+import { useDockStore } from "@/lib/dockStore";
 import { AgentIcon } from "@/components/AgentIcon";
 
 interface ContextMenuState {
@@ -28,6 +29,9 @@ export function ChatTabBar({ onNewChat }: ChatTabBarProps) {
   const closeOtherTabs = useTabStore((s) => s.closeOtherTabs);
   const closeRightTabs = useTabStore((s) => s.closeRightTabs);
   const streams = useStreamStore((s) => s.streams);
+  const isDockOpen = useDockStore((s) => s.isOpen);
+  const openDock = useDockStore((s) => s.open);
+  const closeDock = useDockStore((s) => s.close);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -362,6 +366,32 @@ export function ChatTabBar({ onNewChat }: ChatTabBarProps) {
             <Plus style={{ width: "15px", height: "15px" }} />
           </button>
         )}
+
+        {/* 竖向极细分割线 */}
+        <div style={{ width: "1px", height: "14px", background: "var(--border-primary)", margin: "0 2px", alignSelf: "center" }} />
+
+        {/* 右侧面板展开/收起切换按钮（与左侧侧边栏控制对称） */}
+        <button
+          onClick={() => {
+            if (isDockOpen) {
+              closeDock();
+            } else {
+              openDock();
+            }
+          }}
+          title={isDockOpen ? "收起右侧面板" : "展开右侧面板 (终端/产出物/浏览器)"}
+          className="chrome-tab-new"
+          style={{
+            color: isDockOpen ? "var(--color-primary)" : "var(--text-level-3)",
+            background: isDockOpen ? "color-mix(in srgb, var(--color-primary) 10%, transparent)" : "transparent",
+          }}
+        >
+          {isDockOpen ? (
+            <PanelRightClose style={{ width: "15px", height: "15px" }} />
+          ) : (
+            <PanelRightOpen style={{ width: "15px", height: "15px" }} />
+          )}
+        </button>
       </div>
 
       {/* 右键上下文菜单 */}

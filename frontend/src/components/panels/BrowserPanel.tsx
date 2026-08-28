@@ -3,44 +3,60 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Globe, RotateCw, Loader2 } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useSettingsStore } from "@/lib/store";
+
+/** 页面加载超时（ms）：若 iframe 既无 load 也无错误事件，超过该时长判定加载失败 */
+const LOAD_TIMEOUT = 15000;
 
 interface BrowserPanelProps {
   /** 当前会话 id（保留参数：后续用于会话级浏览器状态/审计，不影响可用性） */
   chatId?: number | null;
-  /** 当前绑定的项目路径（有项目时打开项目地址，无项目时显示欢迎页） */
+  /** 当前绑定的项目路径（保留参数：兼容调用方，不再决定默认地址） */
   projectPath?: string | null;
 }
 
 /**
  * 浏览器内容区（右侧面板"浏览器"标签）。
+ * - 默认地址来自设置「浏览器主页」：填了就自动打开，留空则显示引导页
  * - 内容区用 <iframe> 直接嵌入真实页面：可点击、可滚动、可输入，与真浏览器一致
- * - 缩放天然自适应面板宽度，无固定分辨率截图的拉伸/压缩问题
  * - 地址栏输入 URL 导航；刷新强制重载；后退/前进仅同源页面可用（跨源禁用并提示）
  * - 同源页面内点击链接后地址栏自动同步
- * - 外壳/标签栏/宽度/全屏由 DockPanel 承载
  */
-export function BrowserPanel({ chatId: _chatId, projectPath }: BrowserPanelProps) {
+export function BrowserPanel({ chatId: _chatId, projectPath: _projectPath }: BrowserPanelProps) {
   const { t } = useTranslation();
+  const settings = useSettingsStore((s) => s.settings);
+  // 浏览器主页（来自设置），留空 = 不启用
+  const homepage = (settings?.browser_homepage ?? "").trim();
 
   const [addr, setAddr] = useState("");
   const [iframeSrc, setIframeSrc] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const loadTimeoutRef = useRef<number | null>(null);
 
-  // 默认地址：有项目时用项目地址，无项目时显示欢迎页
-  const defaultUrl = projectPath ? "http://localhost:3000" : "";
+  // 清除加载超时定时器
+  const clearLoadTimeout = useCallback(() => {
+    if (loadTimeoutRef.current !== null) {
+      window.clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
+    }
+  }, []);
 
-  // 规范化地址：补全 http://
+  // 组件卸载时清理定时器
+  useEffect(() => () => clearLoadTimeout(), []);
+
+  // 规范化地址：补全 http://；空输入回落到主页（主页未设置则为空）
   const normalize = useCallback(
     (raw: string) => {
       let s = (raw || "").trim();
-      if (!s) return defaultUrl;
+      if (!s) return homepage;
       if (!/^https?:\/\//i.test(s)) s = `http://${s}`;
       return s;
     },
-    [defaultUrl]
+    [homepage]
   );
 
   // 同源判断（协议 + host + 端口一致才算，用于后退/前进可用性与地址栏同步）
@@ -55,16 +71,27 @@ export function BrowserPanel({ chatId: _chatId, projectPath }: BrowserPanelProps
 
   const sameOrigin = useMemo(() => iframeSrc !== "" && isSameOrigin(iframeSrc), [iframeSrc, isSameOrigin]);
 
-  // 导航到指定地址
+  // 导航到指定地址（空地址 = 回到引导页）
   const navigate = useCallback(
     (raw: string) => {
       const target = normalize(raw);
       setAddr(target);
       setIframeSrc(target);
       setReloadKey((k) => k + 1);
-      setLoading(true);
+      clearLoadTimeout();
+      setLoadFailed(false);
+      if (target) {
+        setLoading(true);
+        // 兜底：加载可能永不触发（域名不存在/断网），超时后停止转圈并提示
+        loadTimeoutRef.current = window.setTimeout(() => {
+          setLoading(false);
+          setLoadFailed(true);
+        }, LOAD_TIMEOUT);
+      } else {
+        setLoading(false);
+      }
     },
-    [normalize]
+    [normalize, clearLoadTimeout]
   );
 
   const onAddrSubmit = useCallback(
@@ -91,17 +118,25 @@ export function BrowserPanel({ chatId: _chatId, projectPath }: BrowserPanelProps
   // 刷新：同源直接 reload；跨源用 key 重建 iframe 强制重载
   const reload = useCallback(() => {
     if (!iframeSrc) return;
+    clearLoadTimeout();
     setLoading(true);
+    setLoadFailed(false);
     if (sameOrigin && iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.location.reload();
     } else {
       setReloadKey((k) => k + 1);
     }
-  }, [iframeSrc, sameOrigin]);
+    loadTimeoutRef.current = window.setTimeout(() => {
+      setLoading(false);
+      setLoadFailed(true);
+    }, LOAD_TIMEOUT);
+  }, [iframeSrc, sameOrigin, clearLoadTimeout]);
 
   // iframe 加载完成：结束 loading；同源时同步地址栏（点击链接后回填真实 URL）
   const onIframeLoad = useCallback(() => {
+    clearLoadTimeout();
     setLoading(false);
+    setLoadFailed(false);
     if (sameOrigin && iframeRef.current?.contentWindow) {
       try {
         const href = iframeRef.current.contentWindow.location.href;
@@ -111,41 +146,15 @@ export function BrowserPanel({ chatId: _chatId, projectPath }: BrowserPanelProps
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sameOrigin]);
+  }, [sameOrigin, clearLoadTimeout]);
 
-  // 首次进入且尚未打开页面时，自动导航到默认地址
+  // 首次进入且尚未打开页面时，自动导航到主页（未设置主页则停在引导页）
   useEffect(() => {
-    if (!iframeSrc) {
-      navigate(defaultUrl);
+    if (!iframeSrc && homepage) {
+      navigate(homepage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultUrl]);
-
-  // 无项目时显示欢迎页
-  if (!projectPath) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          padding: "24px",
-          textAlign: "center",
-          color: "var(--text-level-3)",
-        }}
-      >
-        <Globe style={{ width: 48, height: 48, marginBottom: 16, color: "var(--text-level-4)" }} />
-        <p style={{ fontSize: "14px", margin: 0, lineHeight: 1.5 }}>
-          {t("browser.needProject")}
-        </p>
-        <p style={{ fontSize: "12px", margin: "8px 0 0 0", color: "var(--text-level-4)", lineHeight: 1.5 }}>
-          {t("browser.needProjectDesc")}
-        </p>
-      </div>
-    );
-  }
+  }, [homepage]);
 
   return (
     <>
@@ -221,9 +230,9 @@ export function BrowserPanel({ chatId: _chatId, projectPath }: BrowserPanelProps
         </form>
       </div>
 
-      {/* 页面区：真实 iframe 渲染 */}
+      {/* 页面区：真实 iframe 渲染（未设置主页时显示引导页） */}
       <div style={{ flex: 1, minHeight: 0, overflow: "hidden", position: "relative", background: "#fff" }}>
-        {loading && (
+        {loading && iframeSrc && (
           <div style={{ ...centerStyle, position: "absolute", inset: 0, zIndex: 2, background: "var(--bg-level-2)" }}>
             <Loader2 style={{ width: 18, height: 18, color: "var(--text-level-4)", animation: "spin 1s linear infinite" }} />
           </div>
@@ -268,9 +277,62 @@ export function BrowserPanel({ chatId: _chatId, projectPath }: BrowserPanelProps
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
           />
         )}
+        {loadFailed && iframeSrc && (
+          <div
+            style={{
+              ...centerStyle,
+              position: "absolute",
+              inset: 0,
+              zIndex: 3,
+              background: "var(--bg-level-2)",
+              flexDirection: "column",
+              padding: "24px",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ fontSize: 13, margin: "0 0 12px 0", color: "var(--text-level-3)", lineHeight: 1.5 }}>
+              {t("browser.loadFailed")}
+            </p>
+            <button
+              onClick={reload}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--border-primary)",
+                background: "var(--bg-level-3)",
+                cursor: "pointer",
+                fontSize: 12,
+                color: "var(--text-level-2)",
+              }}
+            >
+              <RotateCw style={{ width: 13, height: 13 }} />
+              {t("browser.retry")}
+            </button>
+          </div>
+        )}
         {!iframeSrc && (
-          <div style={{ ...centerStyle, position: "absolute", inset: 0, zIndex: 1, background: "var(--bg-level-2)" }}>
-            <span style={{ fontSize: 12, color: "var(--text-level-3)" }}>{t("browser.loading")}</span>
+          <div
+            style={{
+              ...centerStyle,
+              position: "absolute",
+              inset: 0,
+              zIndex: 1,
+              background: "var(--bg-level-2)",
+              flexDirection: "column",
+              padding: "24px",
+              textAlign: "center",
+            }}
+          >
+            <Globe style={{ width: 48, height: 48, marginBottom: 16, color: "var(--text-level-4)" }} />
+            <p style={{ fontSize: "14px", margin: 0, lineHeight: 1.5 }}>
+              {t("browser.needHomepage")}
+            </p>
+            <p style={{ fontSize: "12px", margin: "8px 0 0 0", color: "var(--text-level-4)", lineHeight: 1.5 }}>
+              {t("browser.needHomepageDesc")}
+            </p>
           </div>
         )}
       </div>
@@ -300,5 +362,3 @@ const centerStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
 };
-
-

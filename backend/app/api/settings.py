@@ -49,6 +49,8 @@ DEFAULT_SETTINGS = {
     "hero_favorites": "[]",
     "greeting_mode": "builtin",
     "custom_greetings": "[]",
+    # 右侧浏览器标签默认主页（留空 = 不启用）
+    "browser_homepage": "",
     # Phase 3: 多模态 BYOK 备用识图配置
     "vision_provider": "",
     "vision_api_key": "",

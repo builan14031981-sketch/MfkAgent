@@ -578,12 +578,15 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           gap: "6px",
           padding: "5px 8px",
           borderRadius: "var(--radius-md)",
-          background: "var(--bg-level-3)",
-          border: "1px solid transparent",
-          transition: "border-color 0.15s ease",
+          background: "var(--bg-level-2)",
+          border: "1px solid var(--border-primary)",
+          boxShadow: "var(--shadow-sm)",
+          transition: "background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast)",
         }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-2)"; }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; }}
         >
           <Search style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
           <input
