@@ -287,11 +287,15 @@ optgroup {
   border-color: color-mix(in srgb, var(--text-level-3) 45%, transparent);
 }
 
+/* 框统一规则（2026-08-29 排查结论）：
+   1) 基线边框 = 各主题 --mf-border-1，深浅主题对比度差异属主题设计，不在此强行拉平；
+   2) 输入框凹凸方向随深浅翻转（浅色凸/深色凹）是刻意设计，勿"修复"；
+   3) focus 光晕必须用 --mf-focus-ring（13 套主题逐套定义），禁止现算 color-mix。 */
 .mf-input:focus,
 .mf-input:focus-visible {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+  box-shadow: 0 0 0 3px var(--mf-focus-ring, color-mix(in srgb, var(--color-primary) 14%, transparent));
 }
 
 .mf-nav-item {
