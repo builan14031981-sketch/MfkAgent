@@ -203,7 +203,7 @@ def _seed_sub_agents():
 _seed_sub_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, tts as tts_api, workflows, autotasks, defense_ppt  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, workflows, autotasks, defense_ppt  # noqa: E402
 
 
 def _backfill_custom_model_source():
@@ -419,8 +419,6 @@ app.include_router(greetings.router, prefix="/api/system", tags=["system"])
 app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
-app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
-app.include_router(tts_api.router, prefix="/api/tts", tags=["tts"])
 app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 app.include_router(proxy_api.router, prefix="/api/proxy", tags=["proxy"])

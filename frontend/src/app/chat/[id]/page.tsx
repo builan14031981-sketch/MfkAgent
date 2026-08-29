@@ -624,59 +624,6 @@ function ChatPageInner() {
     });
   }, [input, isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments, sessionSkills, chatId]);
 
-  // 语音意图无缝衔接：语音小球转写成功后自动拉起 Agent 流程
-  // 复用 handleSend 同款参数（模型/人格/推理/权限/附件），语音视为一次"语音版发送"
-  const handleVoicePrompt = useCallback(async (text: string) => {
-    const prompt = text.trim();
-    if (!prompt || isSending) return;
-    // 清空输入框（ChatInput 已用 onChange 填入文本，这里发送后清空）
-    setInput("");
-    // 语音发送同样清空已暂存附件（与 handleSend 行为一致）
-    const sentAttachments = attachments;
-    setAttachments([]);
-    fileMapRef.current.clear();
-
-    // buildContent：与 handleSend 一致的 text 附件兜底 + 会话级 Skill 说明书
-    const buildContent = async (content: string): Promise<string> => {
-      let prefix = "";
-
-      // 会话级 Skill：把启用 Skill 的说明书作为文档喂给当前会话
-      if (sessionSkills.length > 0) {
-        const skillSection = sessionSkills
-          .map((s) => `【本会话已启用 Skill：${s.name}】\n${s.prompt ?? s.description}\n`)
-          .join("\n\n");
-        prefix += `[以下为当前任务应遵循的行为规范文档，请据此处理用户请求]\n\n${skillSection}\n\n---\n\n`;
-      }
-
-      if (sentAttachments.length === 0) return prefix ? `${prefix}${content}` : content;
-      const fileMap = fileMapRef.current;
-      for (const att of sentAttachments) {
-        if (att.kind !== "text") continue;
-        const file = fileMap.get(att.id);
-        if (file) {
-          try {
-            const t = await file.text();
-            prefix += `[文件: ${att.name}] (${att.path || "未关联项目"})\n${t}\n\n`;
-          } catch {
-            prefix += `[文件: ${att.name}] (${att.path || "未关联项目"})\n（无法读取文件内容）\n\n`;
-          }
-        } else if (att.path) {
-          prefix += `[文件: ${att.name}] (${att.path})\n（文件内容由后端注入）\n\n`;
-        }
-      }
-      return prefix ? `${prefix}---\n\n${content}` : content;
-    };
-
-    await sendStream(prompt, {
-      modelId: sendModelId,
-      personalityLevel,
-      reasoningEffort,
-      permissionMode,
-      buildContent,
-      attachments: sentAttachments,
-    });
-  }, [isSending, sendStream, sendModelId, personalityLevel, reasoningEffort, permissionMode, attachments, sessionSkills]);
-
   // 模型切换：本地选中 + 持久化到会话快照 + 同步到偏好（localStorage）
   const handleModelChange = useCallback((id: string) => {
     const model = models.find((m) => m.id === id);
@@ -912,7 +859,6 @@ function ChatPageInner() {
             projectName={currentProject?.name || null}
             attachments={attachments}
             onRemoveAttachment={removeAttachment}
-            onVoicePrompt={handleVoicePrompt}
             roundtableAttendees={roundtableAttendees}
           />
         )}

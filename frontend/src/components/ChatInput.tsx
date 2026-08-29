@@ -19,8 +19,6 @@ import type { SkillInfo } from "@/hooks/useSkills";
 import type { Model } from "@/hooks/useModels";
 import type { Project } from "@/hooks/useProjects";
 import { useTranslation } from "@/hooks/useTranslation";
-import { VoiceOrb2D } from "@/components/VoiceOrb2D";
-import { useVoiceRecorder } from "@/hooks/useVoiceRecorder";
 import { useAgents, type Agent } from "@/hooks/useAgents";
 import { useMention } from "@/components/chat-input/useMention";
 import { MentionPopover } from "@/components/chat-input/MentionPopover";
@@ -97,13 +95,6 @@ export interface ChatInputProps {
   attachments?: Attachment[];
   onRemoveAttachment?: (id: string) => void;
 
-  /**
-   * 语音意图回调：语音小球录音结束、后端转写成功后触发。
-   * 父组件收到转写文本后，应自动填入并调用 sendMessageStream 拉起 Agent 流程。
-   * 不提供则隐藏语音小球。
-   */
-  onVoicePrompt?: (text: string) => void;
-
   /** 当前会话在场的参会 Agent 席位列表（圆桌模式下置顶候选） */
   roundtableAttendees?: Agent[];
 }
@@ -156,7 +147,6 @@ export const ChatInput = memo(function ChatInput({
   onRemoveProject,
   attachments,
   onRemoveAttachment,
-  onVoicePrompt,
   roundtableAttendees,
 }: ChatInputProps) {
   const { t } = useTranslation();
@@ -192,35 +182,6 @@ export const ChatInput = memo(function ChatInput({
   // 放大预览：当前点击放大的截图
   const [previewScreenshot, setPreviewScreenshot] = useState<ScreenshotItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // ── 语音录制 + 意图转写（仅当 onVoicePrompt 提供时启用）──
-  const voice = useVoiceRecorder();
-  const voiceEnabled = typeof onVoicePrompt === "function";
-
-  // 录音结束 → 自动转写 → 拉起 Agent 流程
-  const handleVoiceClick = useCallback(async () => {
-    if (!voiceEnabled || voice.isTranscribing) return;
-    // 先清掉上一次错误提示
-    voice.clearError();
-    if (voice.isRecording) {
-      // 停止并转写
-      const text = await voice.stop();
-      if (text) {
-        // 填入输入框（用户可见反馈）并触发发送
-        onChange(text);
-        onVoicePrompt?.(text);
-      }
-    } else {
-      await voice.start();
-    }
-  }, [voiceEnabled, voice, onChange, onVoicePrompt]);
-
-  // 转写错误以轻提示方式注入 placeholder 区域（不阻塞输入）
-  const voiceTitle = voice.isRecording
-    ? t("chat.voiceStop") || "点击停止录音并转写"
-    : voice.isTranscribing
-      ? t("chat.voiceTranscribing") || "正在转写…"
-      : t("chat.voiceStart") || "点击开始语音输入";
 
   const menuOpen = activePop === "menu";
   const agentOpen = activePop === "agent";
@@ -304,17 +265,6 @@ export const ChatInput = memo(function ChatInput({
       }
     }
   }, [draftKey]);
-
-  // 语音资源清理：组件卸载时若仍在录音，静默停止并释放麦克风（避免红点常亮 / 悬挂 stream）
-  useEffect(() => {
-    return () => {
-      // 仅在录音中触发清理；转写中的请求让其自然完成
-      if (voice.isRecording) {
-        voice.stop().catch(() => {});
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handlePickFile = () => {
     closePop();
@@ -561,46 +511,8 @@ export const ChatInput = memo(function ChatInput({
         </div>
       )}
 
-      {/* Textarea - 舒展自适应（含左侧语音小球） */}
+      {/* Textarea - 舒展自适应 */}
       <div style={{ position: "relative", width: "100%" }}>
-        {voiceEnabled && (
-          <div style={{
-            position: "absolute",
-            left: "10px",
-            top: "10px",
-            zIndex: 2,
-            display: "flex",
-            alignItems: "center",
-          }}>
-            <VoiceOrb2D
-              isActive={voice.isRecording}
-              isTranscribing={voice.isTranscribing}
-              onClick={handleVoiceClick}
-              title={voiceTitle}
-              disabled={isSending || disabled}
-            />
-          </div>
-        )}
-        {/* 转写错误轻提示（小球右下方，不阻塞输入） */}
-        {voiceEnabled && voice.error && (
-          <div style={{
-            position: "absolute",
-            left: "44px",
-            top: "12px",
-            zIndex: 2,
-            maxWidth: "calc(100% - 120px)",
-            padding: "2px 8px",
-            borderRadius: "var(--radius-md)",
-            background: "var(--color-error-lighter, rgba(255,80,80,0.12))",
-            color: "var(--color-error, #e5484d)",
-            fontSize: "11px",
-            lineHeight: 1.4,
-            pointerEvents: "none",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}>{voice.error}</div>
-        )}
         {/* @ 成员联想悬浮卡片 */}
         {mentionState.isOpen && (
           <MentionPopover
@@ -661,8 +573,7 @@ export const ChatInput = memo(function ChatInput({
           disabled={disabled}
           style={{
             width: "100%",
-            // 启用语音时左侧留出小球空间（10 球宽28 + 间距10 = 48），其余保持原 14px
-            padding: voiceEnabled ? "10px 14px 10px 48px" : "10px 14px",
+            padding: "10px 14px",
             background: "transparent",
             border: "none",
             outline: "none",

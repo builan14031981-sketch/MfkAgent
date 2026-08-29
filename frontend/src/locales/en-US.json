@@ -113,9 +113,6 @@
     "inputPlaceholder": "Type a message...",
     "sending": "Sending...",
     "stop": "Stop generating",
-    "voiceStart": "Click to start voice input",
-    "voiceStop": "Click to stop and transcribe",
-    "voiceTranscribing": "Transcribing…",
     "orb": {
       "working": "Waiting for response",
       "solving": "Thinking",
@@ -232,10 +229,6 @@
     "edit": "Edit",
     "quote": "Quote",
     "regenerate": "Regenerate",
-    "tts": {
-      "play": "Read aloud",
-      "stop": "Stop reading"
-    },
     "thinking": "Thinking",
     "projectInitTitle": "Linked project: {name}",
     "projectInitDesc": "What would you like to do in this project?",
@@ -409,18 +402,6 @@
         "title": "Browser Homepage",
         "desc": "Default URL opened in the right-side browser tab; leave empty to disable"
       }
-    },
-    "tts": {
-      "title": "Text-to-Speech",
-      "desc": "Microsoft Edge neural engine, free, no API key required. Read AI replies aloud.",
-      "enabled": "Enable TTS",
-      "enabledDesc": "When off, read-aloud button and auto-play are disabled",
-      "autoPlay": "Auto-play",
-      "autoPlayDesc": "Automatically read each AI reply after it completes",
-      "voice": "Voice",
-      "voiceDesc": "Default: Yunxi (sunny male). Switch to other neural voices",
-      "rate": "Speed",
-      "rateDesc": "Adjust reading speed, default is normal"
     },
     "model": {
       "title": "Model",
