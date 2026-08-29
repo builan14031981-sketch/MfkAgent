@@ -1055,6 +1055,41 @@ class ChatContextBuilder:
                 .all()
             )
 
+            # ──── T2 压缩止血：视图层边界裁剪（messages 行永不删除）────
+            # chats.compaction_boundary_message_id 记录压缩边界：边界之前的消息在
+            # 内存中折叠为一条【历史摘要】 user 消息，边界之后原文保留 —— 原始行
+            # （含 tool_calls / attachments / timeline）永不被改写。
+            # 回滚闸 view_compaction_enabled 关闭、无边界或任何异常时 → 全量历史（旧行为）。
+            try:
+                _vc_on = True
+                _vc_row = db.query(Setting).filter(Setting.key == "view_compaction_enabled").first()
+                if _vc_row is not None:
+                    _vc_on = str(_vc_row.value).strip().lower() != "false"
+                if (
+                    _vc_on
+                    and chat.compaction_boundary_message_id
+                    and (chat.summary or "").strip()
+                ):
+                    _bidx = next(
+                        (
+                            i
+                            for i, m in enumerate(history)
+                            if getattr(m, "id", None) == chat.compaction_boundary_message_id
+                        ),
+                        None,
+                    )
+                    if _bidx is not None:
+                        history = [
+                            {"role": "user", "content": f"【历史摘要】\n{(chat.summary or '').strip()}"},
+                            *history[_bidx + 1:],
+                        ]
+            except Exception as _vc_err:
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "view compaction 失败，回退全量历史: chat_id=%s, %s",
+                    input.chat_id, _vc_err,
+                )
+
             # ──── G6-B Phase 2: Thought Pruning（裁剪历史思考段，仅影响新 payload）────
             pruned_history = prune_thought_history(history)
 

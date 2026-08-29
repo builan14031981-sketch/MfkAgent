@@ -1445,18 +1445,29 @@ class CompressResponse(BaseModel):
     compressed: bool
     original_count: int
     compressed_count: int
+    # T2: 压缩前后估算 token（tiktoken cl100k 估算，含每条 4 token 开销）
+    tokens_before: int = 0
+    tokens_after: int = 0
 
 
 @router.post("/{chat_id}/compress", response_model=CompressResponse)
 async def compress_chat(chat_id: int, request: CompressRequest = CompressRequest()):
-    """G6-B: 会话压缩 — 将冗长历史消息提炼为摘要，减少上下文占用。
+    """T2 压缩止血：记录边界 + 生成摘要，不再删除任何数据。
 
-    流程：
-    1. 加载当前会话全部消息
-    2. 调用 AgentRuntime.compress_history 进行三段式压缩
-    3. 删除旧消息，写入压缩后的新消息列表
-    4. 返回压缩结果（含是否实际压缩、消息数变化）
+    旧实现物理 DELETE 全部旧消息再按 role/content 重写，tool_calls /
+    attachments / timeline 永久丢失。新实现语义：
+
+    1. 加载当前会话全部消息（原行原样保留，永不 DELETE）
+    2. 复用与自动压缩同一个摘要函数 AgentRuntime.compress_history 生成摘要
+    3. 写入 chats.summary + chats.compaction_boundary_message_id
+       （边界 = 三段式切分中 middle 段的最后一条消息）
+    4. 历史还原交给视图层：context_builder.build() 把边界之前折叠为【历史摘要】
+    5. 响应返回压缩前后估算 token；messages 为压缩后视图
+       （【历史摘要】节点 + 边界之后原文），供前端直接渲染
     """
+    from app.core.tokens import count_messages_tokens
+    from app.models.agent import Setting
+
     db = SessionLocal()
     try:
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
@@ -1479,52 +1490,103 @@ async def compress_chat(chat_id: int, request: CompressRequest = CompressRequest
             )
 
         original_count = len(old_messages)
+        tokens_before = count_messages_tokens(
+            [{"role": m.role, "content": m.content} for m in old_messages]
+        )
 
-        # 转换为 compress_history 所需格式
+        keep_recent = max(1, request.keep_recent)
+
+        # 摘要只需 role/content；复用与自动压缩同一个摘要函数
         msg_dicts = [{"role": m.role, "content": m.content} for m in old_messages]
-
-        # 调用压缩引擎
         agent_runtime = AgentRuntime()
         compressed = await agent_runtime.compress_history(
             msg_dicts,
-            keep_recent=request.keep_recent,
+            keep_recent=keep_recent,
         )
-
         compressed_count = len(compressed)
 
-        # 未触发压缩（中间消息不足 min_middle）→ 原样返回
-        if compressed_count == original_count:
+        # 与 compress_history 同规则的三段式切分：head(system) + middle + recent，
+        # 触发压缩时 compressed 恒为 head + [memory 节点] + keep_recent 条 recent
+        head_count = 0
+        for m in old_messages:
+            if m.role == "system":
+                head_count += 1
+            else:
+                break
+        expected_shape = head_count + 1 + keep_recent
+
+        # 未触发压缩（中间消息不足 min_middle / 摘要失败）→ 原样返回，不写边界
+        if compressed_count >= original_count or compressed_count != expected_shape:
             return CompressResponse(
                 messages=[MessageResponse.model_validate(m) for m in old_messages],
                 compressed=False,
                 original_count=original_count,
-                compressed_count=compressed_count,
+                compressed_count=original_count,
+                tokens_before=tokens_before,
+                tokens_after=tokens_before,
             )
 
-        # 压缩成功：删除旧消息，写入新消息
-        for m in old_messages:
-            db.delete(m)
+        # 摘要文本：剥掉 memory 节点的【历史记忆摘要】前缀，只存纯摘要
+        memory_node = compressed[head_count]
+        summary_text = (
+            memory_node.get("content", "")
+            if isinstance(memory_node, dict)
+            else getattr(memory_node, "content", "") or ""
+        )
+        if summary_text.startswith("【历史记忆摘要】"):
+            parts = summary_text.split("\n", 1)
+            summary_text = parts[1] if len(parts) > 1 else ""
+        summary_text = summary_text.strip()[:500]  # chats.summary 列宽 String(500)
 
-        new_messages = []
-        for msg_dict in compressed:
-            new_msg = Message(
-                chat_id=chat_id,
-                role=msg_dict.get("role", "user"),
-                content=msg_dict.get("content", ""),
-            )
-            db.add(new_msg)
-            db.flush()
-            new_messages.append(new_msg)
+        # 边界消息 = middle 段最后一条（近期 keep_recent 窗口之前的那条）
+        boundary_message_id = old_messages[original_count - keep_recent - 1].id
 
+        # T2 核心：不删任何行 — 只写摘要 + 边界；裁剪在视图层发生
+        chat.summary = summary_text
+        chat.compaction_boundary_message_id = boundary_message_id
         chat.updated_at = datetime.utcnow()
         db.commit()
 
-        # refresh 后返回
+        # 回滚闸：view_compaction_enabled 关闭时响应返回全量历史（旧行为）
+        view_compaction_enabled = True
+        try:
+            _row = db.query(Setting).filter(Setting.key == "view_compaction_enabled").first()
+            if _row is not None:
+                view_compaction_enabled = str(_row.value).strip().lower() != "false"
+        except Exception:
+            view_compaction_enabled = True
+
+        if view_compaction_enabled:
+            view: list = [
+                {
+                    "id": 0,
+                    "chat_id": chat_id,
+                    "role": "user",
+                    "content": f"【历史摘要】\n{summary_text}",
+                    "created_at": datetime.utcnow(),
+                }
+            ]
+            view += old_messages[original_count - keep_recent:]
+        else:
+            view = list(old_messages)
+
+        def _as_token_dict(m):
+            if isinstance(m, dict):
+                return {"role": m["role"], "content": m["content"]}
+            return {"role": m.role, "content": m.content}
+
+        tokens_after = count_messages_tokens([_as_token_dict(m) for m in view])
+
         return CompressResponse(
-            messages=[MessageResponse.model_validate(m) for m in new_messages],
+            messages=[
+                MessageResponse(**m) if isinstance(m, dict) else MessageResponse.model_validate(m)
+                for m in view
+            ],
             compressed=True,
             original_count=original_count,
-            compressed_count=compressed_count,
+            compressed_count=len(view),
+            tokens_before=tokens_before,
+            tokens_after=tokens_after,
         )
     finally:
         db.close()
