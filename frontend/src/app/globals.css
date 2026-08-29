@@ -272,6 +272,99 @@ optgroup {
   transform: scale(0.98);
 }
 
+/* ===== 设置面板交互态（.mf-*）=====
+   约定：内联 style 管静态值；:hover/:focus 等伪类状态必须走这里
+   （内联样式优先级高于普通 CSS 规则，故 border/background 等需要变化
+   的属性不允许留在内联，由类接管基线 + 状态） */
+.mf-input {
+  border: 1px solid var(--border-primary);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.mf-input:hover {
+  border-color: color-mix(in srgb, var(--text-level-3) 45%, transparent);
+}
+
+.mf-input:focus,
+.mf-input:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.mf-nav-item {
+  background-color: transparent;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    transform 0.12s ease;
+}
+
+.mf-nav-item:hover {
+  background-color: color-mix(in srgb, var(--text-level-1) 5%, transparent);
+}
+
+.mf-nav-item:active {
+  transform: scale(0.98);
+}
+
+/* 选中态：hover 不改变底色，仅取消透明 */
+.mf-nav-item.is-active {
+  background-color: var(--bg-level-2);
+}
+
+.mf-nav-item.is-active:hover {
+  background-color: var(--bg-level-2);
+}
+
+/* 主按钮（实心 accent 底）：hover 轻微提亮 + 浮起阴影 */
+.mf-btn-primary {
+  transition:
+    filter var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform 0.12s ease;
+}
+
+.mf-btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.mf-btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* 幽灵图标按钮（选目录、清除等）：hover 浮出底色 */
+.mf-icon-btn {
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+}
+
+.mf-icon-btn:hover {
+  background-color: color-mix(in srgb, var(--text-level-1) 6%, transparent);
+}
+
+.mf-icon-btn:active {
+  background-color: color-mix(in srgb, var(--text-level-1) 10%, transparent);
+}
+
+/* 次级按钮（描边/浅底）：hover 轻微加深 */
+.mf-btn-secondary {
+  transition:
+    filter var(--transition-fast),
+    transform 0.12s ease;
+}
+
+.mf-btn-secondary:hover {
+  filter: brightness(0.96);
+}
+
+.mf-btn-secondary:active {
+  transform: scale(0.98);
+}
+
 /* 滚动条样式 - 低调薄条，hover 时才显形 */
 * {
   scrollbar-width: thin;

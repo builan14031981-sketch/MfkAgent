@@ -162,7 +162,6 @@ export function ArchivePanel() {
     padding: 0,
     border: "none",
     borderRadius: "var(--radius-sm)",
-    background: "transparent",
     cursor: "pointer",
     flexShrink: 0,
   };
@@ -202,6 +201,7 @@ export function ArchivePanel() {
       <span style={{ fontSize: 11, color: "var(--color-error)", flexShrink: 0 }}>加载失败</span>
       <button
         onClick={retryDbInfo}
+        className="mf-btn-secondary"
         style={{
           display: "inline-flex", alignItems: "center",
           padding: "2px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
@@ -246,9 +246,8 @@ export function ArchivePanel() {
               <button
                 onClick={() => openInFolder(dbInfo.db_path)}
                 title="在文件管理器中打开"
+                className="mf-icon-btn"
                 style={iconBtnStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <FolderOpen style={{ width: 14, height: 14, color: "var(--text-level-2)" }} />
               </button>
@@ -273,6 +272,7 @@ export function ArchivePanel() {
               <button
                 onClick={handleBackup}
                 disabled={backingUp}
+                className="mf-btn-secondary"
                 style={{
                   display: "flex", alignItems: "center", gap: 4,
                   padding: "4px 10px", fontSize: 11, borderRadius: "var(--radius-sm)",
@@ -308,30 +308,29 @@ export function ArchivePanel() {
             value={imgDirValue}
             onChange={(e) => setImgDirDraft(e.target.value)}
             placeholder={t("settings.archive.dirDefaultHint")}
+            className="mf-input"
             style={{
               flex: 1,
               fontSize: "12px",
               padding: "6px 8px",
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-primary)",
               background: "var(--bg-level-1)",
               color: "var(--text-level-2)",
-              outline: "none",
               minWidth: 0,
             }}
           />
           <button
             onClick={handlePickImgDir}
             title={t("settings.archive.pickDir")}
+            className="mf-icon-btn"
             style={iconBtnStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <FolderOpen style={{ width: "15px", height: "15px", color: "var(--text-level-2)" }} />
           </button>
           <button
             onClick={handleSaveImgDir}
             disabled={savingImgDir}
+            className="mf-btn-primary"
             style={{
               padding: "6px 12px",
               fontSize: "12px",
@@ -364,30 +363,29 @@ export function ArchivePanel() {
             value={dirValue}
             onChange={(e) => setDirDraft(e.target.value)}
             placeholder={t("settings.archive.dirDefaultHint")}
+            className="mf-input"
             style={{
               flex: 1,
               fontSize: "12px",
               padding: "6px 8px",
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-primary)",
               background: "var(--bg-level-1)",
               color: "var(--text-level-2)",
-              outline: "none",
               minWidth: 0,
             }}
           />
           <button
             onClick={handlePickDir}
             title={t("settings.archive.pickDir")}
+            className="mf-icon-btn"
             style={iconBtnStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <FolderOpen style={{ width: "15px", height: "15px", color: "var(--text-level-2)" }} />
           </button>
           <button
             onClick={handleSaveDir}
             disabled={savingDir}
+            className="mf-btn-primary"
             style={{
               padding: "6px 12px",
               fontSize: "12px",
@@ -458,20 +456,18 @@ export function ArchivePanel() {
               <button
                 onClick={() => handleRestore(item)}
                 title={t("settings.archive.restore")}
+                className="mf-icon-btn"
                 style={iconBtnStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.color = "var(--color-primary)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-level-2)"; }}
               >
-                <RotateCcw style={{ width: "14px", height: "14px", color: "var(--color-primary)" }} />
+                <RotateCcw style={{ width: 14, height: 14, color: "var(--color-primary)" }} />
               </button>
               <button
                 onClick={() => handlePurge(item)}
                 title={t("settings.archive.purge")}
+                className="mf-icon-btn"
                 style={iconBtnStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
-                <Trash2 style={{ width: "14px", height: "14px", color: "var(--color-error)" }} />
+                <Trash2 style={{ width: 14, height: 14, color: "var(--color-error)" }} />
               </button>
             </div>
           ))

@@ -30,12 +30,14 @@ export function SwitchButton({ checked, disabled, onChange }: SwitchButtonProps)
       <span style={{
         position: "absolute",
         top: 2,
-        left: checked ? 17 : 2,
+        left: 2,
         width: 15,
         height: 15,
         borderRadius: "50%",
         background: "#fff",
-        transition: "left 0.2s ease",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
+        transform: checked ? "translateX(15px)" : "translateX(0)",
+        transition: "transform 0.2s cubic-bezier(0.34, 1.3, 0.64, 1)",
       }} />
     </button>
   );

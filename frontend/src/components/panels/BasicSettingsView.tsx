@@ -60,6 +60,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   spark: "讯飞星火",
   minimax: "MiniMax",
   siliconflow: "硅基流动",
+  sensenova: "商汤日日新",
 };
 
 /** 预设 Agent 排序优先级 */
@@ -186,11 +187,9 @@ function getSortedActiveAgents(agents: { id: string; name: string; status: strin
 const inputStyle: React.CSSProperties = {
   padding: "8px 12px",
   borderRadius: "var(--radius-sm)",
-  border: "1px solid var(--border-primary)",
   background: "var(--bg-level-2)",
   fontSize: "13px",
   color: "var(--text-level-2)",
-  outline: "none",
 };
 
 /** 字体选项：displayFont 用于以本尊字体渲染选项名（原生 <select> 的 option 在 Windows 上无法设字体） */
@@ -267,6 +266,7 @@ function FontFamilyDropdown({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
+        className="mf-input"
         style={{
           ...inputStyle,
           display: "flex",
@@ -442,6 +442,7 @@ function GreetingCustomEditor({
         <button
           onClick={handleSave}
           disabled={saving || JSON.stringify(clean) === value}
+          className="mf-btn-primary"
           style={{
             padding: "6px 16px", borderRadius: "var(--radius-sm)", border: "none",
             background: "var(--color-primary)", color: "#fff",
@@ -797,6 +798,7 @@ function GroupedModelDropdown({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
+        className="mf-input"
         style={{
           ...inputStyle,
           display: "flex",
@@ -984,6 +986,7 @@ function ModelBasic(props: SettingsViewProps) {
           </div>
           <select
             value={settings?.default_reasoning_effort || "none"}
+            className="mf-input"
             onChange={(e) => onUpdate("default_reasoning_effort", e.target.value)}
             disabled={saving === "default_reasoning_effort"}
             style={inputStyle}
@@ -1025,6 +1028,7 @@ function ModelBasic(props: SettingsViewProps) {
           </div>
           <select
             value={settings?.image_gen_model || "qwen-image-3.0-pro"}
+            className="mf-input"
             onChange={(e) => onUpdate("image_gen_model", e.target.value)}
             disabled={saving === "image_gen_model"}
             style={{ ...inputStyle, minWidth: "200px" }}
@@ -1065,6 +1069,7 @@ function AiBasic(props: AdvancedSettingsViewProps) {
         </div>
         <select
           value={settings?.default_agent || "general"}
+          className="mf-input"
           onChange={(e) => onUpdate("default_agent", e.target.value)}
           disabled={saving === "default_agent"}
           style={{ ...inputStyle, minWidth: "140px" }}

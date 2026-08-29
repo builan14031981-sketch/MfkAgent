@@ -266,22 +266,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       value={searchQuery}
                       onChange={(e) => handleSearchChange(e.target.value)}
                       placeholder={t("settings.searchPlaceholder")}
+                      className="mf-input"
                       style={{
                         width: "100%", padding: "7px 26px 7px 28px", boxSizing: "border-box",
                         borderRadius: "var(--radius-sm)",
-                        border: "1px solid var(--border-primary)",
                         background: "var(--bg-level-2)",
                         fontSize: "12px", color: "var(--text-level-2)",
-                        outline: "none",
                       }}
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery("")}
                         aria-label="clear search"
+                        className="mf-icon-btn"
                         style={{
                           position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)",
-                          background: "transparent", border: "none", cursor: "pointer",
+                          border: "none", cursor: "pointer",
                           color: "var(--text-level-4)", padding: "2px", display: "inline-flex",
                         }}
                       >
@@ -304,17 +304,23 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         setEditingSkillId(null);
                         try { localStorage.setItem("mfk_settings_active_section", item.id); } catch { /* noop */ }
                       }}
+                      className={activeSection === item.id ? "mf-nav-item is-active" : "mf-nav-item"}
                       style={{
                         display: "flex", alignItems: "center", gap: "8px",
                         width: "100%", padding: "10px 12px",
                         borderRadius: "var(--radius-md)", border: "none",
-                        background: activeSection === item.id ? "var(--bg-level-2)" : "transparent",
                         cursor: "pointer", fontSize: "14px",
                         color: activeSection === item.id ? "var(--text-level-1)" : "var(--text-level-3)",
                         textAlign: "left", marginBottom: "4px",
                       }}
                     >
-                      <item.icon style={{ width: "16px", height: "16px" }} />
+                      <item.icon
+                        style={{
+                          width: "16px", height: "16px",
+                          color: activeSection === item.id ? "var(--color-primary)" : "currentColor",
+                          transition: "color var(--transition-fast)",
+                        }}
+                      />
                       <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
                       {q && matchFields(item.id).length > 0 && (
                         <span style={{ fontSize: "10px", color: "var(--color-primary)", flexShrink: 0 }}>
