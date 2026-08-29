@@ -307,6 +307,7 @@ optgroup {
 /* 小芯片钮（刷新/翻页等实底小按钮）：hover 用亮度+投影（inline 底色会压过
    CSS 背景色，故不走 background 浮现路线）；禁用态不响应 */
 .mf-btn-chip {
+  background: transparent;
   transition:
     filter var(--transition-fast),
     box-shadow var(--transition-fast),
@@ -314,11 +315,13 @@ optgroup {
 }
 
 .mf-btn-chip:hover {
+  opacity: 1;
   filter: brightness(0.97);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .mf-btn-chip:active {
+  opacity: 1;
   transform: scale(0.97);
 }
 
@@ -335,11 +338,15 @@ optgroup {
     transform 0.12s ease;
 }
 
+/* .mf-* 家族接管 hover/active 反馈，抑制全局 button:hover opacity 变暗，
+   避免"变暗+底色/光晕"双重响应（全局变暗仅兜底未迁移按钮，迁移完可退役） */
 .mf-nav-item:hover {
+  opacity: 1;
   background-color: color-mix(in srgb, var(--text-level-1) 5%, transparent);
 }
 
 .mf-nav-item:active {
+  opacity: 1;
   transform: scale(0.98);
 }
 
@@ -361,29 +368,41 @@ optgroup {
 }
 
 .mf-btn-primary:hover {
+  opacity: 1;
   filter: brightness(1.08);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 .mf-btn-primary:active {
+  opacity: 1;
   transform: scale(0.98);
 }
 
+.mf-btn-primary:disabled {
+  filter: none;
+  box-shadow: none;
+}
+
 /* 幽灵按钮（透明底描边）与图标按钮：hover 浮出底色
-   注意：透明底上 filter/brightness 不可见，必须走背景浮现 */
+   注意：透明底上 filter/brightness 不可见，必须走背景浮现；
+   基线背景必须显式声明 transparent——项目没有全局 button reset，
+   也没有 Tailwind preflight（插件注册了但无 @import），缺了会露出 UA 灰底 */
 .mf-icon-btn,
 .mf-btn-ghost {
+  background: transparent;
   border-radius: var(--radius-sm);
   transition: background-color var(--transition-fast);
 }
 
 .mf-icon-btn:hover,
 .mf-btn-ghost:hover {
+  opacity: 1;
   background-color: color-mix(in srgb, var(--text-level-1) 6%, transparent);
 }
 
 .mf-icon-btn:active,
 .mf-btn-ghost:active {
+  opacity: 1;
   background-color: color-mix(in srgb, var(--text-level-1) 10%, transparent);
 }
 
@@ -395,11 +414,17 @@ optgroup {
 }
 
 .mf-btn-secondary:hover {
+  opacity: 1;
   filter: brightness(0.96);
 }
 
 .mf-btn-secondary:active {
+  opacity: 1;
   transform: scale(0.98);
+}
+
+.mf-btn-secondary:disabled {
+  filter: none;
 }
 
 /* 滚动条样式 - 低调薄条，hover 时才显形 */
