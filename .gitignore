@@ -109,3 +109,6 @@ tsc_output*.txt
 run_20skills_direct.py
 
 
+
+# WorkBuddy 本地记忆（勿提交，含用户偏好与项目笔记）
+.workbuddy/

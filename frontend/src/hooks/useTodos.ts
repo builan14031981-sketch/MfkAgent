@@ -18,16 +18,16 @@ export function useTodos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTodos = useCallback(async () => {
+  const fetchTodos = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       const data = await apiGet<Todo[]>(`/api/todos?status=pending`);
       setTodos(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch todos");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -76,21 +76,35 @@ export function useTodos() {
     }
   }, []);
 
+  const revertTodo = useCallback(async (id: string) => {
+    try {
+      await apiPatch<Todo>(`/api/todos/${id}`, { status: "pending" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to revert todo");
+    }
+  }, []);
+
   const removeTodoFromList = useCallback((id: string) => {
     setTodos((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const removeCompletedFromList = useCallback((id: string) => {
+    setCompletedTodos((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const deleteTodo = useCallback(async (id: string) => {
-    // 乐观删除：立即从列表移除
+    // 乐观删除：立即从两个列表移除
     setTodos((prev) => prev.filter((t) => t.id !== id));
+    setCompletedTodos((prev) => prev.filter((t) => t.id !== id));
     try {
       await apiDelete(`/api/todos/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete todo");
       // 删除失败：重新拉取以恢复
       fetchTodos();
+      fetchCompletedTodos();
     }
-  }, [fetchTodos]);
+  }, [fetchTodos, fetchCompletedTodos]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -99,5 +113,18 @@ export function useTodos() {
     return () => clearTimeout(timer);
   }, [fetchTodos]);
 
-  return { todos, completedTodos, loading, error, fetchTodos, fetchCompletedTodos, createTodo, completeTodo, removeTodoFromList, deleteTodo };
+  return {
+    todos,
+    completedTodos,
+    loading,
+    error,
+    fetchTodos,
+    fetchCompletedTodos,
+    createTodo,
+    completeTodo,
+    revertTodo,
+    removeTodoFromList,
+    removeCompletedFromList,
+    deleteTodo,
+  };
 }
