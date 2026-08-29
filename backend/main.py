@@ -159,6 +159,13 @@ def _ensure_schema():
             if "source" not in cols:
                 conn.execute(sa.text("ALTER TABLE models ADD COLUMN source VARCHAR(10) NOT NULL DEFAULT 'manual'"))
 
+    # T6 外部 MCP：plugins 表补充 source 列（builtin / external_mcp）
+    if "plugins" in inspector.get_table_names():
+        cols = {c["name"] for c in inspector.get_columns("plugins")}
+        with engine.begin() as conn:
+            if "source" not in cols:
+                conn.execute(sa.text("ALTER TABLE plugins ADD COLUMN source VARCHAR(30) NOT NULL DEFAULT 'builtin'"))
+
     if "messages" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("messages")}
         with engine.begin() as conn:
@@ -461,6 +468,23 @@ async def _start_feishu_ws():
             start_feishu_ws()
     except Exception as e:
         logger.warning("飞书 WebSocket 启动异常（已忽略不阻断启动）: %s", e)
+
+# T6 外部 MCP：后台枚举 stdio MCP server 工具（异步不阻塞启动，失败仅告警）
+@app.on_event("startup")
+async def _start_external_mcp():
+    try:
+        from app.core.mcp_client import external_mcp_manager
+        external_mcp_manager.startup()
+    except Exception as e:
+        logger.warning("外部 MCP 启动异常（已忽略不阻断启动）: %s", e)
+
+@app.on_event("shutdown")
+async def _shutdown_external_mcp():
+    try:
+        from app.core.mcp_client import external_mcp_manager
+        await external_mcp_manager.shutdown()
+    except Exception as e:
+        logger.warning("外部 MCP 关闭异常（已忽略）: %s", e)
 
 @app.get("/")
 async def root():

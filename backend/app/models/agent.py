@@ -256,6 +256,11 @@ class PluginItem(Base):
 
     status 取值（与 services/plugin.py PluginStatus 对齐）：
       installed / active / inactive / error
+
+    source 取值（T6 外部 MCP 支持）：
+      builtin       — 内置插件（默认，PLUGIN_TOOL_MAP 内的进程内插件）
+      external_mcp  — 外部 stdio MCP server；config 存 {command, args, env, cwd}，
+                      由 app.core.mcp_client 装载启停，工具命名 mcp__<plugin_id>__<tool>
     """
     __tablename__ = "plugins"
 
@@ -266,6 +271,7 @@ class PluginItem(Base):
     description = Column(Text, default="")
     author = Column(String(200), default="")
     status = Column(String(20), default="installed")
+    source = Column(String(30), default="builtin", nullable=False)
     config = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

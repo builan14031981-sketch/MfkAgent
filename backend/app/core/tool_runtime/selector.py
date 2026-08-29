@@ -1,10 +1,13 @@
 """工具选择器 — 将工具名称转换为 OpenAI Function Calling Schema。
 
 封装所有工具定义的导入和组装，chat.py 不再需要知道具体工具定义来源。
+外部 MCP 工具（T6）：定义在 mcp_client 枚举后经 merge_external_definitions 合并进
+_def_map；可见性由 PermissionFilter（会话冻结清单）收敛，本层只做定义解析。
 """
 
 from typing import Dict, List, Optional
 
+from app.core import mcp_client
 from app.core.command_tools import COMMAND_TOOLS_DEFINITIONS
 from app.core.tools import FILE_TOOLS_DEFINITIONS
 from app.core.git_tools import GIT_TOOLS_DEFINITIONS
@@ -72,6 +75,10 @@ class ToolSelector:
 
         project_path = getattr(chat, "project_path", None)
         definitions = []
+
+        # 外部 MCP 工具定义合并进 _def_map（幂等；名称已在权限层经会话冻结清单收敛）。
+        # server 未枚举完成/已崩溃时该名称暂无定义 → 本请求跳过，下个请求自动补上。
+        mcp_client.merge_external_definitions(self._def_map, tool_names)
 
         for name in tool_names:
             definition = self._def_map.get(name)
