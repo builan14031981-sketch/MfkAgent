@@ -178,8 +178,8 @@ function AuditView() {
           onChange={(e) => setToolFilter(e.target.value)}
           style={{
             flex: 1, padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-            color: "var(--text-level-2)", outline: "none",
+            background: "var(--bg-level-2)",
+            color: "var(--text-level-2)",
           }}
         />
         <select
@@ -187,15 +187,15 @@ function AuditView() {
           onChange={(e) => setSuccessFilter(e.target.value as any)}
           style={{
             padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-            color: "var(--text-level-2)", outline: "none",
+            background: "var(--bg-level-2)",
+            color: "var(--text-level-2)",
           }}
         >
           <option value="">全部</option>
           <option value="true">成功</option>
           <option value="false">失败</option>
         </select>
-        <button onClick={() => load(0)} style={{
+        <button onClick={() => load(0)} className="mf-btn-chip" style={{
           padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
           border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
           cursor: "pointer", color: "var(--text-level-2)", display: "flex", alignItems: "center", gap: 4,
@@ -208,6 +208,7 @@ function AuditView() {
             success: successFilter === "" ? undefined : successFilter === "true",
           })}
           download
+          className="mf-btn-chip"
           style={{
             padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -270,6 +271,7 @@ function AuditView() {
               <button
                 disabled={offset === 0}
                 onClick={() => load(Math.max(0, offset - 30))}
+                className="mf-btn-chip"
                 style={{
                   padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -279,6 +281,7 @@ function AuditView() {
               <button
                 disabled={offset + 30 >= total}
                 onClick={() => load(offset + 30)}
+                className="mf-btn-chip"
                 style={{
                   padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -382,8 +385,8 @@ function LogViewer({ t }: { t: (key: string) => string }) {
           onChange={(e) => { setLevel(e.target.value); setPage(1); }}
           style={{
             padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-            color: "var(--text-level-2)", outline: "none",
+            background: "var(--bg-level-2)",
+            color: "var(--text-level-2)",
           }}
         >
           <option value="">{lg("levelAll")}</option>
@@ -404,12 +407,12 @@ function LogViewer({ t }: { t: (key: string) => string }) {
             style={{
               width: "100%", padding: "4px 8px 4px 24px", fontSize: 12,
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-              color: "var(--text-level-2)", outline: "none", boxSizing: "border-box",
+              background: "var(--bg-level-2)",
+              color: "var(--text-level-2)", boxSizing: "border-box",
             }}
           />
         </div>
-        <button onClick={() => load(page)} style={{
+        <button onClick={() => load(page)} className="mf-btn-chip" style={{
           padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
           border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
           cursor: "pointer", color: "var(--text-level-2)", display: "flex", alignItems: "center", gap: 4,
@@ -419,6 +422,7 @@ function LogViewer({ t }: { t: (key: string) => string }) {
         <a
           href={getLogDownloadUrl()}
           download
+          className="mf-btn-chip"
           style={{
             padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
             border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -481,6 +485,7 @@ function LogViewer({ t }: { t: (key: string) => string }) {
             <button
               disabled={page <= 1}
               onClick={() => load(page - 1)}
+              className="mf-btn-chip"
               style={{
                 padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -490,6 +495,7 @@ function LogViewer({ t }: { t: (key: string) => string }) {
             <button
               disabled={page >= totalPages}
               onClick={() => load(page + 1)}
+              className="mf-btn-chip"
               style={{
                 padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                 border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -575,7 +581,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
             >{label}</button>
           );
         })}
-        <button onClick={() => load(offset)} style={{
+        <button onClick={() => load(offset)} className="mf-btn-chip" style={{
           padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
           border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
           cursor: "pointer", color: "var(--text-level-2)", display: "flex", alignItems: "center", gap: 4,
@@ -644,6 +650,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
               <button
                 disabled={offset === 0}
                 onClick={() => load(Math.max(0, offset - 30))}
+                className="mf-btn-chip"
                 style={{
                   padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -653,6 +660,7 @@ function ApprovalsView({ t }: { t: (key: string) => string }) {
               <button
                 disabled={offset + 30 >= total}
                 onClick={() => load(offset + 30)}
+                className="mf-btn-chip"
                 style={{
                   padding: "4px 8px", fontSize: 11, borderRadius: "var(--radius-sm)",
                   border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
@@ -707,8 +715,8 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
           onChange={(e) => setEngine(e.target.value as any)}
           style={{
             padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-            color: "var(--text-level-2)", outline: "none",
+            background: "var(--bg-level-2)",
+            color: "var(--text-level-2)",
           }}
         >
           <option value="run_command">run_command</option>
@@ -719,8 +727,8 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
           onChange={(e) => setMode(e.target.value as any)}
           style={{
             padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-            color: "var(--text-level-2)", outline: "none",
+            background: "var(--bg-level-2)",
+            color: "var(--text-level-2)",
           }}
         >
           <option value="build">Build</option>
@@ -739,13 +747,13 @@ function CommandRiskView({ t }: { t: (key: string) => string }) {
             style={{
               width: "100%", padding: "4px 8px 4px 24px", fontSize: 12,
               borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-              color: "var(--text-level-2)", outline: "none", boxSizing: "border-box",
+              background: "var(--bg-level-2)",
+              color: "var(--text-level-2)", boxSizing: "border-box",
               fontFamily: "var(--font-mono, monospace)",
             }}
           />
         </div>
-        <button onClick={run} disabled={loading || !command.trim()} style={{
+        <button onClick={run} disabled={loading || !command.trim()} className="mf-btn-primary" style={{
           padding: "4px 8px", fontSize: 12, borderRadius: "var(--radius-sm)",
           border: "none", cursor: "pointer",
           background: "var(--color-primary)", color: "#fff",
@@ -930,7 +938,7 @@ export function SecurityView(props: SettingsViewProps) {
   const [guardTab, setGuardTab] = useState<GuardTab>("approvals");
 
   return (
-    <div>
+    <div className="mf-form">
       {/* 标题 */}
       <div style={{ marginBottom: 8 }}>
         <h3 style={{ fontSize: 14, fontWeight: 500, color: "var(--text-level-1)", margin: 0 }}>

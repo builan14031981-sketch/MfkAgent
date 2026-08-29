@@ -276,14 +276,18 @@ optgroup {
    约定：内联 style 管静态值；:hover/:focus 等伪类状态必须走这里
    （内联样式优先级高于普通 CSS 规则，故 border/background 等需要变化
    的属性不允许留在内联，由类接管基线 + 状态） */
-.mf-input {
+.mf-input,
+.mf-form input,
+.mf-form select,
+.mf-form textarea {
   border: 1px solid var(--border-primary);
   transition:
     border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
-.mf-input:hover {
+.mf-input:hover,
+.mf-form :is(input, select, textarea):hover {
   border-color: color-mix(in srgb, var(--text-level-3) 45%, transparent);
 }
 
@@ -292,10 +296,35 @@ optgroup {
    2) 输入框凹凸方向随深浅翻转（浅色凸/深色凹）是刻意设计，勿"修复"；
    3) focus 光晕必须用 --mf-focus-ring（13 套主题逐套定义），禁止现算 color-mix。 */
 .mf-input:focus,
-.mf-input:focus-visible {
+.mf-input:focus-visible,
+.mf-form :is(input, select, textarea):focus,
+.mf-form :is(input, select, textarea):focus-visible {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--mf-focus-ring, color-mix(in srgb, var(--color-primary) 14%, transparent));
+}
+
+/* 小芯片钮（刷新/翻页等实底小按钮）：hover 用亮度+投影（inline 底色会压过
+   CSS 背景色，故不走 background 浮现路线）；禁用态不响应 */
+.mf-btn-chip {
+  transition:
+    filter var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform 0.12s ease;
+}
+
+.mf-btn-chip:hover {
+  filter: brightness(0.97);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.mf-btn-chip:active {
+  transform: scale(0.97);
+}
+
+.mf-btn-chip:disabled {
+  filter: none;
+  box-shadow: none;
 }
 
 .mf-nav-item {
@@ -340,17 +369,21 @@ optgroup {
   transform: scale(0.98);
 }
 
-/* 幽灵图标按钮（选目录、清除等）：hover 浮出底色 */
-.mf-icon-btn {
+/* 幽灵按钮（透明底描边）与图标按钮：hover 浮出底色
+   注意：透明底上 filter/brightness 不可见，必须走背景浮现 */
+.mf-icon-btn,
+.mf-btn-ghost {
   border-radius: var(--radius-sm);
   transition: background-color var(--transition-fast);
 }
 
-.mf-icon-btn:hover {
+.mf-icon-btn:hover,
+.mf-btn-ghost:hover {
   background-color: color-mix(in srgb, var(--text-level-1) 6%, transparent);
 }
 
-.mf-icon-btn:active {
+.mf-icon-btn:active,
+.mf-btn-ghost:active {
   background-color: color-mix(in srgb, var(--text-level-1) 10%, transparent);
 }
 

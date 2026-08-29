@@ -112,10 +112,11 @@ export function ProxySettingsSection({ settings, saving, onUpdate, t }: ProxySet
             value={proxyUrl}
             onChange={(e) => onUpdate("proxy_url", e.target.value)}
             placeholder="http://127.0.0.1:7890"
+            className="mf-input"
             style={{
               flex: 1, padding: "8px 12px", borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-              fontSize: "13px", color: "var(--text-level-2)", outline: "none",
+              background: "var(--bg-level-2)",
+              fontSize: "13px", color: "var(--text-level-2)",
               fontFamily: "monospace",
             }}
           />
@@ -145,16 +146,18 @@ export function ProxySettingsSection({ settings, saving, onUpdate, t }: ProxySet
           value={testUrl}
           onChange={(e) => setTestUrl(e.target.value)}
           placeholder="https://..."
+          className="mf-input"
           style={{
             flex: 1, padding: "8px 12px", borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)", background: "var(--bg-level-2)",
-            fontSize: "13px", color: "var(--text-level-2)", outline: "none",
+            background: "var(--bg-level-2)",
+            fontSize: "13px", color: "var(--text-level-2)",
             fontFamily: "monospace",
           }}
         />
         <button
           onClick={runTest}
           disabled={testing}
+          className="mf-btn-secondary"
           style={{
             display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px",
             borderRadius: "var(--radius-sm)", border: "1px solid var(--color-primary)",

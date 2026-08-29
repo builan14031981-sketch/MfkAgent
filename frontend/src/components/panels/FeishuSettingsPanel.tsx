@@ -14,11 +14,9 @@ const inputStyle: React.CSSProperties = {
   padding: "6px 10px",
   marginTop: "4px",
   borderRadius: "var(--radius-sm)",
-  border: "1px solid var(--border-primary)",
   background: "var(--bg-level-1)",
   fontSize: "13px",
   color: "var(--text-level-2)",
-  outline: "none",
 };
 
 function StatusBadge({ state }: { state: "idle" | "success" | "error" | "loading" }) {
@@ -129,6 +127,7 @@ export function FeishuSettingsPanel() {
                   value={appId}
                   onChange={(e) => setAppId(e.target.value)}
                   placeholder="cli_a9xxxxxxxxxxxx"
+                  className="mf-input"
                   style={inputStyle}
                 />
               </label>
@@ -139,6 +138,7 @@ export function FeishuSettingsPanel() {
                   value={appSecret}
                   onChange={(e) => setAppSecret(e.target.value)}
                   placeholder={hasSecret ? "••••••••（已配置）" : "输入 App Secret"}
+                  className="mf-input"
                   style={inputStyle}
                 />
               </label>
@@ -148,10 +148,11 @@ export function FeishuSettingsPanel() {
               <button
                 onClick={handleTest}
                 disabled={testing || (!currentAppId && !appId)}
+                className="mf-btn-ghost"
                 style={{
                   display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px",
                   borderRadius: "var(--radius-sm)", border: "1px solid var(--border-primary)",
-                  background: "transparent", cursor: "pointer", fontSize: "13px",
+                  cursor: "pointer", fontSize: "13px",
                   color: "var(--text-level-2)",
                 }}
               >
@@ -161,6 +162,7 @@ export function FeishuSettingsPanel() {
               <button
                 onClick={handleSave}
                 disabled={saving || !appId.trim()}
+                className="mf-btn-primary"
                 style={{
                   display: "flex", alignItems: "center", gap: "6px", padding: "7px 14px",
                   borderRadius: "var(--radius-sm)", border: "none",
@@ -223,6 +225,7 @@ export function FeishuSettingsPanel() {
               <button
                 onClick={async () => { await fetchChats(); }}
                 disabled={chatLoading}
+                className="mf-btn-ghost"
                 style={btnGhostStyle}
               >
                 {chatLoading
@@ -239,7 +242,7 @@ export function FeishuSettingsPanel() {
             {chats.length > 0 && (
               <>
                 <select id="feishu-chat-select" value={""} onChange={(e) => { e.target.dataset.sel = e.target.value; }}
-                  style={{ ...inputStyle, marginTop: 0 }}>
+                  className="mf-input" style={{ ...inputStyle, marginTop: 0 }}>
                   <option value="">选择群…</option>
                   {chats.map((c) => (
                     <option key={c.chat_id} value={c.chat_id}>{c.name}（{c.chat_id}）</option>
@@ -249,10 +252,12 @@ export function FeishuSettingsPanel() {
                   value={testText}
                   onChange={(e) => setTestText(e.target.value)}
                   placeholder="测试消息内容"
+                  className="mf-input"
                   style={{ ...inputStyle, marginTop: "6px" }}
                 />
                 <button
                   disabled={sendLoading}
+                  className="mf-btn-primary"
                   onClick={async () => {
                     const sel = document.getElementById("feishu-chat-select") as HTMLSelectElement | null;
                     const rid = sel?.dataset.sel;
@@ -289,7 +294,7 @@ export function FeishuSettingsPanel() {
 const btnGhostStyle: React.CSSProperties = {
   display: "flex", alignItems: "center", gap: "5px", padding: "4px 10px",
   borderRadius: "var(--radius-sm)", border: "1px solid var(--border-primary)",
-  background: "transparent", cursor: "pointer", fontSize: "12px",
+  cursor: "pointer", fontSize: "12px",
   color: "var(--text-level-2)",
 };
 
