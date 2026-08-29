@@ -62,6 +62,7 @@ export function DockActivityBar() {
         return (
           <button
             key={id}
+            className="mf-icon-btn"
             onClick={() => {
               if (!isOpen) {
                 openTab(id);
@@ -79,16 +80,8 @@ export function DockActivityBar() {
               height: 28,
               borderRadius: "var(--radius-md)",
               border: "none",
-              background: "transparent",
               cursor: "pointer",
-              transition: "background 0.15s ease",
               outline: "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "color-mix(in srgb, var(--text-level-1) 6%, transparent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
             }}
           >
             {active && (
