@@ -30,6 +30,7 @@ from .risk_engine import (
     RiskDecision, Verdict, RiskLevel,
     ExecutionDecision, ExecutionAction,
 )
+from . import approval_memory
 
 
 class ApprovalMode(str, Enum):
@@ -53,11 +54,18 @@ class ApprovalPolicy:
     def mode(self) -> ApprovalMode:
         return self._mode
 
-    def decide(self, decision: RiskDecision) -> ExecutionDecision:
+    def decide(
+        self,
+        decision: RiskDecision,
+        memory_exemption: Optional["approval_memory.MemoryExemption"] = None,
+    ) -> ExecutionDecision:
         """根据审批模式返回最终 ExecutionDecision。
 
         Args:
             decision: RiskEngine 返回的原始判定
+            memory_exemption: 审批记忆豁免证据（T5）。由 executor 在判定为
+                REQUIRE_APPROVAL 后、进入本方法前查询 approval_memory 得到；
+                不传（None）则完全走原有模式逻辑，行为与现状一致。
 
         Returns:
             ExecutionDecision，action 为 EXECUTE / REQUIRE_APPROVAL / BLOCK
@@ -94,6 +102,20 @@ class ApprovalPolicy:
 
         # REQUIRE_APPROVAL: 根据模式决定
         if decision.verdict == Verdict.REQUIRE_APPROVAL:
+            # ── T5 审批记忆豁免（前置检查）──
+            # 仅 REQUIRE_APPROVAL 可被历史豁免：HIGH_RISK 与 DENY 已在上方先行返回，
+            # run_outside_command 由 approval_memory.check() 硬边界拦截（恒返 None），
+            # 三道防线缺一不可。豁免证据（模式/次数/原因）来自近 90 天 approval_requests
+            # 聚合：≥3 次 approve 且 0 次 deny；开关关闭或查询异常时 executor 不会传入。
+            if memory_exemption is not None:
+                return ExecutionDecision(
+                    ExecutionAction.EXECUTE,
+                    decision.risk_level,
+                    memory_exemption.reason,
+                    decision.command,
+                    original_verdict=decision.verdict,
+                )
+
             if self._mode == ApprovalMode.SAFE:
                 # SAFE: 所有写入需要审批
                 return ExecutionDecision(

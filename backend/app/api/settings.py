@@ -87,6 +87,9 @@ DEFAULT_SETTINGS = {
     "provider_disabled": "{}",
     # Phase 3 T3/T8: Agent 权限模式 — safe / standard / autonomous
     "agent_permission_mode": "standard",
+    # T5 审批记忆：近90天同命令模式 ≥3 次 approve 且 0 次 deny → 后续自动放行。
+    # 默认关闭，由用户手动开启灰度；run_outside_command 与 HIGH_RISK 永不豁免
+    "approval_memory_enabled": "false",
     # 归档：磁盘导出文件夹（空 = 默认 backend/Archive/）
     "archive_dir": "",
     # 文生图图片保存目录（相对项目根；空 = 默认 output/generated_images）
