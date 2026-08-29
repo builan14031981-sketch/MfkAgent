@@ -31,8 +31,8 @@ const RECOMMENDED_TEXT_NEW = new Set([
   "minimax-m2.5",
   // 百度文心
   "wenxin-ernie-5.0",
-  // 讯飞星火
-  "spark-4.0-ultra",
+  // 商汤日日新（Token Plan 免费公测）
+  "sensenova-deepseek-v4-flash", "sensenova-6.7-flash-lite",
 ]);
 
 // ── Provider 卡片：含 API Key 配置 + 动态模型 Chip 三区块 ──────────────────

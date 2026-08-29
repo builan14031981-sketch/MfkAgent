@@ -10,6 +10,7 @@ import {
   siQwen,
   siAlibabacloud,
   siMoonshotai,
+  siOpenrouter,
 } from "simple-icons";
 
 /**
@@ -39,6 +40,7 @@ const SIMPLE_ICONS: Record<string, SimpleIconDef> = {
   moonshot: { path: siMoonshotai.path, hex: siMoonshotai.hex },
   wenxin: { path: siBaidu.path, hex: siBaidu.hex }, // 百度文心复用百度 logo
   mimo: { path: siXiaomi.path, hex: siXiaomi.hex }, // 小米 MiMo 复用小米 logo
+  openrouter: { path: siOpenrouter.path, hex: siOpenrouter.hex },
 };
 
 /** 兜底样式：品牌色 + 首字母（精致圆角方块） */
@@ -50,9 +52,8 @@ const FALLBACK_STYLES: Record<string, { bg: string; label: string }> = {
   openrouter: { bg: "#FF7000", label: "OR" },
   glm: { bg: "#1E88E5", label: "智" },
   zhipu: { bg: "#1E88E5", label: "智" },
-  spark: { bg: "#003DA6", label: "讯" },
-  iflytek: { bg: "#003DA6", label: "讯" },
   siliconflow: { bg: "#00B3A0", label: "硅" },
+  sensenova: { bg: "#2B4EDB", label: "汤" },
   freellmapi: { bg: "#6B7280", label: "F" },
 };
 

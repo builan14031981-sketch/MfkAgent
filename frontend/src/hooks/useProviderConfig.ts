@@ -42,6 +42,8 @@ export interface ProviderConfig {
   website?: string;
   /** "official"=官方供应商（基础区展示） / "custom"=自定义端点（高级区展示） */
   category?: string;
+  /** 基础区分组："hot"=热门原厂梯队（默认） / "free"=免费聚合渠道 */
+  tier?: string;
   /** 后端明文下发：完整 API Key（本地化工具，用户可随时查看）；空串表示未配置 */
   api_key_masked: string;
   has_key: boolean;

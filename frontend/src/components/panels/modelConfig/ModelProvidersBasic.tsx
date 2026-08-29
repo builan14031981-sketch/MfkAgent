@@ -73,19 +73,19 @@ export function ModelProvidersBasic() {
       return next;
     });
   };
-  // 付费组独立折叠：免费额度组随主开关展开，付费组默认折叠（多数用户从免费额度起步）
-  const [paidExpanded, setPaidExpanded] = useState(() => {
-    try { return localStorage.getItem("mfk_providers_paid_expanded") === "true"; }
-    catch { return false; }
+  // 热门原厂梯队独立折叠：默认展开（有自家大模型的原厂是主力选择）
+  const [hotExpanded, setHotExpanded] = useState(() => {
+    try { return localStorage.getItem("mfk_providers_hot_expanded") !== "false"; }
+    catch { return true; }
   });
-  const togglePaidExpanded = () => {
-    setPaidExpanded((prev) => {
+  const toggleHotExpanded = () => {
+    setHotExpanded((prev) => {
       const next = !prev;
-      try { localStorage.setItem("mfk_providers_paid_expanded", String(next)); } catch { /* noop */ }
+      try { localStorage.setItem("mfk_providers_hot_expanded", String(next)); } catch { /* noop */ }
       return next;
     });
   };
-  // 免费额度组独立折叠（与付费组对称）：默认展开
+  // 免费聚合渠道组独立折叠（与热门组对称）：默认展开
   const [freeExpanded, setFreeExpanded] = useState(() => {
     try { return localStorage.getItem("mfk_providers_free_expanded") !== "false"; }
     catch { return true; }
@@ -101,9 +101,10 @@ export function ModelProvidersBasic() {
   // 过滤：official 在基础区展示，custom（如本地网关）移到高级区自定义模型
   const officialConfigs = configs.filter((c) => c.category !== "custom");
   const customConfigs = configs.filter((c) => c.category === "custom");
-  // 2026-08-28：官方供应商按免费额度分组（free 标记来自后端 model_providers.py）
-  const freeConfigs = officialConfigs.filter((c) => c.free);
-  const paidConfigs = officialConfigs.filter((c) => !c.free);
+  // 基础区按 tier 分组（tier 来自后端 model_providers.py）：
+  // "hot"=热门原厂梯队（有自家大模型）在前，"free"=免费聚合渠道（转售/聚合免费额度）在后
+  const hotConfigs = officialConfigs.filter((c) => c.tier !== "free");
+  const freeConfigs = officialConfigs.filter((c) => c.tier === "free");
 
   const configuredCount = officialConfigs.filter((c) => c.has_key).length;
 
@@ -282,25 +283,25 @@ export function ModelProvidersBasic() {
           >
             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-primary)", flexShrink: 0 }} />
-              <span style={{ fontWeight: 500 }}>{t("settings.model.providers.freeGroup")}</span>
-              <span style={{ fontSize: 11, color: "var(--text-level-4)", flexShrink: 0 }}>{freeConfigs.length}</span>
+              <span style={{ fontWeight: 500 }}>{t("settings.model.providers.hotGroup")}</span>
+              <span style={{ fontSize: 11, color: "var(--text-level-4)", flexShrink: 0 }}>{hotConfigs.length}</span>
             </span>
             <ChevronDown style={{
               width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
-              transform: freeExpanded ? "rotate(180deg)" : "rotate(0deg)",
+              transform: hotExpanded ? "rotate(180deg)" : "rotate(0deg)",
               transition: "transform var(--transition-fast)",
             }} />
           </button>
 
-          {freeExpanded && (
+          {hotExpanded && (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {freeConfigs.map(renderCard)}
+              {hotConfigs.map(renderCard)}
             </div>
           )}
 
-          {/* 按量付费组（可折叠，默认折叠，多数用户从免费额度起步） */}
+          {/* 免费聚合渠道组（可折叠，默认展开：聚合/转售渠道是零门槛体验入口） */}
           <button
-            onClick={togglePaidExpanded}
+            onClick={toggleFreeExpanded}
             style={{
               width: "100%",
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
@@ -315,20 +316,20 @@ export function ModelProvidersBasic() {
             }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--text-level-4)", flexShrink: 0 }} />
-              <span style={{ fontWeight: 500 }}>{t("settings.model.providers.paidGroup")}</span>
-              <span style={{ fontSize: 11, color: "var(--text-level-4)", flexShrink: 0 }}>{paidConfigs.length}</span>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-primary)", flexShrink: 0 }} />
+              <span style={{ fontWeight: 500 }}>{t("settings.model.providers.freeGroup")}</span>
+              <span style={{ fontSize: 11, color: "var(--text-level-4)", flexShrink: 0 }}>{freeConfigs.length}</span>
             </span>
             <ChevronDown style={{
               width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
-              transform: paidExpanded ? "rotate(180deg)" : "rotate(0deg)",
+              transform: freeExpanded ? "rotate(180deg)" : "rotate(0deg)",
               transition: "transform var(--transition-fast)",
             }} />
           </button>
 
-          {paidExpanded && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
-              {paidConfigs.map(renderCard)}
+          {freeExpanded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {freeConfigs.map(renderCard)}
             </div>
           )}
         </>

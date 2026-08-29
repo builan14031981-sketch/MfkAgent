@@ -39,6 +39,7 @@ class ProviderDef:
     website: str = ""       # 官网链接（免费模型展示快捷入口）
     supports_vision: bool = False  # Phase 2: 是否支持多模态图片（OpenAI 兼容 image_url + base64 data URI）
     category: str = "official"  # "official"=官方供应商（基础区展示） / "custom"=自定义端点（高级区展示）
+    tier: str = "hot"  # 基础区分组："hot"=热门原厂梯队（有自家大模型） / "free"=免费聚合渠道（转售/聚合免费额度）
 
 
 PROVIDERS: list[ProviderDef] = [
@@ -178,6 +179,7 @@ PROVIDERS: list[ProviderDef] = [
         env_key="SILICONFLOW_API_KEY",
         description="聚合 DeepSeek/Qwen/GLM 等主流模型，一个 Key 通吃",
         website="https://siliconflow.cn",
+        tier="free",
         models=(
             ProviderModel("siliconflow-deepseek-v4-pro", "deepseek-ai/DeepSeek-V4-Pro", "硅基 DeepSeek-V4-Pro", context_window=1_048_576),
             ProviderModel("siliconflow-deepseek-v4-flash", "deepseek-ai/DeepSeek-V4-Flash", "硅基 DeepSeek-V4-Flash", context_window=1_048_576),
@@ -242,6 +244,22 @@ PROVIDERS: list[ProviderDef] = [
             ProviderModel("hunyuan-turbo-s", "hunyuan-turbo-s", "混元 TurboS 快思考", context_window=256_000),
             ProviderModel("hunyuan-turbos-latest", "hunyuan-turbos-latest", "混元 TurboS 最新版", context_window=256_000),
             ProviderModel("hunyuan-lite", "hunyuan-lite", "混元 Lite（免费）", context_window=128_000),
+        ),
+    ),
+    ProviderDef(
+        id="sensenova",
+        name="商汤日日新",
+        free=True,
+        default_api_base="https://token.sensenova.cn/v1",
+        env_key="SENSENOVA_API_KEY",
+        description="商汤 Token Plan 免费公测，DeepSeek-V4-Flash 实测百 token/s 级出字",
+        website="https://www.sensenova.cn/token-plan",
+        tier="free",
+        models=(
+            # DeepSeek V4 Flash 经商汤 Token Plan 转售：非官方模型，必须加 sensenova- 前缀
+            ProviderModel("sensenova-deepseek-v4-flash", "deepseek-v4-flash", "DeepSeek V4 Flash（商汤免费）", context_window=1_048_576),
+            # 商汤自研 6.7 轻量多模态，OpenAI Vision 兼容 image_url（实测已验通）
+            ProviderModel("sensenova-6.7-flash-lite", "sensenova-6.7-flash-lite", "SenseNova 6.7 Flash-Lite", supports_vision=True),
         ),
     ),
 ]
@@ -311,6 +329,11 @@ def seed_builtin_custom_providers() -> None:
                     "name": "FreeLLMAPI（免费聚合）",
                     "default_api_base": "http://127.0.0.1:31415/v1",
                     "description": "本地免费聚合网关，需先启动网关服务",
+                },
+                {
+                    "name": "OpenRouter（免费聚合）",
+                    "default_api_base": "https://openrouter.ai/api/v1",
+                    "description": "国际聚合网关，含 :free 免费模型池，openrouter.ai 注册 Key",
                 },
             ]
             for b in builtins:
