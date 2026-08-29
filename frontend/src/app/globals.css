@@ -345,6 +345,31 @@ optgroup {
   background-color: var(--bg-level-1);
 }
 
+/* 可选中预览卡（主题预览卡等）：hover 微抬 + 浮影，选中描边过渡由此接管
+   （使用处需移除 inline transition，否则类过渡被压） */
+.mf-card-lift {
+  transition:
+    border-color var(--transition-fast),
+    transform 0.15s ease,
+    box-shadow var(--transition-fast);
+}
+
+.mf-card-lift:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.mf-card-lift:active {
+  opacity: 1;
+  transform: scale(0.98);
+}
+
+.mf-card-lift:disabled {
+  transform: none;
+  box-shadow: none;
+}
+
 /* 下拉弹层入场：spring 近似曲线（超出 1 的 y 值带来轻微过冲），
    从触发器方向（上方）展开。挂到 data-portal-popover 的弹层根节点 */
 @keyframes mf-pop-in {

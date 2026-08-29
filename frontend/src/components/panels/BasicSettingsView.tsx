@@ -116,6 +116,7 @@ function ThemePreviewCard({
       onClick={() => onSelect(theme.id)}
       disabled={disabled}
       aria-pressed={selected}
+      className="mf-card-lift"
       style={{
         flex: 1,
         minWidth: 0,
