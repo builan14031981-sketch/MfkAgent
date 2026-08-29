@@ -252,7 +252,16 @@ class TestRunSelfHealLimit(unittest.TestCase):
         messages = [_msg("user", "执行")]
 
         mock_call = _ExecFailReflectOkCallOnce()
+
+        # T4 合一后 run() 主循环走 stream_once：执行调用改为抛错的 async generator；
+        # 反思调用仍走 call_once（内部单次调用面不变）
+        async def _exec_fail_stream(*args, **kwargs):
+            mock_call.execution_calls += 1
+            raise RuntimeError(mock_call.execution_error)
+            yield  # pragma: no cover — 使其成为 async generator
+
         with patch("app.services.model.model_service.call_once", mock_call), \
+             patch("app.services.model.model_service.stream_once", _exec_fail_stream), \
              patch("app.core.agent_runtime.agent.runtime_event_recorder", self.recorder):
             result = asyncio.run(self.runtime.run(context, messages))
 

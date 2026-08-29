@@ -22,6 +22,7 @@ import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -186,7 +187,8 @@ class TestExhaustedPath:
             # 之后全部空回复、无工具（模拟 Round 2 的静默逃逸）
             return MockSingleCallResult(content="", tool_calls=None, usage={"total_tokens": 50})
 
-        mock_model_service.call_once = AsyncMock(side_effect=side_effect)
+        mock_model_service.call_once = AsyncMock(side_effect=side_effect)  # judge/反思/压缩等内部单次调用仍走 call_once
+        mock_model_service.stream_once = stream_from_single_call(AsyncMock(side_effect=side_effect))
         mock_execute_tool.return_value = {
             "name": "run_command",
             "tool": "run_command",
@@ -255,7 +257,8 @@ class TestExhaustedPath:
                 content="已完成部分工作。", tool_calls=None, usage={"total_tokens": 80}
             )
 
-        mock_model_service.call_once = AsyncMock(side_effect=side_effect)
+        mock_model_service.call_once = AsyncMock(side_effect=side_effect)  # judge/反思/压缩等内部单次调用仍走 call_once
+        mock_model_service.stream_once = stream_from_single_call(AsyncMock(side_effect=side_effect))
 
         context = self._make_context(max_completion_retry=1)
         messages = [
@@ -265,7 +268,10 @@ class TestExhaustedPath:
 
         result = asyncio.run(AgentRuntime().run(context=context, messages=messages))
 
-        # 软性缺失：finish_reason 覆写为 completion_failed，但保留模型已产出的内容
+        # 软性缺失：finish_reason 覆写为 completion_failed。
+        # T4 合一后：耗尽路径由统一实现（run_stream）yield 结构化失败汇报，非流式
+        # 消费者聚合到的 content 为该汇报文本（旧 run 实现为保留原内容不替换，
+        # 语义映射见 T4 PR 描述；验证结论仍由 metadata.completion 承载）。
         assert result.finish_reason == "completion_failed"
-        assert result.content == "已完成部分工作。", "软性缺失应保留已完成内容，不替换为兜底汇报"
+        assert "未产出最终回答" in result.content, "耗尽路径应输出结构化失败汇报（统一实现语义）"
         assert result.metadata["completion"]["verified"] is False

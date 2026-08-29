@@ -17,6 +17,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from dataclasses import dataclass
 
 import pytest
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -165,7 +166,7 @@ class TestPhase11SelfCheck:
                     usage={"total_tokens": 150},
                 )
 
-        mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("read_file", "content")
 
         context = self._make_context(
@@ -242,7 +243,7 @@ class TestPhase11SelfCheck:
                     usage={"total_tokens": 130},
                 )
 
-        mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("write_file", "文件写入成功")
 
         context = self._make_context(tools=[make_tool_def("write_file")])
@@ -312,7 +313,7 @@ class TestPhase11SelfCheck:
                     usage={"total_tokens": 50},
                 )
 
-        mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("write_file", "ok")
 
         # 设置 max_tool_rounds=2：第 0 轮有工具，第 1 轮无工具
@@ -374,7 +375,7 @@ class TestPhase11SelfCheck:
                     usage={"total_tokens": 60},
                 )
 
-        mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("write_file", "ok")
 
         context = self._make_context(tools=[make_tool_def("write_file")])
@@ -437,7 +438,7 @@ class TestPhase11SelfCheck:
                     usage={"total_tokens": 80},
                 )
 
-        mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("read_file", "print('hello')")
 
         context = self._make_context(tools=[make_tool_def("read_file")])
@@ -489,7 +490,7 @@ class TestPhase11NoTools:
                 usage={"total_tokens": 50},
             )
 
-        mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
 
         from app.core.agent_runtime.context import AgentContext
         context = AgentContext(

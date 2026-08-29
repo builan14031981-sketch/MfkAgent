@@ -15,6 +15,7 @@ import unittest
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402
 
 # 确保 backend 在 sys.path 中
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -232,7 +233,7 @@ class TestG4CRunNonStreaming(unittest.TestCase):
         mock_result = _MockModelResult(content="ok")
         mock_call = AsyncMock(return_value=mock_result)
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.agent.runtime_event_recorder", recorder):
             result = asyncio.run(self.runtime.run(context, messages))
 
@@ -286,7 +287,7 @@ class TestG4CRunNonStreaming(unittest.TestCase):
                 return _MockModelResult(content="完成A")
             raise RuntimeError("LLM 服务不可用")
 
-        with patch("app.services.model.model_service.call_once", side_effect_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(side_effect_call)), \
              patch("app.core.agent_runtime.agent.runtime_event_recorder", recorder):
             result = asyncio.run(self.runtime.run(context, messages))
 
@@ -339,7 +340,7 @@ class TestG4CRunNonStreaming(unittest.TestCase):
         mock_result = _MockModelResult(content="hi")
         mock_call = AsyncMock(return_value=mock_result)
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.agent.runtime_event_recorder", recorder):
             result = asyncio.run(self.runtime.run(context, messages))
 
