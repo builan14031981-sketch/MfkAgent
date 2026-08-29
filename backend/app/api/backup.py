@@ -35,6 +35,25 @@ async def backup_database():
     }
 
 
+@router.get("/info")
+async def backup_info():
+    """数据位置总览（供设置面板「数据与存储」展示）：数据库路径/大小、备份目录/数量。"""
+    db_path = settings.DATABASE_URL.replace("sqlite:///", "")
+    db_exists = os.path.exists(db_path)
+    db_size = os.path.getsize(db_path) if db_exists else 0
+    backup_count = 0
+    if os.path.isdir(BACKUP_DIR):
+        backup_count = len([f for f in os.listdir(BACKUP_DIR) if f.endswith(".db")])
+    return {
+        "db_path": os.path.abspath(db_path),
+        "db_name": os.path.basename(db_path),
+        "db_size": db_size,
+        "db_exists": db_exists,
+        "backup_dir": os.path.abspath(BACKUP_DIR),
+        "backup_count": backup_count,
+    }
+
+
 @router.get("/backups")
 async def list_backups():
     os.makedirs(BACKUP_DIR, exist_ok=True)

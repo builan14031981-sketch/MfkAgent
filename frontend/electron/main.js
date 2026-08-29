@@ -37,16 +37,30 @@ let tray;
 // 由 Electron 拉起的后端子进程（外部已有服务时保持 null，不接管其生命周期）
 let backendProcess = null;
 
-/** 探测一个空闲 TCP 端口 */
-function findFreePort() {
+/**
+ * 探测一个空闲 TCP 端口：从 8001 起向上找（上限 8010）。
+ * 与后端 main.py 的 find_available_port(8001) 及前端 lib/api.ts 的 PROBE_PORTS 对齐，
+ * 确保渲染进程的端口探测必然命中（此前 listen(0) 随机高位端口会导致前端永远失联）。
+ */
+function findFreePort(startPort = 8001, maxPort = 8010) {
   return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on("error", reject);
-    server.listen(0, BACKEND_HOST, () => {
-      const port = server.address().port;
-      server.close(() => resolve(port));
-    });
+    const attempt = (port) => {
+      if (port > maxPort) {
+        reject(new Error(`no free port in ${startPort}-${maxPort}`));
+        return;
+      }
+      const server = net.createServer();
+      server.unref();
+      server.once("error", () => {
+        server.close();
+        attempt(port + 1);
+      });
+      server.listen(port, BACKEND_HOST, () => {
+        const actual = server.address().port;
+        server.close(() => resolve(actual));
+      });
+    };
+    attempt(startPort);
   });
 }
 

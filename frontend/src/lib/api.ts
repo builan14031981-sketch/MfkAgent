@@ -2,11 +2,12 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
 
 /**
- * 后端端口自动探测：后端 main.py 的 find_available_port(start_port=8001) 会在端口被占用时
- * 漂移到 8002/8003…，写死的 API_BASE 会失联。运行时探测候选端口 /health，命中即缓存，
- * 后续 URL 拼接（附件图片/下载/SSE/WS）统一走解析后的基址，端口漂移不再导致"无法连接"。
+ * 后端端口自动探测：后端 main.py 的 find_available_port(start_port=8001) 与 Electron
+ * main.js 的 findFreePort(8001) 都会在端口被占用时漂移到 8002/8003…，写死的 API_BASE
+ * 会失联。运行时探测候选端口 /health，命中即缓存，后续 URL 拼接（附件图片/下载/SSE/WS）
+ * 统一走解析后的基址，端口漂移不再导致"无法连接"。
  */
-const PROBE_PORTS = [8000, 8001, 8002, 8003, 8004, 8005];
+const PROBE_PORTS = Array.from({ length: 11 }, (_, i) => 8000 + i); // 8000..8010
 
 let resolvedApiBase: string | null = null;
 let probePromise: Promise<string | null> | null = null;
@@ -188,6 +189,38 @@ export async function apiPost<T>(path: string, data: unknown): Promise<T> {
     body: JSON.stringify(data),
   });
   return res.json();
+}
+
+// ── 数据与存储：数据库位置总览 + 备份 ──
+
+export interface DatabaseInfo {
+  db_path: string;
+  db_name: string;
+  db_size: number;
+  db_exists: boolean;
+  backup_dir: string;
+  backup_count: number;
+}
+
+export interface BackupItem {
+  filename: string;
+  size: number;
+  created_at: string;
+}
+
+/** 数据位置总览：会话数据库路径/大小 + 备份目录/数量 */
+export function getDatabaseInfo(): Promise<DatabaseInfo> {
+  return apiGet<DatabaseInfo>("/api/backup/info");
+}
+
+/** 一键备份数据库（最多保留 10 份） */
+export function createDatabaseBackup(): Promise<{ status: string; backup_path: string; timestamp: string }> {
+  return apiPost("/api/backup/backup", {});
+}
+
+/** 备份列表 */
+export function listDatabaseBackups(): Promise<BackupItem[]> {
+  return apiGet<BackupItem[]>("/api/backup/backups");
 }
 
 export async function apiPatch<T>(path: string, data: unknown): Promise<T> {
