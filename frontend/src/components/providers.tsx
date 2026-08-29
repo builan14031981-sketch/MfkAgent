@@ -56,10 +56,10 @@ interface FontProviderProps {
 // CSS 变量（globals.css :root，@font-face 来自 fontsource 包），零网络依赖；
 // 霞鹜文楷无本地托管，保留 CDN
 export const FONT_FAMILY_MAP: Record<string, string> = {
-  "system": "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  "source-han-sans": "var(--font-noto-sans-sc), sans-serif",
-  "lxgw-wenkai": "'LXGW WenKai', cursive",
-  "ibm-plex-sans": "var(--font-ibm-plex-sans), sans-serif",
+  "system": "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans CJK SC', sans-serif",
+  "source-han-sans": "var(--font-noto-sans-sc), 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
+  "lxgw-wenkai": "'LXGW WenKai', 'PingFang SC', 'Microsoft YaHei UI', cursive",
+  "ibm-plex-sans": "var(--font-ibm-plex-sans), 'PingFang SC', 'Microsoft YaHei UI', sans-serif",
 };
 
 // 字体 CDN 映射：本地字体可用时不会用到，仅作极端场景兜底

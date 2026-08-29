@@ -13,7 +13,6 @@ import {
   Folder,
   FolderOpen,
   PanelLeftClose,
-  CheckSquare,
 } from "lucide-react";
 import { useChat, Chat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
@@ -111,7 +110,6 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
   const [collapsedProjectWorkspace, setCollapsedProjectWorkspace] = useState(false);
   const projectWorkspaceRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [todoPopupOpen, setTodoPopupOpen] = useState(false);
 
   // 客户端挂载后从 localStorage 同步 UI 折叠状态（避免 SSR hydration mismatch）
   useEffect(() => {
@@ -529,24 +527,6 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           MfkAgent
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-          {/* 待办入口 */}
-          <button
-            onClick={() => setTodoPopupOpen((v) => !v)}
-            className="sb-btn--ghost"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "28px",
-              height: "28px",
-              padding: 0,
-              borderRadius: "var(--radius-md)",
-              position: "relative",
-            }}
-            title="待办"
-          >
-            <CheckSquare style={{ width: "16px", height: "16px" }} />
-          </button>
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
@@ -568,6 +548,41 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             </button>
           )}
         </div>
+      </div>
+
+      {/* 新建任务按钮 (最高优先级入口) */}
+      <div style={{ padding: "0 12px 8px" }}>
+        <button
+          ref={newTaskBtnRef}
+          onClick={() => router.push("/")}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+            padding: "7px 10px",
+            borderRadius: "var(--radius-md)",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "var(--text-level-1)",
+            background: "var(--bg-level-2)",
+            border: "1px solid var(--border-primary)",
+            cursor: "pointer",
+            outline: "none",
+            transition: "background var(--transition-fast), border-color var(--transition-fast)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-2)"; e.currentTarget.style.borderColor = "var(--border-primary)"; }}
+        >
+          <Plus style={{ width: "14px", height: "14px" }} />
+          <span>{t("sidebar.newTask")}</span>
+        </button>
+      </div>
+
+      {/* 待办面板（常驻内嵌气泡卡片，位于新建任务与搜索框之间） */}
+      <div style={{ padding: "0 12px 8px" }}>
+        <TodoPanel />
       </div>
 
       {/* 搜索框：实时过滤聊天标题 */}
@@ -625,36 +640,6 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             </button>
           )}
         </div>
-      </div>
-
-      {/* 新建任务按钮 */}
-      <div style={{ padding: "0 12px 10px" }}>
-        <button
-          ref={newTaskBtnRef}
-          onClick={() => router.push("/")}
-          style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            padding: "7px 10px",
-            borderRadius: "var(--radius-md)",
-            fontSize: "13px",
-            fontWeight: 500,
-            color: "var(--text-level-1)",
-            background: "var(--bg-level-2)",
-            border: "1px solid var(--border-primary)",
-            cursor: "pointer",
-            outline: "none",
-            transition: "background var(--transition-fast), border-color var(--transition-fast)",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-2)"; e.currentTarget.style.borderColor = "var(--border-primary)"; }}
-        >
-          <Plus style={{ width: "14px", height: "14px" }} />
-          <span>{t("sidebar.newTask")}</span>
-        </button>
       </div>
 
       {/* 聊天列表 */}
@@ -722,7 +707,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 <ChevronDown style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
               )}
               <span style={{
-                fontSize: "11px",
+                fontSize: "12px",
                 fontWeight: 600,
                 color: "var(--text-level-4)",
                 letterSpacing: "0.05em",
@@ -880,35 +865,6 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           </button>
         )}
       </div>
-
-      {/* 待办浮层：fixed 定位脱离父容器裁剪，TodoPanel forceExpanded 强制展开 */}
-      {todoPopupOpen && (
-        <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
-            onClick={() => setTodoPopupOpen(false)}
-          />
-          <div style={{
-            position: "fixed",
-            top: "50px",
-            left: "calc(var(--sidebar-width, 260px) + 8px)",
-            width: "280px",
-            maxHeight: "400px",
-            background: "var(--bg-level-2)",
-            border: "1px solid var(--border-primary)",
-            borderRadius: "var(--radius-lg)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-            zIndex: 50,
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-          }}>
-            <div style={{ flex: 1, overflowY: "auto", padding: "4px 8px 8px" }}>
-              <TodoPanel forceExpanded={true} />
-            </div>
-          </div>
-        </>
-      )}
 
       {/* 项目向导弹窗：Portal 挂 body */}
       <Portal>

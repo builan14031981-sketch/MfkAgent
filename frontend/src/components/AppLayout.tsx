@@ -7,6 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { SettingsPanel } from "./panels/SettingsPanel";
 import { DockPanel } from "./panels/DockPanel";
+import { DockActivityBar } from "./panels/DockActivityBar";
 import { useDockStore, hydrateDockUI, DOCK_MIN, DOCK_MAX, DOCK_DEFAULT } from "@/lib/dockStore";
 import { useTabStore } from "@/lib/tabStore";
 import { ChatTabBar } from "./ChatTabBar";
@@ -453,6 +454,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           }}
         />
       )}
+
+      {/* Dock Activity Bar：永远渲染的右侧窄图标条（终端/产出物/浏览器入口，Dock 收起时也可见） */}
+      <DockActivityBar />
 
       {/* 右侧面板（浏览器式标签：终端 / 产出物 / 浏览器） */}
       <DockPanel cwd={terminalCwd} chatId={currentChatId} projectPath={currentProjectPath} />

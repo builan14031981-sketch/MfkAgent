@@ -61,8 +61,13 @@
   --spacing-xl: 32px;
   --spacing-2xl: 48px;
 
-  /* 字体 */
-  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  /* 字体：中英文混排统一兜底（PingFang/YaHei/Noto Sans CJK 覆盖 macOS/Windows/Linux），
+     用户 font_family 设置由 FontProvider 覆盖此变量（providers.tsx FONT_FAMILY_MAP） */
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue",
+    "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei UI", "Noto Sans CJK SC", sans-serif;
+  /* 等宽：路径/代码/日志统一（系统无内置中文等宽，中文自动回退到 UI 字体，属正常） */
+  --font-family-mono: ui-monospace, SFMono-Regular, "Cascadia Code", Menlo, Consolas,
+    "PingFang SC", "Microsoft YaHei UI", monospace;
 
   /* 字体本地化（2026-08-11）：fontsource 直引字体的 family 变量。
      Geist/Geist Mono/VT323 由 next/font/local 在 <html> 上输出同名变量；
@@ -72,6 +77,20 @@
   --font-ibm-plex-sans: "IBM Plex Sans Variable";
   --font-pixel-8bit: "Press Start 2P";
   --font-pixel-dot: "DotGothic16";
+
+  /* Typography 基线（2026-08-29）：字号/字重分层，关键位置（标题/计数）用 600/700
+     保证中文"端庄清晰"。组件内联样式优先于此，渐进迁移。 */
+  --font-display: 24px;
+  --font-title: 16px;
+  --font-heading: 14px;
+  --font-body: 13px;
+  --font-caption: 12px;
+  --font-micro: 11px;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --weight-bold: 700;
+
 
   /* 动画 */
   --transition-fast: 0.15s ease;
