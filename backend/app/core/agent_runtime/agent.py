@@ -45,6 +45,35 @@ DEFAULT_MAX_TOOL_ROUNDS = 10
 COMPRESS_WATERMARK_THRESHOLD = 50.0   # 上下文水位超过 50% 触发自动压缩（留足压缩后继续对话的余量）
 COMPRESS_MIN_INTERVAL_ROUNDS = 2      # 两次自动压缩间的最小轮次间隔（防反复触发）
 
+# ──── T9: 缓存友好压缩 ────
+# 灰度开关：settings 表 key，缺失/值非法时默认关闭（与 T5 approval_memory_enabled 同一灰度惯例）。
+# 默认关的原因：tests/test_t2_compaction_safe.py 有 2 处断言编码了旧摘要 prompt 形状
+# （独立 2 条消息 prompt），该文件不在本单允许清单内；开启灰度时需同步微调那 2 处断言。
+_CACHE_AWARE_COMPACTION_SETTING_KEY = "cache_aware_compaction_enabled"
+
+
+def is_cache_aware_compaction_enabled() -> bool:
+    """读取 cache_aware_compaction_enabled 开关（默认关，灰度开）。
+
+    灰度开启：settings 中置 true/1/on/yes 后启用"摘要调用复用主对话前缀 + 自批评"。
+    回滚路径：删除该设置或置 false/0/off/no 即恢复旧摘要调用路径
+    （独立两条消息 prompt 只发 middle 段拼接、不做自批评），无需回滚代码。
+    """
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import Setting
+
+        db = SessionLocal()
+        try:
+            row = db.query(Setting).filter(Setting.key == _CACHE_AWARE_COMPACTION_SETTING_KEY).first()
+        finally:
+            db.close()
+        if row is None or row.value is None:
+            return False
+        return str(row.value).strip().lower() in ("1", "true", "on", "yes")
+    except Exception:  # noqa: BLE001 — DB 不可用时按默认关闭处理
+        return False
+
 # ──── Phase 12: Completion Loop V1 配置 ────
 DEFAULT_MAX_COMPLETION_RETRY = 3
 
@@ -685,6 +714,27 @@ class AgentRuntime:
         "忽略中间的报错和重试。直接输出摘要正文，不要任何解释或前缀。"
     )
 
+    # T9 缓存友好：摘要指令追加在完整对话前缀之后（前缀与主循环上一轮请求逐字节一致，
+    # 命中 provider 前缀缓存；指令只描述"压缩除最后 keep_recent 条之外的内容"）
+    CACHE_AWARE_SUMMARY_INSTRUCTION = (
+        "（系统指令）请将以上对话历史中除最后{keep_recent}条消息之外的内容，"
+        "精炼成不超过{max_chars}字的核心摘要。"
+        "必须覆盖：1）涉及文件/代码路径；2）已做出的决策及理由；"
+        "3）待办与未完成事项；4）已获取的关键变量与最终结论。"
+        "忽略中间的报错和重试。直接输出摘要正文，不要任何解释或前缀。"
+    )
+    # T9 摘要自批评：单轮有界复核（不做摘要链）；无缺漏只回 OK，有缺漏输出修订全文
+    SUMMARY_CRITIQUE_INSTRUCTION = (
+        "（系统指令）请自检你刚才输出的摘要是否完整准确："
+        "1）涉及文件/代码路径是否齐全；2）决策及理由是否遗漏；"
+        "3）待办与未完成事项是否遗漏；4）关键变量与最终结论是否准确。"
+        "若无缺漏，只回复：OK；"
+        "若有缺漏，直接输出修订后的完整摘要正文（不超过{max_chars}字，不要任何解释）。"
+    )
+    # 自批评回复为这些值（忽略大小写与尾部标点）时视为"无修订"，保留 v1 摘要
+    SUMMARY_CRITIQUE_NO_REVISION = ("OK", "无缺漏", "无修订", "无需修订")
+
+
     @staticmethod
     def _msg_to_dict(m) -> dict:
         """将单条消息（dict / ModelMessage / 其他对象）统一转为 dict。"""
@@ -714,6 +764,13 @@ class AgentRuntime:
           - 中间内容不足 min_middle（默认 4）条 → 直接返回原列表，不压缩。
           - 摘要模型调用失败 / 返回空 → 直接返回原列表（fail-safe，不破坏执行流）。
           - 压缩结果 = [System] + [Memory] + [Recent]。
+
+        T9 缓存友好（cache_aware_compaction_enabled，灰度默认关）：
+          - 开关开启时：摘要调用复用主对话前缀——完整 messages 原样作为前缀（与主循环
+            上一轮请求逐字节一致 → 命中 provider 前缀缓存），摘要指令作为本轮新增的
+            最后一条 user 消息追加；只改发往 LLM 的副本，绝不改动调用方 messages / DB
+            历史。摘要自批评：单轮有界复核，有缺漏输出修订版；失败/无缺漏均保留 v1。
+          - 开关关闭（默认）→ 旧路径：独立两条消息 prompt，只发 middle 段拼接，无自批评。
 
         Args:
             messages: 已组装的消息列表（dict 或 ModelMessage 对象，保留输入类型）
@@ -746,15 +803,29 @@ class AgentRuntime:
         if len(middle) < min_middle:
             return messages
 
-        # 构造摘要 Prompt
-        to_summarize = "\n\n".join(
-            f"{m.get('role', 'user')}: {m.get('content', '')}"
-            for m in map(self._msg_to_dict, middle)
-        )
-        prompt_messages = [
-            {"role": "system", "content": self.SUMMARY_PROMPT_TEMPLATE.format(max_chars=max_summary_chars)},
-            {"role": "user", "content": to_summarize or "（空内容）"},
-        ]
+        # T9: 缓存友好开关——开 = 复用主对话前缀 + 自批评；关 = 旧路径（回滚闸）
+        cache_aware = is_cache_aware_compaction_enabled()
+        if cache_aware:
+            # 摘要调用复用主对话前缀：完整 messages 原样作为前缀（与主循环上一轮请求
+            # 逐字节一致 → 命中 provider 前缀缓存），摘要指令作为本轮新增的最后一条
+            # user 消息追加。_msg_to_dict 逐条拷贝，绝不改动调用方 messages / DB 历史消息。
+            prompt_messages = [self._msg_to_dict(m) for m in messages]
+            prompt_messages.append({
+                "role": "user",
+                "content": self.CACHE_AWARE_SUMMARY_INSTRUCTION.format(
+                    keep_recent=keep_recent, max_chars=max_summary_chars
+                ),
+            })
+        else:
+            # 旧路径：独立摘要 prompt，只发 middle 段拼接
+            to_summarize = "\n\n".join(
+                f"{m.get('role', 'user')}: {m.get('content', '')}"
+                for m in map(self._msg_to_dict, middle)
+            )
+            prompt_messages = [
+                {"role": "system", "content": self.SUMMARY_PROMPT_TEMPLATE.format(max_chars=max_summary_chars)},
+                {"role": "user", "content": to_summarize or "（空内容）"},
+            ]
 
         # 摘要模型：优先显式 model_id（当前主模型）→ settings.COMPRESSION_MODEL → 用户配置的默认主模型
         # 不硬编码任何特定模型名，所有选择基于用户实际配置
@@ -778,6 +849,35 @@ class AgentRuntime:
         except Exception:
             # fail-safe：摘要失败不阻塞会话
             return messages
+
+        # T9 摘要自批评：同一前缀上追加 assistant(v1) + 自批评指令，单轮有界复核。
+        # 复核失败 / 回复无修订 → 保留 v1；有修订且长度合理 → 采用修订版。不做摘要链。
+        if cache_aware and summary:
+            try:
+                critique_messages = prompt_messages + [
+                    {"role": "assistant", "content": summary},
+                    {"role": "user", "content": self.SUMMARY_CRITIQUE_INSTRUCTION.format(
+                        max_chars=max_summary_chars
+                    )},
+                ]
+                critique_result = await model_service.call_once(
+                    resolved_model,
+                    critique_messages,
+                    temperature=0.2,
+                    max_tokens=1024,
+                )
+                revised = (critique_result.content or "").strip()
+                critique_head = revised.rstrip(".。！!").upper()
+                # "OK" 及其短变体（"OK。" / "OK，无缺漏" 等）均视为无修订，保留 v1
+                no_revision = (
+                    critique_head in self.SUMMARY_CRITIQUE_NO_REVISION
+                    or critique_head.startswith("OK")
+                )
+                # 超长护栏：修订版明显超出字数约束（>4x）视为模型输出失控，保留 v1
+                if revised and not no_revision and len(revised) <= max_summary_chars * 4:
+                    summary = revised
+            except Exception:
+                pass  # 自批评失败不阻塞会话，保留 v1
 
         if not summary:
             return messages
