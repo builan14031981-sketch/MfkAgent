@@ -16,6 +16,7 @@ import asyncio
 from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -139,7 +140,8 @@ class TestCompletionLoop:
                 usage={"total_tokens": 200},
             )
 
-        mock_model_service.call_once = AsyncMock(side_effect=side_effect)
+        mock_model_service.call_once = AsyncMock(side_effect=side_effect)  # judge/反思/压缩等内部单次调用仍走 call_once
+        mock_model_service.stream_once = stream_from_single_call(AsyncMock(side_effect=side_effect))
         mock_execute_tool.return_value = make_tool_result("read_file", "ok", call_id="call_1")
 
         context = self._make_context(
@@ -187,7 +189,8 @@ class TestCompletionLoop:
                 usage={"total_tokens": 100 + call_count},
             )
 
-        mock_model_service.call_once = AsyncMock(side_effect=side_effect)
+        mock_model_service.call_once = AsyncMock(side_effect=side_effect)  # judge/反思/压缩等内部单次调用仍走 call_once
+        mock_model_service.stream_once = stream_from_single_call(AsyncMock(side_effect=side_effect))
 
         context = self._make_context(tools=None)
         messages = self._make_messages("实现一个功能")
@@ -227,7 +230,8 @@ class TestCompletionLoop:
                 usage={"total_tokens": 100},
             )
 
-        mock_model_service.call_once = AsyncMock(side_effect=side_effect)
+        mock_model_service.call_once = AsyncMock(side_effect=side_effect)  # judge/反思/压缩等内部单次调用仍走 call_once
+        mock_model_service.stream_once = stream_from_single_call(AsyncMock(side_effect=side_effect))
 
         context = self._make_context(tools=None, max_completion_retry=3)
         # 注：任务文本不可含写文件关键字（"生成/创建/写入/修改"），
@@ -266,7 +270,8 @@ class TestCompletionLoop:
                 return make_judge_result(True, reason="已完整回答")
             return MockSingleCallResult(content="用户问题的答案。", finish_reason="stop", usage={"total_tokens": 20})
 
-        mock_model_service.call_once = AsyncMock(side_effect=side_effect)
+        mock_model_service.call_once = AsyncMock(side_effect=side_effect)  # judge/反思/压缩等内部单次调用仍走 call_once
+        mock_model_service.stream_once = stream_from_single_call(AsyncMock(side_effect=side_effect))
 
         context = self._make_context(tools=None, plan=plan)
         messages = [SimpleNamespace(role="user", content="什么是 MfkAgent")]

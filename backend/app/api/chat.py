@@ -647,10 +647,49 @@ class SendRequest(BaseModel):
     # Phase 3 T3/T8: auto_approve / permission_mode 已废弃，权限模式统一从 Settings 读取
 
 
+class PendingApprovalInfo(BaseModel):
+    """T4: 非流式 /send 的 pending_approval 契约载荷（前端复用 /{chat_id}/approve 闭环）。"""
+
+    approval_id: str
+    tool: str
+    tool_call_id: str = ""
+    command: str = ""
+    risk_level: str = ""
+    risk_reason: str = ""
+    chat_id: Optional[int] = None
+
+
 class SendResponse(BaseModel):
     user_message: MessageResponse
     ai_message: MessageResponse
     token_usage: dict
+    # T4 双循环合一：非流式遇需审批操作时返回结构化 pending_approval（ai_message 为
+    # 占位消息，后台续跑完成后更新同一条消息），绝不在 HTTP 请求里同步等待审批
+    pending_approval: Optional[PendingApprovalInfo] = None
+
+
+def _timeline_from_tool_calls(tool_calls: list) -> list:
+    """T4: 从 AgentResult.tool_calls 记录重建 timeline 的 tool_start/tool_result 段。"""
+    timeline = []
+    for tc in tool_calls:
+        tc_id = tc.get("tool_call_id", "")
+        tc_name = tc.get("tool", tc.get("name", ""))
+        tc_input = tc.get("input", getattr(tc, "input", {}))
+        timeline.append({
+            "type": "tool_start",
+            "tool_call_id": tc_id,
+            "tool": tc_name,
+            "input": tc_input,
+        })
+        timeline.append({
+            "type": "tool_result",
+            "tool_call_id": tc_id,
+            "tool": tc_name,
+            "success": tc.get("success", False),
+            "result": tc.get("result", ""),
+            "duration_ms": tc.get("duration_ms", 0),
+        })
+    return timeline
 
 
 @router.post("/{chat_id}/send", response_model=SendResponse)
@@ -823,6 +862,79 @@ async def send_message(chat_id: int, request: SendRequest):
         full_prompt = built.system_prompt
         memory_text = built.memory_text
 
+        # ──── T4 双循环合一：非流式审批契约 ────
+        # run() 遇需审批操作时立即返回 pending_approval（绝不在 HTTP 请求里同步 await 审批）。
+        # 占位 assistant 消息先落库（timeline 含审批卡），用户经既有 /{chat_id}/approve
+        # 闭环后，后台续跑任务执行至收尾并由 _finalize_pending 更新同一条消息（含记忆提取）。
+        pending_approval = None
+        _placeholder_msg_id = None
+        _pending_msg_ready = asyncio.Event()
+        mem_project_id = chat.project_id
+        mem_agent_id = chat.agent_id
+
+        async def _finalize_pending(final_result):
+            """pending_approval 后台续跑完成：更新占位 assistant 消息 + 记忆提取。"""
+            try:
+                await _pending_msg_ready.wait()
+            except asyncio.CancelledError:  # noqa: BLE001
+                return
+            db3 = SessionLocal()
+            try:
+                ai_msg3 = db3.query(Message).filter(Message.id == _placeholder_msg_id).first()
+                if ai_msg3 is None:
+                    return
+                final_content = final_result.content or ""
+                timeline = _timeline_from_tool_calls(getattr(final_result, "tool_calls", None) or [])
+                if final_content:
+                    timeline.append({"type": "text", "content": final_content})
+                mem_actions = []
+                mem_settings = _get_memory_settings(chat_id)
+                if mem_settings["write"]:
+                    if mem_settings["alert"] and not mem_settings["autonomous"]:
+                        # 提示开启且非自治：内联提取，"已保存记忆"通知随消息落库
+                        try:
+                            mem_actions = await run_memory_extraction(
+                                chat_id=chat_id,
+                                project_id=mem_project_id,
+                                user_message=request.content,
+                                ai_content=final_content,
+                                agent_id=mem_agent_id,
+                            )
+                        except Exception:  # noqa: BLE001
+                            mem_actions = []
+                    else:
+                        # 提示关闭或自治：后台无感提取（非阻塞，独立 Session，Fail-safe）
+                        try:
+                            asyncio.create_task(run_memory_extraction(
+                                chat_id=chat_id,
+                                project_id=mem_project_id,
+                                user_message=request.content,
+                                ai_content=final_content,
+                                agent_id=mem_agent_id,
+                            ))
+                        except Exception:  # noqa: BLE001
+                            pass
+                if mem_actions:
+                    timeline.append({
+                        "type": "memory_saved",
+                        "chat_id": chat_id,
+                        "count": len(mem_actions),
+                        "items": [
+                            {
+                                "memory_type": (a.get("memory_type") or "fact"),
+                                "content": (a.get("content") or ""),
+                            }
+                            for a in mem_actions
+                        ],
+                    })
+                ai_msg3.content = final_content
+                ai_msg3.timeline = timeline if timeline else None
+                db3.commit()
+            except Exception:  # noqa: BLE001
+                logger.warning("[T4] pending 续跑落库失败 chat_id=%s", chat_id, exc_info=True)
+            finally:
+                db3.close()
+
         try:
             agent_runtime = AgentRuntime()
             agent_result = await agent_runtime.run(
@@ -832,16 +944,20 @@ async def send_message(chat_id: int, request: SendRequest):
                 max_tokens=built.max_tokens,
                 reasoning_effort=built.reasoning_effort,
                 read_only=built.read_only,
+                on_complete=_finalize_pending,
             )
+            # T4: pending_approval = 遇需审批操作即返回（结构化契约见 SendResponse）
+            pending_approval = (agent_result.metadata or {}).get("pending_approval")
 
             ai_content = agent_result.content
             api_usage = agent_result.usage
 
             # ──── V14.1 输出保护：零动作状态出现动作描写 → 重新生成一次 ────
             # 仅非流式路径（流式在 _persist 处处理）。comfort/roleplay/light 不拦截。
+            # pending_approval 时轮次尚未收尾，跳过 regen（后台续跑落库前同样跳过）
             perf_level = (built.persona_context.performance_level
                           if built.persona_context else "none")
-            if ai_content and needs_regeneration(perf_level, ai_content):
+            if not pending_approval and ai_content and needs_regeneration(perf_level, ai_content):
                 logger.info("[action_guard] regen: perf=%s hits=%s", perf_level,
                             find_action_descriptions(ai_content))
                 try:
@@ -859,8 +975,39 @@ async def send_message(chat_id: int, request: SendRequest):
                 except Exception as e:
                     logger.warning("[action_guard] regen failed: %s", e)
         except Exception as e:
+            pending_approval = None
             ai_content = f"[AI回复失败: {str(e)}]"
             api_usage = None
+
+        if pending_approval:
+            # ──── T4: pending_approval 响应（不在此处同步等待审批）────
+            # 占位 assistant 消息：content 为已产出的部分文本（通常为空），
+            # timeline 含审批卡供前端渲染；后台续跑完成后由 _finalize_pending
+            # 更新同一条消息，避免双消息。
+            ai_msg = Message(
+                chat_id=chat_id,
+                role="assistant",
+                content=ai_content or "",
+                timeline=[{"type": "tool_approval", **pending_approval}],
+            )
+            db.add(ai_msg)
+            chat.updated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(ai_msg)
+            _placeholder_msg_id = ai_msg.id
+            _pending_msg_ready.set()
+            prompt_tokens = count_tokens(full_prompt) + count_tokens(memory_text or "") + count_tokens(request.content)
+            completion_tokens = count_tokens(ai_content or "")
+            return SendResponse(
+                user_message=MessageResponse.model_validate(user_msg),
+                ai_message=MessageResponse.model_validate(ai_msg),
+                token_usage={
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": prompt_tokens + completion_tokens,
+                },
+                pending_approval=PendingApprovalInfo(**pending_approval),
+            )
 
         ai_msg = Message(chat_id=chat_id, role="assistant", content=ai_content)
         # 非流式路径：从 AgentResult 构造 timeline（仅有 tool_start/tool_result/text）

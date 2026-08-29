@@ -19,6 +19,7 @@ import unittest
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402
 
 from app.core.planner.models import Plan, PlanStep
 from app.core.task_graph.models import TaskNode, TaskNodeStatus, TaskEdge, TaskGraph
@@ -543,7 +544,7 @@ class TestRunTaskGraphDriven(unittest.TestCase):
         mock_result = _MockModelResult(content="完成", finish_reason="stop")
         mock_call = AsyncMock(return_value=mock_result)
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.recorder.runtime_event_recorder"):
             result = asyncio.run(self.runtime.run(context, messages))
 
@@ -562,7 +563,7 @@ class TestRunTaskGraphDriven(unittest.TestCase):
         mock_result = _MockModelResult(content="hello back", finish_reason="stop")
         mock_call = AsyncMock(return_value=mock_result)
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.recorder.runtime_event_recorder"):
             result = asyncio.run(self.runtime.run(context, messages))
 
@@ -805,7 +806,7 @@ class TestRunPersonaInjection(unittest.TestCase):
             captured_messages.append(list(kwargs.get("messages", [])))
             return _MockModelResult(content="done", finish_reason="stop")
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.recorder.runtime_event_recorder"):
             asyncio.run(self.runtime.run(context, messages))
 
@@ -1059,7 +1060,7 @@ class TestRunTokenUsageInResult(unittest.TestCase):
         )
         mock_call = AsyncMock(return_value=mock_result)
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.recorder.runtime_event_recorder"):
             result = asyncio.run(self.runtime.run(context, messages))
 
@@ -1080,7 +1081,7 @@ class TestRunTokenUsageInResult(unittest.TestCase):
         mock_result = _MockModelResult(content="hi", finish_reason="stop", usage=None)
         mock_call = AsyncMock(return_value=mock_result)
 
-        with patch("app.services.model.model_service.call_once", mock_call), \
+        with patch("app.services.model.model_service.stream_once", stream_from_single_call(mock_call)), \
              patch("app.core.agent_runtime.recorder.runtime_event_recorder"):
             result = asyncio.run(self.runtime.run(context, messages))
 

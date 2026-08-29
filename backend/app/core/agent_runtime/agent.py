@@ -13,7 +13,7 @@ Phase E4 新增：
   - 验证失败 → 向 LLM 注入反馈消息，进入下一轮重新执行；通过 → 继续/结束
 """
 
-from typing import Optional, List
+from typing import Any, Awaitable, Callable, List, Optional
 import asyncio
 import os
 import re
@@ -121,6 +121,131 @@ def _apply_turn_reminder(messages: list, reminder: Optional[str]) -> list:
             messages[idx] = {**m, "content": m["content"] + "\n\n" + reminder}
             break
     return messages
+
+
+# ──── T4: run() 消费者侧（事件聚合 + pending 续跑）────
+
+_pending_continuations: set = set()  # pending_approval 后台续跑任务引用（防 GC）
+
+
+async def _drain_agent_stream(stream, aggregator: "_AgentResultAggregator", stop_on_approval: bool = True):
+    """drain run_stream() 事件流喂给聚合器。
+
+    抉择卡沿用旧契约：非流式不挂起，自动采纳推荐项（resolve 后，下一次
+    __anext__ 进入 complete_choice 时 Future 已就绪，立即返回）。
+    stop_on_approval=True 时遇首个 tool_approval 即返回该事件（generator 悬停
+    在该 yield 上，尚未进入 complete_approval 等待）；流自然结束返回 None。
+    """
+    from app.core.tool_runtime.choice import choice_registry
+
+    async for event in stream:
+        etype = event.get("type")
+        if etype == "choice_request":
+            # 旧行为保留：自动采纳推荐项（与 legacy support_approval=False 分支一致）
+            choice_registry.resolve(event.get("choice_id", ""), {
+                "selected": None,
+                "custom_text": None,
+                "note": "（非流式接口不支持交互抉择，已自动采纳推荐项）",
+            })
+            continue
+        if etype == "tool_approval" and stop_on_approval:
+            return event
+        aggregator.feed(event)
+    return None
+
+
+class _AgentResultAggregator:
+    """把 run_stream() 事件流聚合为与旧 run() 返回结构兼容的 AgentResult。"""
+
+    def __init__(self, context: AgentContext):
+        self.context = context
+        self._content_parts: list = []
+        self._finish_reason = "stop"
+        self._tool_calls: list = []
+        self._usage_event: Optional[dict] = None
+        self._task_graph = None
+        self._llm_calls = 0
+
+    def feed(self, event: dict) -> None:
+        etype = event.get("type")
+        if etype == "text":
+            self._content_parts.append(event.get("content", ""))
+        elif etype == "finish":
+            self._finish_reason = event.get("finish_reason", "stop")
+        elif etype == "tool_calls":
+            self._tool_calls = event.get("calls") or self._tool_calls
+        elif etype == "token_usage":
+            self._usage_event = event
+        elif etype == "task_graph":
+            self._task_graph = event.get("task_graph")
+        elif etype == "state_change" and event.get("state") == RuntimePhase.LLM_CALL.value:
+            self._llm_calls += 1
+        elif etype == "completion_verify_failed":
+            # 完成验证驳回 → 该轮文本被反馈重试取代，不进入最终 content（对齐旧实现
+            # task_content 末轮覆写语义；验证通过路径不受影响）
+            self._content_parts = []
+        elif etype == "task_started":
+            # 旧实现口径：final_content 逐任务覆写（最后一个任务的内容胜出）
+            self._content_parts = []
+
+    def _usage(self) -> Optional[dict]:
+        if not self._usage_event:
+            return None
+        usage = {
+            k: self._usage_event[k]
+            for k in ("prompt_tokens", "completion_tokens", "total_tokens")
+            if k in self._usage_event
+        }
+        if "cached_tokens" in self._usage_event:
+            usage["cached_tokens"] = self._usage_event["cached_tokens"]
+        return usage
+
+    def _base_metadata(self) -> dict:
+        ctx = self.context
+        ctx_meta = ctx.metadata or {}
+        metadata = {
+            # G2-C: 透传 ContextBuilder metadata（含 T1 turn_reminder / T4 TaskRouter 决策）
+            **{k: v for k, v in ctx_meta.items() if not k.startswith("_t4_")},
+            "agent_id": ctx.agent_id,
+            "model_id": ctx.model_id,
+            "personality_level": ctx.personality_level,
+        }
+        # TaskRouter 决策（统一实现写入 context.metadata；仅写 metadata，不改变执行路径）
+        for key in ("task_type", "intent", "confidence", "reason"):
+            if key in ctx_meta:
+                metadata[key] = ctx_meta[key]
+        metadata["token_watermark"] = self._usage_event
+        if self._task_graph is not None:
+            metadata["task_graph"] = self._task_graph
+        if "_t4_completion" in ctx_meta:
+            metadata["completion"] = ctx_meta["_t4_completion"]
+        return metadata
+
+    def build(self) -> AgentResult:
+        content = "".join(self._content_parts)
+        # 旧实现口径：空回复兜底文案，杜绝 content=None/空串导致的消息悬空
+        if not content.strip():
+            content = "已为您完成相关的处理与工具调用。" if self._tool_calls else "处理完成。"
+        return AgentResult(
+            content=content,
+            usage=self._usage(),
+            rounds=self._llm_calls or 1,
+            finish_reason=self._finish_reason,
+            tool_calls=self._tool_calls,
+            metadata=self._base_metadata(),
+        )
+
+    def build_pending(self, pending: dict) -> AgentResult:
+        metadata = self._base_metadata()
+        metadata["pending_approval"] = pending
+        return AgentResult(
+            content="".join(self._content_parts),  # pending 不做空回复兜底：轮次尚未收尾
+            usage=None,
+            rounds=self._llm_calls or 1,
+            finish_reason="pending_approval",
+            tool_calls=self._tool_calls,
+            metadata=metadata,
+        )
 
 
 class AgentRuntime:
@@ -1282,8 +1407,30 @@ class AgentRuntime:
         reasoning_effort: Optional[str] = None,
         read_only: bool = False,
         max_tool_rounds: Optional[int] = None,
+        on_complete: Optional[Callable[["AgentResult"], Any]] = None,
     ) -> AgentResult:
-        """执行 Agent 调用（非流式，含 Execution Loop）。
+        """执行 Agent 调用（非流式；T4 双循环合一后为 run_stream() 的消费者）。
+
+        run() 不再持有独立的 Execution Loop（旧实现归档于 _legacy_run.py，保留一个
+        发布周期）：内部调用 run_stream()，drain 统一事件流，聚合出与旧返回结构
+        兼容的 AgentResult。工具轮次循环、审批、TaskRouter、TaskGraph、完成验证、
+        自动压缩、自查插队在两条路径上由同一实现驱动，行为天然一致。
+
+        聚合规则（事件协议见 run_stream docstring / 现状文档 3.5）：
+          text（累计）→ content；finish → finish_reason；
+          tool_calls（汇总）→ tool_calls；token_usage（最后一次）→ usage 与
+          metadata.token_watermark；task_graph → metadata.task_graph；
+          state_change(llm_call) 计数 → rounds；
+          统一实现写入 context.metadata 的 _t4_usage/_t4_completion →
+          usage 与 metadata.completion（消费端读取，不出现在事件协议中）。
+
+        审批契约（T4）：遇 tool_approval 立即返回 finish_reason="pending_approval"
+        的 AgentResult，metadata.pending_approval 携带 approval_id / tool / command
+        等摘要；绝不在非流式 HTTP 请求里同步等待审批。审批条目保留在
+        approval_registry（不再 resolve cancelled / remove），由前端复用
+        POST /{chat_id}/approve 闭环；审批 Future 由后台续跑任务等待，决策后
+        执行继续至收尾，完整结果经 on_complete 回调交付。
+        抉择卡（choice_request）沿用旧契约：自动采纳推荐项，不挂起。
 
         Args:
             context: Agent 执行上下文
@@ -1292,521 +1439,77 @@ class AgentRuntime:
             max_tokens: 最大 token 数
             reasoning_effort: 推理强度
             read_only: 是否只读模式
+            max_tool_rounds: 工具轮次上限（None → 按 context/env/默认值解析，与旧口径一致）
+            on_complete: pending_approval 后台续跑完成时的回调（sync 或 async，可选）
 
         Returns:
             AgentResult: content / usage / rounds / finish_reason / tool_calls / metadata
         """
-        from app.services.model import model_service
+        # 旧 run() 的轮次解析口径（context.max_tool_rounds → env → 默认值），
+        # 先解析再传给统一实现，保证非流式轮次预算与合一前一致。
+        resolved_rounds = self._resolve_max_tool_rounds(context, max_tool_rounds)
 
-        # ──── Phase E2: 创建运行记录（status=running, state=pending）────
-        # Phase H: parent_run_id 记录 checkpoint 血缘（断点续跑追溯）
-        run_id = runtime_event_recorder.create_run(
-            chat_id=context.chat_id,
-            agent_id=context.agent_id,
-            parent_run_id=getattr(context, "parent_run_id", None),
+        aggregator = _AgentResultAggregator(context)
+        stream = self.run_stream(
+            context=context,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            reasoning_effort=reasoning_effort,
+            read_only=read_only,
+            max_tool_rounds=resolved_rounds,
         )
 
-        try:
-            # ──── Phase E5: pending → building_context ────
-            self._record_state(run_id, RuntimePhase.BUILDING_CONTEXT, "context build")
+        approval_event = await _drain_agent_stream(stream, aggregator)
+        if approval_event is None:
+            return aggregator.build()
 
-            # ──── Context Builder（暂留接口，透传）────
-            messages = await self.context_builder.build(context, messages)
+        # pending_approval：generator 此刻悬停在 tool_approval yield 上（尚未进入
+        # complete_approval 等待），审批条目仍在 approval_registry 挂起等待 /approve；
+        # 事件流交给后台任务续跑（等待审批闭环 → 执行至收尾 → on_complete），本请求立即返回。
+        pending = {
+            "approval_id": approval_event.get("approval_id", ""),
+            "tool_call_id": approval_event.get("tool_call_id", ""),
+            "tool": approval_event.get("tool", ""),
+            "command": approval_event.get("command", ""),
+            "risk_level": approval_event.get("risk_level", ""),
+            "risk_reason": approval_event.get("risk_reason", ""),
+            "chat_id": approval_event.get("chat_id"),
+        }
+        self._spawn_pending_continuation(stream, aggregator, on_complete)
+        return aggregator.build_pending(pending)
 
-            # ──── Phase E5: building_context → routing ────
-            self._record_state(run_id, RuntimePhase.ROUTING, "task router")
+    def _spawn_pending_continuation(
+        self,
+        stream,
+        aggregator: "_AgentResultAggregator",
+        on_complete: Optional[Callable[["AgentResult"], Any]],
+    ) -> None:
+        """pending_approval 后台续跑：drain 剩余事件流至收尾并交付完整结果。
 
-            # ──── Task Router 决策 ────
-            user_message = messages[-1].content if messages else ""
-            has_tools = context.tools is not None and len(context.tools) > 0
+        续跑中的后续审批等待既有 300s 超时（超时视为拒绝——非流式场景用户无
+        实时卡片时的有界兜底）；异常只记日志，不影响已返回的 pending 响应。
+        """
+        import logging
 
-            decision = self.router.route(
-                message=user_message,
-                tool_decision=context.decision,
-                has_tools=has_tools,
-            )
+        _logger = logging.getLogger(__name__)
 
-            # ──── Phase E5: routing → llm_call ────
-            self._record_state(run_id, RuntimePhase.LLM_CALL, "execution loop")
+        async def _continue():
+            try:
+                await _drain_agent_stream(stream, aggregator, stop_on_approval=False)
+                final = aggregator.build()
+                if on_complete is not None:
+                    result = on_complete(final)
+                    if asyncio.iscoroutine(result) or isinstance(result, Awaitable):
+                        await result
+            except asyncio.CancelledError:
+                _logger.warning("[T4] pending 续跑被取消 chat_id=%s", aggregator.context.chat_id)
+            except Exception as e:  # noqa: BLE001
+                _logger.error("[T4] pending 续跑异常 chat_id=%s error=%s", aggregator.context.chat_id, e)
 
-            # G4-B: TaskGraph 初始化
-            has_task_graph = bool(getattr(context, 'plan', None))
-            if has_task_graph:
-                self.init_task_graph(context.plan)
-
-            # ──── Execution Loop ────
-            loop_messages = self._to_dict_messages(messages)
-            ctx = {k: v for k, v in (context.memory_context or {}).items() if v is not None}
-            ctx.setdefault("chat_id", context.chat_id)
-
-            # ──── Phase 11: 解析 max_tool_rounds & 初始化自查状态 ────
-            resolved_max_rounds = self._resolve_max_tool_rounds(context, max_tool_rounds)
-            has_modified_code = False
-            self_check_done = False
-
-            all_tool_calls = []
-            final_content = ""
-            final_usage = None
-            final_finish_reason = "stop"
-
-            # ──── Phase 12: Completion Loop V1 配置 ────
-            completion_enabled = self._completion_enabled(context, has_task_graph)
-            max_completion_retry = getattr(context, "max_completion_retry", None) or DEFAULT_MAX_COMPLETION_RETRY
-            completion_retry_count = 0
-            completion_exhausted = None
-            # Round 2 优化：run 级失败标记与最后一次验证失败（用于兜底失败汇报）
-            any_completion_failed = False
-            run_completion_exhausted = None
-            # G6-B Auto: 自动压缩轮次跟踪
-            last_compress_round = 0
-
-            # Round 2 优化：测试基建（conftest fixture）摘要一次性注入，避免重复 read_file
-            _test_infra = build_test_infra_summary(
-                context.project_path, self._extract_task_goal(loop_messages)
-            )
-            if _test_infra:
-                loop_messages.append({
-                    "role": "system",
-                    "content": _wrap_runtime_context(_test_infra, source="MfkAgent TestInfra"),
-                })
-
-            # T1 缓存前缀契约：逐轮动态内容（⑦⑧⑨⑩）以 <system-reminder> 包裹到
-            # 本轮最后一条 user 消息副本末尾（仅 LLM payload，不动 DB 历史消息）
-            _apply_turn_reminder(loop_messages, (context.metadata or {}).get("turn_reminder"))
-
-            # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
-            while True:
-                current_task = None
-                if has_task_graph:
-                    current_task = self.get_next_ready_task()
-                    if current_task is None:
-                        # G4-C: 图中断/阻塞（无就绪节点且未全部终态）→ 剩余 pending 全部 skipped
-                        if not self.task_graph_state.is_all_done():
-                            self._skip_remaining_and_emit(run_id)
-                        break
-                    self.update_task_status(current_task.id, "running")
-                    # Round 2 优化：任务间隔离完成验证状态 + 轮次预算差异化（P6）
-                    completion_retry_count = 0
-                    completion_exhausted = None
-                    task_rounds = self._task_round_budget(current_task.action, resolved_max_rounds)
-                    runtime_event_recorder.emit(run_id, "task_started",
-                        self._task_event_payload(current_task, "running"))
-                    # 战略4: Agent 状态可视化 — 任务启动
-                    runtime_event_recorder.emit(run_id, "agent_state_update",
-                        self._build_agent_state_event(
-                            agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                            status="working",
-                            action_detail=f"开始执行任务: {current_task.action}",
-                            current_task_id=current_task.id,
-                            task_progress=self._build_task_progress(current_task.id),
-                        ))
-                    # Phase 3.5: Runtime Context 边界隔离 — 任务上下文以 system 角色注入
-                    loop_messages.append({
-                        "role": "system",
-                        "content": _wrap_runtime_context(
-                            f"【当前任务】{current_task.action}",
-                            source="MfkAgent TaskGraph",
-                        ),
-                    })
-                    # G5-B: 注入 persona prompt（Phase 3.5: 包装为 Runtime Context）
-                    persona_prompt = get_persona_prompt(current_task.assigned_agent)
-                    if persona_prompt:
-                        loop_messages.append({
-                            "role": "system",
-                            "content": _wrap_runtime_context(persona_prompt, source="MfkAgent AgentRouter"),
-                        })
-
-                round_no = 0
-                task_content = ""
-                if not has_task_graph:
-                    task_rounds = resolved_max_rounds
-
-                # G4-C: 单任务异常边界 — 任务失败不使整个 AgentRun failed，
-                # 而是 failed + 级联 skip 依赖 + task_failed/task_skipped 事件后收尾
-                try:
-                    while round_no < task_rounds:
-                        # G6-B Auto: 水位超阈值自动压缩历史（基于上一轮 usage，首轮跳过）
-                        if (
-                            round_no > 0
-                            and final_usage
-                            and (round_no - last_compress_round) >= COMPRESS_MIN_INTERVAL_ROUNDS
-                        ):
-                            if await self._maybe_auto_compress(
-                                run_id, loop_messages, final_usage, context.model_id
-                            ):
-                                last_compress_round = round_no
-                                # 压缩可能吞掉本轮任务上下文 → 重新注入
-                                if has_task_graph and current_task is not None:
-                                    loop_messages.append({
-                                        "role": "system",
-                                        "content": _wrap_runtime_context(
-                                            f"【当前任务】{current_task.action}",
-                                            source="MfkAgent TaskGraph",
-                                        ),
-                                    })
-
-                        round_tools = context.tools if round_no < task_rounds - 1 else None
-
-                        # ──── Phase 11: 倒数预警（第 task_rounds - 1 轮，即最后一轮有工具时）────
-                        if round_no == task_rounds - 2:
-                            loop_messages.append({
-                                "role": "system",
-                                "content": COUNTDOWN_WARNING,
-                            })
-
-                        result = await model_service.call_once(
-                            model_id=context.model_id,
-                            messages=loop_messages,
-                            temperature=temperature,
-                            max_tokens=max_tokens,
-                            tools=round_tools,
-                            reasoning_effort=reasoning_effort,
-                            # T1: 记忆每轮一致常驻（确定性文本，保证 system 前缀跨轮稳定）
-                            memory_text=context.memory_text,
-                            vision_context=context.vision_context if round_no == 0 else None,
-                        )
-
-                        final_usage = result.usage
-                        final_finish_reason = result.finish_reason
-                        # G6-A: emit token_usage 事件
-                        if final_usage:
-                            runtime_event_recorder.emit(run_id, "token_usage",
-                                self._build_token_usage_event(final_usage, context.model_id))
-
-                        if not result.tool_calls or not round_tools:
-                            # ──── Phase 11: 强制自查插队拦截 ────
-                            if has_modified_code and not self_check_done and round_no < task_rounds:
-                                loop_messages.append({
-                                    "role": "system",
-                                    "content": SELF_CHECK_PROMPT,
-                                })
-                                self_check_done = True
-                                continue
-
-                            # Round 3 修复：最后一轮工具已禁用（round_tools 为 None）但模型仍输出
-                            # 工具调用 → 强制纯文本收尾，避免 final_content 变成原始 <tool_call>
-                            # 序列化文本（子代理编排断链根因）
-                            if result.tool_calls:
-                                runtime_event_recorder.emit(run_id, "agent_state_update",
-                                    self._build_agent_state_event(
-                                        agent_role=self._agent_role_display_name(
-                                            current_task.assigned_agent if current_task else "default_agent"
-                                        ),
-                                        status="working",
-                                        action_detail="工具已禁用但模型仍请求工具，强制纯文本收尾",
-                                        current_task_id=current_task.id if current_task else None,
-                                        task_progress=self._build_task_progress(
-                                            current_task.id if current_task else None
-                                        ),
-                                    ))
-                                loop_messages.append({
-                                    "role": "system",
-                                    "content": "工具调用已不可用。请基于你已获得的工具执行结果，直接以纯文本输出最终结论或报告，"
-                                               "严禁再输出任何 <tool_call> / <arg_*_> 格式的工具调用内容。",
-                                })
-                                result = await model_service.call_once(
-                                    model_id=context.model_id,
-                                    messages=loop_messages,
-                                    temperature=temperature,
-                                    max_tokens=max_tokens,
-                                    tools=None,
-                                    reasoning_effort=reasoning_effort,
-                                )
-                                final_usage = result.usage
-                                final_finish_reason = result.finish_reason
-                                if result.tool_calls:
-                                    # 模型仍固执输出工具调用格式 → 剥壳兜底
-                                    task_content = _strip_tool_call_blocks(result.content or "") \
-                                        or "[执行完成：工具已执行，但模型未输出文本总结]"
-                                else:
-                                    task_content = result.content
-                            else:
-                                task_content = result.content
-
-                            # ──── Phase 12: Completion Loop V1 — 完成候选验证 ────
-                            if completion_enabled:
-                                # 规则层语义判定（write/test 意图）以用户真实目标为准；
-                                # 模板任务名（如“执行文件读取或修改”）不作判定依据，避免误伤只读任务
-                                task_goal = self._extract_task_goal(loop_messages)
-                                runtime_event_recorder.emit(
-                                    run_id, "completion_verify_started",
-                                    {"task_goal": task_goal, "round_no": round_no},
-                                )
-                                completion_result = await self._verify_completion(
-                                    context, task_goal, task_content, current_task,
-                                    all_tool_calls, loop_messages,
-                                )
-                                if completion_result.success:
-                                    runtime_event_recorder.emit(
-                                        run_id, "completion_verify_passed",
-                                        completion_result.to_dict(),
-                                    )
-                                    break
-
-                                # 验证失败 → 生成反馈上下文，重新进入 Agent Loop
-                                runtime_event_recorder.emit(run_id, "completion_verify_failed", {
-                                    **completion_result.to_dict(),
-                                    "retry_count": completion_retry_count,
-                                    "max_retry": max_completion_retry,
-                                })
-                                if completion_retry_count < max_completion_retry:
-                                    completion_retry_count += 1
-                                    loop_messages.append({
-                                        "role": "user",
-                                        "content": self._build_completion_feedback(completion_result, completion_retry_count),
-                                    })
-                                    continue
-                                # 超过重试上限 → 安全收尾（保留已完成内容 + 未完成原因 + 最后失败点）
-                                completion_exhausted = completion_result
-                                run_completion_exhausted = completion_result
-                                final_finish_reason = "completion_exhausted"
-                            break
-
-                        round_no += 1
-
-                        # 战略4: Agent 状态可视化 — 工具调用前
-                        tool_names = [tc.get("function", {}).get("name", "") for tc in result.tool_calls]
-                        agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
-                        runtime_event_recorder.emit(run_id, "agent_state_update",
-                            self._build_agent_state_event(
-                                agent_role=agent_role,
-                                status="waiting_for_tool",
-                                action_detail=f"准备调用工具: {', '.join(tool_names)}",
-                                current_task_id=current_task.id if current_task else None,
-                                task_progress=self._build_task_progress(current_task.id if current_task else None),
-                            ))
-
-                        self._record_state(run_id, RuntimePhase.TOOL_EXECUTION, "tool execution")
-                        async for event in self._exec_tool_calls_with_verification(
-                            result.tool_calls,
-                            ctx,
-                            context.project_path,
-                            read_only,
-                            loop_messages,
-                            all_tool_calls,
-                            support_approval=False,
-                        ):
-                            runtime_event_recorder.emit(
-                                run_id,
-                                event.get("type", "event"),
-                                {k: v for k, v in event.items() if k != "type"},
-                            )
-
-                        # ──── Phase 11: 写操作检测 ────
-                        if not has_modified_code:
-                            for tc in result.tool_calls:
-                                tool_name = tc.get("function", {}).get("name", "")
-                                if tool_name in WRITE_TOOLS:
-                                    has_modified_code = True
-                                    break
-
-                        self._record_state(run_id, RuntimePhase.VERIFYING, "verification")
-                        self._record_state(run_id, RuntimePhase.LLM_CALL, "next round")
-                        # 战略4: Agent 状态可视化 — 工具执行完成
-                        agent_role = self._agent_role_display_name(current_task.assigned_agent) if current_task else "Default Agent"
-                        runtime_event_recorder.emit(run_id, "agent_state_update",
-                            self._build_agent_state_event(
-                                agent_role=agent_role,
-                                status="working",
-                                action_detail="工具执行完成，继续分析",
-                                current_task_id=current_task.id if current_task else None,
-                                task_progress=self._build_task_progress(current_task.id if current_task else None),
-                            ))
-
-                    # 轮次耗尽时无最终内容 → 补一次无工具调用获取总结
-                    if not task_content:
-                        result = await model_service.call_once(
-                            model_id=context.model_id,
-                            messages=loop_messages,
-                            temperature=temperature,
-                            max_tokens=max_tokens,
-                            tools=None,
-                            reasoning_effort=reasoning_effort,
-                            memory_text=None,
-                        )
-                        task_content = result.content
-                        final_usage = result.usage
-                        final_finish_reason = "max_rounds"
-
-                        # Phase 12: 轮次耗尽的兜底完成候选同样过验证（失败不再重试，安全收尾）
-                        if completion_enabled:
-                            task_goal = self._extract_task_goal(loop_messages)
-                            runtime_event_recorder.emit(
-                                run_id, "completion_verify_started",
-                                {"task_goal": task_goal, "round_no": round_no, "fallback": True},
-                            )
-                            completion_result = await self._verify_completion(
-                                context, task_goal, task_content, current_task,
-                                all_tool_calls, loop_messages,
-                            )
-                            if completion_result.success:
-                                runtime_event_recorder.emit(
-                                    run_id, "completion_verify_passed",
-                                    completion_result.to_dict(),
-                                )
-                            else:
-                                runtime_event_recorder.emit(run_id, "completion_verify_failed", {
-                                    **completion_result.to_dict(),
-                                    "retry_count": completion_retry_count,
-                                    "max_retry": max_completion_retry,
-                                })
-                                completion_exhausted = completion_result
-                                run_completion_exhausted = completion_result
-
-                    final_content = task_content
-
-                    # G4-B: 任务完成 → emit + 继续下一个
-                    if has_task_graph and current_task:
-                        if self._is_hard_completion_failure(completion_exhausted):
-                            # Round 2 优化：硬性缺失 → failed + 级联 skip（此前为强制 completed 短路）
-                            skipped = self.task_graph_state.mark_failed(
-                                current_task.id,
-                                "; ".join(getattr(completion_exhausted, "missing_items", None) or [])[:200],
-                            )
-                            runtime_event_recorder.emit(run_id, "agent_state_update",
-                                self._build_agent_state_event(
-                                    agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                                    status="error",
-                                    action_detail=f"任务失败（完成验证未通过）: {current_task.action}",
-                                    current_task_id=current_task.id,
-                                    task_progress=self._build_task_progress(current_task.id),
-                                ))
-                            runtime_event_recorder.emit(run_id, "task_failed", {
-                                **self._task_event_payload(
-                                    current_task, "failed",
-                                    error=getattr(completion_exhausted, "reason", "")[:200],
-                                ),
-                                **self._completion_event_suffix(completion_enabled, completion_exhausted),
-                            })
-                            for skip_id in skipped:
-                                skip_node = self.task_graph_state.get_task(skip_id)
-                                if skip_node is not None:
-                                    runtime_event_recorder.emit(run_id, "task_skipped",
-                                        self._task_event_payload(skip_node, "skipped"))
-                            any_completion_failed = True
-                            continue
-                        self.update_task_status(current_task.id, "completed")
-                        if completion_exhausted is not None:
-                            # 软性缺失 → completed_unverified：不级联中断，但计入 run 级失败标记
-                            any_completion_failed = True
-                        # 战略4: Agent 状态可视化 — 任务完成
-                        runtime_event_recorder.emit(run_id, "agent_state_update",
-                            self._build_agent_state_event(
-                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                                status="completed",
-                                action_detail=(
-                                    f"任务完成（未通过完成验证）: {current_task.action}"
-                                    if completion_exhausted is not None
-                                    else f"任务完成: {current_task.action}"
-                                ),
-                                current_task_id=current_task.id,
-                                task_progress=self._build_task_progress(current_task.id),
-                            ))
-                        runtime_event_recorder.emit(run_id, "task_completed",
-                            {
-                                **self._task_event_payload(current_task, "completed"),
-                                **self._completion_event_suffix(completion_enabled, completion_exhausted),
-                            })
-                        continue
-
-                    # 无 Plan → 结束
-                    break
-                except ModelNotFoundError as e:
-                    # 模型不存在 → 直接熔断，不尝试反思（反思用同一模型也会失败）
-                    if has_task_graph and current_task:
-                        runtime_event_recorder.emit(run_id, "agent_state_update",
-                            self._build_agent_state_event(
-                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                                status="error",
-                                action_detail=f"模型不可用: {e}",
-                                current_task_id=current_task.id,
-                                task_progress=self._build_task_progress(current_task.id),
-                            ))
-                        self.task_graph_state.mark_failed(current_task.id, str(e)[:200])
-                    raise
-                except ModelConfigError as e:
-                    # 模型配置错误（无 Key / 未注册）→ 直接熔断，不尝试反思
-                    # 反思用同一无 Key 模型也会失败，无意义
-                    if has_task_graph and current_task:
-                        runtime_event_recorder.emit(run_id, "agent_state_update",
-                            self._build_agent_state_event(
-                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                                status="error",
-                                action_detail=f"模型配置错误: {e}",
-                                current_task_id=current_task.id,
-                                task_progress=self._build_task_progress(current_task.id),
-                            ))
-                        self.task_graph_state.mark_failed(current_task.id, str(e)[:200])
-                    raise
-                except Exception as e:
-                    # G4-C: 单任务异常 → failed + 级联 skip 依赖 + 事件；运行正常收尾
-                    if has_task_graph and current_task:
-                        # 战略4: Agent 状态可视化 — 任务失败
-                        runtime_event_recorder.emit(run_id, "agent_state_update",
-                            self._build_agent_state_event(
-                                agent_role=self._agent_role_display_name(current_task.assigned_agent),
-                                status="error",
-                                action_detail=f"任务失败: {current_task.action}",
-                                current_task_id=current_task.id,
-                                task_progress=self._build_task_progress(current_task.id),
-                            ))
-                        healed = await self._handle_task_failure(run_id, current_task, e)
-                        if healed:
-                            continue  # 反思成功，继续执行循环
-                        break
-                    raise
-
-            # ──── Phase E5: → completing → completed ────
-            self._record_state(run_id, RuntimePhase.COMPLETING, "finishing")
-            runtime_event_recorder.transition(run_id, RuntimePhase.COMPLETED.value, "completed")
-            # Phase E2: 收尾（completed）
-            runtime_event_recorder.finish_run(run_id, "completed")
-
-            # Round 2 优化：完成验证失败时覆写 finish_reason；无内容时生成结构化失败汇报（杜绝空回复）
-            if any_completion_failed or run_completion_exhausted is not None:
-                final_finish_reason = "completion_failed"
-                if not (final_content or "").strip() and run_completion_exhausted is not None:
-                    final_content = self._build_completion_failure_report(run_completion_exhausted)
-
-            # 杜绝空回复：当 final_content 为空时保底生成说明文本，解决数据库 content=None 导致的空消息悬空问题
-            if not (final_content or "").strip():
-                if all_tool_calls:
-                    final_content = "已为您完成相关的处理与工具调用。"
-                else:
-                    final_content = "处理完成。"
-
-            return AgentResult(
-                content=final_content,
-                usage=final_usage,
-                rounds=round_no + 1 if final_content else round_no,
-                finish_reason=final_finish_reason,
-                tool_calls=all_tool_calls,
-                metadata={
-                    **(context.metadata or {}),  # G2-C: 透传 ContextBuilder metadata
-                    "agent_id": context.agent_id,
-                    "model_id": context.model_id,
-                    "personality_level": context.personality_level,
-                    "task_type": decision.task_type.value,
-                    "intent": decision.intent,
-                    "confidence": decision.confidence,
-                    "reason": decision.reason,
-                    # G6-A: Token 水位信息
-                    "token_watermark": self._build_token_usage_event(final_usage, context.model_id) if final_usage else None,
-                    # G4-C: TaskGraph 进度摘要（含 completed/failed/skipped/current_step）
-                    "task_graph": self._task_graph_summary(),
-                    # Phase 12: Completion Loop V1 结果信息
-                    "completion": self._completion_metadata(completion_enabled, completion_exhausted, completion_retry_count),
-                },
-            )
-        except asyncio.CancelledError:
-            runtime_event_recorder.transition(run_id, RuntimePhase.CANCELLED.value, "cancelled")
-            runtime_event_recorder.finish_run(run_id, "cancelled")
-            raise
-        except Exception as e:
-            runtime_event_recorder.transition(run_id, RuntimePhase.FAILED.value, str(e)[:200])
-            runtime_event_recorder.emit(run_id, "error", {"message": str(e)})
-            runtime_event_recorder.finish_run(run_id, "failed")
-            raise
+        task = asyncio.create_task(_continue())
+        _pending_continuations.add(task)
+        task.add_done_callback(_pending_continuations.discard)
 
     # ──── 流式执行 ────
 
@@ -1908,12 +1611,34 @@ class AgentRuntime:
         # ──── Context Builder（暂留接口，透传）────
         messages = await self.context_builder.build(context, messages)
 
+        # ──── TaskRouter 决策（T4 双循环合一：两路统一在唯一实现中调用，结果仅写 metadata）────
+        if context.metadata is None:
+            context.metadata = {}
+        _last_msg = messages[-1] if messages else None
+        user_message = (
+            _last_msg.get("content", "")
+            if isinstance(_last_msg, dict)
+            else getattr(_last_msg, "content", "")
+        ) or ""
+        has_tools = context.tools is not None and len(context.tools) > 0
+        decision = self.router.route(
+            message=user_message,
+            tool_decision=context.decision,
+            has_tools=has_tools,
+        )
+        context.metadata.update({
+            "task_type": decision.task_type.value,
+            "intent": decision.intent,
+            "confidence": decision.confidence,
+            "reason": decision.reason,
+        })
+
         # G4-B: TaskGraph 初始化
         has_task_graph = bool(getattr(context, 'plan', None))
         if has_task_graph:
             self.init_task_graph(context.plan)
 
-        # ──── Phase E5: building_context → llm_call（流式路径无独立 Router）────
+        # ──── Phase E5: building_context → llm_call ────
         yield {"type": "state_change", "state": RuntimePhase.LLM_CALL.value, "reason": "execution loop"}
 
         ctx = {k: v for k, v in (context.memory_context or {}).items() if v is not None}
@@ -1933,6 +1658,9 @@ class AgentRuntime:
         # Round 2 优化：run 级失败标记与最后一次验证失败（用于兜底失败汇报）
         any_completion_failed = False
         run_completion_exhausted = None
+        # T4: 外层预初始化（逐任务重置仍在任务循环内做），零任务收尾时 _t4_completion 可安全引用
+        completion_retry_count = 0
+        completion_exhausted = None
 
         # Round 2 优化：测试基建（conftest fixture）摘要一次性注入，避免重复 read_file
         _test_infra = build_test_infra_summary(
@@ -2064,6 +1792,8 @@ class AgentRuntime:
                             # G6-A: 捕获 usage，yield token_usage 事件
                             last_round_usage = event.get("usage")
                             if last_round_usage:
+                                # T4: 原始 usage 写入 context.metadata 供非流式消费者聚合
+                                context.metadata["_t4_usage"] = last_round_usage
                                 yield self._build_token_usage_event(last_round_usage, context.model_id)
 
                     if final_finish == "tool_calls" and collected_tool_calls and round_tools:
@@ -2267,6 +1997,10 @@ class AgentRuntime:
 
                         # 原始路径（无 Plan）：透传 finish + 工具调用汇总
                         yield {"type": "state_change", "state": RuntimePhase.COMPLETING.value, "reason": "finishing"}
+                        # T4: 完成验证汇总写入 context.metadata 供非流式消费者聚合（不改事件协议）
+                        context.metadata["_t4_completion"] = self._completion_metadata(
+                            completion_enabled, completion_exhausted, completion_retry_count
+                        )
                         # Round 2 优化：完成验证失败时以 completion_failed 收尾 + 兜底结构化失败汇报
                         if completion_exhausted is not None:
                             any_completion_failed = True
@@ -2366,6 +2100,11 @@ class AgentRuntime:
                         ):
                             if event.get("type") == "text":
                                 yield event
+                            elif event.get("type") == "finish" and event.get("usage"):
+                                context.metadata["_t4_usage"] = event.get("usage")
+                        context.metadata["_t4_completion"] = self._completion_metadata(
+                            completion_enabled, completion_exhausted, completion_retry_count
+                        )
                         yield {"type": "finish", "finish_reason": "stop"}
                         yield {"type": "tool_calls", "calls": all_tool_calls}
                     except Exception as e:
@@ -2492,6 +2231,9 @@ class AgentRuntime:
                 raise  # 无 Plan 路径：原样抛出
 
         # G4-B: 全部任务完成
+        context.metadata["_t4_completion"] = self._completion_metadata(
+            completion_enabled, completion_exhausted, completion_retry_count
+        )
         yield {"type": "state_change", "state": RuntimePhase.COMPLETING.value, "reason": "all tasks done"}
         # Round 2 优化：存在完成验证失败时以 completion_failed 收尾 + 结构化失败汇报（杜绝空回复静默结束）
         if any_completion_failed:
