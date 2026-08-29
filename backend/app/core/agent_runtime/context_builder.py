@@ -75,6 +75,36 @@ from .pruning import prune_thought_history
 
 DEFAULT_IDENTITY = "你是一个有帮助的AI助手。"
 
+# ──── T1 缓存前缀契约：system prompt 稳定区边界 ────
+# LLM prompt cache 为严格前缀匹配：该标记之上的 ⓪-⑥ 层（身份/能力/人格/行为/策略/权限）
+# 多轮字节稳定；之下的 ⑦⑧⑨⑩（intent_hint/task_context/tool_guidance/attachments）
+# 逐轮变化，由 _build_turn_reminder() 包进 <system-reminder> 注入到本轮最后一条
+# user 消息副本末尾，保证 "system + tools + 历史" 前缀跨轮逐字节一致，命中前缀缓存。
+STATIC_SYSTEM_PROMPT_END = "<!-- STATIC_SYSTEM_PROMPT_END -->"
+
+# 回滚开关：settings 表 key，缺失或值非法时默认开启稳定装配
+_PROMPT_STABILITY_SETTING_KEY = "prompt_stability_enabled"
+
+
+def is_prompt_stability_enabled() -> bool:
+    """读取 prompt_stability_enabled 开关（默认开）。
+
+    回滚路径：settings 中设为 false/0/off/no 即恢复旧装配路径
+    （⑦⑧⑨⑩ 拼回 system prompt、不插入稳定区边界、不产出 turn_reminder），
+    无需回滚代码。
+    """
+    try:
+        db = SessionLocal()
+        try:
+            row = db.query(Setting).filter(Setting.key == _PROMPT_STABILITY_SETTING_KEY).first()
+        finally:
+            db.close()
+        if row is None or row.value is None:
+            return True
+        return str(row.value).strip().lower() not in ("0", "false", "off", "no")
+    except Exception:  # noqa: BLE001 — DB 不可用时按默认开启处理
+        return True
+
 # ──── Task 3: 普通聊天检测（轻量关键词匹配，避免为闲聊加载工具）────
 
 _CHAT_GREETINGS = {
@@ -273,6 +303,10 @@ class BuiltContext:
     memory_text: str                   # 单独交付（模型层注入，不入 system prompt）
     tool_context: Optional[dict] = None
     persona_context: Optional[PersonaContext] = None  # Persona 运行时上下文
+    # T1 缓存前缀契约：逐轮变化的 ⑦⑧⑨⑩ 包进 <system-reminder> 后的文本，
+    # 由 AgentRuntime 发送前包裹到本轮最后一条 user 消息副本末尾（不动 DB）。
+    # prompt_stability_enabled=false 时为 None（旧装配路径）。
+    turn_reminder: Optional[str] = None
 
 
 def get_default_model() -> str:
@@ -689,8 +723,16 @@ class ChatContextBuilder:
         expression_profile: Optional[str] = None,
         persona_context: Optional[PersonaContext] = None,
         agent=None,
+        prompt_stability: Optional[bool] = None,
     ) -> str:
-        """按 ①-⑩+ 层组装完整 system prompt（memory_text 由模型层单独注入）。"""
+        """按 ①-⑩+ 层组装完整 system prompt（memory_text 由模型层单独注入）。
+
+        T1 缓存前缀契约：prompt_stability 开启（默认）时，逐轮变化的 ⑦⑧⑨⑩
+        不再拼入 system，在 ⑥ 层之后插入 STATIC_SYSTEM_PROMPT_END 边界收尾；
+        动态内容改由 _build_turn_reminder() 产出 <system-reminder> 注入消息尾部。
+        关闭时走旧装配路径（⑦⑧⑨⑩ 原样拼入 system）。
+        """
+        stability = is_prompt_stability_enabled() if prompt_stability is None else prompt_stability
         # ⓪ 最高身份准则（强制置顶，锁定桌面端 Agent 身份认知）
         full_prompt = get_identity_principle()
 
@@ -832,6 +874,15 @@ class ChatContextBuilder:
         if persona_context and persona_context.restrictions_text:
             full_prompt += "\n\n" + persona_context.restrictions_text
 
+        # ──── T1 静态区边界：此行之上 ⓪-⑥ 层多轮字节稳定 ────
+        # 稳定模式下 ⑦⑧⑨⑩ 不入 system（改由 _build_turn_reminder 注入消息尾部），
+        # 提前返回，保证 "system + tools + 历史" 前缀跨轮逐字节一致。
+        if stability:
+            full_prompt += "\n\n" + STATIC_SYSTEM_PROMPT_END
+            return _sanitize_prompt_mode(full_prompt, getattr(effective_chat, 'mode', 'build') or 'build')
+
+        # ──── 旧装配路径（prompt_stability_enabled=false 回滚用）：⑦⑧⑨⑩ 拼入 system ────
+
         # ⑦ intent_hint（意图建议软提示）
         if tool_context and tool_context.get("need_tools"):
             intent_hint = self._planner.soft_hint(
@@ -863,6 +914,56 @@ class ChatContextBuilder:
                 full_prompt += "\n\n" + attachment_section
 
         return _sanitize_prompt_mode(full_prompt, getattr(effective_chat, 'mode', 'build') or 'build')
+
+    def _build_turn_reminder(
+        self,
+        effective_chat,
+        tool_context: Optional[dict],
+        task_context: Optional[dict],
+        attachments: Optional[list],
+        tool_guidance: Optional[str],
+    ) -> str:
+        """T1 缓存前缀契约：把逐轮变化的 ⑦⑧⑨⑩ 包进 <system-reminder>。
+
+        产物由 AgentRuntime 在消息发送前包裹到本轮新增的最后一条 user 消息
+        副本末尾（只改发往 LLM 的 messages 副本，绝不改数据库历史消息），
+        使 system prompt 保持多轮字节稳定。四层全为空时返回 ""。
+        """
+        parts: List[str] = []
+
+        # ⑦ intent_hint（意图建议软提示）
+        if tool_context and tool_context.get("need_tools"):
+            intent_hint = self._planner.soft_hint(
+                {"suggest_tools": tool_context["need_tools"], "intent": tool_context["decision"]["intent"]},
+                [t["function"]["name"] for t in tool_context["tools"]],
+            )
+            if intent_hint:
+                parts.append(intent_hint)
+
+        # ⑧ task_context（Planner V1：任务计划段，仅提示，不 gate 工具）
+        if task_context:
+            plan_section = get_runtime_task_context_adapter().render(task_context)
+            if plan_section:
+                parts.append(plan_section)
+
+        # ⑨ tool_guidance（Tool Guidance V1：动态工具使用指导）
+        if tool_guidance:
+            parts.append(tool_guidance)
+
+        # ⑩ attachments（Phase 2：附件上下文层）
+        # - text 附件：读取文件内容注入（仅 project_path 内文件，防越权）
+        # - image 附件：不注入文本（由 build() 写入 vision_context）
+        # - binary 附件：注入元数据说明，提示 Agent 用工具自行读取
+        if attachments:
+            attachment_section = _build_attachment_prompt(
+                attachments, getattr(effective_chat, "project_path", None)
+            )
+            if attachment_section:
+                parts.append(attachment_section)
+
+        if not parts:
+            return ""
+        return "<system-reminder>\n" + "\n\n".join(parts) + "\n</system-reminder>"
 
     async def build(self, input: ContextBuildInput) -> BuiltContext:
         db = SessionLocal()
@@ -1023,6 +1124,23 @@ class ChatContextBuilder:
                     first_message=(interaction_count == 1),
                 )
 
+            # ──── T1 缓存前缀契约：稳定装配 + 逐轮动态内容迁入 turn_reminder ────
+            stability_on = is_prompt_stability_enabled()
+            tool_guidance_text = get_tool_guidance(
+                intent=(decision or {}).get("intent", "general_chat"),
+                project_bound=bool(effective_chat.project_path),
+                message=input.content,
+            )
+            turn_reminder: Optional[str] = None
+            if stability_on:
+                turn_reminder = self._build_turn_reminder(
+                    effective_chat=effective_chat,
+                    tool_context=tool_context,
+                    task_context=task_context,
+                    attachments=input.attachments,
+                    tool_guidance=tool_guidance_text,
+                )
+
             full_prompt = self._assemble_prompt(
                 system_prompt=system_prompt,
                 capabilities=capabilities,
@@ -1032,14 +1150,11 @@ class ChatContextBuilder:
                 tool_context=tool_context,
                 task_context=task_context,
                 attachments=input.attachments,
-                tool_guidance=get_tool_guidance(
-                    intent=(decision or {}).get("intent", "general_chat"),
-                    project_bound=bool(effective_chat.project_path),
-                    message=input.content,
-                ),
+                tool_guidance=tool_guidance_text,
                 expression_profile=agent.expression_profile if agent else None,
                 persona_context=persona_ctx,
                 agent=agent,
+                prompt_stability=stability_on,
             )
 
             # ──── Phase 2: image 附件 → vision_context ────
@@ -1135,6 +1250,9 @@ class ChatContextBuilder:
                     "use_tools": input.use_tools,
                     "intent": (decision or {}).get("intent"),
                     **planner_meta,  # G2-C: Planner 可观测性
+                    # T1: 逐轮动态内容（⑦⑧⑨⑩）载体 — AgentRuntime 发送前包裹到
+                    # 本轮最后一条 user 消息副本末尾（仅 LLM payload，不动 DB）
+                    "turn_reminder": turn_reminder,
                 },
             )
 
@@ -1156,6 +1274,7 @@ class ChatContextBuilder:
                 memory_text=memory_text,
                 tool_context=tool_context,
                 persona_context=persona_ctx,
+                turn_reminder=turn_reminder,
             )
         finally:
             db.close()

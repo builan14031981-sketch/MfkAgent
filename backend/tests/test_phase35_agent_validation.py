@@ -171,22 +171,32 @@ class TestTask2ToolGuidanceInjection:
         from types import SimpleNamespace
 
         builder = ChatContextBuilder()
+        chat_view = SimpleNamespace(
+            mode="build",
+            project_path="e:/test_project",
+            agent_id="coder",
+            project_id=1,
+        )
         full_prompt = builder._assemble_prompt(
             system_prompt="你是编程助手。",
             capabilities=["software_development"],
             personality_prompt="",
-            effective_chat=SimpleNamespace(
-                mode="build",
-                project_path="e:/test_project",
-                agent_id="coder",
-                project_id=1,
-            ),
+            effective_chat=chat_view,
             workspace_context="",
             tool_context=None,
             tool_guidance="## 工具使用指导\n- 使用 read_file 先读取文件",
         )
-        assert "工具使用指导" in full_prompt
+        # T1 缓存前缀契约：tool_guidance（⑨ 层）迁入 turn_reminder，不再拼入 system
+        assert "工具使用指导" not in full_prompt
         assert "Execution Policy" in full_prompt
+        reminder = builder._build_turn_reminder(
+            effective_chat=chat_view,
+            tool_context=None,
+            task_context=None,
+            attachments=None,
+            tool_guidance="## 工具使用指导\n- 使用 read_file 先读取文件",
+        )
+        assert "工具使用指导" in reminder
 
     def test_guidance_templates_exist(self):
         """所有 Tool Guidance 模板存在"""
