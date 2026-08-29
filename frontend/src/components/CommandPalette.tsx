@@ -193,6 +193,7 @@ export function CommandPalette({ isOpen, onClose, onSelectChat, onSelectProject,
               {results.commands.map((cmd) => (
                 <button
                   key={cmd.id}
+                  className="mf-pressable"
                   onClick={cmd.action}
                   style={{
                     display: "flex",
@@ -246,6 +247,7 @@ export function CommandPalette({ isOpen, onClose, onSelectChat, onSelectProject,
                   {results.commands.map((cmd) => (
                     <button
                       key={cmd.id}
+                      className="mf-pressable"
                       onClick={cmd.action}
                       style={{
                         display: "flex",
@@ -289,6 +291,7 @@ export function CommandPalette({ isOpen, onClose, onSelectChat, onSelectProject,
                   {results.chats.map((chat) => (
                     <button
                       key={chat.id}
+                      className="mf-pressable"
                       onClick={() => handleSelect("chat", chat.id)}
                       style={{
                         display: "flex",
@@ -339,6 +342,7 @@ export function CommandPalette({ isOpen, onClose, onSelectChat, onSelectProject,
                   {results.projects.map((project) => (
                     <button
                       key={project.id}
+                      className="mf-pressable"
                       onClick={() => handleSelect("project", project.id)}
                       style={{
                         display: "flex",

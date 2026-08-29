@@ -304,6 +304,47 @@ optgroup {
   box-shadow: 0 0 0 3px var(--mf-focus-ring, color-mix(in srgb, var(--color-primary) 14%, transparent));
 }
 
+/* 可按压行/项：自带 hover 逻辑的元素（如命令面板选项、JS hover 行）挂它，
+   只负责抑制全局变暗 + 按压缩放，不接管背景 */
+.mf-pressable {
+  transition: transform 0.12s ease;
+}
+
+.mf-pressable:hover {
+  opacity: 1;
+}
+
+.mf-pressable:active {
+  opacity: 1;
+  transform: scale(0.98);
+}
+
+/* 分段选择器按钮（语言/台词/代理模式等）：容器底 bg-level-2，
+   选中项 bg-level-1，hover 未选中项浮淡底 */
+.mf-seg-btn {
+  background-color: transparent;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.mf-seg-btn:hover {
+  opacity: 1;
+  background-color: color-mix(in srgb, var(--text-level-1) 5%, transparent);
+}
+
+.mf-seg-btn:active {
+  opacity: 1;
+}
+
+.mf-seg-btn.is-active {
+  background-color: var(--bg-level-1);
+}
+
+.mf-seg-btn.is-active:hover {
+  background-color: var(--bg-level-1);
+}
+
 /* 小芯片钮（刷新/翻页等实底小按钮）：hover 用亮度+投影（inline 底色会压过
    CSS 背景色，故不走 background 浮现路线）；禁用态不响应 */
 .mf-btn-chip {
