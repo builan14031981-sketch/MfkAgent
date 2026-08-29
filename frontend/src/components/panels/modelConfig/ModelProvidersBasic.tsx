@@ -73,10 +73,37 @@ export function ModelProvidersBasic() {
       return next;
     });
   };
+  // 付费组独立折叠：免费额度组随主开关展开，付费组默认折叠（多数用户从免费额度起步）
+  const [paidExpanded, setPaidExpanded] = useState(() => {
+    try { return localStorage.getItem("mfk_providers_paid_expanded") === "true"; }
+    catch { return false; }
+  });
+  const togglePaidExpanded = () => {
+    setPaidExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_providers_paid_expanded", String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
+  // 免费额度组独立折叠（与付费组对称）：默认展开
+  const [freeExpanded, setFreeExpanded] = useState(() => {
+    try { return localStorage.getItem("mfk_providers_free_expanded") !== "false"; }
+    catch { return true; }
+  });
+  const toggleFreeExpanded = () => {
+    setFreeExpanded((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_providers_free_expanded", String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
 
   // 过滤：official 在基础区展示，custom（如本地网关）移到高级区自定义模型
   const officialConfigs = configs.filter((c) => c.category !== "custom");
   const customConfigs = configs.filter((c) => c.category === "custom");
+  // 2026-08-28：官方供应商按免费额度分组（free 标记来自后端 model_providers.py）
+  const freeConfigs = officialConfigs.filter((c) => c.free);
+  const paidConfigs = officialConfigs.filter((c) => !c.free);
 
   const configuredCount = officialConfigs.filter((c) => c.has_key).length;
 
@@ -165,6 +192,39 @@ export function ModelProvidersBasic() {
     }
   };
 
+  // Provider 卡片渲染（免费组 / 付费组共用，避免两处重复长 props）
+  const renderCard = (p: (typeof officialConfigs)[number]) => (
+    <ProviderCard
+      key={p.id}
+      provider={p}
+      editing={editingProvider === p.id}
+      keyInput={keyInput}
+      baseInput={baseInput}
+      savingProvider={savingProvider}
+      savedProvider={savedProvider}
+      onOpenEdit={() => openProvider(p.id, p.api_base, p.api_base_override)}
+      onCloseEdit={() => setEditingProvider(null)}
+      onKeyChange={setKeyInput}
+      onBaseChange={setBaseInput}
+      onSaveProvider={() => handleSaveProvider(p.id)}
+      onClearKey={() => handleClearKey(p.id)}
+      enabledModels={getEnabled(p.id)}
+      onAddModel={(mid) => addModel(p.id, mid)}
+      onRemoveModel={(mid) => removeModel(p.id, mid)}
+      onFetchRemote={() => handleFetchRemote(p.id)}
+      remotePickerOpen={remotePickerOpen === p.id}
+      remoteModels={remoteModels}
+      remoteLoading={remoteLoading}
+      remoteError={remoteError}
+      onCloseRemotePicker={() => setRemotePickerOpen(null)}
+      onTestConnection={testConnection}
+      t={t}
+      hideBaseUrl={true}
+      providerDisabled={isProviderDisabled(p.id)}
+      onToggleDisabled={() => setProviderDisabled(p.id, !isProviderDisabled(p.id))}
+    />
+  );
+
   return (
     <div>
       <button
@@ -203,39 +263,74 @@ export function ModelProvidersBasic() {
           <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "0 0 12px 0" }}>
             {t("settings.model.providers.desc")}
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {officialConfigs.map((p) => (
-          <ProviderCard
-            key={p.id}
-            provider={p}
-            editing={editingProvider === p.id}
-            keyInput={keyInput}
-            baseInput={baseInput}
-            savingProvider={savingProvider}
-            savedProvider={savedProvider}
-            onOpenEdit={() => openProvider(p.id, p.api_base, p.api_base_override)}
-            onCloseEdit={() => setEditingProvider(null)}
-            onKeyChange={setKeyInput}
-            onBaseChange={setBaseInput}
-            onSaveProvider={() => handleSaveProvider(p.id)}
-            onClearKey={() => handleClearKey(p.id)}
-            enabledModels={getEnabled(p.id)}
-            onAddModel={(mid) => addModel(p.id, mid)}
-            onRemoveModel={(mid) => removeModel(p.id, mid)}
-            onFetchRemote={() => handleFetchRemote(p.id)}
-            remotePickerOpen={remotePickerOpen === p.id}
-            remoteModels={remoteModels}
-            remoteLoading={remoteLoading}
-            remoteError={remoteError}
-            onCloseRemotePicker={() => setRemotePickerOpen(null)}
-            onTestConnection={testConnection}
-            t={t}
-            hideBaseUrl={true}
-            providerDisabled={isProviderDisabled(p.id)}
-            onToggleDisabled={() => setProviderDisabled(p.id, !isProviderDisabled(p.id))}
-          />
-        ))}
-        </div>
+
+          {/* 免费额度组（可折叠，默认展开） */}
+          <button
+            onClick={toggleFreeExpanded}
+            style={{
+              width: "100%",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+              padding: "6px 12px", margin: "10px 0 8px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border-primary)",
+              background: "var(--bg-level-2)",
+              cursor: "pointer",
+              fontSize: "12px",
+              color: "var(--text-level-2)",
+              transition: "border-color var(--transition-fast)",
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-primary)", flexShrink: 0 }} />
+              <span style={{ fontWeight: 500 }}>{t("settings.model.providers.freeGroup")}</span>
+              <span style={{ fontSize: 11, color: "var(--text-level-4)", flexShrink: 0 }}>{freeConfigs.length}</span>
+            </span>
+            <ChevronDown style={{
+              width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
+              transform: freeExpanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform var(--transition-fast)",
+            }} />
+          </button>
+
+          {freeExpanded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {freeConfigs.map(renderCard)}
+            </div>
+          )}
+
+          {/* 按量付费组（可折叠，默认折叠，多数用户从免费额度起步） */}
+          <button
+            onClick={togglePaidExpanded}
+            style={{
+              width: "100%",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+              padding: "6px 12px", marginTop: "12px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--border-primary)",
+              background: "var(--bg-level-2)",
+              cursor: "pointer",
+              fontSize: "12px",
+              color: "var(--text-level-2)",
+              transition: "border-color var(--transition-fast)",
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--text-level-4)", flexShrink: 0 }} />
+              <span style={{ fontWeight: 500 }}>{t("settings.model.providers.paidGroup")}</span>
+              <span style={{ fontSize: 11, color: "var(--text-level-4)", flexShrink: 0 }}>{paidConfigs.length}</span>
+            </span>
+            <ChevronDown style={{
+              width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
+              transform: paidExpanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform var(--transition-fast)",
+            }} />
+          </button>
+
+          {paidExpanded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "12px" }}>
+              {paidConfigs.map(renderCard)}
+            </div>
+          )}
         </>
       )}
     </div>

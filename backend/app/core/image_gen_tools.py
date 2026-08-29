@@ -42,6 +42,27 @@ HTTP_TIMEOUT = 30.0
 _IMAGE_OUTPUT_DIR = "output/generated_images"
 
 
+def _resolve_image_output_dir() -> str:
+    """读取 settings.image_output_dir（用户可配置）；空/未配置回退默认 output/generated_images。
+
+    延迟导入避免顶层循环依赖；读取失败仅告警并回退默认，不影响生成链路。
+    """
+    try:
+        from app.core.database import SessionLocal
+        from app.models.agent import Setting
+
+        db = SessionLocal()
+        try:
+            row = db.query(Setting).filter(Setting.key == "image_output_dir").first()
+            if row and row.value and row.value.strip():
+                return row.value.strip()
+        finally:
+            db.close()
+    except Exception:  # noqa: BLE001
+        logger.warning("[image_gen] 读取 image_output_dir 失败，回退默认", exc_info=True)
+    return _IMAGE_OUTPUT_DIR
+
+
 def _resolve_qwen_key() -> str:
     """读取文生图使用的 API Key：settings 表 api_key_qwen > .env 的 QWEN_API_KEY。"""
     provider = PROVIDER_MAP.get("qwen")
@@ -365,7 +386,7 @@ def generate_image(
         from pathlib import Path
 
         try:
-            out_dir = resolve_sandbox_path(_IMAGE_OUTPUT_DIR, project_path)
+            out_dir = resolve_sandbox_path(_resolve_image_output_dir(), project_path)
         except Exception as e:  # noqa: BLE001
             return f"错误: 图片输出目录路径无效: {e}"
         try:

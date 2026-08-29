@@ -90,4 +90,10 @@ export const SETTINGS_SEARCH_INDEX: SettingSearchEntry[] = [
       { key: "version", label: "版本", aliases: ["version", "关于"] },
     ],
   },
+  {
+    section: "shortcuts",
+    fields: [
+      { key: "shortcuts", label: "快捷键", aliases: ["shortcut", "快捷键", "keyboard", "键位", "hotkey"] },
+    ],
+  },
 ];

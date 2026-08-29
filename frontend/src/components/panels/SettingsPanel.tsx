@@ -11,7 +11,7 @@
  */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Archive as ArchiveIcon, Search, X } from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Database, Keyboard, Search, X } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
@@ -25,6 +25,7 @@ import { SubAgentPanel } from "./SubAgentPanel";
 import { ArchivePanel } from "./ArchivePanel";
 import { BasicSettingsView, type SettingSectionId } from "./BasicSettingsView";
 import { AdvancedSettingsView } from "./AdvancedSettingsView";
+import { SwitchButton } from "@/components/SwitchButton";
 import { getSubAgents, type SubAgent } from "@/lib/api";
 
 interface SettingsPanelProps {
@@ -57,6 +58,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       return "general";
     }
   });
+  // 开发者模式：默认关（小白视图只显示基础区）；开 = 全量展示深水区参数（Base URL/自定义模型/子代理等）。
+  // 借鉴 Codex Developer mode / Windsurf Advanced Settings 的行业做法，localStorage 持久化。
+  const [developerMode, setDeveloperMode] = useState(() => {
+    try { return localStorage.getItem("mfk_settings_developer_mode") === "1"; }
+    catch { return false; }
+  });
+  const handleDeveloperMode = (v: boolean) => {
+    setDeveloperMode(v);
+    try { localStorage.setItem("mfk_settings_developer_mode", v ? "1" : "0"); } catch { /* noop */ }
+  };
   const [currentView, setCurrentView] = useState<ViewState>("main_settings");
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   // 子代理三级导航：子代理列表 / 编辑 / 新建（"__create__" = 新建）
@@ -113,8 +124,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "ai", label: t("settings.ai.title"), icon: Brain },
     { id: "security", label: t("settings.security.title"), icon: ShieldAlert },
     { id: "extensions", label: t("settings.extensions.title"), icon: Blocks },
-    { id: "archive", label: t("settings.archive.title"), icon: ArchiveIcon },
+    { id: "archive", label: t("settings.archive.title"), icon: Database },
     { id: "about", label: t("settings.about.title"), icon: Info },
+    { id: "shortcuts", label: t("settings.shortcuts.title"), icon: Keyboard },
   ];
 
   // ── 设置搜索：过滤左侧导航 + 命中字段计数（导航级，不侵入字段渲染）──
@@ -207,10 +219,20 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     t,
   };
 
-  const hasAdvanced = SECTIONS_WITH_ADVANCED.includes(activeSection);
+  // 含深水区参数的 section（model/ai）：基础区下方追加高级区；仅在开发者模式下渲染
+  const hasAdvanced = SECTIONS_WITH_ADVANCED.includes(activeSection) && developerMode;
 
   return (
-    <Panel isOpen={isOpen} onClose={handleClose} title={viewTitle} width="700px" height="min(680px, 82vh)" variant="center">
+    <Panel isOpen={isOpen} onClose={handleClose} title={viewTitle} width="700px" height="min(680px, 82vh)" variant="center"
+      headerExtra={
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: developerMode ? "var(--color-primary)" : "var(--text-level-3)", fontWeight: developerMode ? 500 : 400, userSelect: "none" }}>
+            {t("settings.developerMode")}
+          </span>
+          <SwitchButton checked={developerMode} onChange={handleDeveloperMode} />
+        </div>
+      }
+    >
       <div style={{ position: "relative", height: "100%", overflow: "hidden" }}>
         <SettingsToast />
         <AnimatePresence mode="popLayout" initial={false} custom={direction}>
@@ -228,7 +250,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               <div style={{ display: "flex", gap: "24px", minHeight: "400px", height: "100%", overflow: "hidden" }}>
                 {/* 左侧导航 - 固定不滚动 */}
                 <nav style={{
-                  width: "140px", flexShrink: 0,
+                  width: "168px", flexShrink: 0,
                   borderRight: "1px solid var(--border-primary)",
                   paddingRight: "16px", marginRight: "16px",
                   height: "100%", overflow: "hidden",

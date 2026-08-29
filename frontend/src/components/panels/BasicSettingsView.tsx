@@ -12,7 +12,7 @@
  */
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { Plus, Trash2, Globe, ChevronDown, ChevronRight, Check, Keyboard } from "lucide-react";
 import { ExtensionPanel } from "./ExtensionPanel";
 import { FeishuSettingsPanel } from "./FeishuSettingsPanel";
 import { SecurityView } from "./security/SecurityView";
@@ -26,7 +26,7 @@ import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
 
 /** 设置导航项 id 联合类型（与 SettingsPanel 共享，保证 activeSection 类型安全） */
-export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about" | "archive";
+export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about" | "archive" | "shortcuts";
 
 /** 统管状态注入 props（由 SettingsPanel 下发） */
 export interface SettingsViewProps {
@@ -170,265 +170,6 @@ function ThemePreviewCard({
         )}
       </div>
     </button>
-  );
-}
-
-/**
- * 实验主题定义（预览色为主题本体字面值，仅供设置页展示；
- * 运行时配色以 src/styles/tokens.css 为唯一权威源）。
- */
-const EXPERIMENTAL_THEMES: Array<{
-  id: string;
-  nameKey: string;
-  descKey: string;
-  preview: {
-    app: string; surface: string; card: string; elevated: string;
-    text: string; textMuted: string; border: string; accent: string; onAccent: string;
-    bubble: string; bubbleBorder: string;
-  };
-}> = [
-  {
-    id: "titanium",
-    nameKey: "settings.general.experimentalTheme.titanium",
-    descKey: "settings.general.experimentalTheme.titaniumDesc",
-    preview: { app: "#e1e3e6", surface: "#d6d9dd", card: "#edeff1", elevated: "#f5f6f8", text: "#1f2328", textMuted: "#8b929c", border: "#c9cdd3", accent: "#4d6a8a", onAccent: "#ffffff", bubble: "#dde2e7", bubbleBorder: "rgba(77,106,138,0.22)" },
-  },
-  {
-    id: "paper",
-    nameKey: "settings.general.experimentalTheme.paper",
-    descKey: "settings.general.experimentalTheme.paperDesc",
-    preview: { app: "#f4f1ea", surface: "#ece8de", card: "#faf7f0", elevated: "#f0ebdf", text: "#2a2721", textMuted: "#948d7e", border: "#e0dacc", accent: "#9c422a", onAccent: "#fdf8f4", bubble: "#f2e9e0", bubbleBorder: "rgba(156,66,42,0.22)" },
-  },
-  {
-    id: "midnight",
-    nameKey: "settings.general.experimentalTheme.midnight",
-    descKey: "settings.general.experimentalTheme.midnightDesc",
-    preview: { app: "#0b0e14", surface: "#10141d", card: "#161b26", elevated: "#1d2331", text: "#dde3ec", textMuted: "#5c6577", border: "#232a3a", accent: "#6d8fbf", onAccent: "#f0f4fa", bubble: "#222b3b", bubbleBorder: "rgba(109,143,191,0.25)" },
-  },
-  {
-    id: "mono",
-    nameKey: "settings.general.experimentalTheme.mono",
-    descKey: "settings.general.experimentalTheme.monoDesc",
-    preview: { app: "#111112", surface: "#171718", card: "#1d1d1f", elevated: "#252527", text: "#e5e5e6", textMuted: "#636366", border: "#2a2a2d", accent: "#e5e5e6", onAccent: "#111112", bubble: "#2d2d2f", bubbleBorder: "rgba(229,229,230,0.25)" },
-  },
-  {
-    id: "aurora",
-    nameKey: "settings.general.experimentalTheme.aurora",
-    descKey: "settings.general.experimentalTheme.auroraDesc",
-    preview: { app: "#0d1210", surface: "#121815", card: "#18201c", elevated: "#1f2923", text: "#dfe7e2", textMuted: "#5d6961", border: "#24302a", accent: "#5fa893", onAccent: "#0e1412", bubble: "#21302a", bubbleBorder: "rgba(95,168,147,0.25)" },
-  },
-  // 2026-08-13 主题整理：原官方 obsidian / studio 降级至实验区；
-  // Studio Accent 对比样张验收完毕，石墨（studio-graphite）转正，薰衣草/深蓝移除。
-  {
-    id: "obsidian",
-    nameKey: "settings.general.visualTheme.obsidian",
-    descKey: "settings.general.visualTheme.obsidianDesc",
-    preview: { app: "#0f1114", surface: "#15181d", card: "#1b1f26", elevated: "#222732", text: "#e8eaed", textMuted: "#6a7180", border: "#262b34", accent: "#5e6ad2", onAccent: "#f2f5f9", bubble: "#222732", bubbleBorder: "rgba(94,106,210,0.35)" },
-  },
-  {
-    id: "studio",
-    nameKey: "settings.general.visualTheme.studio",
-    descKey: "settings.general.visualTheme.studioDesc",
-    preview: { app: "#ffffff", surface: "#f6f6f8", card: "#f7f7f9", elevated: "#efeff2", text: "#1a1b1e", textMuted: "#8a8f98", border: "#e4e5e9", accent: "#0a6cd6", onAccent: "#ffffff", bubble: "#ededef", bubbleBorder: "rgba(10,108,214,0.18)" },
-  },
-  // 2026-08-13 第三方候选（对比预览，验收后筛选转正）：Clay / Indigo / Graphite Dark
-  {
-    id: "clay",
-    nameKey: "settings.general.experimentalTheme.clay",
-    descKey: "settings.general.experimentalTheme.clayDesc",
-    preview: { app: "#f5f4ed", surface: "#ece9df", card: "#faf9f5", elevated: "#e8e5da", text: "#1a191b", textMuted: "#87867f", border: "#ddd9cc", accent: "#c96442", onAccent: "#fdfcf9", bubble: "#e9e2d4", bubbleBorder: "rgba(201,100,66,0.22)" },
-  },
-  {
-    id: "indigo",
-    nameKey: "settings.general.experimentalTheme.indigo",
-    descKey: "settings.general.experimentalTheme.indigoDesc",
-    preview: { app: "#08090a", surface: "#101113", card: "#141516", elevated: "#1b1c1d", text: "#f7f8f8", textMuted: "#6d7076", border: "#26272b", accent: "#5e6ad2", onAccent: "#ffffff", bubble: "#22262b", bubbleBorder: "rgba(94,106,210,0.30)" },
-  },
-  {
-    id: "graphite-dark",
-    nameKey: "settings.general.experimentalTheme.graphiteDark",
-    descKey: "settings.general.experimentalTheme.graphiteDarkDesc",
-    preview: { app: "#0e0f10", surface: "#131416", card: "#18191b", elevated: "#1f2023", text: "#e7e7e8", textMuted: "#6a6c70", border: "#26272a", accent: "#3a3d43", onAccent: "#ffffff", bubble: "#222327", bubbleBorder: "rgba(255,255,255,0.12)" },
-  },
-];
-
-/**
- * 微型工作台预览：完整渲染 Sidebar / Chat / Input 三区域整体效果，
- * 供实验主题选择时展示（色值均为预览专用字面值）。
- */
-function MiniWorkspacePreview({ p }: { p: (typeof EXPERIMENTAL_THEMES)[number]["preview"] }) {
-  return (
-    <div style={{ display: "flex", height: 116, background: p.app, overflow: "hidden" }}>
-      {/* Sidebar 效果 */}
-      <div style={{ width: "32%", background: p.surface, borderRight: `1px solid ${p.border}`, padding: "7px 6px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-        <div style={{ height: 9, borderRadius: 3, background: p.card, marginBottom: 3 }} />
-        <div style={{ height: 7, borderRadius: 3, background: p.card }} />
-        {/* 激活会话行：左侧 accent 指示条 */}
-        <div style={{ height: 7, borderRadius: 3, background: p.elevated, position: "relative", overflow: "hidden" }}>
-          <span style={{ position: "absolute", left: 1, top: 1, bottom: 1, width: 2, borderRadius: 1, background: p.accent }} />
-        </div>
-        <div style={{ height: 7, borderRadius: 3, background: p.card }} />
-        <div style={{ flex: 1 }} />
-        <div style={{ height: 7, width: "60%", borderRadius: 3, background: p.card }} />
-      </div>
-      {/* Chat + Input 效果 */}
-      <div style={{ flex: 1, minWidth: 0, padding: "8px 9px 7px", display: "flex", flexDirection: "column", gap: 6 }}>
-        {/* 用户消息（右对齐 tint 气泡，与运行时 tokens.css 方案B 一致） */}
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <div style={{ width: "46%", height: 14, borderRadius: 5, background: p.bubble, border: `1px solid ${p.bubbleBorder}`, padding: "3px 5px" }}>
-            <div style={{ height: 3, width: "75%", borderRadius: 1.5, background: p.text, opacity: 0.75 }} />
-            <div style={{ height: 3, width: "45%", borderRadius: 1.5, background: p.text, opacity: 0.75, marginTop: 2 }} />
-          </div>
-        </div>
-        {/* AI 回复（无气泡平铺文字行） */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <div style={{ height: 3, width: "30%", borderRadius: 1.5, background: p.textMuted }} />
-          <div style={{ height: 3, width: "88%", borderRadius: 1.5, background: p.text, opacity: 0.75 }} />
-          <div style={{ height: 3, width: "72%", borderRadius: 1.5, background: p.text, opacity: 0.75 }} />
-          <div style={{ height: 16, width: "58%", borderRadius: 3, background: p.card, border: `1px solid ${p.border}`, marginTop: 2 }} />
-        </div>
-        <div style={{ flex: 1 }} />
-        {/* Input 输入区 */}
-        <div style={{ height: 22, borderRadius: 5, background: p.card, border: `1px solid ${p.border}`, display: "flex", alignItems: "center", padding: "0 5px", gap: 4 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", border: `1px solid ${p.textMuted}`, flexShrink: 0 }} />
-          <div style={{ flex: 1, height: 3, width: "40%", borderRadius: 1.5, background: p.textMuted, opacity: 0.7 }} />
-          <span style={{ width: 13, height: 13, borderRadius: 3, background: p.accent, flexShrink: 0 }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * 实验主题选择器（字体选择式交互）：
- * 收起态 = 类 select 字段（展示当前实验主题）；
- * 点击展开 = 完整工作台预览卡列表，点击即切换。
- */
-function ExperimentalThemePicker({
-  currentThemeId,
-  saving,
-  t,
-  onSelect,
-}: {
-  currentThemeId: string;
-  saving: boolean;
-  t: (key: string) => string;
-  onSelect: (id: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(() => {
-    try {
-      return localStorage.getItem("mfk_theme_picker_expanded") === "true";
-    } catch {
-      return false;
-    }
-  });
-  const toggleExpanded = () => {
-    setExpanded((prev) => {
-      const next = !prev;
-      try { localStorage.setItem("mfk_theme_picker_expanded", String(next)); } catch { /* noop */ }
-      return next;
-    });
-  };
-  const current = EXPERIMENTAL_THEMES.find((theme) => theme.id === currentThemeId);
-
-  return (
-    <div>
-      {/* 触发字段：仿字体选择的 select 外观，点击展开/收起 */}
-      <button
-        onClick={toggleExpanded}
-        disabled={saving}
-        style={{
-          width: "100%",
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-          padding: "8px 12px",
-          borderRadius: "var(--radius-sm)",
-          border: "1px solid var(--border-primary)",
-          background: "var(--bg-level-2)",
-          cursor: saving ? "not-allowed" : "pointer",
-          fontSize: "13px",
-          color: current ? "var(--text-level-2)" : "var(--text-level-4)",
-          opacity: saving ? 0.7 : 1,
-          transition: "border-color var(--transition-fast)",
-        }}
-      >
-        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          {current && (
-            <span style={{ width: 10, height: 10, borderRadius: "50%", background: current.preview.accent, flexShrink: 0, border: "1px solid var(--border-primary)" }} />
-          )}
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {current ? t(current.nameKey) : t("settings.general.experimentalTheme.placeholder")}
-          </span>
-        </span>
-        <ChevronDown style={{
-          width: 14, height: 14, flexShrink: 0, color: "var(--text-level-4)",
-          transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-          transition: "transform var(--transition-fast)",
-        }} />
-      </button>
-
-      {/* 展开区：完整预览卡（2 列），点击切换 */}
-      {expanded && (
-        <div style={{
-          display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
-          marginTop: 10, animation: "fadeIn 0.2s ease",
-        }}>
-          {EXPERIMENTAL_THEMES.map((theme) => {
-            const selected = theme.id === currentThemeId;
-            return (
-              <button
-                key={theme.id}
-                onClick={() => onSelect(theme.id)}
-                disabled={saving}
-                aria-pressed={selected}
-                style={{
-                  padding: 0,
-                  borderRadius: "var(--radius-sm)",
-                  border: selected ? "1.5px solid var(--color-primary)" : "1px solid var(--border-primary)",
-                  background: "var(--bg-level-2)",
-                  cursor: saving ? "not-allowed" : "pointer",
-                  opacity: saving ? 0.6 : 1,
-                  overflow: "hidden",
-                  textAlign: "left",
-                  transition: "border-color var(--transition-fast)",
-                }}
-              >
-                <MiniWorkspacePreview p={theme.preview} />
-                <div style={{ padding: "7px 10px", display: "flex", alignItems: "flex-start", gap: 6, borderTop: `1px solid var(--border-secondary)` }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-level-1)" }}>{t(theme.nameKey)}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-level-3)", marginTop: 2, lineHeight: 1.4 }}>{t(theme.descKey)}</div>
-                  </div>
-                  {selected && (
-                    <span style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-                      background: "var(--color-primary)", marginTop: 1,
-                    }}>
-                      <Check style={{ width: 10, height: 10, color: "var(--text-on-primary)" }} strokeWidth={2.5} />
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 实验主题激活时：提供返回官方主题的快捷入口 */}
-      {current && (
-        <button
-          onClick={() => onSelect("studio-graphite")}
-          disabled={saving}
-          style={{
-            marginTop: 8, padding: "4px 0", border: "none", background: "transparent",
-            cursor: "pointer", fontSize: 12, color: "var(--text-level-3)",
-            textDecoration: "underline", textUnderlineOffset: 3,
-          }}
-        >
-          {t("settings.general.experimentalTheme.backToOfficial")}
-        </button>
-      )}
-    </div>
   );
 }
 
@@ -716,6 +457,20 @@ function GreetingCustomEditor({
   );
 }
 
+// ── 键盘快捷键一览（仅展示，不可编辑）──
+// 静态快照：与 AppLayout / CommandPalette / ChatInput / Dock 的 keydown handler 保持一致。
+const KEYBOARD_SHORTCUTS: { action: string; keys: string[] }[] = [
+  { action: "打开命令面板", keys: ["Cmd/Ctrl", "K"] },
+  { action: "切换终端面板", keys: ["Cmd/Ctrl", "`"] },
+  { action: "新建对话", keys: ["Cmd/Ctrl", "T"] },
+  { action: "切换标签", keys: ["Cmd/Ctrl", "Tab"] },
+  { action: "跳到第 N 个标签", keys: ["Alt", "1-9"] },
+  { action: "缩放内容（75% - 150%）", keys: ["Ctrl", "滚轮"] },
+  { action: "发送消息", keys: ["Enter"] },
+  { action: "消息内换行", keys: ["Shift", "Enter"] },
+  { action: "关闭弹层/面板", keys: ["Esc"] },
+];
+
 // ── general 基础区块：主题 / 语言 / 字体 / 强调色 / 首页主题 / 首页台词（全量上移）──
 function GeneralBasic(props: SettingsViewProps) {
   const { settings, saving, onUpdate, t } = props;
@@ -745,23 +500,6 @@ function GeneralBasic(props: SettingsViewProps) {
         </div>
       </div>
 
-      {/* 实验主题（探索阶段，完整工作台预览，点击展开切换） */}
-      <div style={{ marginBottom: "18px" }}>
-        <div style={{ marginBottom: "10px" }}>
-          <h3 style={{ fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0 }}>
-            {t("settings.general.experimentalTheme.title")}
-          </h3>
-          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
-            {t("settings.general.experimentalTheme.desc")}
-          </p>
-        </div>
-        <ExperimentalThemePicker
-          currentThemeId={settings?.visual_theme || "studio-graphite"}
-          saving={saving === "visual_theme"}
-          t={t}
-          onSelect={(id) => onUpdate("visual_theme", id)}
-        />
-      </div>
 
       {/* 网络代理（可配置化：auto/manual/off + 测试） */}
       <ProxySettingsSection
@@ -1367,6 +1105,37 @@ function AiBasic(props: AdvancedSettingsViewProps) {
         </div>
       </div>
 
+      {/* 人格快捷预设：理性 / 平衡 / 感性 一键设定（映射 0 / 50 / 100） */}
+      <div style={{ display: "flex", gap: 6, marginBottom: "14px" }}>
+        {[
+          { label: "理性", value: "0" },
+          { label: "平衡", value: "50" },
+          { label: "感性", value: "100" },
+        ].map((p) => {
+          const active = String(settings?.default_personality ?? 50) === p.value;
+          return (
+            <button
+              key={p.value}
+              onClick={() => onUpdate("default_personality", p.value)}
+              disabled={saving === "default_personality"}
+              style={{
+                padding: "4px 14px",
+                borderRadius: "var(--radius-full)",
+                border: "1px solid",
+                borderColor: active ? "var(--color-primary)" : "var(--border-primary)",
+                background: active ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
+                color: active ? "var(--color-primary)" : "var(--text-level-3)",
+                fontSize: "12px",
+                fontWeight: active ? 500 : 400,
+                cursor: "pointer",
+                opacity: saving === "default_personality" ? 0.6 : 1,
+                transition: "border-color var(--transition-fast), background var(--transition-fast)",
+              }}
+            >{p.label}</button>
+          );
+        })}
+      </div>
+
       {/* 记忆治理三开关：读闸 / 写闸 / 保存提示（memory_* 键与后端 DEFAULT_SETTINGS 对齐） */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
         <div>
@@ -1420,6 +1189,60 @@ function AiBasic(props: AdvancedSettingsViewProps) {
 }
 
 // ── security 区块：移入 security/SecurityView.tsx（紧凑安全中心）
+
+// ── shortcuts 区块：键盘快捷键一览（独立 Tab，Codex 风格顶级分区；仅展示，不可编辑） ──
+function ShortcutsSection() {
+  return (
+    <div>
+      <div style={{ marginBottom: "12px" }}>
+        <h3 style={{ fontSize: 14, fontWeight: 500, color: "var(--text-level-1)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <Keyboard style={{ width: 15, height: 15 }} />
+          键盘快捷键
+        </h3>
+        <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
+          常用操作一览
+        </p>
+      </div>
+      <div style={{
+        border: "1px solid var(--border-primary)",
+        borderRadius: "var(--radius-sm)",
+        background: "var(--bg-level-2)",
+        overflow: "hidden",
+      }}>
+        {KEYBOARD_SHORTCUTS.map((s, i) => (
+          <div key={s.action} style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "9px 12px",
+            borderBottom: i === KEYBOARD_SHORTCUTS.length - 1 ? "none" : "1px solid var(--border-primary)",
+          }}>
+            <span style={{ fontSize: 12, color: "var(--text-level-2)" }}>{s.action}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+              {s.keys.map((k, ki) => (
+                <span key={ki} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  {ki > 0 && <span style={{ fontSize: 11, color: "var(--text-level-4)" }}>+</span>}
+                  <kbd style={{
+                    fontFamily: "var(--font-geist-mono), var(--font-family)",
+                    fontSize: 11,
+                    padding: "2px 7px",
+                    borderRadius: 4,
+                    border: "1px solid var(--border-primary)",
+                    background: "var(--bg-level-1)",
+                    color: "var(--text-level-2)",
+                    lineHeight: 1.4,
+                    whiteSpace: "nowrap",
+                  }}>{k}</kbd>
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── about 区块 ──
 function AboutSection(props: SettingsViewProps) {
@@ -1475,6 +1298,8 @@ export function BasicSettingsView(
       );
     case "about":
       return <AboutSection {...props} />;
+    case "shortcuts":
+      return <ShortcutsSection />;
     default:
       return null;
   }

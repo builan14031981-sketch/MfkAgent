@@ -10,7 +10,7 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import {
-  Shield, Check, Download, RefreshCw, Clock,
+  Shield, ShieldCheck, Zap, Check, Download, RefreshCw, Clock,
   HardDrive, Lock, Activity, Search, Terminal,
   AlertTriangle, XCircle, ChevronDown, ListChecks, FolderX,
 } from "lucide-react";
@@ -39,6 +39,18 @@ const GUARD_TABS: { id: GuardTab; labelKey: string }[] = [
   { id: "approvals", labelKey: "settings.security.approvals" },
   { id: "command-risk", labelKey: "settings.security.commandRisk" },
   { id: "guardrails", labelKey: "settings.security.guardrails" },
+];
+
+/** 权限模式全局预设（写 settings.agent_permission_mode；会话级可被聊天输入框权限胶囊覆盖） */
+const PERMISSION_PRESETS: {
+  id: "safe" | "standard" | "autonomous";
+  label: string;
+  desc: string;
+  icon: typeof ShieldCheck;
+}[] = [
+  { id: "safe", label: "谨慎", desc: "关键操作都先问你", icon: ShieldCheck },
+  { id: "standard", label: "标准", desc: "只读自动 · 写操作按规则审批", icon: Shield },
+  { id: "autonomous", label: "自主", desc: "低风险操作自动执行", icon: Zap },
 ];
 
 const ACTION_META: Record<PolicyAction, { text: string; color: string; bg: string }> = {
@@ -903,7 +915,8 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
 
 // ───────────────────── 主入口 ─────────────────────
 export function SecurityView(props: SettingsViewProps) {
-  const { t } = props;
+  const { settings, saving, onUpdate, t } = props;
+  const currentPermission = (settings?.agent_permission_mode as "safe" | "standard" | "autonomous") || "standard";
   // 折叠态持久化：默认展开，用户收起后写入 localStorage（"0" = 收起）
   const [open, setOpen] = useState(() => {
     try { return localStorage.getItem("mfk_security_troubleshoot_open") !== "0"; }
@@ -926,6 +939,51 @@ export function SecurityView(props: SettingsViewProps) {
         <p style={{ fontSize: 12, color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
           {t("settings.security.desc")}
         </p>
+      </div>
+
+      {/* 默认权限模式：全局预设卡（一键切换，会话级仍可在聊天输入框权限胶囊单独覆盖） */}
+      <div style={{ marginBottom: "12px" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 500, color: "var(--text-level-1)", margin: 0 }}>
+            默认权限模式
+          </h4>
+          <span style={{ fontSize: 11, color: "var(--text-level-4)" }}>
+            每个对话也可在输入框权限胶囊单独切换
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {PERMISSION_PRESETS.map((p) => {
+            const active = currentPermission === p.id;
+            const Icon = p.icon;
+            return (
+              <button
+                key={p.id}
+                onClick={() => onUpdate("agent_permission_mode", p.id)}
+                disabled={saving === "agent_permission_mode"}
+                aria-pressed={active}
+                style={{
+                  flex: 1,
+                  display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
+                  padding: "10px 12px",
+                  borderRadius: "var(--radius-md)",
+                  border: active ? "1.5px solid var(--color-primary)" : "1px solid var(--border-primary)",
+                  background: active ? "var(--color-primary-lighter)" : "var(--bg-level-2)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  opacity: saving === "agent_permission_mode" ? 0.6 : 1,
+                  transition: "border-color var(--transition-fast), background var(--transition-fast)",
+                }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500,
+                  color: active ? "var(--color-primary)" : "var(--text-level-1)" }}>
+                  <Icon style={{ width: 14, height: 14, flexShrink: 0 }} />
+                  {p.label}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-level-3)", lineHeight: 1.4 }}>{p.desc}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 审批模式为会话级（聊天界面权限胶囊），此处不再提供全局开关 */}

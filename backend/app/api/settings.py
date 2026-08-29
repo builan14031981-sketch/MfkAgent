@@ -27,6 +27,8 @@ class SettingsBulkUpdate(BaseModel):
 
 DEFAULT_SETTINGS = {
     "theme": "system",
+    # 视觉主题（前端主题选择器读写此键；"theme" 为历史残留键，保留兼容）
+    "visual_theme": "studio-graphite",
     "language": "zh-CN",
     "default_model": "qwen-flash",
     "default_agent": "general",
@@ -51,6 +53,10 @@ DEFAULT_SETTINGS = {
     "custom_greetings": "[]",
     # 右侧浏览器标签默认主页（留空 = 不启用）
     "browser_homepage": "",
+    # 文生图模型（后端 _resolve_image_gen_model 读取；空值前端 fallback 到 qwen-image-3.0-pro）
+    "image_gen_model": "qwen-image-3.0-pro",
+    # 首页欢迎语收藏（前端自用的 JSON 数组，settings 表作通用 KV 存储）
+    "greeting_favorites": "[]",
     # Phase 3: 多模态 BYOK 备用识图配置
     "vision_provider": "",
     "vision_api_key": "",
@@ -83,6 +89,8 @@ DEFAULT_SETTINGS = {
     "agent_permission_mode": "standard",
     # 归档：磁盘导出文件夹（空 = 默认 backend/Archive/）
     "archive_dir": "",
+    # 文生图图片保存目录（相对项目根；空 = 默认 output/generated_images）
+    "image_output_dir": "",
     # 网络代理（2026-08-14 代理可配置化）：
     # - proxy_mode: auto（环境变量>Windows系统代理>直连）/ manual（用 proxy_url）/ off（强制直连）
     # - proxy_url: 手动代理地址（如 http://127.0.0.1:7890）

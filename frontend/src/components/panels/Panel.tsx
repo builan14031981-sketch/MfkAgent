@@ -10,9 +10,11 @@ interface PanelProps {
   width?: string;
   height?: string;
   variant?: "center" | "bottom-left";
+  /** 头部标题右侧的自定义区域（如设置面板右上角的开发者模式开关） */
+  headerExtra?: React.ReactNode;
 }
 
-export function Panel({ isOpen, onClose, title, children, width = "700px", height, variant = "center" }: PanelProps) {
+export function Panel({ isOpen, onClose, title, children, width = "700px", height, variant = "center", headerExtra }: PanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,6 +106,7 @@ export function Panel({ isOpen, onClose, title, children, width = "700px", heigh
             color: "var(--text-level-1)",
             margin: 0,
           }}>{title}</h2>
+          {headerExtra}
         </div>
         {/* 面板内容 */}
         <div style={{
