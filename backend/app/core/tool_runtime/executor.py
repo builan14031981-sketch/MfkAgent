@@ -14,8 +14,10 @@
 
 import asyncio
 import json
+import logging
 import os
 import time
+import uuid
 from typing import Callable, Dict, Any, Optional
 
 from app.core.tools import execute_file_tool
@@ -26,6 +28,7 @@ from app.core.ui_probe_tools import UI_PROBE_TOOLS, execute_ui_probe_tool
 from app.core.image_gen_tools import IMAGE_GEN_TOOLS, execute_image_gen_tool
 from app.core.spec_check_tools import SPEC_CHECK_TOOLS, execute_spec_check_tool
 from app.services.tools import tool_registry
+from app.core.tool_runtime import approval_memory
 from app.core.tool_runtime.events import make_tool_start, make_tool_result, make_tool_approval, make_choice_request
 from app.core.tool_runtime.risk_engine import (
     command_risk_engine, evaluate_tool, Verdict,
@@ -35,6 +38,8 @@ from app.core.tool_runtime.approval import approval_registry
 from app.core.tool_runtime.choice import choice_registry, CUSTOM_TEXT_MAX
 from app.core.tool_runtime.approval_policy import get_approval_policy, ApprovalPolicy, ApprovalMode
 from app.core.tool_runtime.notification import event_bus
+
+logger = logging.getLogger(__name__)
 
 # Phase H: 工具结果截断（head + tail 拼接），防止单条工具结果撑爆上下文
 TOOL_RESULT_MAX_CHARS = 8000
@@ -148,6 +153,9 @@ async def execute_tool(
     _start_time = time.monotonic()
 
     result_text = ""
+    # T5 审批记忆：memory_exemption=历史豁免证据；memory_auto=本次 EXECUTE 是否由豁免触发
+    memory_exemption = None
+    memory_auto = False
 
     # 兜底异常保护（Phase C-1）：工具执行异常绝不能打断整个 Agent loop，
     # 统一转换为 tool_result(success=false, error) 回喂模型继续下一轮。
@@ -168,7 +176,13 @@ async def execute_tool(
 
         # 2. Phase 3 T3/T8: 统一决策链 — ApprovalPolicy 将 RiskDecision 转为 ExecutionDecision
         policy = _resolve_approval_policy(ctx)
-        exec_decision = policy.decide(decision)
+        # T5 审批记忆：仅 REQUIRE_APPROVAL 判定才查询历史豁免（开关关闭/异常/
+        # run_outside_command 硬边界时恒返 None，行为与现状完全一致）
+        if decision.verdict == Verdict.REQUIRE_APPROVAL:
+            memory_exemption = approval_memory.check(
+                func_name, _describe_tool_command(func_name, func_args)
+            )
+        exec_decision = policy.decide(decision, memory_exemption=memory_exemption)
 
         # 3. AgentRuntime 只消费 ExecutionDecision
         if exec_decision.action == ExecutionAction.BLOCK:
@@ -187,6 +201,32 @@ async def execute_tool(
             )
         else:
             # EXECUTE: 直接执行
+            # T5: EXECUTE 来自记忆豁免而非 STANDARD/AUTONOMOUS 常规放行的判据 =
+            # reason 以豁免标签开头（标签由 approval_memory 写入、ApprovalPolicy 透传）
+            memory_auto = (
+                memory_exemption is not None
+                and exec_decision.reason.startswith(approval_memory.MEMORY_EXEMPT_TAG)
+            )
+            if memory_auto:
+                logger.info(
+                    "T5 审批记忆豁免: tool=%s pattern=%s approves=%d command=%s",
+                    func_name,
+                    memory_exemption.pattern,
+                    memory_exemption.approve_count,
+                    _describe_tool_command(func_name, func_args)[:120],
+                )
+                # 豁免来源落审计：approval_requests 表 status=auto_approved，
+                # risk_reason 携带豁免证据（/api/security/approvals 可查）
+                _persist_approval_request(
+                    approval_id=f"aprv_{uuid.uuid4().hex[:12]}",
+                    tool_call_id=tool_call_id,
+                    tool_name=func_name,
+                    command=_describe_tool_command(func_name, func_args),
+                    risk_level=decision.risk_level.value,
+                    risk_reason=memory_exemption.reason,
+                    chat_id=ctx.get("chat_id"),
+                    status=approval_memory.AUTO_APPROVED_STATUS,
+                )
             if func_name == "ask_user_choice":
                 # 抉择工具拦截：自主模式直接采纳推荐项；其他模式登记 pending 等待用户抉择
                 return await _dispatch_user_choice(
@@ -216,6 +256,9 @@ async def execute_tool(
         "duration_ms": duration_ms,
         "tool_call_id": tool_call_id,
     }
+    # T5: 结果标注豁免来源（前端/日志可追溯）
+    if memory_auto:
+        record["auto_approved_by_history"] = True
 
     # 工具结束事件：构造 record 前发射
     # 文件类工具：计算绝对路径供前端直接用于打开/定位
@@ -586,8 +629,12 @@ def _persist_approval_request(
     risk_level: str,
     risk_reason: str,
     chat_id: Optional[int] = None,
+    status: str = "pending",
 ) -> None:
-    """Phase 3 T3/T8: 持久化审批请求到数据库（旁路，不阻断执行）。"""
+    """Phase 3 T3/T8: 持久化审批请求到数据库（旁路，不阻断执行）。
+
+    status: pending（默认，待用户审批）；T5 审批记忆豁免时传 auto_approved（审计行）。
+    """
     try:
         from app.core.database import SessionLocal
         from app.models.agent import ApprovalRequest
@@ -602,7 +649,7 @@ def _persist_approval_request(
                 risk_level=risk_level,
                 risk_reason=risk_reason,
                 chat_id=chat_id,
-                status="pending",
+                status=status,
             )
             db.add(ar)
             db.commit()
