@@ -28,7 +28,7 @@ MfkAgent 遵循 **“渐进式复杂性 (Progressive Disclosure)”** 的设计�
   - **AI 记忆可视化面板与误删回收站 (Memory Panel & Trash Bin)**：AI 自动记住个人偏好时弹窗提醒，提供纯文本可视化记忆管理；内置回收站机制，支持一键撤销恢复误删对话。
 
 * **🛠️ 对专业用户与开发者深度接纳 (High Ceiling for Power Users & Developers)**
-  - **MCP 风格插件工具桥接**：内置插件工具统一采用 MCP (Model Context Protocol) 风格协议封装（工具注册 / 清单发现 / 调用三组标准接口），覆盖 Playwright 浏览器自动化（页面导航、点击、输入、脚本执行）等能力；对接外部第三方 MCP Server（stdio/SSE 客户端）已在开发计划中。
+  - **MCP 风格插件工具桥接**：内置插件工具统一采用 MCP (Model Context Protocol) 风格协议封装（工具注册 / 清单发现 / 调用三组标准接口），覆盖 Playwright 浏览器自动化（页面导航、点击、输入、脚本执行）等能力；对接外部第三方 MCP Server 已支持 stdio 接入（工具以 `mcp__<server>__<tool>` 命名空间挂载，统一纳入现有 L0-L2 风险判定与审批链）。
   - **三态安全沙箱与 Plan/Build 隔离**：内置 Plan/Build 模式，L0 白名单 + L1 元字符防御 + L2 写入判定三层过滤，高危磁盘写操作走配额控制与人工审批。
   - **L1-L3 前端 UI 三级自检闭环**：为 Frontend Agent 打造 **L1 代码编译 (`npx tsc`) → L2 数值样式自检 (`probe_ui`) → L3 视觉大模型 (VL) 观感评审** 的自动化闭环，保证生成的界面符合生产级规范。
   - **轻量意图路由与闲聊短路 (Keyword Intent Routing)**：三层轻量关键词规则识别消息意图——闲聊问候短路直接流式回复、只读意图过滤收敛工具集、动作触发词自动装载项目上下文与工具链，另有 TaskRouter 关键词任务分类写入响应 metadata。
@@ -76,7 +76,7 @@ MfkAgent 遵循 **“渐进式复杂性 (Progressive Disclosure)”** 的设计�
 * **防越界与磁盘配额**：写入严格限制在项目沙箱边界内（`safe_resolve` 路径校验防 Windows Junction 穿透），高危写操作内置磁盘配额校验（Quota Check）。
 
 ### 5. 🔌 MCP 风格插件桥接与内置插件生态 (MCP-style Plugin Bridge)
-* **MCP 风格工具协议**：内置插件工具以 MCP (Model Context Protocol) 风格协议统一封装，提供 `register_plugin_tools_to_mcp` / `call_mcp_tool` / `get_mcp_tools` 三组标准接口，Agent 以统一的工具发现与调用方式使用全部插件；与外部第三方 MCP Server（stdio/SSE）的客户端对接在开发计划中。
+* **MCP 风格工具协议**：内置插件工具以 MCP (Model Context Protocol) 风格协议统一封装，提供 `register_plugin_tools_to_mcp` / `call_mcp_tool` / `get_mcp_tools` 三组标准接口，Agent 以统一的工具发现与调用方式使用全部插件；外部第三方 MCP Server 已支持 stdio 接入（工具以 `mcp__<server>__<tool>` 命名空间挂载，统一纳入现有风险判定与审批链）。
 * **内置浏览器自动化插件 (Playwright/Browser Automation)**：内置 `browser_navigate`, `browser_click`, `browser_type`, `browser_screenshot`, `browser_evaluate` 等工具，Agent 可自主完成网页浏览、自动化测试与数据抓取。
 * **DB 持久化插件管理**：插件状态由 `plugins` 数据表统一管控，支持一键热启/停用，配置永久保存。
 
