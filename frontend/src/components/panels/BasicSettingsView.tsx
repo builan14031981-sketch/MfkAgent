@@ -295,6 +295,7 @@ function FontFamilyDropdown({
         <div
           ref={popRef}
           data-portal-popover
+          className="mf-pop"
           style={{
             position: "fixed",
             top: pos.top,
@@ -820,6 +821,7 @@ function GroupedModelDropdown({
         <div
           ref={popRef}
           data-portal-popover
+          className="mf-pop"
           style={{
             position: "fixed",
             top: pos.top,
