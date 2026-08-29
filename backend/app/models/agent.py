@@ -30,6 +30,9 @@ class Chat(Base):
     agent_id = Column(String(50), default="general")
     title = Column(String(200), default="New Chat")
     summary = Column(String(500), nullable=True)  # 会话语义摘要（Agent 自动生成，Sidebar 展示）
+    # T2 压缩止血：压缩边界 = 三段式切分中 middle 段最后一条消息 id；
+    # 边界之前的历史由视图层折叠为【历史摘要】，messages 行永不删除
+    compaction_boundary_message_id = Column(Integer, nullable=True)
     is_pinned = Column(Boolean, default=False)
     personality_level = Column(Integer, nullable=True)
     model = Column(String(50))

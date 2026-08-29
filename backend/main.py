@@ -82,6 +82,9 @@ def _ensure_schema():
             # 圆桌模式
             if "roundtable_config" not in cols:
                 conn.execute(sa.text("ALTER TABLE chats ADD COLUMN roundtable_config JSON DEFAULT '{}'"))
+            # T2 压缩止血：压缩边界（视图层裁剪锚点，messages 行永不删除）
+            if "compaction_boundary_message_id" not in cols:
+                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN compaction_boundary_message_id INTEGER"))
 
     if "projects" in inspector.get_table_names():
         cols = {c["name"] for c in inspector.get_columns("projects")}
