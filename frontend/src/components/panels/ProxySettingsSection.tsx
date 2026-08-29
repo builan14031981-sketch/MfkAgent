@@ -91,9 +91,9 @@ export function ProxySettingsSection({ settings, saving, onUpdate, t }: ProxySet
               key={opt.value}
               onClick={() => onUpdate("proxy_mode", opt.value)}
               disabled={saving === "proxy_mode"}
+              className={active ? "mf-seg-btn is-active" : "mf-seg-btn"}
               style={{
                 flex: 1, padding: "6px 14px", borderRadius: "var(--radius-xs)", border: "none",
-                background: active ? "var(--bg-level-1)" : "transparent",
                 cursor: "pointer", fontSize: "13px", whiteSpace: "nowrap",
                 color: active ? "var(--text-level-1)" : "var(--text-level-3)",
                 opacity: saving === "proxy_mode" ? 0.7 : 1,

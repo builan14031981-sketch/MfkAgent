@@ -529,9 +529,9 @@ function GeneralBasic(props: SettingsViewProps) {
               key={lang.value}
               onClick={() => onUpdate("language", lang.value)}
               disabled={saving === "language"}
+              className={settings?.language === lang.value ? "mf-seg-btn is-active" : "mf-seg-btn"}
               style={{
                 flex: 1, padding: "6px 14px", borderRadius: "var(--radius-xs)", border: "none",
-                background: settings?.language === lang.value ? "var(--bg-level-1)" : "transparent",
                 cursor: "pointer", fontSize: "13px", whiteSpace: "nowrap",
                 color: settings?.language === lang.value ? "var(--text-level-1)" : "var(--text-level-3)",
                 opacity: saving === "language" ? 0.7 : 1,
@@ -640,9 +640,9 @@ function GeneralBasic(props: SettingsViewProps) {
                 key={opt.value}
                 onClick={() => onUpdate("hero_random_scope", opt.value)}
                 disabled={saving === "hero_random_scope"}
+                className={(settings?.hero_random_scope || "all") === opt.value ? "mf-seg-btn is-active" : "mf-seg-btn"}
                 style={{
                   flex: 1, padding: "6px 14px", borderRadius: "var(--radius-xs)", border: "none",
-                  background: (settings?.hero_random_scope || "all") === opt.value ? "var(--bg-level-1)" : "transparent",
                   cursor: "pointer", fontSize: "13px", whiteSpace: "nowrap",
                   color: (settings?.hero_random_scope || "all") === opt.value ? "var(--text-level-1)" : "var(--text-level-3)",
                   opacity: saving === "hero_random_scope" ? 0.7 : 1,
@@ -672,9 +672,9 @@ function GeneralBasic(props: SettingsViewProps) {
                 key={opt.value}
                 onClick={() => onUpdate("greeting_mode", opt.value)}
                 disabled={saving === "greeting_mode"}
+                className={active ? "mf-seg-btn is-active" : "mf-seg-btn"}
                 style={{
                   flex: 1, padding: "6px 14px", borderRadius: "var(--radius-xs)", border: "none",
-                  background: active ? "var(--bg-level-1)" : "transparent",
                   cursor: "pointer", fontSize: "13px", whiteSpace: "nowrap",
                   color: active ? "var(--text-level-1)" : "var(--text-level-3)",
                   opacity: saving === "greeting_mode" ? 0.7 : 1,
