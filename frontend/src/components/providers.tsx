@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { MotionConfig } from "framer-motion";
 import { useSettingsStore } from "@/lib/store";
 import {
   resolveVisualTheme,
@@ -159,10 +160,12 @@ export function Providers({ children }: ProvidersProps) {
   }, [router]);
 
   return (
-    <ThemeProvider>
-      <AccentProvider>
-        <FontProvider>{children}</FontProvider>
-      </AccentProvider>
-    </ThemeProvider>
+    <MotionConfig reducedMotion="user">
+      <ThemeProvider>
+        <AccentProvider>
+          <FontProvider>{children}</FontProvider>
+        </AccentProvider>
+      </ThemeProvider>
+    </MotionConfig>
   );
 }

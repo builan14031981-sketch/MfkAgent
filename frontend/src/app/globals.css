@@ -370,6 +370,31 @@ optgroup {
   box-shadow: none;
 }
 
+/* 批次D3 无障碍审计：系统「减少动态效果」开启时，.mf-* 家族全部动效降级。
+   framer-motion 侧（设置页视图滑动等）由 <MotionConfig reducedMotion="user">
+   兜住，见 components/providers.tsx */
+@media (prefers-reduced-motion: reduce) {
+  .mf-pop {
+    animation: none;
+  }
+
+  .mf-input,
+  .mf-form input,
+  .mf-form select,
+  .mf-form textarea,
+  .mf-nav-item,
+  .mf-seg-btn,
+  .mf-btn-primary,
+  .mf-btn-secondary,
+  .mf-btn-ghost,
+  .mf-icon-btn,
+  .mf-btn-chip,
+  .mf-pressable,
+  .mf-card-lift {
+    transition: none;
+  }
+}
+
 /* 下拉弹层入场：spring 近似曲线（超出 1 的 y 值带来轻微过冲），
    从触发器方向（上方）展开。挂到 data-portal-popover 的弹层根节点 */
 @keyframes mf-pop-in {
