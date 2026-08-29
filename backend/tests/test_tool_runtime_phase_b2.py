@@ -32,7 +32,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 # 标准输出以 UTF-8 打印，避免 Windows GBK 控制台报错
-if "pytest" not in sys.modules and hasattr(sys.stdout, "buffer"):
+if __name__ == "__main__" and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
