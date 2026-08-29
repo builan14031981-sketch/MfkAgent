@@ -307,27 +307,41 @@ class TestPromptMergeStructure:
         assert "代码审查" in full_prompt
 
     def test_tool_guidance_injected(self):
-        """验证 Tool Guidance 正确注入"""
+        """验证 Tool Guidance 正确注入
+
+        T1 缓存前缀契约：tool_guidance（⑨ 层）逐轮变化，不再拼入 system prompt，
+        改经 _build_turn_reminder() 包进 <system-reminder> 注入消息尾部。
+        """
         from app.core.agent_runtime.context_builder import ChatContextBuilder
         from types import SimpleNamespace
 
         builder = ChatContextBuilder()
+        chat_view = SimpleNamespace(
+            mode="build",
+            project_path=None,
+            agent_id="test",
+            project_id=None,
+        )
         full_prompt = builder._assemble_prompt(
             system_prompt="你是测试助手。",
             capabilities=["general_assistance"],
             personality_prompt="",
-            effective_chat=SimpleNamespace(
-                mode="build",
-                project_path=None,
-                agent_id="test",
-                project_id=None,
-            ),
+            effective_chat=chat_view,
             workspace_context="",
             tool_context=None,
             tool_guidance="## 工具使用指导\n- 请使用正确工具",
         )
 
-        assert "工具使用指导" in full_prompt
+        assert "工具使用指导" not in full_prompt
+        reminder = builder._build_turn_reminder(
+            effective_chat=chat_view,
+            tool_context=None,
+            task_context=None,
+            attachments=None,
+            tool_guidance="## 工具使用指导\n- 请使用正确工具",
+        )
+        assert "工具使用指导" in reminder
+        assert reminder.startswith("<system-reminder>")
 
 
 # ──────────────────────────────────────────────────────────────────────

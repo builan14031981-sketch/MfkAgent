@@ -92,6 +92,44 @@ class SingleCallResult(BaseModel):
     usage: Optional[dict] = None
 
 
+def extract_cached_tokens(usage: Optional[dict]) -> int:
+    """T1: 提取前缀缓存命中的 prompt token 数。
+
+    兼容两种上游字段：
+      - OpenAI 系: usage.prompt_tokens_details.cached_tokens
+      - DeepSeek:  usage.prompt_cache_hit_tokens
+    """
+    if not usage:
+        return 0
+    hit = usage.get("prompt_cache_hit_tokens") or 0  # DeepSeek
+    if not hit:
+        details = usage.get("prompt_tokens_details") or {}  # OpenAI 系
+        if isinstance(details, dict):
+            hit = details.get("cached_tokens") or 0
+    try:
+        return int(hit or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _normalize_cache_usage(usage: Optional[dict], provider: str, model_name: str) -> Optional[dict]:
+    """T1: 归一化前缀缓存命中数并记日志。
+
+    将 prompt_tokens_details.cached_tokens / prompt_cache_hit_tokens 归一化写入
+    usage["cached_tokens"]（供 token_usage 事件透出），无论命中与否均记日志，
+    便于验证"第二轮起 cached_tokens > 0"。原地修改并返回 usage。
+    """
+    if not usage:
+        return usage
+    hit = extract_cached_tokens(usage)
+    usage["cached_tokens"] = hit
+    logger.info(
+        "LLM prefix cache usage: provider=%s model=%s prompt_tokens=%s cached_tokens=%d",
+        provider, model_name, usage.get("prompt_tokens"), hit,
+    )
+    return usage
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # Phase 2: 多模态视觉上下文注入
 # ──────────────────────────────────────────────────────────────────────────
@@ -730,7 +768,7 @@ class ModelService:
             max_tokens: 最大 token 数
             tools: 工具定义列表
             reasoning_effort: 推理强度
-            memory_text: 记忆文本（仅首轮注入）
+            memory_text: 记忆文本（T1: 每轮一致常驻注入，确定性文本保证 system 前缀跨轮稳定）
             vision_context: Phase 3 视觉上下文（含图片绝对路径，仅首轮注入；支持智能路由 + 熔断兜底）
 
         Returns:
@@ -745,13 +783,17 @@ class ModelService:
         if not config.api_key:
             raise ModelConfigError(f"模型 {model_id} 未配置 API Key")
 
-        # Memory 注入（仅首轮，处理 dict 格式 messages）
+        # Memory 注入（T1: 每轮一致常驻；纯拷贝写入，绝不改动调用方 messages / DB 历史消息）
         work_messages = list(messages)
         if memory_text:
+            injected = False
+            patched: list = []
             for m in work_messages:
-                if isinstance(m, dict) and m.get("role") == "system":
-                    m["content"] = m["content"] + "\n\n" + memory_text
-                    break
+                if not injected and isinstance(m, dict) and m.get("role") == "system":
+                    m = {**m, "content": (m.get("content") or "") + "\n\n" + memory_text}
+                    injected = True
+                patched.append(m)
+            work_messages = patched
 
         # Phase 3: Vision Auto-Routing — 智能路由 + 熔断兜底
         if vision_context:
@@ -833,11 +875,14 @@ class ModelService:
             if norm["calls"] and not norm["issues"]:
                 tool_calls = norm["calls"]
 
+        # T1: 提取并记录前缀缓存命中（OpenAI 系 / DeepSeek），归一化进 usage
+        usage = _normalize_cache_usage(data.get("usage"), config.provider.value, config.model_name)
+
         return SingleCallResult(
             content=content,
             tool_calls=tool_calls,
             finish_reason=choice.get("finish_reason", "stop"),
-            usage=data.get("usage"),
+            usage=usage,
         )
 
     async def stream_once(
@@ -869,7 +914,7 @@ class ModelService:
             max_tokens: 最大 token 数
             tools: 工具定义列表
             reasoning_effort: 推理强度
-            memory_text: 记忆文本（仅首轮注入）
+            memory_text: 记忆文本（T1: 每轮一致常驻注入，确定性文本保证 system 前缀跨轮稳定）
             vision_context: Phase 3 视觉上下文（含图片绝对路径，仅首轮注入；支持智能路由 + 熔断兜底）
         """
         config = self.get_model_config(model_id)
@@ -881,13 +926,17 @@ class ModelService:
         if not config.api_key:
             raise ModelConfigError(f"模型 {model_id} 未配置 API Key")
 
-        # Memory 注入（仅首轮，处理 dict 格式 messages）
+        # Memory 注入（T1: 每轮一致常驻；纯拷贝写入，绝不改动调用方 messages / DB 历史消息）
         work_messages = list(messages)
         if memory_text:
+            injected = False
+            patched: list = []
             for m in work_messages:
-                if isinstance(m, dict) and m.get("role") == "system":
-                    m["content"] = m["content"] + "\n\n" + memory_text
-                    break
+                if not injected and isinstance(m, dict) and m.get("role") == "system":
+                    m = {**m, "content": (m.get("content") or "") + "\n\n" + memory_text}
+                    injected = True
+                patched.append(m)
+            work_messages = patched
 
         # Phase 3: Vision Auto-Routing — 智能路由 + 熔断兜底
         if vision_context:
@@ -1039,6 +1088,8 @@ class ModelService:
         if collected_tool_calls:
             ordered = [collected_tool_calls[i] for i in sorted(collected_tool_calls)]
             yield {"type": "tool_calls", "calls": ordered}
+        # T1: 提取并记录前缀缓存命中（OpenAI 系 / DeepSeek），归一化进 usage
+        final_usage = _normalize_cache_usage(final_usage, provider_name, config.model_name)
         yield {"type": "finish", "finish_reason": final_finish, "usage": final_usage}
 
 # 创建全局模型服务实例

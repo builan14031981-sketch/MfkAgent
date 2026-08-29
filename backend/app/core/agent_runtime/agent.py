@@ -105,6 +105,24 @@ def _wrap_runtime_context(content: str, source: str = "MfkAgent Runtime") -> str
     return preamble + content + "\n" + _RUNTIME_CTX_SUFFIX
 
 
+def _apply_turn_reminder(messages: list, reminder: Optional[str]) -> list:
+    """T1 缓存前缀契约：把本轮 turn_reminder 包裹到最后一条 user 消息副本末尾。
+
+    逐轮变化的 ⑦⑧⑨⑩（intent_hint/task_context/tool_guidance/attachments）以
+    <system-reminder> 注入消息尾部，使 system prompt 保持多轮字节稳定、命中
+    Provider 前缀缓存。仅修改发往 LLM 的 messages 副本（copy-on-write），
+    绝不改动数据库里的历史消息。reminder 为空时原样返回。
+    """
+    if not reminder:
+        return messages
+    for idx in range(len(messages) - 1, -1, -1):
+        m = messages[idx]
+        if isinstance(m, dict) and m.get("role") == "user" and isinstance(m.get("content"), str):
+            messages[idx] = {**m, "content": m["content"] + "\n\n" + reminder}
+            break
+    return messages
+
+
 class AgentRuntime:
     """Agent 统一执行入口 — Phase E1。
 
@@ -164,6 +182,7 @@ class AgentRuntime:
                 "prompt_tokens": 0,
                 "completion_tokens": 0,
                 "total_tokens": 0,
+                "cached_tokens": 0,
                 "model_max_tokens": get_model_max_tokens(model_id),
                 "watermark_percentage": 0.0,
             }
@@ -174,11 +193,26 @@ class AgentRuntime:
         max_tokens = get_model_max_tokens(model_id)
         watermark = compute_watermark(total_tokens, model_id)
 
+        # T1: 前缀缓存命中 token 透出（model.py 已归一化为 usage["cached_tokens"]；
+        # 此处兜底兼容原始字段 prompt_tokens_details.cached_tokens / prompt_cache_hit_tokens）
+        cached_tokens = usage.get("cached_tokens")
+        if cached_tokens is None:
+            details = usage.get("prompt_tokens_details")
+            if isinstance(details, dict):
+                cached_tokens = details.get("cached_tokens")
+            if not cached_tokens:
+                cached_tokens = usage.get("prompt_cache_hit_tokens") or 0
+        try:
+            cached_tokens = int(cached_tokens or 0)
+        except (TypeError, ValueError):
+            cached_tokens = 0
+
         return {
             "type": "token_usage",
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
+            "cached_tokens": cached_tokens,
             "model_max_tokens": max_tokens,
             "watermark_percentage": watermark,
         }
@@ -1336,6 +1370,10 @@ class AgentRuntime:
                     "content": _wrap_runtime_context(_test_infra, source="MfkAgent TestInfra"),
                 })
 
+            # T1 缓存前缀契约：逐轮动态内容（⑦⑧⑨⑩）以 <system-reminder> 包裹到
+            # 本轮最后一条 user 消息副本末尾（仅 LLM payload，不动 DB 历史消息）
+            _apply_turn_reminder(loop_messages, (context.metadata or {}).get("turn_reminder"))
+
             # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
             while True:
                 current_task = None
@@ -1423,7 +1461,8 @@ class AgentRuntime:
                             max_tokens=max_tokens,
                             tools=round_tools,
                             reasoning_effort=reasoning_effort,
-                            memory_text=context.memory_text if round_no == 0 and not has_task_graph else None,
+                            # T1: 记忆每轮一致常驻（确定性文本，保证 system 前缀跨轮稳定）
+                            memory_text=context.memory_text,
                             vision_context=context.vision_context if round_no == 0 else None,
                         )
 
@@ -1905,6 +1944,10 @@ class AgentRuntime:
                 "content": _wrap_runtime_context(_test_infra, source="MfkAgent TestInfra"),
             })
 
+        # T1 缓存前缀契约：逐轮动态内容（⑦⑧⑨⑩）以 <system-reminder> 包裹到
+        # 本轮最后一条 user 消息副本末尾（仅 LLM payload，不动 DB 历史消息）
+        _apply_turn_reminder(current_messages, (context.metadata or {}).get("turn_reminder"))
+
         # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
         while True:
             current_task = None
@@ -2004,7 +2047,8 @@ class AgentRuntime:
                         max_tokens=max_tokens,
                         tools=round_tools,
                         reasoning_effort=reasoning_effort,
-                        memory_text=context.memory_text if round_no == 0 and not has_task_graph else None,
+                        # T1: 记忆每轮一致常驻（确定性文本，保证 system 前缀跨轮稳定）
+                        memory_text=context.memory_text,
                         vision_context=context.vision_context if round_no == 0 else None,
                     ):
                         etype = event.get("type")
