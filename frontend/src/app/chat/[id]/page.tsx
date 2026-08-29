@@ -801,14 +801,15 @@ function ChatPageInner() {
         <MessageOutline messages={messages} activeUserMessageId={activeUserMessageId} />
       </div>
 
-      {/* 多 Agent 任务进度面板：输入框上方，与 ChatComposer 等宽对齐，两侧各留 100px 空隙（不顶满） */}
-      <div style={{ maxWidth: "1400px", margin: "0 auto", padding: "0 100px", width: "100%" }}>
+      {/* 多 Agent 任务进度面板：输入框上方，与 ChatComposer 等宽对齐，两侧各留 100px 空隙（不顶满；移动端 mf-x-100 收紧为 12px） */}
+      <div className="mf-x-100" style={{ maxWidth: "1400px", margin: "0 auto", width: "100%" }}>
         <TaskProgressCard tasks={tasks ?? []} chatId={chatId} live={isSending} />
       </div>
 
       {/* 输入区域 - Floating Dock 贴底（透明背景，仅卡片悬浮）
-          有看待抉择请求时，输入框整体被选择框替换（无感，不打断） */}
-      <div data-zoomable="composer" style={{
+          有看待抉择请求时，输入框整体被选择框替换（无感，不打断）
+          mf-safe-bottom：移动端手势条避让（globals.css ≤768px 生效） */}
+      <div data-zoomable="composer" className="mf-safe-bottom" style={{
         flexShrink: 0,
         background: "transparent",
       }}>

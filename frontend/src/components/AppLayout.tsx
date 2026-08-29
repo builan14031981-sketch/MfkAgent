@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen, Menu, Plus } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
 import { SettingsPanel } from "./panels/SettingsPanel";
@@ -13,6 +13,9 @@ import { useTabStore } from "@/lib/tabStore";
 import { ChatTabBar } from "./ChatTabBar";
 import { useChat } from "@/hooks/useChat";
 import { useProjects } from "@/hooks/useProjects";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { Capacitor } from "@capacitor/core";
+import { getDeviceApiBase } from "@/lib/api";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -38,6 +41,27 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // ── 安卓端 M1：移动端布局（≤768px 抽屉式会话列表，桌面渲染零影响） ──
+  const isMobile = useIsMobile();
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  // 移动端：路由变化（进入会话/新建会话）自动收起抽屉
+  useEffect(() => {
+    if (isMobile) setMobileDrawerOpen(false);
+  }, [pathname, isMobile]);
+
+  // 安卓 APP 首启引导：Capacitor WebView 内未配对时强制进入连接页（桌面/普通浏览器不受影响）
+  const isConnectPage = pathname.startsWith("/connect");
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      Capacitor.isNativePlatform() &&
+      !isConnectPage &&
+      !getDeviceApiBase()
+    ) {
+      router.replace("/connect");
+    }
+  }, [pathname, isConnectPage, router]);
 
   // 挂载后读回收起态（不放在 useState 初始化器里，避免 SSR hydration mismatch）
   useEffect(() => {
@@ -392,13 +416,55 @@ export function AppLayout({ children }: AppLayoutProps) {
         "--dock-width": isDockOpen && !isDockFullscreen ? `${dockWidth}px` : "0px",
       } as React.CSSProperties}
     >
-      {/* 左侧 Sidebar */}
-      <Sidebar
-        currentChatId={currentChatId}
-        onSettingsClick={() => setIsSettingsOpen(true)}
-        collapsed={sidebarCollapsed}
-        onToggleSidebar={toggleSidebar}
-      />
+      {/* 左侧 Sidebar：桌面=文档流列；移动端（≤768px）=固定抽屉 + 遮罩 */}
+      {isMobile ? (
+        <>
+          {mobileDrawerOpen && (
+            <div
+              onClick={() => setMobileDrawerOpen(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 69,
+                background: "var(--overlay-modal, rgba(0,0,0,0.45))",
+                animation: "fadeIn 0.2s ease",
+              }}
+            />
+          )}
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: "min(82vw, 320px)",
+              zIndex: 70,
+              transform: mobileDrawerOpen ? "translateX(0)" : "translateX(-105%)",
+              visibility: mobileDrawerOpen ? "visible" : "hidden",
+              transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.28s",
+              boxShadow: mobileDrawerOpen ? "var(--shadow-lg, 0 8px 32px rgba(0,0,0,0.25))" : "none",
+              "--sidebar-width": "100%",
+            } as React.CSSProperties}
+          >
+            <Sidebar
+              currentChatId={currentChatId}
+              onSettingsClick={() => {
+                setMobileDrawerOpen(false);
+                setIsSettingsOpen(true);
+              }}
+              collapsed={false}
+              onToggleSidebar={() => setMobileDrawerOpen(false)}
+            />
+          </div>
+        </>
+      ) : (
+        <Sidebar
+          currentChatId={currentChatId}
+          onSettingsClick={() => setIsSettingsOpen(true)}
+          collapsed={sidebarCollapsed}
+          onToggleSidebar={toggleSidebar}
+        />
+      )}
 
       {/* 侧边栏拖拽调宽条：豆包风格固定宽度，暂隐藏 */}
       {false && !sidebarCollapsed && (
@@ -431,15 +497,54 @@ export function AppLayout({ children }: AppLayoutProps) {
         overflow: "hidden",
         minWidth: 0,
       }}>
-        {/* 多标签栏（浏览器式多会话切换） */}
-        <ChatTabBar onNewChat={handleGlobalNewChat} />
+        {/* 多标签栏（浏览器式多会话切换）：桌面；移动端换成轻量顶栏（抽屉入口 + 新建会话），触控目标 44px；连接页全屏无顶栏 */}
+        {isMobile && !isConnectPage ? (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: 48,
+            padding: "0 6px",
+            flexShrink: 0,
+            borderBottom: "1px solid var(--border-primary)",
+            background: "var(--bg-level-1)",
+          }}>
+            <button
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="打开会话列表"
+              style={{
+                width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+                border: "none", background: "transparent", color: "var(--text-level-2)",
+                cursor: "pointer", borderRadius: 10, padding: 0,
+              }}
+            >
+              <Menu size={21} />
+            </button>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-level-2)", letterSpacing: "-0.01em" }}>
+              MfkAgent
+            </span>
+            <button
+              onClick={handleGlobalNewChat}
+              aria-label="新建会话"
+              style={{
+                width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+                border: "none", background: "transparent", color: "var(--text-level-2)",
+                cursor: "pointer", borderRadius: 10, padding: 0,
+              }}
+            >
+              <Plus size={21} />
+            </button>
+          </div>
+        ) : (
+          <ChatTabBar onNewChat={handleGlobalNewChat} />
+        )}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           {children}
         </div>
       </main>
 
-      {/* 右侧面板拖拽调宽条：面板打开且非全屏时显示（位于面板左侧） */}
-      {isDockOpen && !isDockFullscreen && (
+      {/* 右侧面板拖拽调宽条：面板打开且非全屏时显示（位于面板左侧）；移动端无 Dock，跳过 */}
+      {!isMobile && isDockOpen && !isDockFullscreen && (
         <div
           onMouseDown={startDockResize}
           style={{
@@ -455,14 +560,16 @@ export function AppLayout({ children }: AppLayoutProps) {
         />
       )}
 
-      {/* Dock Activity Bar：永远渲染的右侧窄图标条（终端/产出物/浏览器入口，Dock 收起时也可见） */}
-      <DockActivityBar />
+      {/* Dock Activity Bar：永远渲染的右侧窄图标条（终端/产出物/浏览器入口，Dock 收起时也可见）；移动端隐藏 */}
+      {!isMobile && <DockActivityBar />}
 
-      {/* 右侧面板（浏览器式标签：终端 / 产出物 / 浏览器） */}
-      <DockPanel cwd={terminalCwd} chatId={currentChatId} projectPath={currentProjectPath} />
+      {/* 右侧面板（浏览器式标签：终端 / 产出物 / 浏览器）；移动端隐藏（桌面优先能力，P2 审批流再入移动端） */}
+      {!isMobile && (
+        <DockPanel cwd={terminalCwd} chatId={currentChatId} projectPath={currentProjectPath} />
+      )}
 
-      {/* 收起后浮动展开按钮：玻璃质感，左侧边缘居中 */}
-      {sidebarCollapsed && (
+      {/* 收起后浮动展开按钮：玻璃质感，左侧边缘居中（仅桌面；移动端走抽屉） */}
+      {!isMobile && sidebarCollapsed && (
         <button
           onClick={toggleSidebar}
           style={{

@@ -62,9 +62,10 @@ export function Panel({ isOpen, onClose, title, children, width = "700px", heigh
           animation: "fadeIn 0.15s ease",
         }}
       />
-      {/* 面板 */}
+      {/* 面板（mf-panel-root：移动端在 globals.css 中升级为全屏 sheet） */}
       <div
         ref={panelRef}
+        className="mf-panel-root"
         style={{
           position: "fixed",
           ...(isCenter ? {

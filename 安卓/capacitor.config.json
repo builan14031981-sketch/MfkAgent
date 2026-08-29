@@ -1,0 +1,17 @@
+{
+  "appId": "com.mfkagent.app",
+  "appName": "MfkAgent",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  },
+  "server": {
+    "androidScheme": "http",
+    "allowNavigation": ["*"]
+  }
+}
