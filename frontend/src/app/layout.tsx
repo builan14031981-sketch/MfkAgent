@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import "../styles/tokens.css";
@@ -46,6 +46,17 @@ const vt323 = localFont({
 export const metadata: Metadata = {
   title: "MfkAgent - 智能Agent平台",
   description: "一个人人都能创建、使用和管理AI助手的智能工作空间",
+};
+
+/* 安卓端 M1：移动视口与键盘行为。
+   - viewportFit: cover 配合 safe-area-inset（输入框底部避让）
+   - interactiveWidget: resizes-content 让软键盘顶起内容而非遮挡（Android WebView/Chrome 108+） */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

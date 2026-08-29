@@ -25,7 +25,6 @@ const PROVIDER_NAMES: Record<string, string> = {
   freellmapi: "FreeLLMAPI",
   mimo: "小米 MiMo",
   wenxin: "百度文心",
-  spark: "讯飞星火",
   minimax: "MiniMax",
   siliconflow: "硅基流动",
   custom: "自定义模型",
@@ -44,6 +43,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   minimax2: "MiniMax",
   doubao: "豆包",
   bytedance: "豆包",
+  sensenova: "商汤日日新",
 };
 
 /** 未知 provider 的友好格式化：下划线转空格、去尾部数字、首字母大写 */

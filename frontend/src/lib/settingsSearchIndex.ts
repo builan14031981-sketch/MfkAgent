@@ -29,7 +29,6 @@ export const SETTINGS_SEARCH_INDEX: SettingSearchEntry[] = [
       { key: "hero_theme", label: "首页启动主题", aliases: ["hero", "首页"] },
       { key: "greeting", label: "首页台词", aliases: ["greeting", "欢迎语"] },
       { key: "browser_homepage", label: "浏览器主页", aliases: ["browser homepage", "浏览器", "网页", "主页"] },
-      { key: "tts", label: "语音朗读", aliases: ["tts", "朗读", "语音", "text to speech", "voice"] },
     ],
   },
   {

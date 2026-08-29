@@ -67,21 +67,6 @@ DEFAULT_SETTINGS = {
     "tattoo_api_key": "",
     "tattoo_model": "",
     "tattoo_base_url": "",
-    # TTS 语音朗读配置（支持双引擎：edge 微软 / volcengine 火山引擎）
-    "tts_enabled": "false",
-    "tts_engine": "volcengine",
-    "tts_voice": "zh-CN-YunxiNeural",
-    "tts_rate": "+0%",
-    "tts_auto_play": "false",
-    # 火山引擎 TTS 配置（字节跳动，国内直连，低时延）
-    "volcengine_appid": "",
-    "volcengine_access_token": "",
-    "volcengine_voice": "zh_female_cancan_mars_bigtts",
-    # 语音转写 BYOK 配置（OpenAI 兼容 /audio/transcriptions 端点）
-    "stt_provider": "",
-    "stt_api_key": "",
-    "stt_model": "whisper-1",
-    "stt_base_url": "",
     # Provider 整体禁用开关：JSON {providerId: true}，被禁用的 Provider
     # 不出现在 /api/models，call_once/stream_once 调用会抛 ModelConfigError
     "provider_disabled": "{}",
@@ -250,8 +235,12 @@ def _sync_approval_mode(value: str) -> None:
 
 
 def _is_secret_key(key: str) -> bool:
-    """判断是否为需脱敏的密钥类设置（provider api_key_* / stt_api_key / vision_api_key / volcengine_access_token 等）。"""
-    return key.startswith("api_key_") or key.endswith("_api_key") or key == "volcengine_access_token"
+    """判断是否为需脱敏的密钥类设置（provider api_key_* / vision_api_key / tattoo_api_key 等）。"""
+    return key.startswith("api_key_") or key.endswith("_api_key")
+
+
+# 已移除的语音功能（STT 转写 / TTS 朗读）设置前缀：旧库残留行不再下发
+_REMOVED_KEY_PREFIXES = ("tts_", "stt_", "volcengine_")
 
 
 @router.get("", response_model=Dict[str, str])
@@ -262,6 +251,8 @@ async def get_all_settings():
         settings = db.query(Setting).all()
         result = dict(DEFAULT_SETTINGS)
         for s in settings:
+            if s.key.startswith(_REMOVED_KEY_PREFIXES):
+                continue
             if _is_secret_key(s.key):
                 result[s.key] = _mask_key(s.value)
             else:
@@ -275,6 +266,8 @@ async def get_all_settings():
 async def get_setting(key: str):
     db = SessionLocal()
     try:
+        if key.startswith(_REMOVED_KEY_PREFIXES):
+            raise HTTPException(status_code=404, detail="Setting not found")
         setting = db.query(Setting).filter(Setting.key == key).first()
         if setting:
             value = _mask_key(setting.value) if _is_secret_key(setting.key) else setting.value

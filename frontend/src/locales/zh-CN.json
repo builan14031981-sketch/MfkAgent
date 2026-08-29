@@ -113,9 +113,6 @@
     "inputPlaceholder": "输入消息...",
     "sending": "发送中...",
     "stop": "停止生成",
-    "voiceStart": "点击开始语音输入",
-    "voiceStop": "点击停止录音并转写",
-    "voiceTranscribing": "正在转写…",
     "orb": {
       "working": "正在等待响应",
       "solving": "正在思考",
@@ -232,10 +229,6 @@
     "edit": "编辑",
     "quote": "引用",
     "regenerate": "重新生成",
-    "tts": {
-      "play": "朗读",
-      "stop": "停止朗读"
-    },
     "thinking": "思考过程",
     "projectInitTitle": "已关联项目：{name}",
     "projectInitDesc": "您想要在这个项目里面做什么？",
@@ -410,18 +403,6 @@
         "desc": "右侧浏览器标签的默认打开网址；留空则不启用主页"
       }
     },
-    "tts": {
-      "title": "语音朗读",
-      "desc": "微软 Edge 神经引擎，免费无 Key，AI 回复可一键朗读",
-      "enabled": "启用朗读",
-      "enabledDesc": "关闭后朗读按钮和自动朗读均不生效",
-      "autoPlay": "自动朗读",
-      "autoPlayDesc": "每条 AI 回复完成后自动朗读",
-      "voice": "朗读音色",
-      "voiceDesc": "默认云希（阳光少年男声），可切换其他神经音色",
-      "rate": "语速",
-      "rateDesc": "调整朗读速度，默认正常"
-    },
     "model": {
       "title": "模型",
       "defaultModel": {
@@ -472,8 +453,8 @@
         "title": "模型提供商",
         "desc": "配置各提供商的 API Key 与端点，Key 仅存储在本机",
         "free": "免费",
-        "freeGroup": "支持免费额度",
-        "paidGroup": "按量付费",
+        "hotGroup": "热门厂商",
+        "freeGroup": "免费渠道",
         "website": "官网",
         "configured": "已配置",
         "notConfigured": "未配置",

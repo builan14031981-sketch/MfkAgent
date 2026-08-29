@@ -1,6 +1,71 @@
 /** 后端 API 基址：优先读环境变量，缺省回退本地默认端口（Electron 桌面应用场景） */
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://127.0.0.1:8001";
 
+// ── 安卓端 M1：设备侧 API 基址与配对 token（运行时可配置） ──
+// 扫码配对（/pair 页）把 PC 的局域网地址写入 localStorage；桌面版这两个键永远为空，
+// 全部走原有 127.0.0.1 探测逻辑，行为零变化。
+const DEVICE_API_BASE_KEY = "mfk.apiBase";
+const DEVICE_TOKEN_KEY = "mfk.deviceToken";
+
+function _lsGet(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** 设备侧配置的 API 基址（配对流程写入；带 http(s) 校验与尾斜杠清理） */
+export function getDeviceApiBase(): string | null {
+  if (typeof window === "undefined") return null;
+  const v = _lsGet(DEVICE_API_BASE_KEY);
+  return v && /^https?:\/\//.test(v) ? v.replace(/\/+$/, "") : null;
+}
+
+export function setDeviceApiBase(base: string): void {
+  try {
+    window.localStorage.setItem(DEVICE_API_BASE_KEY, base.replace(/\/+$/, ""));
+  } catch { /* localStorage 不可用时忽略 */ }
+  resolvedApiBase = null; // 强制下一次 resolve 走新基址
+  probeFailedAt = 0;
+}
+
+export function clearDeviceApiBase(): void {
+  try {
+    window.localStorage.removeItem(DEVICE_API_BASE_KEY);
+  } catch { /* noop */ }
+  resolvedApiBase = null;
+}
+
+/** 配对 token（签名所有 /api/* 请求；后端中间件对非回环来源强制校验） */
+export function getDeviceToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return _lsGet(DEVICE_TOKEN_KEY);
+}
+
+export function setDeviceToken(token: string | null): void {
+  try {
+    if (token) window.localStorage.setItem(DEVICE_TOKEN_KEY, token);
+    else window.localStorage.removeItem(DEVICE_TOKEN_KEY);
+  } catch { /* noop */ }
+}
+
+/**
+ * 为直接拼 URL 的资源类请求（图片/下载，无法带 header）追加 token 查询参数。
+ * 后端中间件同时接受 header 与 ?token= 两种携带方式。
+ */
+export function withTokenParam(url: string): string {
+  const token = getDeviceToken();
+  if (!token) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
+}
+
+/** 绕过 apiFetch 的裸 fetch 调用点使用：带配对 token 的请求头（桌面版返回空对象，行为不变） */
+export function deviceAuthHeaders(): Record<string, string> {
+  const token = getDeviceToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 /**
  * 后端端口自动探测：后端 main.py 的 find_available_port(start_port=8001) 与 Electron
  * main.js 的 findFreePort(8001) 都会在端口被占用时漂移到 8002/8003…，写死的 API_BASE
@@ -36,11 +101,13 @@ async function probeBackend(): Promise<string | null> {
 
 /** 同步获取当前生效的 API 基址（URL 拼接用，探测完成后自动用新端口） */
 export function getCurrentApiBase(): string {
-  return resolvedApiBase ?? API_BASE;
+  return resolvedApiBase ?? getDeviceApiBase() ?? API_BASE;
 }
 
-/** 解析可用的 API 基址：已有缓存直接返回；否则触发一次探测（带 5s 失败冷却） */
+/** 解析可用的 API 基址：设备配对基址优先直用；否则本地探测（带 5s 失败冷却） */
 async function resolveApiBase(force = false): Promise<string> {
+  const deviceBase = getDeviceApiBase();
+  if (deviceBase) return deviceBase;
   if (resolvedApiBase) return resolvedApiBase;
   const now = Date.now();
   if (!force && now - probeFailedAt < 5_000) return API_BASE;
@@ -124,6 +191,13 @@ export async function apiFetch(path: string, options: RequestInit & { timeout?: 
   async function attempt(base: string, retried: boolean): Promise<Response> {
     const { controller, timeoutId } = createAbortController(timeout, rest.signal);
     const fetchOptions: RequestInit = { ...rest };
+    // 安卓端：所有 /api/* 请求自动附带配对 token（桌面版无 token，行为不变）
+    const deviceToken = getDeviceToken();
+    if (deviceToken) {
+      const headers = new Headers(fetchOptions.headers || {});
+      if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${deviceToken}`);
+      fetchOptions.headers = headers;
+    }
     if (controller) fetchOptions.signal = controller.signal;
     const timedOut = timeoutId !== null;
 
@@ -153,6 +227,13 @@ export async function apiFetch(path: string, options: RequestInit & { timeout?: 
   const res = await attempt(base, false);
 
   if (!res.ok) {
+    // 安卓端：配对 token 被吊销/失效（401）→ 清除本地凭证，APP 内跳回连接页重新配对
+    if (res.status === 401 && getDeviceToken()) {
+      setDeviceToken(null);
+      if (typeof window !== "undefined" && "Capacitor" in window) {
+        window.location.href = "/connect";
+      }
+    }
     // 尝试读取后端错误体（部分接口返回 { detail: ... }）
     let detail: string | null = null;
     try {
@@ -269,9 +350,11 @@ export async function compressMessages(chatId: number, keepRecent = 4): Promise<
 
 // ──── 附件图片 URL 构造（ChatMessage + ImageLightbox 共用） ────
 
-/** 构造消息附件图片的后端访问 URL */
+/** 构造消息附件图片的后端访问 URL（图片请求无法带 header，token 走查询参数） */
 export function getAttachmentImageUrl(chatId: number, path: string): string {
-  return `${getCurrentApiBase()}/api/chat/${chatId}/file?path=${encodeURIComponent(path)}`;
+  return withTokenParam(
+    `${getCurrentApiBase()}/api/chat/${chatId}/file?path=${encodeURIComponent(path)}`
+  );
 }
 
 // ──── 安全中心（专业向安全可视化，只读） ────
@@ -356,7 +439,7 @@ export function getAuditExportUrl(query: { tool_name?: string; success?: boolean
   if (query.tool_name) params.set("tool_name", query.tool_name);
   if (query.success !== undefined) params.set("success", String(query.success));
   const qs = params.toString();
-  return `${getCurrentApiBase()}/api/security/audit/export${qs ? `?${qs}` : ""}`;
+  return withTokenParam(`${getCurrentApiBase()}/api/security/audit/export${qs ? `?${qs}` : ""}`);
 }
 
 // ──── 应用日志 ────
@@ -405,7 +488,7 @@ export async function getLogContent(params: {
 }
 
 export function getLogDownloadUrl(): string {
-  return `${getCurrentApiBase()}/api/security/logs/download`;
+  return withTokenParam(`${getCurrentApiBase()}/api/security/logs/download`);
 }
 
 // ──── 审批记录 ────

@@ -13,6 +13,8 @@ from app.core.database import engine, Base
 from app.core.errors import APIError, api_error_handler, http_exception_handler, validation_exception_handler
 from app.core.log_config import init_logging
 from app.models.persona import PersonaTemplate, ExpressionKnowledge
+# 安卓端：配对设备表必须在 create_all 之前注册到 Base（否则 paired_devices 不会被建表）
+from app.models.mobile import PairedDevice  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +208,8 @@ def _seed_sub_agents():
 _seed_sub_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
-from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, voice, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, tts as tts_api, workflows, autotasks, defense_ppt  # noqa: E402
+from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, workflows, autotasks, defense_ppt  # noqa: E402
+from app.api import mobile as mobile_api  # noqa: E402  安卓端：配对/设备/系统控制/WOL/推送WS
 
 
 def _backfill_custom_model_source():
@@ -388,13 +391,35 @@ app = FastAPI(
 )
 
 # CORS配置
+# 安卓端 M1：追加 Capacitor WebView scheme（capacitor://localhost / https://localhost），
+# 桌面版 Electron（file:// 无 Origin 头）不受影响。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=settings.ALLOWED_ORIGINS + ["capacitor://localhost", "https://localhost", "http://localhost"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── 安卓端 M1：非回环来源的 API 鉴权中间件 ──
+# 本机回环（Electron/桌面浏览器）直接放行，行为零变化；
+# 手机等非本机来源访问 /api/* 必须携带配对 token（/api/mobile/pair/* 握手除外）。
+from fastapi.responses import JSONResponse  # noqa: E402
+from app.core.mobile_auth import is_loopback_host, verify_device_token  # noqa: E402
+
+
+@app.middleware("http")
+async def mobile_remote_auth_middleware(request, call_next):
+    path = request.url.path
+    if path.startswith("/api/"):
+        client = request.client.host if request.client else ""
+        if not is_loopback_host(client) and not path.startswith("/api/mobile/pair/"):
+            auth = request.headers.get("authorization", "")
+            token = auth[7:] if auth.lower().startswith("bearer ") else ""
+            if verify_device_token(token) is None:
+                return JSONResponse({"detail": "未配对设备或凭证无效"}, status_code=401)
+    return await call_next(request)
 
 # 错误处理
 app.add_exception_handler(APIError, api_error_handler)
@@ -422,8 +447,6 @@ app.include_router(greetings.router, prefix="/api/system", tags=["system"])
 app.include_router(devtools.router, prefix="/api/devtools", tags=["devtools"])
 app.include_router(runs.router, prefix="/api/runs", tags=["runs"])
 app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
-app.include_router(voice.router, prefix="/api/voice", tags=["voice"])
-app.include_router(tts_api.router, prefix="/api/tts", tags=["tts"])
 app.include_router(skills.router, prefix="/api/skills", tags=["skills"])
 app.include_router(mcp.router, prefix="/api/mcp", tags=["mcp"])
 app.include_router(proxy_api.router, prefix="/api/proxy", tags=["proxy"])
@@ -433,6 +456,7 @@ app.include_router(feishu_api.router, prefix="/api/feishu", tags=["feishu"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 app.include_router(autotasks.router, prefix="/api/autotasks", tags=["autotasks"])
 app.include_router(defense_ppt.router, prefix="/api/defense-ppt", tags=["defense-ppt"])
+app.include_router(mobile_api.router, prefix="/api/mobile", tags=["mobile"])
 
 # 静态文件：ComfyUI 生成的图片输出目录，前端用 /generated_images/xxx.png 访问
 _gen_img_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "generated_images")
@@ -530,7 +554,12 @@ if __name__ == "__main__":
         port = find_available_port(start_port=8001)
     write_port_file(port)
 
+    # 安卓端：MFK_HOST=0.0.0.0 时监听全部网卡，供手机局域网访问（默认 127.0.0.1 桌面行为不变）
+    mfk_host = os.environ.get("MFK_HOST", "127.0.0.1")
+
     try:
-        uvicorn.run(app, host="127.0.0.1", port=port, reload=False)
+        if mfk_host != "127.0.0.1":
+            logger.warning("MfkAgent 后端以 MFK_HOST=%s 启动：局域网可访问，请确保已配对设备管理（/api/mobile）", mfk_host)
+        uvicorn.run(app, host=mfk_host, port=port, reload=False)
     finally:
         clear_port_file()

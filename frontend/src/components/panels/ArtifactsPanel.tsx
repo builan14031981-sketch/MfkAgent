@@ -6,7 +6,7 @@ import { useArtifactStore } from "@/lib/artifactStore";
 import { useProjects } from "@/hooks/useProjects";
 import { useFileContent } from "@/hooks/useFileContent";
 import { useTranslation } from "@/hooks/useTranslation";
-import { API_BASE } from "@/lib/api";
+import { getCurrentApiBase, withTokenParam, deviceAuthHeaders } from "@/lib/api";
 
 /** 图片扩展名：走附件端点（base64）预览 */
 const IMAGE_EXTS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico"];
@@ -69,7 +69,9 @@ export function ArtifactsPanel() {
     let cancelled = false;
     setImgLoading(true);
     const params = new URLSearchParams({ path: selected.path });
-    fetch(`${API_BASE}/api/projects/${projectId}/attachment?${params}`)
+    fetch(withTokenParam(`${getCurrentApiBase()}/api/projects/${projectId}/attachment?${params}`), {
+      headers: deviceAuthHeaders(),
+    })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = (await r.json()) as AttachmentData;

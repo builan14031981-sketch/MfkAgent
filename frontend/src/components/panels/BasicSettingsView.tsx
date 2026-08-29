@@ -57,7 +57,6 @@ const PROVIDER_NAMES: Record<string, string> = {
   freellmapi: "FreeLLMAPI",
   mimo: "小米 MiMo",
   wenxin: "百度文心",
-  spark: "讯飞星火",
   minimax: "MiniMax",
   siliconflow: "硅基流动",
   sensenova: "商汤日日新",
@@ -128,7 +127,6 @@ function ThemePreviewCard({
         opacity: disabled ? 0.6 : 1,
         overflow: "hidden",
         textAlign: "left",
-        transition: "border-color var(--transition-fast)",
       }}
     >
       {/* 预览区：层级结构示意（侧边栏 + 主区卡片 + accent 按钮/文字） */}

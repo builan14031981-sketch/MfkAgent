@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback } from "react";
-import { getCurrentApiBase, apiGet, apiPost, apiDelete } from "@/lib/api";
+import { getCurrentApiBase, apiGet, apiPost, apiDelete, deviceAuthHeaders } from "@/lib/api";
 import type { ToolCall } from "@/components/ToolCallCard";
 import type { Attachment, AttachmentKind } from "@/components/FileDropZone";
 import { getFileExt } from "@/components/FileDropZone";
@@ -202,7 +202,7 @@ export function useMessages(chatId: number | null) {
 
     const response = await fetch(`${getCurrentApiBase()}/api/chat/${chatId}/send/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...deviceAuthHeaders() },
       body: JSON.stringify(body),
       signal: internalController.signal,
     });
@@ -547,6 +547,7 @@ export async function uploadAttachment(chatId: number, file: File): Promise<Atta
   try {
     const response = await fetch(`${getCurrentApiBase()}/api/chat/${chatId}/upload`, {
       method: "POST",
+      headers: { ...deviceAuthHeaders() },
       body: formData,
     });
     if (!response.ok) return null;
