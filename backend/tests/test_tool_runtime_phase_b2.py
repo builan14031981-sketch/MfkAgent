@@ -1,4 +1,4 @@
-"""MfkAgent Tool Runtime Phase B-2 自动化验证脚本。
+﻿"""MfkAgent Tool Runtime Phase B-2 自动化验证脚本。
 
 Phase B-2 架构验证：权限决定工具可见性，模型决定调用。
   1. 权限目录组合（PermissionFilter.resolve）：
@@ -59,11 +59,17 @@ from app.core.database import engine as _engine, Base as _Base  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 
 from main import app  # noqa: E402
+import main as _main  # noqa: E402
+_main.is_loopback_host = lambda host: True  # 测试环境豁免移动端配对认证（TestClient 的 client host 固定为 testclient，非回环）
 from app.core.tool_runtime import tool_runtime  # noqa: E402
 from app.core.tool_runtime.permission import PermissionFilter  # noqa: E402
 from app.core.tool_runtime.approval import approval_registry  # noqa: E402
 
-CLIENT = TestClient(app)
+
+# 模块级审批模式：pytest 不调用 main()，需显式设为 SAFE
+from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+set_approval_mode(ApprovalMode.SAFE)
+CLIENT = TestClient(app, base_url="http://127.0.0.1")  # 回环 host，豁免移动端配对认证
 
 BASE_TOOL_NAMES = set(PermissionFilter.BASE_TOOLS)
 
@@ -178,7 +184,7 @@ def make_project(path: Path) -> int:
 
 
 def make_chat(project_id: int, mode: str = "build") -> int:
-    body = {"project_id": project_id, "agent_id": "coder", "title": "PhaseB2", "mode": mode}
+    body = {"project_id": project_id, "agent_id": "coder", "permission_mode": "safe", "title": "PhaseB2", "mode": mode}
     r = CLIENT.post("/api/chat", json=body)
     assert r.status_code == 200, f"create chat failed: {r.status_code} {r.text}"
     return r.json()["id"]
@@ -286,7 +292,9 @@ def test_permission_catalog() -> dict:
     assert not (write_tools & names_plan), f"plan 模式应移除写入工具，剩余: {write_tools & names_plan}"
     assert {"git_status", "git_diff", "git_log"} <= names_plan, "plan 模式应保留 git 只读工具"
 
-    project_tools = {"read_file", "write_file", "list_files", "git_status", "search_files"}
+    # 只读文件工具（read_file/list_files/search_files）已升级为全局可用（permission.py :91），
+    # 项目专有集合以 _project_only_tools 为准：写入类 + git 系 + UI 探测
+    project_tools = {"write_file", "edit_file", "apply_patch", "git_status", "git_commit"}
     assert not (project_tools & names_build_none), f"无项目应移除项目专有工具: {project_tools & names_build_none}"
     assert {"run_command", "web_search", "fetch_url", "github_search"} <= names_build_none, "无项目应保留通用工具"
     assert names_plan_none <= names_build_none, "plan 无项目目录应为 build 无项目的子集"
