@@ -76,6 +76,10 @@ echo   启动完成！
 echo   管理面板: %GATEWAY_URL%
 echo   网关端口: %GATEWAY_PORT%
 echo ========================================
+
+:: [扩展点] 本地专属启动步骤（gateway_local_steps.bat，不上远程，其他机器克隆不受影响）
+if exist "%~dp0gateway_local_steps.bat" call "%~dp0gateway_local_steps.bat"
+
 echo.
 timeout /t 2 /nobreak >nul
 exit
