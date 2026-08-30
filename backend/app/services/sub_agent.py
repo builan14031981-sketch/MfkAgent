@@ -27,7 +27,7 @@
 from typing import Optional
 
 from app.core.database import SessionLocal
-from app.models.agent import Agent
+from app.models.agent import Agent, Setting
 from app.core.agent_runtime import AgentRuntime, AgentContext, AgentResult
 from app.core.agent_runtime.context_builder import get_default_model
 from app.services.model import Message as ModelMessage
@@ -36,6 +36,57 @@ from app.services.model import Message as ModelMessage
 class SubAgentError(Exception):
     """子代理调度异常"""
     pass
+
+
+# ──── T10: 任务图 × 子代理委托 ────
+# 灰度开关：settings 表 key，缺失/值非法时默认关闭（默认串行 + 主循环节点执行，行为与现状一致）。
+_TASK_GRAPH_SUBAGENT_SETTING_KEY = "task_graph_subagent_enabled"
+
+
+def is_task_graph_subagent_enabled() -> bool:
+    """读取 task_graph_subagent_enabled 开关（默认关，灰度开）。
+
+    开启后：TaskGraph 就绪节点 assigned_agent 指向 is_sub_agent 子代理时委托
+    run_sub_agent 执行（独立上下文、只带任务文本），无依赖的就绪可委托节点
+    asyncio.gather 并行分派（并发上限复用编排 MAX_CONCURRENCY）。
+    回滚路径：settings 中删除该 key 或置 false/0/off/no 即恢复现状串行路径，
+    无需回滚代码。
+    """
+    try:
+        db = SessionLocal()
+        try:
+            row = db.query(Setting).filter(Setting.key == _TASK_GRAPH_SUBAGENT_SETTING_KEY).first()
+        finally:
+            db.close()
+        if row is None or row.value is None:
+            return False
+        return str(row.value).strip().lower() in ("1", "true", "on", "yes")
+    except Exception:  # noqa: BLE001 — DB 不可用时按默认关闭处理
+        return False
+
+
+def is_sub_agent_id(agent_key: str) -> bool:
+    """判断 agent_id 是否指向 is_sub_agent 标记的子代理（T10 任务图委托判定）。
+
+    Args:
+        agent_key: TaskNode.assigned_agent 的值（如 sub_code_reviewer）
+
+    Returns:
+        bool: 该 key 对应 agents 表中 is_sub_agent=True 的记录时为 True；
+              key 为空 / 记录不存在 / DB 不可用时一律 False（不可委托）。
+    """
+    if not agent_key:
+        return False
+    try:
+        db = SessionLocal()
+        try:
+            agent = db.query(Agent).filter(Agent.agent_id == agent_key).first()
+        finally:
+            db.close()
+        return bool(agent and agent.is_sub_agent)
+    except Exception:  # noqa: BLE001 — DB 不可用时按不可委托处理
+        return False
+
 
 
 def _get_tool_definitions(allowed_tools: list) -> list:

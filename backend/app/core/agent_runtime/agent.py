@@ -1776,6 +1776,34 @@ class AgentRuntime:
         # 本轮最后一条 user 消息副本末尾（仅 LLM payload，不动 DB 历史消息）
         _apply_turn_reminder(current_messages, (context.metadata or {}).get("turn_reminder"))
 
+        # ──── T10: 任务图 × 子代理委托（task_graph_subagent_enabled，灰度默认关）────
+        # 开启后：就绪节点 assigned_agent 指向 is_sub_agent 子代理 → 委托 run_sub_agent
+        # （独立上下文、只带任务文本），主循环仅经 runtime_context 回注结果摘要；
+        # 无依赖的就绪可委托节点 asyncio.gather 并行分派（并发上限复用编排 MAX_CONCURRENCY）。
+        # 关闭（默认）→ 完全走下方原有串行路径，行为与现状一致。
+        subagent_delegation_enabled = False
+        _run_sub_agent_fn = None
+        _is_sub_agent_fn = None
+        _sub_agent_id_cache: dict = {}
+        if has_task_graph:
+            try:
+                from app.services.sub_agent import (
+                    is_sub_agent_id as _is_sub_agent_fn,
+                    is_task_graph_subagent_enabled as _tg_subagent_enabled,
+                    run_sub_agent as _run_sub_agent_fn,
+                )
+                subagent_delegation_enabled = _tg_subagent_enabled()
+            except Exception:  # noqa: BLE001 — 导入失败按未启用处理，走原串行路径
+                subagent_delegation_enabled = False
+
+        def _task_delegatable(agent_key: str) -> bool:
+            """assigned_agent 是否指向 is_sub_agent 子代理（本 run 内缓存判定）。"""
+            if not subagent_delegation_enabled or not agent_key or _is_sub_agent_fn is None:
+                return False
+            if agent_key not in _sub_agent_id_cache:
+                _sub_agent_id_cache[agent_key] = _is_sub_agent_fn(agent_key)
+            return _sub_agent_id_cache[agent_key]
+
         # G4-B: 外层 TaskGraph 任务循环（无 Plan 时只跑一轮）
         while True:
             current_task = None
@@ -1806,6 +1834,105 @@ class AgentRuntime:
                     current_task_id=current_task.id,
                     task_progress=self._build_task_progress(current_task.id),
                 )}
+                # ──── T10: 子代理委托分派（task_graph_subagent_enabled 开启时）────
+                # 就绪节点 assigned_agent 指向 is_sub_agent 子代理 → 委托 run_sub_agent
+                # （独立上下文、只带任务文本），主循环仅经 runtime_context 回注结果摘要；
+                # 从当前节点扩展并行批：连续就绪的可委托节点 asyncio.gather 并行
+                # （并发上限复用编排 MAX_CONCURRENCY），有依赖节点由状态机保证等待。
+                if _task_delegatable(current_task.assigned_agent):
+                    batch = [current_task]
+                    while True:
+                        _nxt = self.get_next_ready_task()
+                        if _nxt is None or not _task_delegatable(_nxt.assigned_agent):
+                            break
+                        self.update_task_status(_nxt.id, "running")
+                        yield {"type": "task_started", **self._task_event_payload(_nxt, "running")}
+                        yield {"type": "agent_state_update", **self._build_agent_state_event(
+                            agent_role=self._agent_role_display_name(_nxt.assigned_agent),
+                            status="working",
+                            action_detail=f"开始执行任务: {_nxt.action}",
+                            current_task_id=_nxt.id,
+                            task_progress=self._build_task_progress(_nxt.id),
+                        )}
+                        batch.append(_nxt)
+
+                    from app.core.orchestrator.runner import MAX_CONCURRENCY as _TG_SUBAGENT_MAX_CONCURRENCY
+                    _sem = asyncio.Semaphore(_TG_SUBAGENT_MAX_CONCURRENCY)
+
+                    async def _delegate_one(node):
+                        """委托单个节点给子代理（独立上下文、只带任务文本）。"""
+                        try:
+                            async with _sem:
+                                summary = await _run_sub_agent_fn(
+                                    node.assigned_agent,
+                                    node.action,
+                                    chat_id=ctx.get("chat_id"),
+                                    project_path=context.project_path,
+                                    model_id=context.model_id,
+                                    temperature=temperature,
+                                )
+                            return (node, summary, None)
+                        except Exception as e:  # noqa: BLE001 — 失败走既有 failed+级联skip 语义
+                            return (node, None, e)
+
+                    _batch_results = await asyncio.gather(*[_delegate_one(n) for n in batch])
+
+                    for _node, _summary, _err in _batch_results:
+                        if _err is not None:
+                            # 失败语义不变：failed + 级联 skip（对齐模型异常路径，不吞错）
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(_node.assigned_agent),
+                                status="error",
+                                action_detail=f"任务失败: {_node.action}",
+                                current_task_id=_node.id,
+                                task_progress=self._build_task_progress(_node.id),
+                            )}
+                            _skipped = self.task_graph_state.mark_failed(_node.id, str(_err)[:200])
+                            yield {
+                                "type": "task_failed",
+                                **self._task_event_payload(_node, "failed", error=str(_err)),
+                            }
+                            for _skip_id in _skipped:
+                                _skip_node = self.task_graph_state.get_task(_skip_id)
+                                if _skip_node is not None:
+                                    yield {
+                                        "type": "task_skipped",
+                                        **self._task_event_payload(_skip_node, "skipped"),
+                                    }
+                            # 失败简报也经 runtime_context 回注（下游独立节点可感知）
+                            current_messages.append({
+                                "role": "system",
+                                "content": _wrap_runtime_context(
+                                    f"【任务结果】{_node.action}（执行失败：{str(_err)[:200]}）",
+                                    source="MfkAgent TaskGraph",
+                                ),
+                            })
+                        else:
+                            self.update_task_status(_node.id, "completed")
+                            yield {"type": "agent_state_update", **self._build_agent_state_event(
+                                agent_role=self._agent_role_display_name(_node.assigned_agent),
+                                status="completed",
+                                action_detail=f"任务完成: {_node.action}",
+                                current_task_id=_node.id,
+                                task_progress=self._build_task_progress(_node.id),
+                            )}
+                            yield {
+                                "type": "task_completed",
+                                **self._task_event_payload(_node, "completed"),
+                            }
+                            # 子任务结果摘要经 runtime_context 回注（不直写完整输出，
+                            # 摘要上限 500 字，对齐 chats.summary 列宽惯例）
+                            _summary_text = (_summary or "").strip()
+                            current_messages.append({
+                                "role": "system",
+                                "content": _wrap_runtime_context(
+                                    f"【任务结果】{_node.action}：{_summary_text[:500]}",
+                                    source="MfkAgent TaskGraph",
+                                ),
+                            })
+                    # 批内全部节点已终态 → 回外层 while 取下一批 / 下一任务
+                    continue
+
                 # Phase 3.5: Runtime Context 边界隔离 — 任务上下文以 system 角色注入
                 current_messages.append({
                     "role": "system",
