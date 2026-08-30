@@ -156,6 +156,8 @@ async def execute_tool(
     # T5 审批记忆：memory_exemption=历史豁免证据；memory_auto=本次 EXECUTE 是否由豁免触发
     memory_exemption = None
     memory_auto = False
+    # 工单J：autonomous 预授权清单放行标记（写入 record 供前端/审计追溯）
+    _preapproved = False
 
     # 兜底异常保护（Phase C-1）：工具执行异常绝不能打断整个 Agent loop，
     # 统一转换为 tool_result(success=false, error) 回喂模型继续下一轮。
@@ -163,26 +165,42 @@ async def execute_tool(
         mode = "plan" if read_only else "build"
 
         # 1. 风险判定（唯一执行闸）：命令走命令引擎，文件/git 等走工具策略。
+        cmd_text = ""
         if func_name in COMMAND_TOOLS:
-            command = str(func_args.get("command", "") or "")
+            cmd_text = str(func_args.get("command", "") or "")
             if func_name == "run_outside_command":
-                decision = command_risk_engine.evaluate_outside(command, mode)
+                decision = command_risk_engine.evaluate_outside(cmd_text, mode)
             elif func_name == "execute_command":
-                decision = command_risk_engine.evaluate_execute(command, mode)
+                decision = command_risk_engine.evaluate_execute(cmd_text, mode)
             else:
-                decision = command_risk_engine.evaluate(command, mode)
+                decision = command_risk_engine.evaluate(cmd_text, mode)
         else:
             decision = evaluate_tool(func_name, mode)
 
-        # 2. Phase 3 T3/T8: 统一决策链 — ApprovalPolicy 将 RiskDecision 转为 ExecutionDecision
+        # 2. Phase 3 T3/T8 + 工单J: 统一决策链 — ApprovalPolicy 将 RiskDecision 转为 ExecutionDecision。
+        #    T5 审批记忆：仅 REQUIRE_APPROVAL 判定才查询历史豁免（开关关闭/异常/
+        #    run_outside_command 硬边界时恒返 None，行为与现状完全一致）
         policy = _resolve_approval_policy(ctx)
-        # T5 审批记忆：仅 REQUIRE_APPROVAL 判定才查询历史豁免（开关关闭/异常/
-        # run_outside_command 硬边界时恒返 None，行为与现状完全一致）
         if decision.verdict == Verdict.REQUIRE_APPROVAL:
             memory_exemption = approval_memory.check(
                 func_name, _describe_tool_command(func_name, func_args)
             )
-        exec_decision = policy.decide(decision, memory_exemption=memory_exemption)
+        #    工单J 预授权清单仅作用于项目内命令工具（run_command/execute_command）；
+        #    run_outside_command（沙箱外恒 HIGH_RISK）与 plan 模式永不预授权。
+        preapprove_cmd = (
+            cmd_text
+            if (func_name in COMMAND_TOOLS and func_name != "run_outside_command" and not read_only)
+            else None
+        )
+        exec_decision = policy.decide_with_preapproval(
+            decision,
+            command=preapprove_cmd,
+            project_path=project_path,
+            allow_preapproval=not read_only,
+            memory_exemption=memory_exemption,
+        )
+        if "auto_approved_by_policy" in exec_decision.reason:
+            _preapproved = True
 
         # 3. AgentRuntime 只消费 ExecutionDecision
         if exec_decision.action == ExecutionAction.BLOCK:
@@ -227,6 +245,24 @@ async def execute_tool(
                     chat_id=ctx.get("chat_id"),
                     status=approval_memory.AUTO_APPROVED_STATUS,
                 )
+            if _preapproved:
+                logger.info(
+                    "工单J 预授权放行: tool=%s command=%s",
+                    func_name,
+                    _describe_tool_command(func_name, func_args)[:120],
+                )
+                # 预授权来源落审计：approval_requests 表 status=auto_approved，
+                # risk_reason 携带 auto_approved_by_policy 标记（/api/security/approvals 可查）
+                _persist_approval_request(
+                    approval_id=f"aprv_{uuid.uuid4().hex[:12]}",
+                    tool_call_id=tool_call_id,
+                    tool_name=func_name,
+                    command=_describe_tool_command(func_name, func_args),
+                    risk_level=decision.risk_level.value,
+                    risk_reason=exec_decision.reason,
+                    chat_id=ctx.get("chat_id"),
+                    status=approval_memory.AUTO_APPROVED_STATUS,
+                )
             if func_name == "ask_user_choice":
                 # 抉择工具拦截：自主模式直接采纳推荐项；其他模式登记 pending 等待用户抉择
                 return await _dispatch_user_choice(
@@ -259,6 +295,9 @@ async def execute_tool(
     # T5: 结果标注豁免来源（前端/日志可追溯）
     if memory_auto:
         record["auto_approved_by_history"] = True
+    # 工单J: 结果标注预授权来源（前端/日志可追溯）
+    if _preapproved:
+        record["auto_approved_by_policy"] = True
 
     # 工具结束事件：构造 record 前发射
     # 文件类工具：计算绝对路径供前端直接用于打开/定位

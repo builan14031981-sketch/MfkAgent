@@ -30,6 +30,7 @@ from .risk_engine import (
     RiskDecision, Verdict, RiskLevel,
     ExecutionDecision, ExecutionAction,
 )
+from .preapproval import command_matches_preapproval, autonomous_preapproval_enabled
 from . import approval_memory
 
 
@@ -162,6 +163,44 @@ class ApprovalPolicy:
             decision.command,
             original_verdict=decision.verdict,
         )
+
+    def decide_with_preapproval(
+        self,
+        decision: RiskDecision,
+        *,
+        command: Optional[str] = None,
+        project_path: Optional[str] = None,
+        allow_preapproval: bool = True,
+        memory_exemption: Optional["approval_memory.MemoryExemption"] = None,
+    ) -> ExecutionDecision:
+        """工单J：autonomous 会话预授权清单 → 命中清单的命令自动放行。
+
+        仅当全部满足时命中预授权（旁路放行，不修改 risk_engine 判定本体）：
+          - allow_preapproval（plan 模式必须为 False，plan 写入一律拒绝）
+          - 本策略模式为 AUTONOMOUS
+          - 开关 autonomous_preapproval_enabled 开启（默认开）
+          - command 非空（仅项目内命令工具传入；run_outside_command 不传）
+          - command_matches_preapproval 命中清单
+
+        命中 → EXECUTE 并标注 auto_approved_by_policy；
+        未命中 → 回落 decide()（透传 T5 memory_exemption，第二条通路保持不变）。
+        """
+        if (
+            allow_preapproval
+            and self._mode == ApprovalMode.AUTONOMOUS
+            and command
+            and autonomous_preapproval_enabled()
+        ):
+            reason = command_matches_preapproval(command, project_path=project_path)
+            if reason:
+                return ExecutionDecision(
+                    ExecutionAction.EXECUTE,
+                    decision.risk_level,
+                    f"[PREAPPROVAL] auto_approved_by_policy: {reason}",
+                    decision.command,
+                    original_verdict=decision.verdict,
+                )
+        return self.decide(decision, memory_exemption=memory_exemption)
 
     # 保留向后兼容方法
     def apply(self, decision: RiskDecision) -> RiskDecision:
