@@ -218,8 +218,11 @@ def test_system_prompt_layers(project_dir: Path) -> dict:
     pers = get_personality_prompt(70)
     assert pers in sp, "⑥ personality 缺失"
 
-    # ⑦ intent hint
-    assert "## 任务建议" in sp, "⑦ intent hint 缺失"
+    # ⑦ intent hint（T1 缓存前缀契约）：稳定模式下 ⑦⑧⑨⑩ 由 _build_turn_reminder()
+    # 包进 <system-reminder> 注入本轮消息尾部，不再拼入 system prompt（见
+    # context_builder.py _build_turn_reminder 与 build 中 "稳定模式下 ⑦⑧⑨⑩ 不入 system"）
+    assert built.turn_reminder and "## 任务建议" in built.turn_reminder, "⑦ intent hint 应位于 turn_reminder（T1）"
+    assert "## 任务建议" not in sp, "⑦ intent hint 不应再拼入 system prompt（T1）"
 
     return {"case": "system_prompt_layers", "chat_id": cid}
 

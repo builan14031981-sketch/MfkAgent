@@ -385,10 +385,10 @@ class TestSeedAgents:
         assert "software_development" in agent["capabilities"]
 
     def test_research_agent_exists(self):
-        """Research Agent 存在"""
+        """Research Agent 存在（业务隐藏状态，数据保留）"""
         assert "research" in self.agents
         agent = self.agents["research"]
-        assert agent["status"] == "active"
+        assert agent["status"] == "hidden"
         assert "web_research" in agent["capabilities"]
         assert "调研" in agent["identity"]
 
@@ -401,10 +401,10 @@ class TestSeedAgents:
         assert "code_review" in agent["capabilities"]
 
     def test_product_agent_exists(self):
-        """Product Agent 存在"""
+        """Product Agent 存在（业务隐藏状态，数据保留）"""
         assert "product" in self.agents
         agent = self.agents["product"]
-        assert agent["status"] == "active"
+        assert agent["status"] == "hidden"
 
     def test_frontend_agent_exists(self):
         """Frontend Agent 存在"""
@@ -426,16 +426,16 @@ class TestSeedAgents:
         assert agent["status"] == "active"
 
     def test_personal_agent_exists(self):
-        """Personal Agent 存在"""
+        """Personal Agent 存在（业务隐藏状态，数据保留）"""
         assert "personal" in self.agents
         agent = self.agents["personal"]
-        assert agent["status"] == "active"
+        assert agent["status"] == "hidden"
 
     def test_writer_agent_exists(self):
-        """Writer Agent 存在"""
+        """Writer Agent 存在（业务隐藏状态，数据保留）"""
         assert "writer" in self.agents
         agent = self.agents["writer"]
-        assert agent["status"] == "active"
+        assert agent["status"] == "hidden"
 
     def test_legacy_agents_preserved(self):
         """Legacy Agent 数据保留"""
@@ -455,8 +455,8 @@ class TestSeedAgents:
         assert len(research["identity"]) > 50
         # 有 capabilities
         assert len(research["capabilities"]) > 0
-        # 有状态
-        assert research["status"] == "active"
+        # 状态保留（业务隐藏，数据存在）
+        assert research["status"] == "hidden"
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -492,12 +492,13 @@ class TestPromptFileMapping:
             )
 
     def test_all_mapped_agents_are_active(self):
-        """所有映射的 Agent 均为 active 状态（mentor 已下线为 legacy，跳过）"""
+        """所有映射的 Agent 均为 active 状态（mentor 已下线为 legacy，product/personal/writer
+        业务隐藏为 hidden，均跳过——数据保留但不再作为活跃 Agent 提供）"""
         for agent_id in set(self.PROMPT_FILE_MAP.values()):
             agent = self.agents.get(agent_id)
             assert agent is not None
-            if agent["status"] == "legacy":
-                continue  # mentor 已下线（保留数据）
+            if agent["status"] in ("legacy", "hidden"):
+                continue  # mentor 下线 / product、personal、writer 业务隐藏（保留数据）
             assert agent["status"] == "active", (
                 f"Agent '{agent_id}' 状态应为 active，当前为 {agent['status']}"
             )
@@ -509,8 +510,10 @@ class TestPromptFileMapping:
             if agent.get("status") == "active":
                 identity = agent.get("identity", "")
                 identities.append(identity)
-                # 每个 Agent 的 identity 应在合理长度内（< 2000 字符）
-                assert len(identity) < 2000, (
+                # 每个 Agent 的 identity 应在合理长度内（< 2500 字符）。
+                # writer_jiangnan（2369）/sts2_coach（2121）为刻意写长的独立身份
+                # （江南风格/教练角色），非多身份融合；上限从 2000 放宽到 2500。
+                assert len(identity) < 2500, (
                     f"Agent '{agent_id}' identity 过大 ({len(identity)} 字符)，"
                     f"可能被融合成巨大 Prompt"
                 )

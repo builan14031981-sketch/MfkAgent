@@ -529,35 +529,21 @@ def test_non_stream_run_lifecycle(project_dir: Path) -> dict:
     pid = make_project(repo)
     cid = make_chat(pid)
 
-    # 非流式走 call_once（httpx client.post），用 FakeClient 的 stream 拦截不到 → 需 fake post
-    calls = []
+    # T4 双循环合一：非流式 run() 内部消费 run_stream() → model_service.stream_once()。
+    # 旧实现走 call_once（httpx client.post）的 _PostFakeClient 已不再适用，改在
+    # model_service 层用 _t4_mock_adapter.stream_from_single_call 包装单轮文本响应。
+    from unittest.mock import AsyncMock, patch
+    from tests._t4_mock_adapter import stream_from_single_call
 
-    class _PostResponse:
-        def __init__(self):
-            self.status_code = 200
-            self._data = {
-                "choices": [{"message": {"content": "非流式回复。"}, "finish_reason": "stop"}],
-                "usage": {},
-            }
+    class _MockResult:
+        def __init__(self, content, tool_calls, finish_reason):
+            self.content = content
+            self.tool_calls = tool_calls
+            self.finish_reason = finish_reason
+            self.usage = None
 
-        def json(self):
-            return self._data
-
-    class _PostFakeClient:
-        def __init__(self, *a, **kw):
-            pass
-
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *exc):
-            return False
-
-        async def post(self, url, **kwargs):
-            calls.append(url)
-            return _PostResponse()
-
-    httpx.AsyncClient = _PostFakeClient
+    async def _single_round(model_id, messages, tools, **kwargs):
+        return _MockResult("非流式回复。", None, "stop")
 
     built = _asyncio.run(get_chat_context_builder().build(
         ContextBuildInput(chat_id=cid, content="非流式测试", model="deepseek-v4-flash")
@@ -565,14 +551,17 @@ def test_non_stream_run_lifecycle(project_dir: Path) -> dict:
 
     async def _run():
         rt = AgentRuntime()
-        result = await rt.run(
-            context=built.context,
-            messages=built.messages,
-            temperature=0.7,
-            max_tokens=256,
-            reasoning_effort="none",
-            read_only=built.read_only,
-        )
+        with patch("app.services.model.model_service") as ms:
+            ms.stream_once = stream_from_single_call(_single_round)  # T4：run() 内部走 stream_once
+            ms.call_once = AsyncMock(side_effect=_single_round)  # 兼容仍可能走 call_once 的分支
+            result = await rt.run(
+                context=built.context,
+                messages=built.messages,
+                temperature=0.7,
+                max_tokens=256,
+                reasoning_effort="none",
+                read_only=built.read_only,
+            )
         return result
 
     result = _asyncio.run(_run())
@@ -584,8 +573,10 @@ def test_non_stream_run_lifecycle(project_dir: Path) -> dict:
 
     _, run_events, state_rows = _fetch_run(run.id)
     state_path = [e.payload.get("state") for e in run_events if e.event_type == "state_change"]
-    # run(): pending→building_context→routing→llm_call→completing→completed
-    expected = ["building_context", "routing", "llm_call", "completing"]
+    # run()（T4 双循环合一）：run() 内部消费 run_stream()，状态路径不再含旧 run() 的
+    # routing 事件（TaskRouter 决策在合一实现中不 emit routing state_change，见
+    # agent.py run_stream 的 state_change 点位：building_context → llm_call → … → completing）。
+    expected = ["building_context", "llm_call", "completing"]
     assert state_path[:len(expected)] == expected, f"run() state 路径不符: {state_path}"
     audit = [r.to_state for r in state_rows]
     assert audit[-1] == "completed", f"审计终点应为 completed: {audit}"

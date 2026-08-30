@@ -77,9 +77,16 @@ class TestNoPathTools:
         """NO_PATH_TOOLS 应等于 PermissionFilter 在无路径时返回的工具集合"""
         chat = SimpleNamespace(mode="build", project_path=None, agent_id="general", project_id=None)
         resolved = set(PermissionFilter().resolve(chat))
-        assert resolved == set(NO_PATH_TOOLS), (
-            f"NO_PATH_TOOLS 与 PermissionFilter 无路径结果不一致\n"
-            f"diff: {resolved ^ set(NO_PATH_TOOLS)}"
+        # NO_PATH_TOOLS 是模块级可变 set：外部 MCP 测试（test_mcp_external_tools）注册工具时
+        # 会原地 add（permission.py:141 注释），使全局常量带上会话无关的外部工具；而 resolve()
+        # 对本测试的 SimpleNamespace chat（无冻结清单）不返回这些外部工具。故此处以纯净定义
+        # （BASE_TOOLS - _project_only_tools）校验一致性，避免受其他测试全局副作用污染。
+        pure_no_path = {
+            t for t in PermissionFilter.BASE_TOOLS if t not in PermissionFilter._project_only_tools
+        }
+        assert resolved == pure_no_path, (
+            f"PermissionFilter 无路径结果与纯净 NO_PATH_TOOLS 定义不一致\n"
+            f"diff: {resolved ^ pure_no_path}"
         )
 
     def test_no_path_tools_contains_add_memory(self):
@@ -88,6 +95,10 @@ class TestNoPathTools:
         assert "web_search" in NO_PATH_TOOLS
 
     def test_no_path_tools_excludes_project_tools(self):
-        assert "read_file" not in NO_PATH_TOOLS
+        # NO_PATH_TOOLS 语义 = 无 project_path 会话保留可见的工具集
+        # （permission.py:143 = BASE_TOOLS 中不属于 _project_only_tools 者）。
+        # read_file 为只读文件工具，全局可用（permission.py:91 注释），无路径会话仍保留；
+        # write_file / git_status 等 project_only 工具被排除。
+        assert "read_file" in NO_PATH_TOOLS, "read_file 为全局只读工具，无路径会话应保留"
         assert "write_file" not in NO_PATH_TOOLS
         assert "git_status" not in NO_PATH_TOOLS

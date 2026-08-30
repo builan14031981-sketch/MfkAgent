@@ -34,21 +34,24 @@ class CommandWindowsPhaseHTestCase(unittest.TestCase):
         self.assertIn("分多次调用", _principle_text())
 
     # ──── command_tools：禁止字符 + 分次调用提示 ────
+    # T11 契约：run_command 对可安全拆分的链式命令放行（chain_gate_allows，逐段风险判定），
+    # 仅对不可安全解析的命令替换类（$(...)/`...`/$VAR）fail-closed 拒绝；拒绝文案不含
+    # "分多次调用"提示（该提示保留在 run_command_outside）。
 
     def test_run_command_semicolon_rejected_with_hint(self):
-        out = CT.run_command(".", "ls -la; rm -rf x")
+        # 命令替换使链式命令无法安全解析（fail-closed）→ 仍拒绝
+        out = CT.run_command(".", "echo a; $(whoami)")
         self.assertIn("不允许的字符", out)
-        self.assertIn("分多次调用", out)
 
     def test_run_command_pipe_rejected_with_hint(self):
-        out = CT.run_command(".", "cat a | grep x")
+        # 管道 + 命令替换同理被拒绝
+        out = CT.run_command(".", "echo a | $(whoami)")
         self.assertIn("不允许的字符", out)
-        self.assertIn("分多次调用", out)
 
     def test_execute_command_rejected_with_hint(self):
+        # execute_command 无 chain_gate_allows 放行，含元字符的链式命令直接拒绝
         out = json.loads(CT.execute_command(".", "cd a && npm i"))
         self.assertIn("不允许的字符", out["stderr"])
-        self.assertIn("分多次调用", out["stderr"])
         self.assertEqual(out["exit_code"], -1)
 
     def test_run_command_outside_rejected_with_hint(self):

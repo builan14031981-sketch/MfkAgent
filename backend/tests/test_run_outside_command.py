@@ -47,9 +47,18 @@ class TestEvaluateOutside(unittest.TestCase):
         d = self.engine.evaluate_outside("cmd && echo hi")
         self.assertEqual(d.verdict, Verdict.DENY)
 
-    def test_plan_mode_deny(self):
+    def test_plan_mode_allow_readonly(self):
+        # Phase E5 修正后的 Plan/Build 权限模型：两者是修改权限区别而非工具能力区别。
+        # 沙箱外只读白名单命令（dir 等）在 plan 下自动放行（risk_engine.evaluate_outside，
+        # 见文件头注释与 "沙箱外只读白名单命令，Plan 模式放行" 分支）。
         d = self.engine.evaluate_outside("dir", mode="plan")
-        self.assertEqual(d.verdict, Verdict.DENY)
+        self.assertEqual(d.verdict, Verdict.ALLOW)
+
+    def test_plan_mode_deny_write(self):
+        # plan 下写入/毁灭性沙箱外命令一律拒绝（fail-closed）
+        for cmd in ("del /f x.txt", "rmdir /s /q temp", "git reset --hard HEAD"):
+            d = self.engine.evaluate_outside(cmd, mode="plan")
+            self.assertEqual(d.verdict, Verdict.DENY, msg=cmd)
 
     def test_build_always_high_risk(self):
         # 即使"安全只读"命令也不查白名单，恒定 HIGH_RISK

@@ -172,7 +172,8 @@ def test_update_key_not_purge():
     from app.core.database import SessionLocal
     from app.models.agent import CustomModel
 
-    test_provider = "spark"
+    # 注：spark 已从 provider 注册表移除（model_providers.PROVIDERS），此处改用仍存在的 glm
+    test_provider = "glm"
     # 先清场
     _set_setting(f"api_base_{test_provider}", "")
     db = SessionLocal()
@@ -187,8 +188,13 @@ def test_update_key_not_purge():
     result = asyncio.run(update_provider_key(body))
     assert result["purged"] is False, "正常更新 Key 不应触发 purge"
 
-    # 清理测试数据
+    # 清理测试数据：update_provider_key 内部会 reload_models() 把 Key 热重载进内存单例，
+    # 仅清 DB setting 会让 glm Key 残留在 model_service.models，污染后续依赖"无 Key 不可见"
+    # 的用例（如 test_model_config_phase_d::test_available_models_filter 断言 glm 不应出现）。
+    # 故清 DB 后须再 reload_models() 一次，使内存与 DB 同步。
     _set_setting(f"api_key_{test_provider}", "")
+    from app.services.model import model_service
+    model_service.reload_models()
     print("[PASS] test_update_key_not_purge → 正常更新未误触发清除")
 
 

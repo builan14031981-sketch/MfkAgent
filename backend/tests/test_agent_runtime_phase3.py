@@ -20,6 +20,11 @@ from dataclasses import dataclass
 # 确保 backend 在 sys.path 中
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+# T4 双循环合一：run() 内部消费 run_stream()（模型面从 call_once 统一为 stream_once）。
+# 本文件测试通过 mock model_service 驱动主循环，需把旧 call_once 型 side_effect
+# 经 stream_from_single_call 包装成 stream_once 事件流（语义与旧断言保持一致）。
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402
+
 # ──── Mock 数据类 ────
 
 @dataclass
@@ -103,13 +108,21 @@ class TestAgentRuntimePhase3:
         """测试：普通聊天（无工具），应返回 1 轮结果"""
         from app.core.agent_runtime.agent import AgentRuntime
 
-        # Mock: 模型返回纯文本（无 tool_calls）
-        mock_model_service.call_once = AsyncMock(return_value=MockSingleCallResult(
-            content="你好！有什么可以帮助你的？",
-            tool_calls=None,
-            finish_reason="stop",
-            usage={"total_tokens": 50},
-        ))
+        # Mock: 模型返回纯文本（无 tool_calls）。
+        # T4：主循环走 stream_once，用 stream_from_single_call 包装单轮文本。
+        stream_calls = []
+
+        async def _single_round(model_id, messages, tools, **kwargs):
+            stream_calls.append(1)
+            return MockSingleCallResult(
+                content="你好！有什么可以帮助你的？",
+                tool_calls=None,
+                finish_reason="stop",
+                usage={"total_tokens": 50},
+            )
+
+        mock_model_service.stream_once = stream_from_single_call(_single_round)
+        mock_model_service.call_once = AsyncMock(side_effect=_single_round)  # 自查等仍可能走 call_once
 
         context = self._make_context(tools=None)
         messages = self._make_messages("你好")
@@ -123,7 +136,7 @@ class TestAgentRuntimePhase3:
         assert result.finish_reason == "stop", f"预期 finish_reason=stop，实际: {result.finish_reason}"
         assert result.tool_calls == [], f"预期 tool_calls=[]，实际: {result.tool_calls}"
         assert result.metadata["task_type"] == "chat", f"预期 task_type=chat，实际: {result.metadata['task_type']}"
-        assert mock_model_service.call_once.call_count == 1, "预期只调用 1 次 call_once"
+        assert len(stream_calls) == 1, "预期只调用 1 次 stream_once（主循环 1 轮）"
 
         print("  [PASS] Test 1: 普通聊天流程")
 
@@ -157,6 +170,8 @@ class TestAgentRuntimePhase3:
                     usage={"total_tokens": 150},
                 )
 
+        # T4：主循环走 stream_once（包装旧 call_once 型 side_effect），call_once 保留给自查等
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("read_file", "print('hello')")
 
@@ -173,7 +188,7 @@ class TestAgentRuntimePhase3:
         assert len(result.tool_calls) == 1, f"预期 1 个 tool_call，实际: {len(result.tool_calls)}"
         assert result.tool_calls[0]["name"] == "read_file"
         assert result.tool_calls[0]["success"] is True
-        assert mock_model_service.call_once.call_count == 2, "预期 2 次 call_once"
+        assert call_count == 2, "预期 2 轮模型调用（工具+总结）"
         assert mock_execute_tool.call_count == 1, "预期 1 次工具执行"
 
         print("  [PASS] Test 2: 单工具调用流程")
@@ -213,6 +228,8 @@ class TestAgentRuntimePhase3:
                     usage={"total_tokens": 200},
                 )
 
+        # T4：主循环走 stream_once（包装旧 call_once 型 side_effect）
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
 
         tool_results = [
@@ -231,7 +248,7 @@ class TestAgentRuntimePhase3:
         assert "项目结构" in result.content, f"预期包含总结，实际: {result.content}"
         assert result.rounds == 3, f"预期 rounds=3，实际: {result.rounds}"
         assert len(result.tool_calls) == 2, f"预期 2 个 tool_call，实际: {len(result.tool_calls)}"
-        assert mock_model_service.call_once.call_count == 3, "预期 3 次 call_once"
+        assert call_count == 3, "预期 3 轮模型调用（2 工具+1 总结）"
         assert mock_execute_tool.call_count == 2, "预期 2 次工具执行"
 
         print("  [PASS] Test 3: 多轮工具调用流程")
@@ -264,6 +281,8 @@ class TestAgentRuntimePhase3:
                     usage={"total_tokens": 120},
                 )
 
+        # T4：主循环走 stream_once（包装旧 call_once 型 side_effect）
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result(
             "read_file", "错误: 文件不存在: nonexistent.py", success=False
@@ -310,6 +329,8 @@ class TestAgentRuntimePhase3:
                     usage={"total_tokens": 80},
                 )
 
+        # T4：主循环走 stream_once（包装旧 call_once 型 side_effect）
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
         mock_execute_tool.return_value = make_tool_result("read_file", "content")
 
@@ -321,15 +342,13 @@ class TestAgentRuntimePhase3:
 
         # 验证
         assert "总结" in result.content, f"预期包含总结，实际: {result.content}"
-        # MAX_ROUNDS=10：前 9 轮有 tools（返回 tool_calls），第 10 轮无 tools（返回文本）
-        # round_no 从 0 开始，每次 tool_calls 后 +1
-        # round 0..8: tools=yes → tool_calls → round_no 递增
-        # round 9: tools=no → no tool_calls → break
-        # rounds = 9 + 1 = 10
-        assert result.rounds == 10, f"预期 rounds=10，实际: {result.rounds}"
+        # MAX_ROUNDS=10（T4 合一后 run_stream 口径）：for round_no in range(task_budget + 1)，
+        # round_no < task_budget（0..9）时带工具，round_no == task_budget（10）时无工具强制文本。
+        # 模型"不听话"前 10 轮都返回 tool_calls → 10 次工具执行；第 11 轮无工具返回文本。
+        assert result.rounds == 11, f"预期 rounds=11，实际: {result.rounds}"
         assert result.finish_reason == "stop", f"预期 finish_reason=stop，实际: {result.finish_reason}"
-        assert len(result.tool_calls) == 9, f"预期 9 个 tool_call（前 9 轮），实际: {len(result.tool_calls)}"
-        assert mock_model_service.call_once.call_count == 10, "预期 10 次 call_once"
+        assert len(result.tool_calls) == 10, f"预期 10 个 tool_call（前 10 轮），实际: {len(result.tool_calls)}"
+        assert mock_execute_tool.call_count == 10, "预期 10 次工具执行（前 10 轮有工具）"
 
         print("  [PASS] Test 5: MAX_ROUNDS 限制流程")
 
@@ -340,12 +359,20 @@ class TestAgentRuntimePhase3:
         """测试：无可用工具时，直接回答，不尝试工具调用"""
         from app.core.agent_runtime.agent import AgentRuntime
 
-        mock_model_service.call_once = AsyncMock(return_value=MockSingleCallResult(
-            content="Python 是一种解释型语言...",
-            tool_calls=None,
-            finish_reason="stop",
-            usage={"total_tokens": 80},
-        ))
+        # T4：主循环走 stream_once。用闭包捕获 stream_once 收到的 tools 参数。
+        seen = {}
+
+        async def _single_round(model_id, messages, tools, **kwargs):
+            seen["tools"] = tools
+            return MockSingleCallResult(
+                content="Python 是一种解释型语言...",
+                tool_calls=None,
+                finish_reason="stop",
+                usage={"total_tokens": 80},
+            )
+
+        mock_model_service.stream_once = stream_from_single_call(_single_round)
+        mock_model_service.call_once = AsyncMock(side_effect=_single_round)  # 自查等仍可能走 call_once
 
         context = self._make_context(tools=None)  # 无工具
         messages = self._make_messages("什么是 Python？")
@@ -355,9 +382,8 @@ class TestAgentRuntimePhase3:
 
         assert result.rounds == 1, f"预期 rounds=1，实际: {result.rounds}"
         assert result.tool_calls == [], "预期无 tool_calls"
-        # 验证 call_once 被调用时 tools=None
-        call_args = mock_model_service.call_once.call_args
-        assert call_args[1]["tools"] is None, "预期 tools=None"
+        # 验证 stream_once 被调用时 tools=None（无可用工具时主循环不传工具）
+        assert seen.get("tools") is None, "预期 tools=None"
 
         print("  [PASS] Test 6: 无工具可用")
 
@@ -382,7 +408,9 @@ class TestAgentRuntimePhase3:
                     usage={"total_tokens": 50},
                 )
             else:
-                assert memory_text is None, f"第 {call_count} 轮不应有 memory_text"
+                # T1：记忆每轮一致常驻（agent.py run_stream 对每轮固定传 context.memory_text，
+                # 保证 system 前缀跨轮稳定），不再"仅首轮注入"
+                assert memory_text is not None, f"第 {call_count} 轮仍应常驻 memory_text（T1 口径）"
                 return MockSingleCallResult(
                     content="done",
                     tool_calls=None,
@@ -390,6 +418,8 @@ class TestAgentRuntimePhase3:
                     usage={"total_tokens": 30},
                 )
 
+        # T4：主循环走 stream_once（包装旧 call_once 型 side_effect），call_once 保留给自查等
+        mock_model_service.stream_once = stream_from_single_call(call_once_side_effect)
         mock_model_service.call_once = AsyncMock(side_effect=call_once_side_effect)
 
         with patch("app.core.tool_runtime.executor.execute_tool") as mock_exec:
@@ -405,7 +435,7 @@ class TestAgentRuntimePhase3:
             result = await runtime.run(context=context, messages=messages)
 
             assert result.rounds == 2
-            assert mock_model_service.call_once.call_count == 2, "预期 2 次 call_once"
+            assert call_count == 2, "预期 2 轮模型调用（工具+总结），memory_text 仅首轮注入"
 
         print("  [PASS] Test 7: memory_text 仅首轮注入")
 

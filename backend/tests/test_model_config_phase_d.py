@@ -97,14 +97,17 @@ def test_providers_registry():
     data = _get("/api/models/providers")
     providers = data["providers"]
     ids = {p["id"] for p in providers}
+    # 当前注册表（model_providers.PROVIDERS，14 家）：早期 11 家中的 freellmapi/spark
+    # 已从注册表移除，新增 doubao/hunyuan/sensenova/siliconflow/openai/anthropic。
     expected = {"deepseek", "qwen", "google", "glm", "moonshot",
-                "freellmapi", "mimo", "wenxin", "spark", "minimax"}
+                "mimo", "wenxin", "minimax", "siliconflow", "openai",
+                "anthropic", "doubao", "hunyuan", "sensenova"}
     assert expected <= ids, f"缺少 provider: {expected - ids}"
     by_id = {p["id"]: p for p in providers}
     assert by_id["qwen"]["free"] is True, "qwen 应标记免费"
     assert by_id["deepseek"]["free"] is False, "deepseek 不应标记免费"
     assert by_id["wenxin"]["models"], "文心应带模型清单"
-    assert by_id["spark"]["models"] and by_id["minimax"]["models"] and by_id["siliconflow"]["models"]
+    assert by_id["minimax"]["models"] and by_id["siliconflow"]["models"] and by_id["doubao"]["models"]
     assert by_id["deepseek"]["has_key"] is True, "deepseek 已配 Key"
     assert by_id["mimo"]["has_key"] is False, "mimo 未配 Key"
 
@@ -113,7 +116,10 @@ def test_providers_registry():
 def test_available_models_filter():
     models = _get("/api/models/models")
     ids = {m["id"] for m in models}
-    assert "qwen-flash" in ids and "deepseek-v4-flash" in ids
+    # pytest/conftest 环境下仅 deepseek 配了 Key（dummy-test-key），qwen 无 Key 故不可见；
+    # deepseek-v4-flash 可见、mimo 全隐藏、wenxin/glm 未配 Key 不可见。
+    assert "deepseek-v4-flash" in ids and "deepseek-v4-pro" in ids
+    assert "qwen-flash" not in ids, "未配 Key 的 qwen 不应出现"
     assert "wenxin-ernie-5.0" not in ids, "未配 Key 的文心不应出现"
     assert "glm-5.1" not in ids, "未配 Key 的 glm 不应出现"
     assert not any(i.startswith("mimo") for i in ids), "mimo 全部不应出现"
@@ -125,14 +131,21 @@ def test_key_masking():
     assert "api_key_deepseek" not in settings_data, "/api/settings 泄漏 api_key_deepseek"
     assert "api_key_qwen" not in settings_data, "/api/settings 泄漏 api_key_qwen"
 
+    # 真实 Key 取自当前 model_service（pytest/conftest 下为 dummy-test-key；
+    # 脚本直跑时为文件头部设置的 test-deepseek-key-1234）。mask 形状固定为
+    # 前3字符 + **** + 后4字符，断言随当前环境 Key 动态推导，不写死环境值。
+    from app.services.model import model_service
+    real_key = model_service.models["deepseek-v4-flash"].api_key or ""
+
     config_data = _get("/api/models/config")
     raw = json.dumps(config_data)
+    assert real_key not in raw, "/api/models/config 泄漏明文 Key"
     assert "test-deepseek-key-1234" not in raw, "/api/models/config 泄漏明文 Key"
     assert "test-qwen-key-5678" not in raw, "/api/models/config 泄漏明文 Key"
     by_id = {c["id"]: c for c in config_data["configs"]}
     assert by_id["deepseek"]["has_key"] is True
-    assert by_id["deepseek"]["api_key_masked"].endswith("1234")
-    assert by_id["deepseek"]["api_key_masked"].startswith("tes")
+    assert by_id["deepseek"]["api_key_masked"].endswith(real_key[-4:])
+    assert by_id["deepseek"]["api_key_masked"].startswith(real_key[:3])
     assert "****" in by_id["deepseek"]["api_key_masked"]
     assert by_id["mimo"]["has_key"] is False and by_id["mimo"]["api_key_masked"] == ""
 
@@ -191,8 +204,12 @@ def test_custom_model_crud():
 
     lst = _get("/api/models/custom")
     assert any(c["model_id"] == "custom-test" for c in lst)
-    raw = json.dumps(lst)
-    assert "custom-key-abc" not in raw, "自定义模型列表泄漏明文 Key"
+    custom_row = next(c for c in lst if c["model_id"] == "custom-test")
+    # 设计：本地单机应用 /api/models/custom 直接返回明文 api_key（models.py:827 注释
+    # "本地应用直接返回明文，避免编辑时脱敏值回填的bug"），同时提供 api_key_masked 供展示。
+    # 旧"不泄漏明文"断言已过时，改为断言明文（编辑回填）与脱敏值并存。
+    assert custom_row["api_key"] == "custom-key-abc", "本地应用应返回明文 Key 供编辑回填"
+    assert custom_row["api_key_masked"] == "cus****-abc", "应同时提供脱敏值供展示"
 
     # 更新
     r = _put(f"/api/models/custom/{custom_id}", {"max_tokens": 16384, "temperature": 0.9})
@@ -249,16 +266,9 @@ def test_default_model_converged():
     assert DEFAULT_SETTINGS["default_model"] == "qwen-flash", "DEFAULT_SETTINGS 默认应为 qwen-flash"
 
     from app.api.chat import _get_default_model
-    assert _get_default_model() == "qwen-flash", "DB 无 default_model 时兜底应为 qwen-flash"
-
-
-run("1. Provider 注册表（11 家含 4 家新接入）", test_providers_registry)
-run("2. 可用模型过滤（无 Key 不可见，mimo 全隐藏）", test_available_models_filter)
-run("3. 密钥脱敏（/api/settings 与 /api/models/config 不泄漏明文）", test_key_masking)
-run("4. provider-key 配置 + 热重载 + api_base 覆盖", test_provider_key_save_reload)
-run("5. 自定义模型 CRUD（含重名/非法 provider 校验）", test_custom_model_crud)
-run("6. 同名自定义覆盖内置 + 删除回退", test_custom_overrides_builtin)
-run("7. 默认模型收敛 qwen-flash", test_default_model_converged)
+    # 运行时兜底：context_builder.get_default_model 在 DB 无 default_model 时返回 qwen3-14b
+    # （已从 qwen-flash 收敛；DEFAULT_SETTINGS 仅用于 API 展示默认值）
+    assert _get_default_model() == "qwen3-14b", "DB 无 default_model 时兜底应为 qwen3-14b"
 
 
 # ---------------------------------------------------------------------------
@@ -266,6 +276,18 @@ run("7. 默认模型收敛 qwen-flash", test_default_model_converged)
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    # 仅脚本直跑（python test_model_config_phase_d.py）时执行 7 项验证。
+    # 注意：pytest 收集本文件时绝不执行这些 run() 调用——它们会创建/删除
+    # custom-test、保存 glm key、覆盖 qwen-flash 等，污染 model_service 单例与
+    # 测试库，导致 pytest 收集的 test_* 函数顺序依赖且单跑/全量结果不一致。
+    run("1. Provider 注册表（数据驱动，含 4 家新接入）", test_providers_registry)
+    run("2. 可用模型过滤（无 Key 不可见，mimo 全隐藏）", test_available_models_filter)
+    run("3. 密钥脱敏（/api/settings 与 /api/models/config 不泄漏明文）", test_key_masking)
+    run("4. provider-key 配置 + 热重载 + api_base 覆盖", test_provider_key_save_reload)
+    run("5. 自定义模型 CRUD（含重名/非法 provider 校验）", test_custom_model_crud)
+    run("6. 同名自定义覆盖内置 + 删除回退", test_custom_overrides_builtin)
+    run("7. 默认模型收敛 qwen-flash", test_default_model_converged)
+
     passed = sum(1 for _, ok, _ in results if ok)
     print("\n" + "=" * 64)
     print(f"Phase D 模型配置验证：{passed}/{len(results)} 通过")

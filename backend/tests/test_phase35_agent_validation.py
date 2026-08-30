@@ -486,10 +486,14 @@ class TestTask6FinalAcceptance:
         active_agents = [a for a in PRESET_AGENTS if a.get("status") == "active"]
         assert len(active_agents) >= 8, f"需要至少 8 个 active Agent，实际 {len(active_agents)}"
 
-        required_agents = ["general", "coder", "frontend_ui", "g", "product", "research", "writer"]
+        # product/research/writer 已业务隐藏（hidden），不再要求 active，但仍需存在（数据保留）
+        required_agents = ["general", "coder", "frontend_ui", "g"]
         active_ids = {a["agent_id"] for a in active_agents}
         for agent_id in required_agents:
             assert agent_id in active_ids, f"缺少必需 Agent: {agent_id}"
+        all_ids = {a["agent_id"] for a in PRESET_AGENTS}
+        for agent_id in ("product", "research", "writer"):
+            assert agent_id in all_ids, f"业务隐藏 Agent 仍应保留: {agent_id}"
 
         # 每个 Agent 有 identity 和 capabilities
         for agent in active_agents:

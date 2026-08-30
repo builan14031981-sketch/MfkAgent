@@ -42,7 +42,9 @@ class AutoCompressPhaseHTestCase(unittest.TestCase):
         self.assertLess(compute_watermark(5000, "deepseek-chat"), 50.0)
 
     def test_watermark_above(self):
-        self.assertGreater(compute_watermark(150000, "deepseek-chat"), 50.0)
+        # deepseek 系当前 context_window=1048576（model_context_config → model_providers
+        # ProviderModel.context_window），50% 阈值 ≈ 524288；600000 已越过 50%。
+        self.assertGreater(compute_watermark(600000, "deepseek-chat"), 50.0)
 
     # ──── 触发 / 不触发 ────
 
@@ -64,7 +66,7 @@ class AutoCompressPhaseHTestCase(unittest.TestCase):
             compressed = _messages(4)
             self.runtime.compress_history = AsyncMock(return_value=compressed)
             ok = await self.runtime._maybe_auto_compress(
-                run_id="r1", messages=msgs, usage={"prompt_tokens": 150000}, model_id="deepseek-chat"
+                run_id="r1", messages=msgs, usage={"prompt_tokens": 600000}, model_id="deepseek-chat"
             )
             return ok, msgs
 
@@ -77,7 +79,7 @@ class AutoCompressPhaseHTestCase(unittest.TestCase):
             msgs = _messages(20)
             self.runtime.compress_history = AsyncMock(return_value=msgs)  # 未生效 → 降级
             ok = await self.runtime._maybe_auto_compress(
-                run_id="r1", messages=msgs, usage={"prompt_tokens": 150000}, model_id="deepseek-chat"
+                run_id="r1", messages=msgs, usage={"prompt_tokens": 600000}, model_id="deepseek-chat"
             )
             return ok, msgs
 

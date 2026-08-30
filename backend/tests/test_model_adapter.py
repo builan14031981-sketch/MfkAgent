@@ -154,8 +154,8 @@ class TestCustomModelOverride:
                 return ""  # 让内置走 .env
             return ""
 
-        with patch("app.core.model_adapter.PROVIDERS", (builtin_provider,)), \
-             patch("app.core.model_adapter.PROVIDER_MAP", {"deepseek": builtin_provider}), \
+        with patch("app.core.model_adapter._mp.PROVIDERS", (builtin_provider,)), \
+             patch("app.core.model_adapter._mp.PROVIDER_MAP", {"deepseek": builtin_provider}), \
              patch.object(adapter, "_read_setting", side_effect=fake_read_setting), \
              patch.object(adapter, "_custom_models", return_value=[fake_custom]), \
              patch("app.core.model_adapter.settings") as mock_env:
@@ -176,8 +176,8 @@ class TestCustomModelOverride:
 
         fake_custom = _make_custom_model_orm("my-custom-model", api_key="custom-key")
 
-        with patch("app.core.model_adapter.PROVIDERS", (builtin_provider,)), \
-             patch("app.core.model_adapter.PROVIDER_MAP", {"deepseek": builtin_provider}), \
+        with patch("app.core.model_adapter._mp.PROVIDERS", (builtin_provider,)), \
+             patch("app.core.model_adapter._mp.PROVIDER_MAP", {"deepseek": builtin_provider}), \
              patch.object(adapter, "_read_setting", return_value=""), \
              patch.object(adapter, "_custom_models", return_value=[fake_custom]), \
              patch("app.core.model_adapter.settings") as mock_env:
@@ -198,8 +198,8 @@ class TestCustomModelOverride:
         # CustomModel 覆盖 deepseek-chat 但 api_key 为空
         fake_custom = _make_custom_model_orm("deepseek-chat", api_key="")
 
-        with patch("app.core.model_adapter.PROVIDERS", (builtin_provider,)), \
-             patch("app.core.model_adapter.PROVIDER_MAP", {"deepseek": builtin_provider}), \
+        with patch("app.core.model_adapter._mp.PROVIDERS", (builtin_provider,)), \
+             patch("app.core.model_adapter._mp.PROVIDER_MAP", {"deepseek": builtin_provider}), \
              patch.object(adapter, "_read_setting", return_value=""), \
              patch.object(adapter, "_custom_models", return_value=[fake_custom]), \
              patch("app.core.model_adapter.settings") as mock_env:
@@ -217,8 +217,8 @@ class TestCustomModelOverride:
         builtin_provider = _make_provider_def()
         fake_custom = _make_custom_model_orm("deepseek-chat", api_key="override-key")
 
-        with patch("app.core.model_adapter.PROVIDERS", (builtin_provider,)), \
-             patch("app.core.model_adapter.PROVIDER_MAP", {"deepseek": builtin_provider}), \
+        with patch("app.core.model_adapter._mp.PROVIDERS", (builtin_provider,)), \
+             patch("app.core.model_adapter._mp.PROVIDER_MAP", {"deepseek": builtin_provider}), \
              patch.object(adapter, "_read_setting", return_value=""), \
              patch.object(adapter, "_custom_models", return_value=[fake_custom]), \
              patch("app.core.model_adapter.settings") as mock_env:
@@ -234,8 +234,8 @@ class TestCustomModelOverride:
         adapter = ModelConfigAdapter()
         builtin_provider = _make_provider_def()
 
-        with patch("app.core.model_adapter.PROVIDERS", (builtin_provider,)), \
-             patch("app.core.model_adapter.PROVIDER_MAP", {"deepseek": builtin_provider}), \
+        with patch("app.core.model_adapter._mp.PROVIDERS", (builtin_provider,)), \
+             patch("app.core.model_adapter._mp.PROVIDER_MAP", {"deepseek": builtin_provider}), \
              patch.object(adapter, "_read_setting", return_value=""), \
              patch.object(adapter, "_custom_models", return_value=[]), \
              patch("app.core.model_adapter.settings") as mock_env:

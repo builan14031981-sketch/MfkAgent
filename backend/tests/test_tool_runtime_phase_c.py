@@ -100,6 +100,62 @@ class FakeClient:
         return FakeResponse(self._rounds[idx])
 
 
+def _round_to_sse(round_dict):
+    """把旧「非流式响应 dict」转成 stream_once 消费的 SSE chunk 序列。
+
+    T4 双循环合一后，非流式 run() 内部统一走 run_stream() → model_service.stream_once()
+    → httpx client.stream()（原 call_once 的 client.post 面不再被主循环使用）。因此
+    非流式 mock 也必须产出 stream 面，本函数按 model.py 的 SSE 解析协议
+    （choices[0].delta.content / delta.tool_calls / finish_reason）构造 chunk。
+    """
+    choice = round_dict["choices"][0]
+    msg = choice.get("message") or {}
+    finish = choice.get("finish_reason")
+    chunks = []
+    tcs = msg.get("tool_calls")
+    if tcs:
+        for i, tc in enumerate(tcs):
+            fn = tc.get("function") or {}
+            chunks.append(_sse_chunk({
+                "choices": [{"delta": {"tool_calls": [{
+                    "index": i,
+                    "id": tc.get("id"),
+                    "type": tc.get("type", "function"),
+                    "function": {"name": fn.get("name", ""), "arguments": fn.get("arguments", "")},
+                }]}, "finish_reason": None}]
+            }))
+        chunks.append(_sse_chunk({"choices": [{"delta": {}, "finish_reason": finish}]}))
+    else:
+        content = msg.get("content") or ""
+        for i in range(0, len(content), 24):
+            chunks.append(_sse_chunk({
+                "choices": [{"delta": {"content": content[i:i + 24]}, "finish_reason": None}]
+            }))
+        chunks.append(_sse_chunk({"choices": [{"delta": {}, "finish_reason": finish}]}))
+    return chunks
+
+
+class FakeStreamResponse:
+    """把 SSE chunk 列表包装成 httpx 流式响应（aiter_text 逐行产出）。"""
+
+    def __init__(self, round_dict):
+        self.status_code = 200
+        self._chunks = _round_to_sse(round_dict)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def aread(self):
+        return b""
+
+    async def aiter_text(self):
+        for c in self._chunks:
+            yield c
+
+
 def install_fake_llm(rounds, non_stream=False):
     state = {"idx": 0}
 
@@ -117,6 +173,14 @@ def install_fake_llm(rounds, non_stream=False):
                 r.status_code = 200
                 r.json = lambda: rounds[idx]
                 return _SyncResponse(r)
+
+            def stream(self, method, url, **kwargs):
+                # T4 双循环合一：非流式主循环也走 stream_once → client.stream()
+                idx = state["idx"]
+                state["idx"] += 1
+                if idx >= len(rounds):
+                    raise AssertionError(f"LLM 轮次溢出：调用了第 {idx} 轮")
+                return FakeStreamResponse(rounds[idx])
         httpx.AsyncClient = _FakeClient
         return
 
@@ -348,68 +412,88 @@ def test_integration_parse_fail(project_dir: Path) -> dict:
     return {"case": "parse_fail", "no_execution": True, "chat_id": cid}
 
 
+class MockResult:
+    """T4 mock 适配：单次 LLM 调用结果对象（content/tool_calls/finish_reason/usage 形状）。
+
+    供 stream_from_single_call 包装成 stream_once 事件流（见 test_nonstream_approval_reject）。
+    """
+
+    def __init__(self, content, tool_calls, finish_reason):
+        self.content = content
+        self.tool_calls = tool_calls
+        self.finish_reason = finish_reason
+        self.usage = None
+
+
 def test_nonstream_approval_reject(project_dir: Path) -> dict:
-    """8. 非流式路径（AgentRuntime.run）遇审批 → 明确拒绝，不回喂空 result。"""
+    """8. 非流式路径（AgentRuntime.run）遇审批 → T4 契约：立即返回 pending_approval，不阻塞等待。
+
+    T4 双循环合一后 run() 不再持有独立非流式执行循环（旧实现归档 _legacy_run.py）：
+    内部消费 run_stream()，遇 tool_approval 立即返回 finish_reason="pending_approval"
+    的 AgentResult，metadata.pending_approval 携带审批摘要；审批条目保留在
+    approval_registry 等待 /approve 闭环（不再 resolve/remove），绝不在非流式
+    HTTP 请求里同步等待审批。本用例按此契约 mock 第一轮 tool_calls
+    （run_command git reset --hard HEAD，HIGH_RISK 强制审批）并校验返回。
+    """
+    from unittest.mock import AsyncMock, patch
     from app.core.tool_runtime.approval import approval_registry
-    from app.core.agent_runtime import AgentRuntime, AgentContext
+    from tests._t4_mock_adapter import stream_from_single_call
 
     repo = project_dir / "ns_repo"
     setup_git_repo(repo)
     pid = make_project(repo)
     cid = make_chat(pid)
 
-    # 非流式脚本化响应：第一轮 tool_calls=run_command git reset（触发审批），第二轮总结
-    call_msg = {
-        "choices": [{
-            "message": {
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [{
-                    "id": "call_ns_1", "type": "function",
-                    "function": {"name": "run_command", "arguments": '{"command": "git reset --hard HEAD"}'},
-                }],
-            },
-            "finish_reason": "tool_calls",
-        }]
-    }
-    final_msg = {
-        "choices": [{"message": {"role": "assistant", "content": "非流式不支持审批，操作已拒绝。"},
-                     "finish_reason": "stop"}]
-    }
-    self_check_msg = {
-        "choices": [{"message": {"role": "assistant", "content": "拒绝原因已确认，自查完成，任务结束。"},
-                     "finish_reason": "stop"}]
-    }
-    install_fake_llm([call_msg, final_msg, self_check_msg], non_stream=True)
+    calls = []
+
+    def make_tool_call(name, args):
+        return [{"id": "call_ns_1", "type": "function",
+                 "function": {"name": name, "arguments": json.dumps(args)}}]
+
+    async def call_once_side_effect(model_id, messages, tools, **kwargs):
+        calls.append([{"role": m.get("role"), "content": m.get("content")} for m in messages])
+        return MockResult("", make_tool_call("run_command", {"command": "git reset --hard HEAD"}), "tool_calls")
 
     import asyncio
 
     async def _run():
         from app.core.agent_runtime import AgentRuntime, AgentContext
         from app.services.model import Message as M
-        context = AgentContext(
-            agent_id="coder",
-            agent_identity="你是一个有帮助的AI助手。",
-            personality_level=None,
-            model_id="deepseek-v4-flash",
-            project_id=pid,
-            project_path=str(repo),
-            memory_context={"agent_id": "coder", "project_id": pid, "chat_id": cid},
-            memory_text=None,
-            tools=[{"type": "function", "function": {"name": "run_command", "description": "x",
-                                                    "parameters": {"type": "object", "properties": {}}}}],
-            decision=None,
-        )
-        return await AgentRuntime().run(
-            context=context,
-            messages=[M(role="user", content="git reset --hard HEAD")],
-            read_only=False,
-        )
+
+        with patch("app.services.model.model_service") as ms:
+            ms.stream_once = stream_from_single_call(call_once_side_effect)  # T4：run() 内部走 stream_once
+            ms.call_once = AsyncMock(side_effect=call_once_side_effect)  # 兼容仍可能走 call_once 的分支
+            context = AgentContext(
+                agent_id="coder",
+                agent_identity="你是一个有帮助的AI助手。",
+                personality_level=None,
+                model_id="deepseek-v4-flash",
+                project_id=pid,
+                project_path=str(repo),
+                memory_context={"agent_id": "coder", "project_id": pid, "chat_id": cid},
+                memory_text=None,
+                tools=[{"type": "function", "function": {"name": "run_command", "description": "x",
+                                                        "parameters": {"type": "object", "properties": {}}}}],
+                decision=None,
+            )
+            return await AgentRuntime().run(
+                context=context,
+                messages=[M(role="user", content="git reset --hard HEAD")],
+                read_only=False,
+            )
 
     resp = asyncio.run(_run())
-    assert resp.content and "拒绝" in resp.content, f"模型应看到拒绝原因并总结: {resp.content!r}"
-    assert approval_registry.pending() == [], f"审批应无残留: {approval_registry.pending()}"
-    return {"case": "nonstream_approval", "rejected": True, "chat_id": cid}
+    # T4 契约：遇审批立即返回 pending_approval，不阻塞、不回喂空 result
+    assert resp.finish_reason == "pending_approval", (
+        f"应返回 pending_approval，实际 finish_reason={resp.finish_reason!r} content={resp.content!r}"
+    )
+    pending = resp.metadata.get("pending_approval", {})
+    assert pending.get("approval_id"), f"应携带 approval_id: {pending}"
+    assert pending.get("tool") == "run_command", f"应标明触发审批的工具: {pending}"
+    assert "git reset" in (pending.get("command") or ""), f"应携带待审批命令: {pending}"
+    # 审批条目保留在 registry 等待 /approve 闭环（T4：不再 resolve cancelled / remove）
+    assert len(approval_registry.pending()) >= 1, f"审批应挂起待决: {approval_registry.pending()}"
+    return {"case": "nonstream_approval", "pending_approval": True, "chat_id": cid}
 
 
 # ---------------------------------------------------------------------------

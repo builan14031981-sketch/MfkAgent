@@ -47,6 +47,15 @@ _TEST_TMP_DIR = Path(tempfile.mkdtemp(prefix="mfkagent_pytest_db_"))
 _TEST_DB_PATH = _TEST_TMP_DIR / "mfkagent_test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH.as_posix()}"
 
+# 测试环境标记：main.py 移动端配对认证中间件据此跳过配对校验。
+# 背景：Starlette TestClient 的 client host 固定为 "testclient"（与 base_url 无关），
+# 任何用 TestClient 打 /api/* 的测试都会被 401。此前用三个测试文件里的就地补丁
+# （_main.is_loopback_host = lambda host: True）豁免，但该补丁是模块级全局污染，
+# 一旦某文件被 import 就影响全部后续测试（单跑/全量结果不一致）。
+# 终态：收敛到本文件统一设置环境变量 + main.py 中间件一处判断，任何文件单独跑或
+# 全量跑行为一致。生产环境不设 TESTING=1，中间件行为零变化。
+os.environ["TESTING"] = "1"
+
 # 基线 Settings() 快照复刻（见模块 docstring 第 2 点）
 os.environ["DEEPSEEK_API_KEY"] = "dummy-test-key"
 os.environ["MIMO_API_KEY"] = ""
@@ -199,6 +208,15 @@ _EXTERNAL_DEPENDENT_SKIPS = {
     # 用无效 Key 真实请求 api.deepseek.com，断言依赖外网可达性与对端行为
     "test_fetch_remote_phase13.py::test_fetch_remote_invalid_key":
         "真实外网请求 api.deepseek.com（无效 Key 400 场景），非确定性外部环境",
+    # 真实链路验收测试：依赖本地后端服务运行在 http://localhost:8001 + 真实模型 API +
+    # 生产库 mfkagent.db（requests 直连 8001，非 TestClient）。pytest 收集/执行均无法
+    # 自举该前置（需人工启动 uvicorn），属外部集成测试，非单元测试可覆盖。
+    "test_timeline_persistence.py::test_1_tool_agent":
+        "依赖真实后端服务(localhost:8001)+真实模型 API 的外部集成测试",
+    "test_timeline_persistence.py::test_2_normal_chat":
+        "依赖真实后端服务(localhost:8001)+真实模型 API 的外部集成测试",
+    "test_timeline_persistence.py::test_3_tool_error":
+        "依赖真实后端服务(localhost:8001)+真实模型 API 的外部集成测试",
 }
 
 

@@ -60,8 +60,6 @@ from app.core.database import engine as _engine, Base as _Base  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 
 from main import app  # noqa: E402
-import main as _main  # noqa: E402
-_main.is_loopback_host = lambda host: True  # 测试环境豁免移动端配对认证（TestClient 的 client host 固定为 testclient，非回环）
 
 from app.core.tool_runtime.approval import approval_registry  # noqa: E402
 
