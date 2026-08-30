@@ -262,12 +262,23 @@ class TestCommandRiskEngine(unittest.TestCase):
         d = self.engine.evaluate("")
         self.assertEqual(d.verdict, Verdict.DENY)
 
-    def test_shell_metachar_deny(self):
+    # T11: 链式命令按段判定后，rm 段命中破坏性模式 → HIGH_RISK 强制人工审批
+    # （破坏性动词在整体判定中本就是 HIGH_RISK，旧用例的 DENY 仅来自元字符门一刀切）
+    def test_destructive_chain_high_risk(self):
         d = self.engine.evaluate("ls; rm -rf /")
-        self.assertEqual(d.verdict, Verdict.DENY)
+        self.assertEqual(d.verdict, Verdict.HIGH_RISK)
+        self.assertEqual(d.risk_level, RiskLevel.DESTRUCTIVE)
 
-    def test_pipe_deny(self):
+    def test_pipe_unknown_segments_high_risk(self):
+        # T11: cat|grep 按段判定 → 未知段 HIGH_RISK 强制人工审批，不再元字符一刀切 DENY
         d = self.engine.evaluate("cat file | grep x")
+        self.assertEqual(d.verdict, Verdict.HIGH_RISK)
+
+    def test_shell_metachar_deny(self):
+        # 元字符拒绝维持：解释器段（不透明代码执行）整条 DENY
+        d = self.engine.evaluate("cat file | sh")
+        self.assertEqual(d.verdict, Verdict.DENY)
+        d = self.engine.evaluate("ls; eval 'rm -rf /'")
         self.assertEqual(d.verdict, Verdict.DENY)
 
 

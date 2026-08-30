@@ -89,12 +89,16 @@ def test_command_engine_tiered():
     d = command_risk_engine.evaluate("format C:", "build")
     results.append({"case": "format HIGH_RISK", "ok": d.verdict == Verdict.HIGH_RISK})
 
-    # DENY: shell 元字符
+    # T11: 链式按段判定 — rm 段破坏性 → HIGH_RISK 强制人工审批（破坏性动词整体判定本就是 HIGH_RISK）
     d = command_risk_engine.evaluate("ls; rm -rf /", "build")
-    results.append({"case": "shell meta DENY", "ok": d.verdict == Verdict.DENY})
+    results.append({"case": "destructive chain HIGH_RISK", "ok": d.verdict == Verdict.HIGH_RISK})
 
     d = command_risk_engine.evaluate("echo `whoami`", "build")
     results.append({"case": "backtick DENY", "ok": d.verdict == Verdict.DENY})
+
+    # T11: 解释器段（不透明代码执行）维持整条 DENY
+    d = command_risk_engine.evaluate("ls && sh c.sh", "build")
+    results.append({"case": "interpreter segment DENY", "ok": d.verdict == Verdict.DENY})
 
     failed = [r for r in results if not r["ok"]]
     assert not failed, f"命令引擎三级漏斗失败: {failed}"

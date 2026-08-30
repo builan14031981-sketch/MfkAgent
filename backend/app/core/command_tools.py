@@ -90,7 +90,12 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     if not command:
         return "错误: command 不能为空"
     if _has_forbidden_chars(command):
-        return "错误: 命令包含不允许的字符（& | ` < > 等），拒绝执行。"
+        # T11: 可安全拆分的链式/wrapper 命令放行（逐段风险判定已在 CommandRiskEngine.evaluate
+        # 完成，与执行门共用同一 fail-closed 解析器）；其余维持元字符拒绝。
+        # 局部导入避免与 tool_runtime 包 __init__（模块级 ToolRuntime 实例化）循环导入。
+        from app.core.tool_runtime.risk_engine import chain_gate_allows
+        if not chain_gate_allows(command):
+            return "错误: 命令包含不允许的字符（& | ` < > 等），拒绝执行。"
     if _CD_ESCAPE_RE.search(command):
         return "错误: 不支持 cd 切换到项目外目录（工作目录已锚定在项目内），请直接使用项目内相对命令"
 
