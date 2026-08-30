@@ -98,6 +98,13 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
     return Math.min(100, Math.max(0, pct));
   }, [usage]);
 
+  // 工单E：前缀缓存命中率环（cached_tokens / prompt_tokens）
+  const hitRatio = useMemo(() => {
+    if (!usage || !usage.cached_tokens || !usage.prompt_tokens) return null;
+    const pct = Math.round((usage.cached_tokens / usage.prompt_tokens) * 100);
+    return Math.min(100, Math.max(0, pct));
+  }, [usage]);
+
   if (!usage || ratio == null) return null;
 
   const color =
@@ -107,7 +114,8 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
         ? "var(--color-warning)"
         : "var(--color-primary)";
 
-  const label = `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)`;
+  const label = `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 缓存命中 ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} (${hitRatio}%)` : ""}`;
+  const cacheLabel = `前缀缓存命中: ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} prompt tokens (${hitRatio}%)`;
   const showWarning = ratio >= WARNING_THRESHOLD;
 
   return (
@@ -116,6 +124,10 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, onCompre
       alignItems: "center",
       gap: "6px",
     }}>
+      {/* 工单E：前缀缓存命中率环（仅命中时显示，青色区分主水位环） */}
+      {hitRatio != null && (
+        <RingProgress ratio={hitRatio} color="#22d3ee" label={cacheLabel} />
+      )}
       {/* 环形进度圈：hover 显示完整文案，默认态无文字 */}
       <RingProgress ratio={ratio} color={color} label={label} />
       {/* 上下文字数：已用 / 上限（11px 次级色，数字等宽防刷新抖动） */}

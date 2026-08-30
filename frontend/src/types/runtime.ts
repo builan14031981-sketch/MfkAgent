@@ -75,6 +75,8 @@ export interface TokenUsageEvent extends RuntimeEventBase {
   model_max_tokens: number;
   /** 上下文水位百分比（0-100） */
   watermark_percentage: number;
+  /** T1：前缀缓存命中 Token 数（本轮 prompt 中命中 KV 缓存的部分；0 表示未命中或模型不支持） */
+  cached_tokens?: number;
 }
 
 /**
