@@ -119,7 +119,15 @@ class TestMatcherWhitelist:
     def test_cd_within_project(self):
         assert _hits("cd backend")
         assert _hits("cd .")
-        for cmd in ["cd ..", "cd ../x", "cd C:\\Windows", "cd E:\\", "cd /", "cd \\"]:
+        assert _hits("cd /d backend"), "cd /d 旗标 + 项目内相对目录应命中"
+        # 越界/逃逸形态一律不预授权（写盘符根/系统目录硬边界）
+        for cmd in [
+            "cd ..", "cd ../x",
+            "cd C:\\Windows", "cd E:\\", "cd D:", r'cd "C:\Windows"',
+            "cd /d C:\\Windows\\System32",
+            "cd sub\\..\\..\\Windows", "cd sub\\..\\..\\..",
+            "cd /", "cd \\", "cd \\\\server\\share",
+        ]:
             assert not _hits(cmd), f"cd 越界不应预授权: {cmd}"
 
     def test_destructive_hard_boundary(self):

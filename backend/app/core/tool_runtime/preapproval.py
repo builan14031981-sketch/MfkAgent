@@ -66,9 +66,12 @@ _PIP_GLOBAL_FLAGS = ("--user", "--system", "--global", "--prefix", "--break-syst
 # 段内禁止的注入类元字符（&& 已在 split 时去除；单个 & 也禁止）
 _FORBIDDEN_SEGMENT_CHARS = re.compile(r"[&;|`$<>]|\(|\)")
 
-# cd 逃逸：绝对盘符 / UNC / .. 越界 / 根目录
-_CD_ESCAPE_RE = re.compile(r"\bcd\s+([A-Za-z]:[\\/]|\\\\|\.\.)", re.I)
-_CD_ROOT_RE = re.compile(r"\bcd\s+(/|\\)(\s|$)", re.I)
+# cd 逃逸判定统一收敛到 _cd_segment_safe（解析目标路径做严格校验，见下）。
+# 早期仅用 _CD_ESCAPE_RE/_CD_ROOT_RE 匹配「cd 后紧跟盘符/..」，存在绕过：
+#   - `cd /d C:\Windows\System32`（/d 旗标破坏「cd 后紧跟」形态）
+#   - `cd sub\..\..\Windows`（.. 在路径中段，不在 cd 后紧跟位置）
+#   - `cd "C:\Windows"`（引号包裹）
+# 现已改为解析出 cd 目标后按 绝对盘符/UNC/根/..越界/越出项目根 判定。
 
 
 def autonomous_preapproval_enabled() -> bool:
@@ -191,6 +194,45 @@ def _pip_install_allowed(args: List[str], project_path: Optional[str]) -> Option
     return f"pip {action}"
 
 
+def _cd_segment_safe(segment: str, argv: List[str], project_path: Optional[str]) -> Optional[str]:
+    """cd 预授权：仅允许项目内相对目录（支撑 `cd backend && ...` 组合链）。
+
+    拒绝（永不预授权）：
+      - 绝对盘符 / 裸盘符：C:\\...、D:（写盘符根/系统目录硬边界）
+      - UNC：\\\\server\\share
+      - 根目录：/、\\
+      - 路径中段 `..` 越界：`cd sub\\..\\..\\Windows`（归一化后越出项目根）
+      - 越出项目根的任何目标
+    支持 cmd.exe 的 `cd /d <path>` 旗标（目标本身仍按上述规则校验）。
+    """
+    target = argv[1]
+    if target.lower() == "/d" and len(argv) >= 3:
+        target = argv[2]
+    target = target.strip("\"'")
+    if not target:
+        return None
+    # 绝对盘符（含裸盘符 D:）与 UNC → 拒绝
+    if re.match(r"^[A-Za-z]:([\\/]|$)", target):
+        return None
+    if target.startswith("\\\\") or target.startswith("//"):
+        return None
+    # 根目录 → 拒绝
+    if target in ("/", "\\"):
+        return None
+    # 绑定项目：归一化后必须仍落在项目根内（拦下路径中段 .. 越界）
+    if project_path:
+        pp = os.path.normpath(project_path)
+        joined = os.path.normpath(os.path.join(pp, target))
+        if joined != pp and not joined.startswith(pp + os.sep):
+            return None
+    else:
+        # 未绑定项目：至少拦下 `..` 越界形态
+        norm = os.path.normpath(target)
+        if norm == ".." or norm.startswith(".." + os.sep):
+            return None
+    return f"cd {target}"
+
+
 def _segment_match_reason(segment: str, project_path: Optional[str]) -> Optional[str]:
     """单个命令段是否命中预授权清单：命中返回原因，否则 None。"""
     segment = segment.strip()
@@ -216,13 +258,11 @@ def _segment_match_reason(segment: str, project_path: Optional[str]) -> Optional
             return None
         return _git_segment_safe(argv)
 
-    # cd：仅允许项目内相对目录（拒绝绝对盘符 / UNC / .. / 根目录）
+    # cd：仅允许项目内相对目录（拒绝绝对盘符 / UNC / .. 越界 / 根目录）
     if cmd == "cd":
         if len(argv) < 2:
             return None
-        if _CD_ESCAPE_RE.search(segment) or _CD_ROOT_RE.search(segment):
-            return None
-        return f"cd {argv[1]}"
+        return _cd_segment_safe(segment, argv, project_path)
 
     # python / py
     if cmd in ("python", "python3", "py"):
