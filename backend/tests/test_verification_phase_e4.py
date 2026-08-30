@@ -1,4 +1,4 @@
-"""MfkAgent Verification Phase E4 自动化验证脚本。
+﻿"""MfkAgent Verification Phase E4 自动化验证脚本。
 
 Phase E4：Runtime 基础验证框架。
   - Action → Observation → Verification → Decision → Finish / Retry
@@ -53,10 +53,17 @@ from app.core.database import engine as _engine, Base as _Base  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 
 from main import app  # noqa: E402
+import main as _main  # noqa: E402
+_main.is_loopback_host = lambda host: True  # 测试环境豁免移动端配对认证（TestClient 的 client host 固定为 testclient，非回环）
 from app.core.verification import verifier, PASSED, FAILED, NEED_RETRY  # noqa: E402
 from app.core.tool_runtime.approval import approval_registry  # noqa: E402
+from tests._t4_mock_adapter import stream_from_single_call  # noqa: E402  T4 双循环合一 mock 适配
 
-CLIENT = TestClient(app)
+
+# 模块级审批模式：pytest 不调用 main()，需显式设为 SAFE
+from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+set_approval_mode(ApprovalMode.SAFE)
+CLIENT = TestClient(app, base_url="http://127.0.0.1")  # 回环 host，豁免移动端配对认证
 
 # 每轮模型请求消息捕获（验证反馈注入断言用）
 CAPTURED: dict = {"rounds": []}
@@ -161,7 +168,7 @@ def make_project(path: Path) -> int:
 
 
 def make_chat(project_id: int) -> int:
-    r = CLIENT.post("/api/chat", json={"project_id": project_id, "agent_id": "coder", "title": "PhaseE4"})
+    r = CLIENT.post("/api/chat", json={"project_id": project_id, "agent_id": "coder", "permission_mode": "safe", "title": "PhaseE4"})
     assert r.status_code == 200, f"create chat failed: {r.status_code} {r.text}"
     return r.json()["id"]
 
@@ -438,7 +445,8 @@ def test_nonstream_run_command_passed(project_dir: Path) -> dict:
         return MockResult("命令已执行，验证通过。", None, "stop")
 
     with patch("app.services.model.model_service") as ms:
-        ms.call_once = AsyncMock(side_effect=call_once_side_effect)
+        ms.stream_once = stream_from_single_call(call_once_side_effect)  # T4 双循环合一：run() 内部走 stream_once
+        ms.call_once = AsyncMock(side_effect=call_once_side_effect)  # 兼容仍可能走 call_once 的分支
 
         async def _run():
             ctx = AgentContext(
@@ -486,7 +494,8 @@ def test_nonstream_run_command_need_retry(project_dir: Path) -> dict:
         return MockResult("编译失败，文件缺失。", None, "stop")
 
     with patch("app.services.model.model_service") as ms:
-        ms.call_once = AsyncMock(side_effect=call_once_side_effect)
+        ms.stream_once = stream_from_single_call(call_once_side_effect)  # T4 双循环合一：run() 内部走 stream_once
+        ms.call_once = AsyncMock(side_effect=call_once_side_effect)  # 兼容仍可能走 call_once 的分支
 
         async def _run():
             ctx = AgentContext(

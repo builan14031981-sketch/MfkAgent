@@ -1,4 +1,4 @@
-"""MfkAgent Tool Runtime Phase A 自动化验证脚本。
+﻿"""MfkAgent Tool Runtime Phase A 自动化验证脚本。
 
 验证目标（对应 Phase A：Tool Event Stream + ToolCallCard v2 后端部分）：
   1. 网络诊断工具调用（run_command → ipconfig）
@@ -60,10 +60,16 @@ from app.core.database import engine as _engine, Base as _Base  # noqa: E402
 _Base.metadata.create_all(bind=_engine)
 
 from main import app  # noqa: E402
+import main as _main  # noqa: E402
+_main.is_loopback_host = lambda host: True  # 测试环境豁免移动端配对认证（TestClient 的 client host 固定为 testclient，非回环）
 
 from app.core.tool_runtime.approval import approval_registry  # noqa: E402
 
-CLIENT = TestClient(app)
+
+# 模块级审批模式：pytest 不调用 main()，需显式设为 SAFE
+from app.core.tool_runtime.approval_policy import set_approval_mode, ApprovalMode
+set_approval_mode(ApprovalMode.SAFE)
+CLIENT = TestClient(app, base_url="http://127.0.0.1")  # 回环 host，豁免移动端配对认证
 
 # ---------------------------------------------------------------------------
 # 脚本化 LLM：替换 httpx.AsyncClient，按调用顺序返回脚本化 SSE 轮次
@@ -181,7 +187,7 @@ def make_project(path: str) -> int:
 
 
 def make_chat(project_id: int) -> int:
-    r = CLIENT.post("/api/chat", json={"project_id": project_id, "agent_id": "coder", "title": "PhaseA"})
+    r = CLIENT.post("/api/chat", json={"project_id": project_id, "agent_id": "coder", "permission_mode": "safe", "title": "PhaseA"})
     assert r.status_code == 200, f"create chat failed: {r.status_code} {r.text}"
     return r.json()["id"]
 
