@@ -525,12 +525,16 @@ export function useProviderConfig(): UseProviderConfigResult {
 
   const setProviderDisabled = useCallback(
     async (providerId: string, disabled: boolean) => {
-      const next = { ...disabledMap };
+      // 防御性净化：只保留 value 为 true 的条目，清除历史残留的 false 值。
+      // provider_disabled 约定格式为 {providerId: true}，false 条目无意义且会造成"全量写"误判。
+      const next: ProviderDisabledMap = {};
+      for (const [k, v] of Object.entries(disabledMap)) {
+        if (v) next[k] = true;
+      }
       if (disabled) {
         next[providerId] = true;
-      } else {
-        delete next[providerId];
       }
+      // 启用时不写 false，直接不包含该 key（与约定格式一致）
       try {
         await updateSetting(PROVIDER_DISABLED_KEY, JSON.stringify(next));
         // 触发模型列表刷新，使聊天界面实时响应启用/禁用状态变化
