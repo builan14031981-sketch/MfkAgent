@@ -129,11 +129,21 @@ _ALLOWED_COMMANDS: List[Tuple[str, List[str]]] = [
     ("npm", ["run", "typecheck"]),
     ("npm", ["test"]),
     ("npm", ["run"]),
+    # G7: 只读依赖查询（npm install/uninstall 仍落入 L2 写操作）
+    ("npm", ["ls"]),
+    ("npm", ["view"]),
     ("git", ["status"]),
     ("git", ["diff"]),
     ("git", ["log"]),
     ("git", ["show"]),
     ("git", ["branch"]),
+    # G7: git 只读子命令（仅 argv[1] 即只读者；remote add / tag 等可写子命令不放宽）
+    ("git", ["ls-files"]),
+    ("git", ["rev-parse"]),
+    # G7: Python 包查询（只读；python -m pip install 仍落入 L2 写操作）
+    ("pip", ["list"]),
+    ("pip", ["freeze"]),
+    ("pip", ["show"]),
     # 网络/系统只读诊断
     ("ipconfig", []),
     ("netstat", []),
@@ -157,6 +167,16 @@ _ALLOWED_COMMANDS: List[Tuple[str, List[str]]] = [
     ("more", []),
     ("tree", []),
     ("reg", ["query"]),
+    # G7: 追加只读系统/网络诊断（原本误判需审批）
+    ("driverquery", []),
+    ("pathping", []),
+    ("nbtstat", []),
+    ("fc", []),
+    ("comp", []),
+    ("vol", []),
+    ("schtasks", ["/query"]),
+    ("query", ["user", "session"]),
+    ("powercfg", ["/a", "/getactivescheme"]),
 ]
 
 # python 严格化：仅允许白名单内的 -m 模块与版本查询，封死 "python -m pip install" 等写操作
@@ -167,6 +187,11 @@ _ALLOWED_PY_MODULES = {"pytest", "unittest", "py_compile", "mypy", "ruff", "flak
 _PS_READONLY_CMDLETS = (
     "get-itemproperty", "get-childitem", "select-string", "test-path",
     "get-content", "get-item", "write-output", "get-command", "get-process",
+    # G7: 追加常用只读查询/管道 Cmdlet（原本误判需审批；写动词 Cmdlet 不含在内）
+    "get-service", "get-date", "get-location", "get-help", "get-alias",
+    "get-ciminstance", "get-wmiobject", "get-acl", "get-clipboard", "get-history",
+    "select-object", "where-object", "measure-object", "sort-object",
+    "format-list", "format-table", "resolve-path",
 )
 
 

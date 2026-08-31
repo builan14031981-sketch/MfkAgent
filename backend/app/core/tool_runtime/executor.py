@@ -16,6 +16,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from typing import Callable, Dict, Any, Optional
@@ -90,6 +91,33 @@ def _auto_post_write_check(project_path: str, relative_path: str) -> str:
         return f"{AUTO_SPEC_CHECK_MARKER} PASS: {detail} ({size}B)"
     except Exception as e:  # noqa: BLE001
         return f"{AUTO_SPEC_CHECK_MARKER} ERROR: {e}"
+
+
+# ──── G7: write_file 的 __init__.py 类笔误纠错提示（不静默失败）────
+# 正确文件名：__init__.py（init 两侧各两个下划线）。
+# 模型常见笔误：_init_.py（单下划线）、_init__.py / __init_.py（单双混用）。
+# 命中笔误时拒绝写入错误文件并返回纠错提示（以"错误:" 开头，供完成验证识别为被拦截）。
+_CORRECT_INIT_FILENAME = "__init__.py"
+_INIT_FILE_TYPO_RE = re.compile(r"^_{1,3}init_{1,3}\.py$", re.IGNORECASE)
+
+
+def _init_file_typo_hint(relative_path: str) -> str:
+    """检测 write_file 目标文件名是否为 __init__.py 的笔误（如 _init_.py 等）。
+
+    Returns:
+        命中笔误 → 纠错提示文本（以"错误:" 开头）；否则返回空字符串。
+    """
+    name = (relative_path or "").strip()
+    base = os.path.basename(name.replace("\\", "/").replace("/", os.sep))
+    if not base or base == _CORRECT_INIT_FILENAME:
+        return ""
+    if _INIT_FILE_TYPO_RE.match(base):
+        return (
+            f"错误: 文件名疑似笔误: '{base}' → 应为 '__init__.py'"
+            "（Python 包初始化文件是双下划线 _ _init_ _ .py）。"
+            "已停止写入，请使用正确的文件名重试。"
+        )
+    return ""
 
 
 def _truncate_result(text: str, func_name: str = "") -> str:
@@ -337,6 +365,12 @@ async def _run_tool(
         is_read_only = func_name in ("read_file", "list_files", "find_files")
         if not project_path and not is_read_only:
             return "错误: 修改文件操作需要绑定项目"
+        # G7: write_file 目标文件名笔误（_init_.py / _init__.py 等 __init__.py 写错）
+        # → 返回纠错提示，不静默写入错误文件。
+        if func_name == "write_file":
+            _typo_hint = _init_file_typo_hint(str(func_args.get("relative_path", "") or ""))
+            if _typo_hint:
+                return _typo_hint
         result = _truncate_result(
             execute_file_tool(func_name, project_path=project_path, **func_args), func_name
         )

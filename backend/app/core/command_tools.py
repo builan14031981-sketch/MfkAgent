@@ -82,9 +82,17 @@ def _split_command(command: str) -> List[str]:
     return args
 
 
-def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
+def run_command(
+    project_path: str,
+    command: str,
+    timeout: int = TIMEOUT,
+    cwd: str = "",
+) -> str:
     """执行命令并返回 stdout+stderr 合并输出（策略判定已在 executor 层完成）。
     如果没有 project_path，允许执行系统级命令（如 ipconfig、netstat 等）。
+
+    G7: 新增 cwd 参数——允许调用方指定命令工作目录（相对 project_path 沙箱解析）。
+    默认空字符串保持旧行为：绑定项目 → 项目根；未绑定 → 当前目录。
     """
     command = (command or "").strip()
     if not command:
@@ -102,21 +110,28 @@ def run_command(project_path: str, command: str, timeout: int = TIMEOUT) -> str:
     # 解析命令行（支持双引号含空格参数）
     argv = _split_command(command)
 
-    # 确定工作目录：有 project_path 则用沙箱解析后的项目根；否则用当前目录（允许系统级命令）
-    if project_path:
+    # 确定工作目录：显式 cwd 优先（沙箱解析）→ 项目根（绑定项目时）→ 当前目录（系统级命令）
+    if cwd and cwd.strip():
         try:
-            cwd = str(resolve_sandbox_path(".", project_path))
+            work_dir = str(resolve_sandbox_path(cwd.strip(), project_path))
         except SandboxViolation as e:
             return f"错误: {e}"
-        if not os.path.isdir(cwd):
+        if not os.path.isdir(work_dir):
+            return f"错误: 工作目录不存在: {work_dir}"
+    elif project_path:
+        try:
+            work_dir = str(resolve_sandbox_path(".", project_path))
+        except SandboxViolation as e:
+            return f"错误: {e}"
+        if not os.path.isdir(work_dir):
             return f"错误: 项目目录不存在: {project_path}"
     else:
         # 没有绑定项目，允许执行系统级命令（如 ipconfig、netstat）
-        cwd = os.getcwd()
+        work_dir = os.getcwd()
 
     timeout = max(1, min(int(timeout or TIMEOUT), 120))
     try:
-        proc = run_subprocess(argv, cwd=cwd, timeout=timeout)
+        proc = run_subprocess(argv, cwd=work_dir, timeout=timeout)
     except FileNotFoundError:
         return f"错误: 找不到命令 '{argv[0]}'（可能未安装或不在 PATH）"
     except subprocess.TimeoutExpired:
@@ -572,6 +587,10 @@ COMMAND_TOOLS_DEFINITIONS: List[Dict] = [
                     "timeout": {
                         "type": "integer",
                         "description": "超时秒数（默认 30，上限 120）",
+                    },
+                    "cwd": {
+                        "type": "string",
+                        "description": "工作目录（相对于 project_path，可选，默认项目根目录）",
                     },
                 },
                 "required": ["command"],
