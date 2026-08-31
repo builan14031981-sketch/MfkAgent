@@ -153,16 +153,16 @@ class CacheAwareCompactionTestCase(unittest.TestCase):
         self.assertTrue(legacy[1]["content"].startswith("user: msg 0"))  # middle 段拼接
         self.assertIn("【历史记忆摘要】", out[2]["content"])
 
-    # ──── 5. 开关 helper：settings 表读取惯例（灰度默认关 / true 灰度开）────
+    # ──── 5. 开关 helper：settings 表读取惯例（T91 灰度放开 → 默认开 / 显式 false 回滚）────
 
     def test_switch_helper_reads_settings_table(self):
         cases = [
-            (None, False),                             # 无行 → 灰度默认关
-            (SimpleNamespace(value=None), False),
-            (SimpleNamespace(value="false"), False),
+            (None, True),                              # 无行 → T91 默认开
+            (SimpleNamespace(value=None), True),
+            (SimpleNamespace(value="false"), False),   # 显式关 → 回滚旧路径
             (SimpleNamespace(value="0"), False),
-            (SimpleNamespace(value="garbage"), False),  # 非法值按默认关
-            (SimpleNamespace(value="true"), True),      # 灰度开启
+            (SimpleNamespace(value="garbage"), True),  # 非法值按默认开
+            (SimpleNamespace(value="true"), True),     # 显式开
             (SimpleNamespace(value="1"), True),
             (SimpleNamespace(value="on"), True),
             (SimpleNamespace(value="yes"), True),
@@ -174,9 +174,10 @@ class CacheAwareCompactionTestCase(unittest.TestCase):
                 with patch.object(database_module, "SessionLocal", return_value=fake_db):
                     self.assertEqual(is_cache_aware_compaction_enabled(), expected)
 
-    def test_switch_helper_defaults_off_when_db_unavailable(self):
+    def test_switch_helper_defaults_on_when_db_unavailable(self):
+        """T91：DB 不可用时按默认开启处理（缓存友好为默认路径）。"""
         with patch.object(database_module, "SessionLocal", side_effect=RuntimeError("db down")):
-            self.assertFalse(is_cache_aware_compaction_enabled())
+            self.assertTrue(is_cache_aware_compaction_enabled())
 
     # ──── 6. 自动压缩链路端到端 ────
 

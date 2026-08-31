@@ -46,17 +46,18 @@ COMPRESS_WATERMARK_THRESHOLD = 50.0   # 上下文水位超过 50% 触发自动�
 COMPRESS_MIN_INTERVAL_ROUNDS = 2      # 两次自动压缩间的最小轮次间隔（防反复触发）
 
 # ──── T9: 缓存友好压缩 ────
-# 灰度开关：settings 表 key，缺失/值非法时默认关闭（与 T5 approval_memory_enabled 同一灰度惯例）。
-# 默认关的原因：tests/test_t2_compaction_safe.py 有 2 处断言编码了旧摘要 prompt 形状
-# （独立 2 条消息 prompt），该文件不在本单允许清单内；开启灰度时需同步微调那 2 处断言。
+# 灰度开关：settings 表 key。T91 灰度放开 —— 缺失/值非法/DB 不可用时默认开启
+# （摘要调用复用主对话前缀 + 自批评为默认路径）。
+# 回滚路径：settings 显式置 false/0/off/no 即恢复旧摘要调用路径
+# （独立两条消息 prompt 只发 middle 段拼接、不做自批评），无需回滚代码。
 _CACHE_AWARE_COMPACTION_SETTING_KEY = "cache_aware_compaction_enabled"
 
 
 def is_cache_aware_compaction_enabled() -> bool:
-    """读取 cache_aware_compaction_enabled 开关（默认关，灰度开）。
+    """读取 cache_aware_compaction_enabled 开关（T91 默认开，显式 false 回滚）。
 
-    灰度开启：settings 中置 true/1/on/yes 后启用"摘要调用复用主对话前缀 + 自批评"。
-    回滚路径：删除该设置或置 false/0/off/no 即恢复旧摘要调用路径
+    默认开：settings 缺失/值非法/DB 不可用时启用"摘要调用复用主对话前缀 + 自批评"。
+    回滚路径：settings 显式置 false/0/off/no 即恢复旧摘要调用路径
     （独立两条消息 prompt 只发 middle 段拼接、不做自批评），无需回滚代码。
     """
     try:
@@ -69,10 +70,11 @@ def is_cache_aware_compaction_enabled() -> bool:
         finally:
             db.close()
         if row is None or row.value is None:
-            return False
-        return str(row.value).strip().lower() in ("1", "true", "on", "yes")
-    except Exception:  # noqa: BLE001 — DB 不可用时按默认关闭处理
-        return False
+            return True  # T91: 默认开（灰度已放开）
+        # T91 opt-out 语义：仅显式 false/0/off/no 回滚旧路径；其余（true/1/on/yes/非法值）默认开
+        return str(row.value).strip().lower() not in ("false", "0", "off", "no")
+    except Exception:  # noqa: BLE001 — DB 不可用时按默认开启处理
+        return True
 
 # ──── Phase 12: Completion Loop V1 配置 ────
 DEFAULT_MAX_COMPLETION_RETRY = 3
@@ -734,6 +736,20 @@ class AgentRuntime:
     # 自批评回复为这些值（忽略大小写与尾部标点）时视为"无修订"，保留 v1 摘要
     SUMMARY_CRITIQUE_NO_REVISION = ("OK", "无缺漏", "无修订", "无需修订")
 
+    # T91 摘要链（previousSummary）：本会话此前已有旧摘要时，把旧摘要作为输入合并更新。
+    # 追加在摘要指令之后（缓存友好路径前缀不变，不破坏 provider 前缀缓存）。
+    SUMMARY_CHAIN_INSTRUCTION = (
+        "（系统指令）本会话此前已有一版历史摘要（见下方【旧摘要】）。"
+        "请将其与以上对话中新出现的内容合并更新：保留旧摘要中仍然有效的信息"
+        "（已涉及的文件/代码路径、已做出的决策及理由、待办与未完成事项、"
+        "关键变量与最终结论），并纳入新增内容，输出合并后的完整摘要正文"
+        "（不超过{max_chars}字，不要任何解释或前缀）。\n"
+        "【旧摘要】\n{previous_summary}"
+    )
+    # T91 工作记忆恢复：压缩后把最近被读/写的文件路径注入记忆节点，
+    # 保证压缩后追问"刚才改了哪些文件"等上下文细节仍可定位。
+    WORKING_MEMORY_BLOCK_TEMPLATE = "【工作记忆】最近操作过的文件：{paths}"
+
 
     @staticmethod
     def _msg_to_dict(m) -> dict:
@@ -744,6 +760,89 @@ class AgentRuntime:
             return m.dict()
         return {"role": getattr(m, "role", "user"), "content": str(m)}
 
+    @staticmethod
+    def _extract_previous_summary(messages: List) -> Optional[str]:
+        """从消息列表头部（system 之后）提取既有历史摘要节点作为 previousSummary。
+
+        摘要链（T91）：自动压缩路径二次压缩时，首条非 system 消息即为上一轮写入的
+        【历史记忆摘要】（或规则截断的【历史截断摘要】）节点；手动 /compress 视图层
+        使用【历史摘要】前缀。命中任一前缀即取其正文（剥离工作记忆等附加块），
+        供压缩 prompt 作为旧摘要输入合并。未发现 → 返回 None。
+        """
+        for m in messages:
+            d = m if isinstance(m, dict) else getattr(m, "dict", lambda: {})()
+            if d.get("role") == "system":
+                continue
+            content = d.get("content") or ""
+            if not isinstance(content, str):
+                content = str(content)
+            for prefix in ("【历史记忆摘要】", "【历史截断摘要】", "【历史摘要】"):
+                if content.startswith(prefix):
+                    rest = content[len(prefix):].strip()
+                    # 只取摘要正文首段；剥离【工作记忆】等附加块，避免摘要链重复注入
+                    return rest.split("\n\n")[0].strip() or None
+            return None
+        return None
+
+    @staticmethod
+    def _extract_working_files(messages: List, limit: int = 5) -> List[str]:
+        """从消息的 tool_calls / timeline 中提取最近被读/写的文件路径（去重保序，取末 limit 个）。
+
+        数据源：
+          - assistant 消息 tool_calls 的 function.arguments.path（自动压缩内存路径）
+          - timeline 事件（tool_start/tool_result）的 input.path（手动 /compress 的 DB 行路径）
+
+        返回空列表表示无文件操作（不注入工作记忆块，不改变原输出形状）。
+        """
+        import json as _json
+
+        file_tools = {
+            "read_file", "write_file", "edit_file", "replace_in_file",
+            "apply_patch", "delete_file", "list_files", "find_files",
+        }
+        paths: List[str] = []
+        seen = set()
+
+        def _add(p) -> None:
+            if not p or not isinstance(p, str):
+                return
+            p = p.strip().strip("\"'")
+            if p and p not in seen:
+                seen.add(p)
+                paths.append(p)
+
+        for m in messages:
+            if isinstance(m, dict):
+                tool_calls = m.get("tool_calls")
+                timeline = m.get("timeline")
+            else:
+                tool_calls = getattr(m, "tool_calls", None)
+                timeline = getattr(m, "timeline", None)
+            # tool_calls：assistant 消息 function.arguments.path
+            if tool_calls:
+                for call in tool_calls:
+                    if not isinstance(call, dict):
+                        continue
+                    fn = call.get("function") or {}
+                    if isinstance(fn, dict) and fn.get("name") in file_tools:
+                        args = fn.get("arguments") or "{}"
+                        try:
+                            argd = _json.loads(args) if isinstance(args, str) else (args or {})
+                        except Exception:  # noqa: BLE001 — 参数解析失败仅跳过该调用
+                            argd = {}
+                        if isinstance(argd, dict):
+                            _add(argd.get("path"))
+            # timeline：tool_start/tool_result 事件的 input.path
+            if timeline:
+                for ev in timeline:
+                    if not isinstance(ev, dict):
+                        continue
+                    if ev.get("type") in ("tool_start", "tool_result") and ev.get("tool") in file_tools:
+                        _inp = ev.get("input")
+                        if isinstance(_inp, dict):
+                            _add(_inp.get("path"))
+        return paths[-limit:]
+
     async def compress_history(
         self,
         messages: List,
@@ -752,6 +851,7 @@ class AgentRuntime:
         model_id: Optional[str] = None,
         min_middle: int = DEFAULT_MIN_MIDDLE,
         max_summary_chars: int = DEFAULT_SUMMARY_MAX_CHARS,
+        previous_summary: Optional[str] = None,
     ) -> List:
         """G6-B: 会话压缩 — 将冗长中间消息提炼为一段历史摘要。
 
@@ -765,12 +865,22 @@ class AgentRuntime:
           - 摘要模型调用失败 / 返回空 → 直接返回原列表（fail-safe，不破坏执行流）。
           - 压缩结果 = [System] + [Memory] + [Recent]。
 
-        T9 缓存友好（cache_aware_compaction_enabled，灰度默认关）：
+        T9 缓存友好（cache_aware_compaction_enabled，T91 起默认开）：
           - 开关开启时：摘要调用复用主对话前缀——完整 messages 原样作为前缀（与主循环
             上一轮请求逐字节一致 → 命中 provider 前缀缓存），摘要指令作为本轮新增的
             最后一条 user 消息追加；只改发往 LLM 的副本，绝不改动调用方 messages / DB
             历史。摘要自批评：单轮有界复核，有缺漏输出修订版；失败/无缺漏均保留 v1。
-          - 开关关闭（默认）→ 旧路径：独立两条消息 prompt，只发 middle 段拼接，无自批评。
+          - 开关关闭 → 旧路径：独立两条消息 prompt，只发 middle 段拼接，无自批评。
+
+        T91 摘要链（previousSummary）：
+          - previous_summary 显式传入（手动 /compress 传 chats.summary），或未传时自动
+            从 messages 头部既有【历史记忆摘要】等节点提取（自动压缩二次压缩场景）。
+          - 缓存友好路径下合并指令追加在摘要指令之后（前缀不变，不破坏缓存）；
+            旧路径下旧摘要前置拼接。输出为"旧摘要 + 新增内容"合并后的完整摘要。
+
+        T91 工作记忆恢复：
+          - 压缩后从消息的 tool_calls / timeline 提取最近 5 个被读/写文件路径，
+            以【工作记忆】块注入记忆节点，保证压缩后追问文件细节仍可定位。
 
         Args:
             messages: 已组装的消息列表（dict 或 ModelMessage 对象，保留输入类型）
@@ -778,6 +888,7 @@ class AgentRuntime:
             model_id: 摘要模型 ID（默认取 settings.COMPRESSION_MODEL，未配置则用 DEFAULT_COMPRESSION_MODEL）
             min_middle: 触发压缩所需的最小中间消息数
             max_summary_chars: 摘要字数上限（注入 Prompt）
+            previous_summary: 上一轮历史摘要（摘要链输入；为 None 时自动从 messages 检测）
 
         Returns:
             压缩后的消息列表；未达阈值或失败时返回原列表。
@@ -803,6 +914,10 @@ class AgentRuntime:
         if len(middle) < min_middle:
             return messages
 
+        # T91 摘要链：未显式传入旧摘要时，从 messages 头部既有历史摘要节点自动提取
+        if not previous_summary:
+            previous_summary = self._extract_previous_summary(messages)
+
         # T9: 缓存友好开关——开 = 复用主对话前缀 + 自批评；关 = 旧路径（回滚闸）
         cache_aware = is_cache_aware_compaction_enabled()
         if cache_aware:
@@ -810,18 +925,30 @@ class AgentRuntime:
             # 逐字节一致 → 命中 provider 前缀缓存），摘要指令作为本轮新增的最后一条
             # user 消息追加。_msg_to_dict 逐条拷贝，绝不改动调用方 messages / DB 历史消息。
             prompt_messages = [self._msg_to_dict(m) for m in messages]
-            prompt_messages.append({
-                "role": "user",
-                "content": self.CACHE_AWARE_SUMMARY_INSTRUCTION.format(
-                    keep_recent=keep_recent, max_chars=max_summary_chars
-                ),
-            })
+            instruction = self.CACHE_AWARE_SUMMARY_INSTRUCTION.format(
+                keep_recent=keep_recent, max_chars=max_summary_chars
+            )
+            if previous_summary:
+                # 摘要链：合并指令追加在摘要指令之后（前缀不变，不破坏 provider 前缀缓存）
+                instruction += "\n\n" + self.SUMMARY_CHAIN_INSTRUCTION.format(
+                    max_chars=max_summary_chars, previous_summary=previous_summary
+                )
+            prompt_messages.append({"role": "user", "content": instruction})
         else:
             # 旧路径：独立摘要 prompt，只发 middle 段拼接
             to_summarize = "\n\n".join(
                 f"{m.get('role', 'user')}: {m.get('content', '')}"
                 for m in map(self._msg_to_dict, middle)
             )
+            if previous_summary:
+                # 摘要链：旧摘要前置，指示模型与新增内容合并更新
+                to_summarize = (
+                    "（本会话此前的历史摘要，请与下方新增内容合并更新，"
+                    "保留其中仍有效的信息，输出合并后的完整摘要）\n"
+                    f"{previous_summary}\n\n"
+                    "——以上为旧摘要，以下是需要新增合并的对话——\n\n"
+                    + to_summarize
+                )
             prompt_messages = [
                 {"role": "system", "content": self.SUMMARY_PROMPT_TEMPLATE.format(max_chars=max_summary_chars)},
                 {"role": "user", "content": to_summarize or "（空内容）"},
@@ -882,7 +1009,14 @@ class AgentRuntime:
         if not summary:
             return messages
 
+        # T91 工作记忆恢复：压缩后把最近被读/写的文件路径注入记忆节点，
+        # 保证压缩后追问"刚才改了哪些文件"等上下文细节仍可定位。
         memory_content = f"【历史记忆摘要】\n{summary}"
+        working_files = self._extract_working_files(messages)
+        if working_files:
+            memory_content += "\n\n" + self.WORKING_MEMORY_BLOCK_TEMPLATE.format(
+                paths="、".join(working_files)
+            )
         if not input_is_model:
             memory_node: dict = {"role": "user", "content": memory_content}
         else:

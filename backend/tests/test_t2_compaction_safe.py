@@ -130,11 +130,17 @@ def _seed_chat(db, n_messages: int = 12, with_json_fields: bool = True) -> int:
 
 
 def _patched_summary(captured: dict):
-    """mock model_service.call_once：返回固定摘要并捕获 prompt。"""
+    """mock model_service.call_once：返回固定摘要并捕获【首次】摘要调用的 prompt。
+
+    T91 缓存友好默认开 → 压缩会触发 2 次调用（摘要 + 自批评）。断言关心的是摘要调用
+    （复用主对话前缀 + 追加摘要指令）的 prompt 形状，故只捕获首次调用；
+    自批评调用在其后追加 assistant(v1) + 自批评指令，不在此断言范围。
+    """
 
     async def _fake_call_once(model_id, prompt_messages, **kwargs):
-        captured["model_id"] = model_id
-        captured["messages"] = prompt_messages
+        if "messages" not in captured:
+            captured["model_id"] = model_id
+            captured["messages"] = prompt_messages
         return SingleCallResult(content=SUMMARY_TEXT)
 
     return patch("app.services.model.model_service.call_once", new=_fake_call_once)
@@ -198,7 +204,12 @@ def test_compress_preserves_rows_and_json_fields():
         head = resp.messages[0]
         assert head.role == "user" and head.content == f"【历史摘要】\n{SUMMARY_TEXT}"
         assert head.id == 0, "摘要节点为视图合成消息（非 DB 行）"
-        assert captured["messages"][-1]["content"].count("a.py") >= 1, "摘要模型应收到中间段原文"
+        # T91 缓存友好默认开：prompt = 完整对话前缀原样 + 追加 1 条摘要指令；
+        # 中间段原文位于前缀中（逐字节复用主循环上一轮请求 → 命中 provider 前缀缓存）。
+        # 更新依据：旧断言检查最后一条消息含 a.py，新路径下最后一条是摘要指令，
+        # 中间段原文在前缀内 —— 改为校验完整 prompt 含中间段原文。
+        _prompt_all = "\n".join((m.get("content") or "") for m in captured["messages"])
+        assert "a.py" in _prompt_all, "摘要模型应收到中间段原文"
     finally:
         db.close()
 
@@ -365,9 +376,15 @@ def test_auto_compress_memory_only_and_event_intact():
         and payload.get("before") == 13 and payload.get("after") == 6
         for _, ev, payload in events
     ), "session_compressed 事件必须照发"
-    # 与 /compress 同一个摘要函数：compress_history 的 system 约束出现在两路 prompt 中
+    # 与 /compress 同一个摘要函数：T91 缓存友好默认开 →
+    # prompt = 完整对话前缀原样（system + 中间 + 近期）+ 追加 1 条摘要指令。
+    # 更新依据：旧断言编码旧路径"独立两条消息 prompt"形状；新路径前缀复用完整对话，
+    # 指令为追加的最后一条 user 消息，前缀逐字节命中主循环缓存。
+    # 长度对照压缩前快照（_maybe_auto_compress 会原地改写 messages，须用 before_snapshot）。
     assert captured["messages"][0]["role"] == "system"
-    assert len(captured["messages"]) == 2
+    assert len(captured["messages"]) == len(before_snapshot) + 1
+    assert captured["messages"][-1]["role"] == "user"
+    assert "除最后4条消息之外" in captured["messages"][-1]["content"]
 
 
 # ═════════════════════════════════════════════════════════════════════════
