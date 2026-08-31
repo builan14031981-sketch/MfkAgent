@@ -25,11 +25,11 @@ if str(BACKEND_DIR) not in sys.path:
 from main import app  # noqa: E402
 
 # TestClient 的 host 硬编码为 "testclient"，会被 mobile_remote_auth_middleware 拦截 401。
-# 与工单C的止血方案一致：在测试进程内豁免 loopback 判定。
-import app.core.mobile_auth as _mobile_auth  # noqa: E402
-_mobile_auth.is_loopback_host = lambda host: True
-import main as _main_module  # noqa: E402
-_main_module.is_loopback_host = lambda host: True
+# 该豁免已由 conftest.py 统一设置 TESTING=1 覆盖：main.py 中间件在
+# `os.environ.get("TESTING") != "1"` 分支整体短路，/api/* 下不再调用 is_loopback_host。
+# 原 _main_module / _mobile_auth 两处 lambda 就地补丁在 TESTING=1 方案下均冗余
+# （中间件用的是 main 命名空间的绑定，_mobile_auth 补丁本就不生效），工单I 清理时移除；
+# 方案说明见 tests/conftest.py 顶部 TESTING 段。
 
 client = TestClient(app)
 
