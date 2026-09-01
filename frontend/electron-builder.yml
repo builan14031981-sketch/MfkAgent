@@ -40,7 +40,7 @@ win:
     - target: portable
       arch:
         - x64
-  icon: public/icon.svg
+  icon: public/icon.ico
 
 # ── NSIS 安装程序 ──
 nsis:
@@ -51,8 +51,8 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: MfkAgent
   uninstallDisplayName: MfkAgent
-  installerIcon: public/icon.svg
-  uninstallerIcon: public/icon.svg
+  installerIcon: public/icon.ico
+  uninstallerIcon: public/icon.ico
 
 # ── 绿色免安装版 ──
 portable:

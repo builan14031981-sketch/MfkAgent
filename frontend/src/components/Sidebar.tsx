@@ -726,8 +726,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             </button>
           </div>
           {!collapsedProjectWorkspace && (
-            <div style={{ maxHeight: "320px", overflowY: "auto" }}>
-          {projects.length === 0 ? (
+          projects.length === 0 ? (
             <button
               onClick={() => setProjectModalOpen(true)}
               className="sb-btn--dashed"
@@ -758,8 +757,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               onChatContextMenu={handleContextMenu}
               onChatMore={handleMoreChat}
             />
-          ))}
-          </div>
+          ))
           )}
         </div>
 
