@@ -4,8 +4,8 @@
 $ErrorActionPreference = "Continue"
 
 # ── 配置 ──────────────────────────────────────────────
-$python = "C:\Users\Asus\AppData\Local\Programs\Python\Python314\python.exe"
-$workdir = "E:\智慧项目\Mfkagent\backend"
+$python = if ($env:MFK_PYTHON) { $env:MFK_PYTHON } else { "python" }
+$workdir = Join-Path $PSScriptRoot "backend"
 $logFile = Join-Path $workdir "logs\watchdog.log"
 $maxRestarts = 30       # 最大连续重启次数（防止死循环）
 $restartDelay = 3       # 重启间隔（秒）

@@ -6,8 +6,7 @@ echo   MfkAgent 一键启动（含进程守护）
 echo ========================================
 
 :: 后端 Python 解释器
-set "PYTHON=C:\Users\Asus\AppData\Local\Programs\Python\Python314\python.exe"
-if not exist "%PYTHON%" set "PYTHON=python"
+if not defined PYTHON set "PYTHON=python"
 
 echo.
 echo [1/3] 启动 Backend 守护进程 (port 8001)...

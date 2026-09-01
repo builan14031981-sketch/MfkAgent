@@ -28,7 +28,6 @@ from app.core.path_utils import safe_resolve as _safe_resolve, ensure_long_path,
 # Windows Node.js 常见安装目录（run_subprocess 里用于补齐 PATH，让 Agent 能执行 npm/tsc）。
 # 仅追加已存在且 PATH 未包含的目录；纯本机路径，随环境可增补。
 _NODEJS_BIN_DIRS: List[str] = [
-    r"E:\Program Files\nodejs",
     r"C:\Program Files\nodejs",
     os.path.expandvars(r"%ProgramFiles%\nodejs"),
     os.path.expandvars(r"%LOCALAPPDATA%\Programs\nodejs"),

@@ -6,8 +6,7 @@ echo   MfkAgent Desktop 桌面端启动
 echo ========================================
 
 :: 1. 探测 Python 解释器
-set "PYTHON=C:\Users\Asus\AppData\Local\Programs\Python\Python314\python.exe"
-if not exist "%PYTHON%" set "PYTHON=python"
+if not defined PYTHON set "PYTHON=python"
 
 :: 2. 启动 Backend (port 8001)
 echo.
