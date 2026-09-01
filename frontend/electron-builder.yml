@@ -9,27 +9,27 @@ directories:
   buildResources: public
 
 # ── 打包文件（仅包含运行必需的文件，杜绝源码泄露）──
+# electron/ 按运行时实际引用清单枚举：main.js require 了 ./screenshot/*，
+# 窗口图标 assets/app-icon.png、托盘图标 assets/tray-icon.png（见 main.js）。
+# *.bak*、test-toast*、dev-notification-shortcut.ps1（dev-only，且有 existsSync 守护）不进 asar。
 files:
   - out/**/*
-  - electron/**/*
+  - electron/main.js
+  - electron/preload.js
+  - electron/screenshot/**/*
+  - electron/assets/app-icon.png
+  - electron/assets/tray-icon.png
   - package.json
 
-# ── 额外资源（后端 Python 目录，打包到 resources/backend）──
+# ── 额外资源（打包到 resources/backend）──
+# 只放 PyInstaller 产物 backend.exe：--onefile 自包含，数据文件已嵌入 exe。
+# 不再整目录拷贝 backend/——.venv(约186MB)/数据库及 -wal/-shm/.bak-*/.env/logs/调试脚本/
+# _bak_ui_selfcheck/Archive 一律不进安装包。
+# ⚠️ 打包前必须先构建后端：cd backend && python build_backend.py（exe 缺失时 electron-builder 直接报错，属预期 fail-fast）。
+# exe 布局：resources/backend/backend.exe（electron/main.js getBackendExecutable 按此查找）。
 extraResources:
-  - from: "../backend"
-    to: "backend"
-    filter:
-      - "**/*"
-      - "!**/__pycache__/**"
-      - "!**/.pytest_cache/**"
-      - "!**/tests/**"
-      - "!**/*.db"
-      - "!**/*.log"
-      - "!**/build/**"
-      - "!**/dist/**"
-      - "!**/.env"
-      - "!**/.gitignore"
-      - "!**/*.spec"
+  - from: "../backend/dist/backend.exe"
+    to: "backend/backend.exe"
 
 # ── Windows 目标 ──
 win:
@@ -59,24 +59,24 @@ portable:
   artifactName: MfkAgent-Portable-${version}.${ext}
 
 # ── macOS 目标 ──
+# icon 用 ≥512px PNG（此处 1024），electron-builder 打包时自动转 icns。
 mac:
   target:
     - dmg
-  icon: public/icon.svg
+  icon: public/icon.png
   category: public.app-category.developer-tools
 
 # ── Linux 目标 ──
 linux:
   target:
     - AppImage
-  icon: public/icon.svg
+  icon: public/icon.png
   category: Development
 
 # ── 发布产物命名 ──
 artifactName: "${productName}-${version}-${os}-${arch}.${ext}"
 
 # ── 打包前清理（确保无旧产物残留）──
-beforePack: "node scripts/clean-build.js"
 
 # ── ASAR 压缩（前端资源打包）──
 asar: true
