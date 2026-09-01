@@ -28,7 +28,7 @@ from .personas import get_persona_prompt
 from app.core.task_graph.models import TaskNode
 from .model_context_config import get_model_max_tokens, compute_watermark
 from app.core.verification import verifier as default_verifier
-from app.services.model import ModelNotFoundError, ModelConfigError
+from app.services.model import ModelNotFoundError, ModelConfigError, extract_cached_tokens
 from app.core.tool_runtime.strategy import get_strategy_engine, StrategyStatus
 from app.core.agent_runtime.completion import (
     CompletionContext,
@@ -353,14 +353,10 @@ class AgentRuntime:
         watermark = compute_watermark(total_tokens, model_id)
 
         # T1: 前缀缓存命中 token 透出（model.py 已归一化为 usage["cached_tokens"]；
-        # 此处兜底兼容原始字段 prompt_tokens_details.cached_tokens / prompt_cache_hit_tokens）
+        # 此处兜底调用 extract_cached_tokens 兼容所有上游字段格式）
         cached_tokens = usage.get("cached_tokens")
         if cached_tokens is None:
-            details = usage.get("prompt_tokens_details")
-            if isinstance(details, dict):
-                cached_tokens = details.get("cached_tokens")
-            if not cached_tokens:
-                cached_tokens = usage.get("prompt_cache_hit_tokens") or 0
+            cached_tokens = extract_cached_tokens(usage)
         try:
             cached_tokens = int(cached_tokens or 0)
         except (TypeError, ValueError):
