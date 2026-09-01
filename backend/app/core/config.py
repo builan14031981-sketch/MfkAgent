@@ -7,25 +7,53 @@ import sys
 # Phase 9 P1: 跨平台长路径兼容
 from app.core.path_utils import ensure_long_path, IS_WINDOWS
 
-# ── 后端根目录：基于本文件位置自动计算，与进程启动目录(CWD)彻底解耦 ──
-# config.py 位于 backend/app/core/config.py → 向上三级即为 backend/
-_BACKEND_DIR_RAW = Path(__file__).resolve().parent.parent.parent
-BACKEND_DIR = _BACKEND_DIR_RAW
+# ── 打包模式检测：PyInstaller 运行时 sys.frozen=True ──
+_IS_FROZEN = bool(getattr(sys, "frozen", False))
 
-# 数据文件统一锚定到 backend/ 下的绝对路径（数据库 / 上传 / 向量库 / 备份），
-# 无论从哪个目录启动 uvicorn / Electron，都不会在根目录遗留散落的 db / uploads。
-# Phase 9: Windows 下挂载长路径前缀，突破 260 字符限制
-_DATABASE_PATH_RAW = BACKEND_DIR / "mfkagent.db"
-DATABASE_PATH = _DATABASE_PATH_RAW
+
+def _frozen_data_root() -> Path:
+    """打包模式的可写数据根目录。
+
+    PyInstaller 运行时 __file__ 指向 _MEIPASS 临时解压目录（每次启动重建、退出清空），
+    数据库 / 上传 / 备份 / 日志 / .env 等可写数据必须锚定到用户可持久化目录：
+      Windows: %APPDATA%/MfkAgent    macOS: ~/Library/Application Support/MfkAgent
+      Linux:   ~/.local/share/MfkAgent
+    """
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return Path(appdata) / "MfkAgent"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "MfkAgent"
+    return Path.home() / ".local" / "share" / "MfkAgent"
+
+
+# ── 后端根目录：config 出口，所有下游一律引用此处，不要散落第二次 __file__ 计算 ──
+# 开发模式：基于本文件位置自动计算（config.py 位于 backend/app/core/ → 向上三级），
+# 与进程启动目录(CWD)彻底解耦。
+# 打包模式：统一切换到可写数据根目录。config.BACKEND_DIR 的下游消费者（数据库 /
+# 上传 / Archive / .env / 端口文件）全部把它当可写根用；app 包内只读资产
+# （greetings.json 等）走包内 __file__ 相对读取，PyInstaller 解到 _MEIPASS 天然可用，
+# 不经过本出口。
+if _IS_FROZEN:
+    BACKEND_DIR = _frozen_data_root()
+    # sqlite 引擎在 app.core.database 导入期即按 DATABASE_PATH 连库，目录必须先存在
+    os.makedirs(BACKEND_DIR, exist_ok=True)
+else:
+    BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+
 DATA_DIR = BACKEND_DIR
+DATABASE_PATH = BACKEND_DIR / "mfkagent.db"
+# 端口文件规范出口（当前 app/core/port_manager.py 自算锚点，后续收敛到此处）
+PORT_FILE = BACKEND_DIR / ".mfkagent_port"
 
-# 如果 backend 目录路径超过 200 字符，提前启用长路径前缀
+# 如果目录路径超过 200 字符，提前启用长路径前缀（Phase 9；打包数据根通常较短，统一走出口无害）
 if IS_WINDOWS:
     _backend_str = str(BACKEND_DIR)
     if len(_backend_str) > 200:
         BACKEND_DIR = Path(ensure_long_path(BACKEND_DIR))
-        DATABASE_PATH = Path(ensure_long_path(_DATABASE_PATH_RAW))
         DATA_DIR = BACKEND_DIR
+        DATABASE_PATH = Path(ensure_long_path(DATABASE_PATH))
+        PORT_FILE = Path(ensure_long_path(PORT_FILE))
 
 class Settings(BaseSettings):
     # 应用配置
