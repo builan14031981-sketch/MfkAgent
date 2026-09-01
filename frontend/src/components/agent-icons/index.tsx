@@ -46,22 +46,22 @@ export const AGENT_ICON_SCHEMES: Record<string, Record<AgentIconScheme, IconComp
 /** 展示元数据（供测试台/下拉框使用） */
 export const AGENT_META: Record<string, { name: string; desc: string; schemeNote: string }> = {
   general: {
-    name: "AnGent",
+    name: "安",
     desc: "默认通用助手 · 星芒聚合",
     schemeNote: "A 同心圆+十字 · B 四角星 · C 双轨道环绕",
   },
   coder: {
-    name: "开发者",
+    name: "固本",
     desc: "软件开发 · 尖括号",
     schemeNote: "A 双括号 · B 括号+光标 · C 终端窗口",
   },
   frontend_ui: {
-    name: "前端工程师",
+    name: "知方",
     desc: "UI 实现 · 色环",
     schemeNote: "A 色环+笔杆 · B 画笔起笔 · C 分层画布",
   },
   g: {
-    name: "G 审查官",
+    name: "明鉴",
     desc: "治理审查 · 盾牌 · Governance",
     schemeNote: "A 盾形 · B 盾+对勾 · C 盾心字母 G",
   },
@@ -71,13 +71,13 @@ export const AGENT_META: Record<string, { name: string; desc: string; schemeNote
     schemeNote: "A 罗盘+针 · B 方向箭头 · C 目标瞄准",
   },
   spark: {
-    name: "Spark",
+    name: "逐光",
     desc: "高能量伙伴 · 闪电 · 抽象搞怪",
     schemeNote: "A 歪斜闪电+星芒 · B 火花炸裂 · C 闪电+能量天线",
   },
   pianai: {
-    name: "Pianai",
-    desc: "偏爱伙伴 · 双心",
+    name: "顾念",
+    desc: "人格陪伴 · 双心",
     schemeNote: "A 主实心+虚线陪心 · B 心+对话尾+星 · C 双心外倾（一实一虚）",
   },
   writer: {
@@ -131,8 +131,8 @@ export const AGENT_META: Record<string, { name: string; desc: string; schemeNote
     schemeNote: "A 对话气泡+文字 · B 气泡+光标 · C 圆环气泡",
   },
   defense_ppt_expert: {
-    name: "答辩PPT专家",
-    desc: "毕业答辩 · 演示屏",
+    name: "绘页",
+    desc: "演示文稿 · 演示屏",
     schemeNote: "A 演示屏+画架",
   },
 };

@@ -12,7 +12,6 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Database, Keyboard, Search, X, Smartphone } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
@@ -24,6 +23,7 @@ import { Panel } from "./Panel";
 import { AgentListPanel } from "./AgentListPanel";
 import { SubAgentPanel } from "./SubAgentPanel";
 import { ArchivePanel } from "./ArchivePanel";
+import { PairSection } from "./PairSection";
 import { BasicSettingsView, type SettingSectionId } from "./BasicSettingsView";
 import { AdvancedSettingsView } from "./AdvancedSettingsView";
 import { SwitchButton } from "@/components/SwitchButton";
@@ -46,7 +46,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const { models, loading: modelsLoading } = useModels();
   const { agents } = useAgents();
   const { showToast } = useSettingsToast();
-  const pairRouter = useRouter(); // 安卓端 M1：跳转 /pair 连接手机页
 
   // ── 统管状态 ──
   const [saving, setSaving] = useState<string | null>(null);
@@ -129,6 +128,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "archive", label: t("settings.archive.title"), icon: Database },
     { id: "about", label: t("settings.about.title"), icon: Info },
     { id: "shortcuts", label: t("settings.shortcuts.title"), icon: Keyboard },
+    { id: "pair", label: t("settings.pair.title"), icon: Smartphone },
   ];
 
   // ── 设置搜索：过滤左侧导航 + 命中字段计数（导航级，不侵入字段渲染）──
@@ -331,28 +331,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       )}
                     </button>
                   ))}
-                  {/* 安卓端 M1：连接手机入口（独立页面 /pair，不走 section 状态机） */}
-                  <button
-                    onClick={() => pairRouter.push("/pair")}
-                    className="mf-nav-item"
-                    style={{
-                      display: "flex", alignItems: "center", gap: "8px",
-                      width: "100%", padding: "10px 12px",
-                      borderRadius: "var(--radius-md)", border: "none",
-                      cursor: "pointer", fontSize: "14px",
-                      color: "var(--text-level-3)",
-                      textAlign: "left", marginBottom: "4px",
-                    }}
-                  >
-                    <Smartphone
-                      style={{
-                        width: "16px", height: "16px",
-                        color: "currentColor",
-                        transition: "color var(--transition-fast)",
-                      }}
-                    />
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>连接手机</span>
-                  </button>
                   </div>
                 </nav>
 
@@ -378,6 +356,9 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   {/* 归档 Tab：独立面板（归档列表 + 归档目录配置） */}
                   {activeSection === "archive" ? (
                     <ArchivePanel />
+                  ) : activeSection === "pair" ? (
+                    /* 连接手机 Tab：独立面板（扫码配对 + 设备吊销），与归档同模式 */
+                    <PairSection />
                   ) : (
                     <>
                       {/* 基础区块（默认展示） */}

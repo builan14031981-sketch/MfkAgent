@@ -14,6 +14,7 @@ import { UserChoiceCard } from "@/components/UserChoiceCard";
 import type { RuntimeEvent, RoundtableSpeakerEvent } from "@/types/runtime";
 import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAgentDisplayName } from "@/hooks/useAgents";
 import { useSettingsStore } from "@/lib/store";
 
 interface MessageListProps {
@@ -154,6 +155,8 @@ function CompressionNodeCard({ content }: { content: string }) {
  */
 export const MessageList = memo(function MessageList({ messages, timeline, streamingError, isStreaming, reasoningActive, currentAgent, onQuote, onRegenerate, onRetry, onEdit, onApproveApproval, onDenyApproval, onSelectChoice, onChoiceCustomText, onSkipChoice, onActiveUserMessageChange, scrollPersistenceKey }: MessageListProps) {
   const { t } = useTranslation();
+  // SSE 下发的发言名是后端中文名，这里按当前语言在渲染层翻译（切语言即时生效）
+  const displayAgentName = useAgentDisplayName();
   const showReasoning = useSettingsStore((s) => s.settings?.show_reasoning !== "false");
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
@@ -655,7 +658,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-level-3)", marginBottom: "4px" }}>
-                                {seg.agent_name || "Agent"}
+                                {displayAgentName(seg.agent_id, seg.agent_name)}
                               </div>
                               <MarkdownRenderer content={seg.content} />
                             </div>
@@ -676,7 +679,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                         <div key={seg.id} style={{ display: "flex", alignItems: "center", gap: "8px", margin: "12px 0 6px 0" }}>
                           <AgentIcon id={seg.agent_id || "unknown"} size={16} style={{ color: "var(--text-level-3)" }} />
                           <span style={{ fontSize: "13px", fontWeight: 500, lineHeight: 1.25, color: "var(--text-level-3)" }}>
-                            {seg.agent_name || "Agent"} 正在发言...
+                            {displayAgentName(seg.agent_id, seg.agent_name)} 正在发言...
                           </span>
                         </div>
                       );
@@ -691,7 +694,7 @@ export const MessageList = memo(function MessageList({ messages, timeline, strea
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-level-3)", marginBottom: "4px" }}>
-                              {speaker.agentName || "Agent"}
+                              {displayAgentName(speaker.agentId, speaker.agentName)}
                               {!speaker.done && <span style={{ marginLeft: "6px", fontWeight: 400, opacity: 0.7 }}>正在发言…</span>}
                             </div>
                             <MarkdownRenderer content={speaker.content} />

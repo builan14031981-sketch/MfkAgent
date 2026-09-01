@@ -272,6 +272,26 @@
     "shortcuts": {
       "title": "Shortcuts"
     },
+    "pair": {
+      "title": "Connect Phone",
+      "desc": "Scan the QR code below with the MfkAgent Android app to pair once — it stays paired. Credentials are stored in the phone's secure storage and can be revoked below; API keys never leave this computer.",
+      "scanTitle": "Scan to pair",
+      "qrAlt": "Pairing QR code",
+      "qrUnavailable": "Unavailable",
+      "qrGenerating": "Generating…",
+      "manualHint": "Can't scan? Enter the pairing code manually",
+      "connectAddr": "Address: {addr}",
+      "noLanIp": "(No LAN IP detected, port {port})",
+      "refresh": "Refresh code",
+      "devicesTitle": "Paired devices ({count})",
+      "emptyDevices": "No devices paired yet. Paired devices will appear here.",
+      "revoked": "Revoked",
+      "boundAt": "Paired {created} · Last seen {seen}",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke device (token invalidated immediately)",
+      "securityNote": "Security: tokens live only in the phone's secure storage; this page only lists devices and revocation. Revoked devices get 401 on all requests until re-paired. Remote power actions are written to the sandbox audit log.",
+      "error": "Cannot reach the pairing API. Make sure the backend is running, and started with start-mobile.bat (listening on 0.0.0.0) for phone access."
+    },
     "archive": {
       "title": "Data & Storage",
       "imageDirTitle": "Image save location",

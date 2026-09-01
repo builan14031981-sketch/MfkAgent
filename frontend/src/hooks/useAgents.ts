@@ -19,15 +19,61 @@ export interface Agent {
 
 /**
  * Agent 英文名映射（英文模式下显示）。
- * 中文模式显示后端返回的中文名，英文模式显示这里的英文名/拼音。
+ * 中文模式显示后端返回的中文名，英文模式显示这里的英文名。
  * 未配置的 agent 英文模式下保持中文名。
+ *
+ * ⚠️ 与 agents 表的中文名是两套数据：改中文名（DB）后必须同步这张表，
+ *    否则英文模式会继续用旧名（2026-08-31 批量改名时就发生过一次）。
  */
 const AGENT_EN_NAMES: Record<string, string> = {
-  general: "AnGent",
-  pianai: "Pianai",
-  spark: "Spark",
-  defense_ppt_expert: "Defense PPT",
+  // ── 主 agent：意象概念名，与中文名同源（固本=稳固根基 / 明鉴=明镜照见 …）──
+  general: "An",
+  coder: "Bedrock",
+  frontend_ui: "Compass",
+  g: "Lucent",
+  spark: "Lumen",
+  pianai: "Solace",
+  writer_jiangnan: "Tide",
+  defense_ppt_expert: "Folio",
+  creative_image: "Palette",
+  sts2_coach: "STS2 Coach",
+  // ── 隐藏主 agent ──
+  product: "Strategist",
+  writer: "Quill",
+  writer_narrative: "Narrator",
+  personal: "Aide",
+  research: "Scout",
+  // ── 子代理：功能描述名，不套意象 ──
+  sub_code_reviewer: "Code Reviewer",
+  sub_researcher: "Web Researcher",
+  sub_file_analyst: "File Analyst",
+  sub_architecture: "Architect",
+  sub_backend: "Backend Engineer",
+  sub_frontend: "Frontend Engineer",
+  sub_testing: "Test Engineer",
+  sub_security: "Security Auditor",
 };
+
+/**
+ * 解析 agent 显示名。
+ *
+ * 供「只有 agent_id + 后端中文名、拿不到 agents 列表」的场景使用——
+ * 典型是 SSE 时间线里的圆桌发言：名字由后端 roundtable_runtime 用 seat.name 直接下发，
+ * 不经过 useAgents 的中文→英文转换，英文模式下会露中文。
+ *
+ * 在**渲染层**翻译而非入库时翻译：切语言即时生效，历史消息也会跟着变。
+ */
+export function useAgentDisplayName() {
+  const locale = useSettingsStore((s) => s.settings?.language ?? "zh-CN");
+  return useCallback(
+    (agentId?: string | null, fallback?: string | null): string => {
+      const base = fallback || "Agent";
+      if (locale !== "en-US" || !agentId) return base;
+      return AGENT_EN_NAMES[agentId] ?? base;
+    },
+    [locale]
+  );
+}
 
 // 跨实例同步事件：任一实例变更 agents 后广播，所有实例立即重新拉取
 export const AGENTS_CHANGED_EVENT = "mfk-agents-changed";

@@ -95,4 +95,10 @@ export const SETTINGS_SEARCH_INDEX: SettingSearchEntry[] = [
       { key: "shortcuts", label: "快捷键", aliases: ["shortcut", "快捷键", "keyboard", "键位", "hotkey"] },
     ],
   },
+  {
+    section: "pair",
+    fields: [
+      { key: "pair", label: "连接手机", aliases: ["pair", "手机", "扫码", "配对", "phone", "mobile", "android"] },
+    ],
+  },
 ];

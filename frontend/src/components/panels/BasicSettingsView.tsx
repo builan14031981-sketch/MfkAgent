@@ -26,7 +26,7 @@ import type { Model } from "@/hooks/useModels";
 import type { Agent } from "@/hooks/useAgents";
 
 /** 设置导航项 id 联合类型（与 SettingsPanel 共享，保证 activeSection 类型安全） */
-export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about" | "archive" | "shortcuts";
+export type SettingSectionId = "general" | "model" | "ai" | "security" | "extensions" | "about" | "archive" | "shortcuts" | "pair";
 
 /** 统管状态注入 props（由 SettingsPanel 下发） */
 export interface SettingsViewProps {

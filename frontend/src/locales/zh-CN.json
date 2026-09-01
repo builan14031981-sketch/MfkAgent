@@ -272,6 +272,26 @@
     "shortcuts": {
       "title": "快捷键"
     },
+    "pair": {
+      "title": "连接手机",
+      "desc": "用 MfkAgent 安卓 APP 扫描下方二维码，一次配对长期有效。配对凭证保存在手机安全存储中，可在下方随时吊销；电脑上的 API key 永远不会离开本机。",
+      "scanTitle": "手机 APP 扫码配对",
+      "qrAlt": "配对二维码",
+      "qrUnavailable": "不可用",
+      "qrGenerating": "生成中…",
+      "manualHint": "无法扫码？在手机上手动输入配对码",
+      "connectAddr": "连接地址：{addr}",
+      "noLanIp": "（未检测到局域网 IP，端口 {port}）",
+      "refresh": "刷新配对码",
+      "devicesTitle": "已配对设备（{count}）",
+      "emptyDevices": "还没有设备配对。扫码后设备会出现在这里。",
+      "revoked": "已吊销",
+      "boundAt": "绑定于 {created} · 最近在线 {seen}",
+      "revoke": "吊销",
+      "revokeTitle": "吊销该设备（token 立即失效）",
+      "securityNote": "安全说明：token 只保存在手机安全存储，本页只展示设备与吊销入口；吊销后对应手机的所有请求立即返回 401，需重新扫码配对。远程关机/重启等操作会写入沙箱审计日志（安全中心可见）。",
+      "error": "无法连接配对接口。请确认：① 后端已重启（本功能随安卓端 M1 新增）；② 如需手机连接，请用 start-mobile.bat 启动（监听 0.0.0.0）。"
+    },
     "archive": {
       "title": "数据与存储",
       "imageDirTitle": "图片保存位置",

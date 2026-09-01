@@ -330,9 +330,9 @@ def test_vague_switch():
     assert detect_vague_switch("你好") is False
     assert detect_vague_switch("切换傲娇模式") is False  # 具体指令不算模糊
 
-    # 人格列表渲染
+    # 人格列表渲染（default 预设 2026-08-31 改名：偏爱 → 顾念）
     menu = render_preset_menu()
-    assert "偏爱" in menu
+    assert "顾念" in menu
     assert "傲娇" in menu
     assert "霸总" in menu
     assert "暖心姐姐" in menu
