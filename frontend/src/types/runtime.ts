@@ -79,6 +79,8 @@ export interface TokenUsageEvent extends RuntimeEventBase {
   cached_tokens?: number;
   /** 上下文分类 token 统计（system_prompt/tools/memory/messages/reminder/other），供分类占比面板展示 */
   context_breakdown?: Record<string, number>;
+  /** 缓存命中率来源："api"=网关返回真实 cached_tokens；"estimated"=网关未返回，用稳定前缀估算；"none"=两者都没有 */
+  cache_source?: "api" | "estimated" | "none";
 }
 
 /**

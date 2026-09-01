@@ -312,6 +312,15 @@ class BuiltContext:
     # 上下文分类 token 统计（系统提示词/工具定义/记忆/历史消息/轮次提醒/其他），
     # 供前端 ContextDashboard 展示上下文容量分类占比（对标 Z code 上下文面板）。
     context_breakdown: Optional[dict] = None
+    # 稳定前缀 token 数（system_prompt + tools + memory + 历史消息），
+    # 用于网关不返回 cached_tokens 时估算前缀复用率（对标 Z code 的"平均缓存命中率"）。
+    # 计算口径：从第一条消息开始、到上一轮 assistant 结束的连续前缀，即"下一轮可以复用的部分"。
+    # 注意：第1轮对话（历史消息 < 2 条）时为 0，避免第1轮命中率虚高。
+    stable_prefix_tokens: Optional[int] = None
+    # 稳定前缀占总上下文的比例（0.0 - 1.0），用于跨 tokenizer 估算：
+    # tiktoken（OpenAI）统计的绝对 token 数与 Gemini/Claude 实际计费可能不一致，
+    # 但相对比例是稳定的。estimated_cached = prompt_tokens(API实际值) × stable_prefix_ratio。
+    stable_prefix_ratio: Optional[float] = None
 
 
 def get_default_model() -> str:
@@ -1295,6 +1304,37 @@ class ChatContextBuilder:
                 logger.warning("context_breakdown 统计失败，降级为 None: %s", _bd_err)
                 context_breakdown = None
 
+            # ──── 稳定前缀 token 数 + 比例（网关不返回 cached_tokens 时的估算 fallback）────
+            # 口径：system_prompt + tools + memory + 历史消息（pruned_history，到上一轮
+            # assistant 结束为止）。当前轮 user 消息 + turn_reminder 是本轮新增，不计入。
+            # 这部分是"下一轮可以复用的连续前缀"，对标 Z code 的"缓存命中率"估算。
+            # 注意：第1轮对话（历史消息 < 2 条，即尚无完整的 user+assistant 轮次）时，
+            # 没有上一轮可以复用，stable_prefix_tokens = 0，避免第1轮命中率虚高为 100%。
+            #
+            # 比例估算的原因：tiktoken（OpenAI tokenizer）统计的绝对 token 数与
+            # Gemini/Claude 实际计费可能不一致（tiktoken 通常偏多），但相对比例稳定。
+            # 前端/AgentRuntime 用 prompt_tokens(API实际值) × stable_prefix_ratio 估算
+            # cached_tokens，保证估算值不会超过 prompt_tokens，命中率不超过 100%。
+            stable_prefix_tokens: Optional[int] = None
+            stable_prefix_ratio: Optional[float] = None
+            if context_breakdown is not None:
+                # context_breakdown 的 messages 只统计了历史消息（pruned_history），
+                # 当前轮 user 消息（input.content）未被统计到任何分类。
+                # 计算 ratio 时必须把当前轮 user 加到分母，否则 ratio 会虚高到 1.0。
+                _current_user_tokens = count_tokens(input.content or "", effective_model)
+                _total_ctx = sum(context_breakdown.values()) + _current_user_tokens
+                if len(pruned_history) >= 2 and _total_ctx > 0:
+                    stable_prefix_tokens = (
+                        context_breakdown.get("system_prompt", 0)
+                        + context_breakdown.get("tools", 0)
+                        + context_breakdown.get("memory", 0)
+                        + context_breakdown.get("messages", 0)
+                    )
+                    stable_prefix_ratio = min(1.0, stable_prefix_tokens / _total_ctx)
+                else:
+                    stable_prefix_tokens = 0
+                    stable_prefix_ratio = 0.0
+
             return BuiltContext(
                 context=context,
                 messages=model_messages,
@@ -1309,6 +1349,8 @@ class ChatContextBuilder:
                 persona_context=persona_ctx,
                 turn_reminder=turn_reminder,
                 context_breakdown=context_breakdown,
+                stable_prefix_tokens=stable_prefix_tokens,
+                stable_prefix_ratio=stable_prefix_ratio,
             )
         finally:
             db.close()

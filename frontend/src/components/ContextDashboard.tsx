@@ -164,8 +164,15 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
         ? "var(--color-warning)"
         : "var(--color-primary)";
 
-  const label = `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 本轮缓存命中 ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} (${hitRatio}%)` : ""}${avgHitRatio != null ? ` | 平均缓存命中率 ${avgHitRatio}%` : ""}`;
-  const cacheLabel = `本轮前缀缓存命中: ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} prompt tokens (${hitRatio}%)${avgHitRatio != null ? ` | 会话平均: ${avgHitRatio}% (${formatTokens(totalCachedTokens)} / ${formatTokens(totalPromptTokens)})` : ""}`;
+  // 缓存命中率来源标注：api=网关真实返回；estimated=稳定前缀估算（网关不返回缓存字段时的 fallback）
+  const cacheSourceLabel = usage?.cache_source === "estimated"
+    ? "（前缀复用率估算）"
+    : usage?.cache_source === "api"
+      ? ""
+      : "";
+
+  const label = `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 本轮缓存命中 ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} (${hitRatio}%)${cacheSourceLabel}` : ""}${avgHitRatio != null ? ` | 平均缓存命中率 ${avgHitRatio}%` : ""}`;
+  const cacheLabel = `本轮前缀缓存命中: ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} prompt tokens (${hitRatio}%)${cacheSourceLabel}${avgHitRatio != null ? ` | 会话平均: ${avgHitRatio}% (${formatTokens(totalCachedTokens)} / ${formatTokens(totalPromptTokens)})` : ""}`;
   const showWarning = ratio >= WARNING_THRESHOLD;
   const hasBreakdown = breakdownItems.length > 0;
 

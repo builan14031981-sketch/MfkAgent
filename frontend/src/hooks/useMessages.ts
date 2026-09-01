@@ -413,6 +413,7 @@ export function useMessages(chatId: number | null) {
                       watermark_percentage: parsed.watermark_percentage ?? 0,
                       cached_tokens: parsed.cached_tokens ?? 0,
                       context_breakdown: parsed.context_breakdown ?? undefined,
+                      cache_source: parsed.cache_source ?? "none",
                     });
                     break;
                   }

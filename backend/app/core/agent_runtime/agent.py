@@ -322,7 +322,14 @@ class AgentRuntime:
 
     # ──── G6-A: Token 水位监控 ────
 
-    def _build_token_usage_event(self, usage: dict, model_id: str, context_breakdown: Optional[dict] = None) -> dict:
+    def _build_token_usage_event(
+        self,
+        usage: dict,
+        model_id: str,
+        context_breakdown: Optional[dict] = None,
+        stable_prefix_tokens: Optional[int] = None,
+        stable_prefix_ratio: Optional[float] = None,
+    ) -> dict:
         """构建 token_usage 事件 payload。
 
         Args:
@@ -330,9 +337,17 @@ class AgentRuntime:
             model_id: 模型 ID
             context_breakdown: 上下文分类 token 统计（system_prompt/tools/memory/messages/reminder/other），
                                来自 BuiltContext.context_breakdown，供前端展示分类占比
+            stable_prefix_tokens: 稳定前缀 token 数（system+tools+memory+历史消息），
+                                  网关不返回 cached_tokens 时的估算 fallback（对标 Z code 的"缓存命中率"）
+            stable_prefix_ratio: 稳定前缀占总上下文的比例（0.0-1.0），用于跨 tokenizer 估算：
+                                 tiktoken 绝对 token 数与 Gemini/Claude 实际计费可能不一致，
+                                 但相对比例稳定。estimated_cached = prompt_tokens(API实际值) × ratio。
 
         Returns:
-            token_usage 事件 dict
+            token_usage 事件 dict，含 cache_source 字段标识命中率来源：
+            - "api": 网关返回了真实 cached_tokens
+            - "estimated": 网关未返回，用稳定前缀比例估算
+            - "none": 两者都没有
         """
         if not usage:
             return {
@@ -341,6 +356,7 @@ class AgentRuntime:
                 "completion_tokens": 0,
                 "total_tokens": 0,
                 "cached_tokens": 0,
+                "cache_source": "none",
                 "model_max_tokens": get_model_max_tokens(model_id),
                 "watermark_percentage": 0.0,
                 "context_breakdown": context_breakdown,
@@ -362,12 +378,27 @@ class AgentRuntime:
         except (TypeError, ValueError):
             cached_tokens = 0
 
+        # Fallback：网关不返回 cached_tokens 时，用稳定前缀比例估算复用率
+        # （对标 Z code 的"平均缓存命中率"——它的网关也不返回缓存字段，是自己算的）
+        # 用比例而非绝对 token 数：tiktoken（OpenAI）统计的绝对 token 数与 Gemini/Claude
+        # 实际计费可能不一致，但相对比例稳定。estimated = prompt_tokens(API实际值) × ratio。
+        cache_source = "api" if cached_tokens > 0 else "none"
+        if cached_tokens == 0 and stable_prefix_ratio is not None and stable_prefix_ratio > 0:
+            try:
+                ratio = float(stable_prefix_ratio)
+                if 0 < ratio <= 1.0:
+                    cached_tokens = int(prompt_tokens * ratio)
+                    cache_source = "estimated"
+            except (TypeError, ValueError):
+                pass
+
         return {
             "type": "token_usage",
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
             "cached_tokens": cached_tokens,
+            "cache_source": cache_source,
             "model_max_tokens": max_tokens,
             "watermark_percentage": watermark,
             "context_breakdown": context_breakdown,
@@ -1850,6 +1881,10 @@ class AgentRuntime:
             context.metadata = {}
         # 上下文分类 token 统计（来自 BuiltContext.context_breakdown，供 token_usage 事件透出）
         _context_breakdown = context.metadata.pop("_context_breakdown", None)
+        # 稳定前缀 token 数（网关不返回 cached_tokens 时的估算 fallback）
+        _stable_prefix_tokens = context.metadata.pop("_stable_prefix_tokens", None)
+        # 稳定前缀占总上下文的比例（跨 tokenizer 估算用）
+        _stable_prefix_ratio = context.metadata.pop("_stable_prefix_ratio", None)
         _last_msg = messages[-1] if messages else None
         user_message = (
             _last_msg.get("content", "")
@@ -2158,7 +2193,8 @@ class AgentRuntime:
                                 # T4: 原始 usage 写入 context.metadata 供非流式消费者聚合
                                 context.metadata["_t4_usage"] = last_round_usage
                                 yield self._build_token_usage_event(
-                                    last_round_usage, context.model_id, _context_breakdown
+                                    last_round_usage, context.model_id, _context_breakdown,
+                                    _stable_prefix_tokens, _stable_prefix_ratio,
                                 )
 
                     if final_finish == "tool_calls" and collected_tool_calls and round_tools:

@@ -1266,6 +1266,12 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         # 上下文分类 token 统计（对标 Z code 上下文面板），存入 metadata 供 token_usage 事件透出
         if built.context_breakdown:
             agent_context.metadata["_context_breakdown"] = built.context_breakdown
+        # 稳定前缀 token 数（网关不返回 cached_tokens 时的估算 fallback）
+        if built.stable_prefix_tokens is not None:
+            agent_context.metadata["_stable_prefix_tokens"] = built.stable_prefix_tokens
+        # 稳定前缀占总上下文的比例（跨 tokenizer 估算用）
+        if built.stable_prefix_ratio is not None:
+            agent_context.metadata["_stable_prefix_ratio"] = built.stable_prefix_ratio
         mem_project_id = chat.project_id
         mem_user_content = request.content
         mem_agent_id = chat.agent_id

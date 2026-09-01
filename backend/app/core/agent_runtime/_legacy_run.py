@@ -231,8 +231,12 @@ async def legacy_run(
                     # G6-A: emit token_usage 事件
                     if final_usage:
                         _legacy_breakdown = (context.metadata or {}).get("_context_breakdown")
+                        _legacy_stable_prefix = (context.metadata or {}).get("_stable_prefix_tokens")
+                        _legacy_stable_ratio = (context.metadata or {}).get("_stable_prefix_ratio")
                         runtime_event_recorder.emit(run_id, "token_usage",
-                            self._build_token_usage_event(final_usage, context.model_id, _legacy_breakdown))
+                            self._build_token_usage_event(
+                                final_usage, context.model_id, _legacy_breakdown,
+                                _legacy_stable_prefix, _legacy_stable_ratio))
 
                     if not result.tool_calls or not round_tools:
                         # ──── Phase 11: 强制自查插队拦截 ────
@@ -553,7 +557,10 @@ async def legacy_run(
                 "reason": decision.reason,
                 # G6-A: Token 水位信息
                 "token_watermark": self._build_token_usage_event(
-                    final_usage, context.model_id, (context.metadata or {}).get("_context_breakdown")
+                    final_usage, context.model_id,
+                    (context.metadata or {}).get("_context_breakdown"),
+                    (context.metadata or {}).get("_stable_prefix_tokens"),
+                    (context.metadata or {}).get("_stable_prefix_ratio"),
                 ) if final_usage else None,
                 # G4-C: TaskGraph 进度摘要（含 completed/failed/skipped/current_step）
                 "task_graph": self._task_graph_summary(),
