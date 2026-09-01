@@ -80,9 +80,19 @@ function getBackendDir() {
 /** 定位后端可执行文件：优先 backend.exe（PyInstaller 产物），其次 Python 脚本 */
 function getBackendExecutable() {
   const backendDir = getBackendDir();
-  // 打包产物：backend.exe（PyInstaller --onefile）
-  const exePath = path.join(backendDir, "dist", "backend.exe");
-  if (fs.existsSync(exePath)) return { type: "exe", path: exePath, cwd: backendDir };
+  // 打包布局：resources/backend/backend.exe（见 electron-builder.yml extraResources）
+  // 开发布局：backend/dist/backend.exe（PyInstaller 默认输出）
+  const exeCandidates = [
+    path.join(backendDir, "backend.exe"),
+    path.join(backendDir, "dist", "backend.exe"),
+  ];
+  for (const exePath of exeCandidates) {
+    if (fs.existsSync(exePath)) return { type: "exe", path: exePath, cwd: backendDir };
+  }
+  // 打包模式下既无 exe 也无源码入口，说明安装包缺后端——明确报错，不静默回退
+  if (process.env.ELECTRON_DEV !== "true") {
+    console.error(`[Electron] backend.exe not found under ${backendDir} (expected resources/backend/backend.exe, build backend first: python build_backend.py)`);
+  }
   // 回退：Python 脚本
   const py = process.env.MFK_PYTHON
     || (process.platform === "win32" ? "python" : "python3");
