@@ -1263,6 +1263,9 @@ async def send_message_stream(chat_id: int, request: SendRequest):
         max_tokens = built.max_tokens
         reasoning_effort = built.reasoning_effort
         read_only = built.read_only
+        # 上下文分类 token 统计（对标 Z code 上下文面板），存入 metadata 供 token_usage 事件透出
+        if built.context_breakdown:
+            agent_context.metadata["_context_breakdown"] = built.context_breakdown
         mem_project_id = chat.project_id
         mem_user_content = request.content
         mem_agent_id = chat.agent_id

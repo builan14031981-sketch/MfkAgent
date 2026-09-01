@@ -77,6 +77,8 @@ export interface TokenUsageEvent extends RuntimeEventBase {
   watermark_percentage: number;
   /** T1：前缀缓存命中 Token 数（本轮 prompt 中命中 KV 缓存的部分；0 表示未命中或模型不支持） */
   cached_tokens?: number;
+  /** 上下文分类 token 统计（system_prompt/tools/memory/messages/reminder/other），供分类占比面板展示 */
+  context_breakdown?: Record<string, number>;
 }
 
 /**

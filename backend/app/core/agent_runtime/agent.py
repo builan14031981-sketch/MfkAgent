@@ -322,12 +322,14 @@ class AgentRuntime:
 
     # ──── G6-A: Token 水位监控 ────
 
-    def _build_token_usage_event(self, usage: dict, model_id: str) -> dict:
+    def _build_token_usage_event(self, usage: dict, model_id: str, context_breakdown: Optional[dict] = None) -> dict:
         """构建 token_usage 事件 payload。
 
         Args:
             usage: LLM 返回的 usage 字典（含 prompt_tokens / completion_tokens）
             model_id: 模型 ID
+            context_breakdown: 上下文分类 token 统计（system_prompt/tools/memory/messages/reminder/other），
+                               来自 BuiltContext.context_breakdown，供前端展示分类占比
 
         Returns:
             token_usage 事件 dict
@@ -341,6 +343,7 @@ class AgentRuntime:
                 "cached_tokens": 0,
                 "model_max_tokens": get_model_max_tokens(model_id),
                 "watermark_percentage": 0.0,
+                "context_breakdown": context_breakdown,
             }
 
         prompt_tokens = usage.get("prompt_tokens", 0) or 0
@@ -371,6 +374,7 @@ class AgentRuntime:
             "cached_tokens": cached_tokens,
             "model_max_tokens": max_tokens,
             "watermark_percentage": watermark,
+            "context_breakdown": context_breakdown,
         }
 
     # ──── G4-A: TaskGraph 状态机集成 ────
@@ -1848,6 +1852,8 @@ class AgentRuntime:
         # ──── TaskRouter 决策（T4 双循环合一：两路统一在唯一实现中调用，结果仅写 metadata）────
         if context.metadata is None:
             context.metadata = {}
+        # 上下文分类 token 统计（来自 BuiltContext.context_breakdown，供 token_usage 事件透出）
+        _context_breakdown = context.metadata.pop("_context_breakdown", None)
         _last_msg = messages[-1] if messages else None
         user_message = (
             _last_msg.get("content", "")
@@ -2155,7 +2161,9 @@ class AgentRuntime:
                             if last_round_usage:
                                 # T4: 原始 usage 写入 context.metadata 供非流式消费者聚合
                                 context.metadata["_t4_usage"] = last_round_usage
-                                yield self._build_token_usage_event(last_round_usage, context.model_id)
+                                yield self._build_token_usage_event(
+                                    last_round_usage, context.model_id, _context_breakdown
+                                )
 
                     if final_finish == "tool_calls" and collected_tool_calls and round_tools:
                         ordered = [collected_tool_calls[i] for i in sorted(collected_tool_calls)]

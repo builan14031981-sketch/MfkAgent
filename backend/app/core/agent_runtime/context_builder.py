@@ -24,6 +24,7 @@ from typing import List, Optional
 from types import SimpleNamespace as _NS
 import os
 import re
+import json
 
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Agent, Message, MemoryItem, Setting
@@ -40,6 +41,7 @@ from app.core.agent_base_instruction import get_agent_base_instruction
 # 2026-08-16：Skill 全局注入已废弃（会话级调用改由前端 buildContent 注入），不再 import get_enabled_skills_prompt
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
+from app.core.tokens import count_tokens
 def _sanitize_prompt_mode(prompt: str, mode: str) -> str:
     if not prompt:
         return prompt
@@ -307,6 +309,9 @@ class BuiltContext:
     # 由 AgentRuntime 发送前包裹到本轮最后一条 user 消息副本末尾（不动 DB）。
     # prompt_stability_enabled=false 时为 None（旧装配路径）。
     turn_reminder: Optional[str] = None
+    # 上下文分类 token 统计（系统提示词/工具定义/记忆/历史消息/轮次提醒/其他），
+    # 供前端 ContextDashboard 展示上下文容量分类占比（对标 Z code 上下文面板）。
+    context_breakdown: Optional[dict] = None
 
 
 def get_default_model() -> str:
@@ -1262,6 +1267,34 @@ class ChatContextBuilder:
                 role, content = _msg_role_content(msg)
                 model_messages.append(ModelMessage(role=role, content=content))
 
+            # ──── 上下文分类 token 统计（对标 Z code 上下文容量面板）────
+            # 统计各组成部分的 token 数，供前端 ContextDashboard 展示分类占比。
+            # tiktoken 异常时静默降级为 None（前端不显示分类面板，不影响主流程）。
+            context_breakdown: Optional[dict] = None
+            try:
+                _sys_tokens = count_tokens(full_prompt or "", effective_model)
+                _tools_tokens = count_tokens(
+                    json.dumps(tools_arg or [], ensure_ascii=False), effective_model
+                ) if tools_arg else 0
+                _mem_tokens = count_tokens(memory_text or "", effective_model)
+                _msg_tokens = 0
+                for _m in pruned_history:
+                    _r, _c = _msg_role_content(_m)
+                    _msg_tokens += count_tokens(_c or "", effective_model)
+                _reminder_tokens = count_tokens(turn_reminder or "", effective_model) if turn_reminder else 0
+                context_breakdown = {
+                    "system_prompt": _sys_tokens,
+                    "tools": _tools_tokens,
+                    "memory": _mem_tokens,
+                    "messages": _msg_tokens,
+                    "reminder": _reminder_tokens,
+                    "other": 0,
+                }
+            except Exception as _bd_err:  # noqa: BLE001 — 统计失败不影响主流程
+                logger = __import__("logging").getLogger(__name__)
+                logger.warning("context_breakdown 统计失败，降级为 None: %s", _bd_err)
+                context_breakdown = None
+
             return BuiltContext(
                 context=context,
                 messages=model_messages,
@@ -1275,6 +1308,7 @@ class ChatContextBuilder:
                 tool_context=tool_context,
                 persona_context=persona_ctx,
                 turn_reminder=turn_reminder,
+                context_breakdown=context_breakdown,
             )
         finally:
             db.close()
