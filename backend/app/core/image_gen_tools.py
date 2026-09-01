@@ -144,7 +144,7 @@ def _sf_generate(prompt: str, size: str) -> Optional[List[str]]:
 
 # ─── ComfyUI 本地生图后端 (127.0.0.1:8188) ──────────────────────────────────
 
-_COMFY_SCRIPT = r"E:\BaiduNetdiskDownload\ComfyUI-aki-v3.2\ComfyUI\workflows_opencode\comfy_call.py"
+_COMFY_SCRIPT = os.environ.get("MFK_COMFYUI_SCRIPT", "")
 
 
 def _comfyui_generate(
@@ -156,7 +156,7 @@ def _comfyui_generate(
     filename: Optional[str] = None,
 ) -> Optional[List[str]]:
     """调用本机 ComfyUI REST API (comfy_call.py) 出图。"""
-    if not os.path.exists(_COMFY_SCRIPT):
+    if not _COMFY_SCRIPT or not os.path.exists(_COMFY_SCRIPT):
         logger.debug("[image_gen/comfy] comfy_call.py 路径不存在，跳过本地生图")
         return None
     try:
