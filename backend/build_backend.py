@@ -9,6 +9,13 @@
 
 依赖：
     pip install pyinstaller
+
+发布决策（2026-09-01 打包修复批）：
+    - 保持 --onefile：electron/main.js 的 exe 查找契约与安装包布局按单文件落地，
+      --onedir（启动更快、_MEIPASS 语义更简单）留作后续优化，切换时需同步 main.js。
+    - HIDDEN_IMPORTS 中的 chromadb 在 Windows + Py3.12 venv 中缺失（仓库已知约束，
+      勿强装）：PyInstaller 仅告警不失败（warn-backend.txt 可查），运行时无代码路径
+      import chromadb，exe 行为不受影响。
 """
 
 import os
@@ -115,15 +122,21 @@ HIDDEN_IMPORTS = [
     "app.models.agent",
 ]
 
-# ── 数据文件（与 exe 同级或嵌入）──
+# ── 数据文件（嵌入 exe）──
 def _collect_data_files():
-    """收集需要随 exe 分发的数据文件。"""
+    """收集需要随 exe 分发的数据文件。
+
+    ⚠️ 安全约束（2026-09-01 打包修复批）：**.env 不嵌入 exe**。
+    历史版本曾把 backend/.env（含真实 API key）通过 --add-data 打进 exe，
+    随安装包分发即密钥泄露。打包模式下密钥由用户在 UI 设置页配置，
+    运行时读取可写数据根目录下的 .env（见 app/core/config.py frozen 分支）。
+    """
     datas = []
-    # .env 文件（若存在）
-    env_file = BACKEND_DIR / ".env"
-    if env_file.exists():
-        datas.append((str(env_file), "."))
-    # 备份目录（空目录占位，PyInstaller 不打包空目录，运行时创建）
+    # 运行时资产：greetings.json 由 app/services/greetings.py 以包内 __file__ 相对路径
+    # 读取，PyInstaller 不会自动收集数据文件，需显式嵌入（解包后位于 _MEIPASS/app/data/）
+    greetings = BACKEND_DIR / "app" / "data" / "greetings.json"
+    if greetings.exists():
+        datas.append((str(greetings), "app/data"))
     return datas
 
 
