@@ -15,6 +15,7 @@ from app.core.log_config import init_logging
 from app.models.persona import PersonaTemplate, ExpressionKnowledge
 # 安卓端：配对设备表必须在 create_all 之前注册到 Base（否则 paired_devices 不会被建表）
 from app.models.mobile import PairedDevice  # noqa: F401
+import app.models.agent  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,152 @@ init_logging()
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
 
+
+
+def _ensure_schema():
+    """轻量迁移：为旧 SQLite 库补充新增列（create_all 不会改已有表）"""
+    from sqlalchemy import inspect
+    import sqlalchemy as sa
+
+    try:
+        inspector = inspect(engine)
+        if "memories" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("memories")}
+            with engine.begin() as conn:
+                if "project_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memories ADD COLUMN project_id INTEGER"))
+                if "is_active" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memories ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+
+        if "chats" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("chats")}
+            with engine.begin() as conn:
+                if "project_path" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN project_path VARCHAR(500)"))
+                if "context_files" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN context_files JSON"))
+                if "is_deleted" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
+                if "deleted_at" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN deleted_at DATETIME"))
+                if "thinking_mode" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN thinking_mode VARCHAR(20) DEFAULT 'none'"))
+                if "mode" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN mode VARCHAR(10) DEFAULT 'build'"))
+                if "permission_mode" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN permission_mode VARCHAR(10) DEFAULT 'standard'"))
+                if "is_archived" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
+                if "archived_at" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN archived_at DATETIME"))
+                # 圆桌模式
+                if "roundtable_config" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN roundtable_config JSON DEFAULT '{}'"))
+                # T2 压缩止血：压缩边界（视图层裁剪锚点，messages 行永不删除）
+                if "compaction_boundary_message_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE chats ADD COLUMN compaction_boundary_message_id INTEGER"))
+
+        if "projects" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("projects")}
+            with engine.begin() as conn:
+                if "is_deleted" not in cols:
+                    conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
+                if "deleted_at" not in cols:
+                    conn.execute(sa.text("ALTER TABLE projects ADD COLUMN deleted_at DATETIME"))
+                if "is_pinned" not in cols:
+                    conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_pinned BOOLEAN DEFAULT 0"))
+                if "is_archived" not in cols:
+                    conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
+                if "archived_at" not in cols:
+                    conn.execute(sa.text("ALTER TABLE projects ADD COLUMN archived_at DATETIME"))
+
+        if "messages" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("messages")}
+            with engine.begin() as conn:
+                if "tool_calls" not in cols:
+                    conn.execute(sa.text("ALTER TABLE messages ADD COLUMN tool_calls JSON"))
+                if "timeline" not in cols:
+                    conn.execute(sa.text("ALTER TABLE messages ADD COLUMN timeline JSON"))
+                if "task_graph" not in cols:
+                    conn.execute(sa.text("ALTER TABLE messages ADD COLUMN task_graph JSON"))
+                # 圆桌模式：消息发送者
+                if "agent_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE messages ADD COLUMN agent_id VARCHAR(50)"))
+
+        if "agents" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("agents")}
+            with engine.begin() as conn:
+                if "status" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agents ADD COLUMN status VARCHAR(20) DEFAULT 'active'"))
+                if "expression_profile" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agents ADD COLUMN expression_profile VARCHAR(50)"))
+                # Phase SubAgent：子代理字段
+                if "is_sub_agent" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agents ADD COLUMN is_sub_agent BOOLEAN DEFAULT 0"))
+                if "allowed_tools" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agents ADD COLUMN allowed_tools JSON"))
+                if "parent_agent_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agents ADD COLUMN parent_agent_id VARCHAR(50)"))
+
+        if "memory_items" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("memory_items")}
+            with engine.begin() as conn:
+                if "agent_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN agent_id VARCHAR(100)"))
+                if "project_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN project_id INTEGER"))
+                if "memory_type" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN memory_type VARCHAR(50) DEFAULT 'preference'"))
+                if "confidence" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN confidence FLOAT DEFAULT 0.8"))
+                if "source_chat_id" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN source_chat_id INTEGER"))
+                if "is_active" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+                if "last_accessed_at" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN last_accessed_at DATETIME"))
+                if "access_count" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN access_count INTEGER DEFAULT 0"))
+
+        if "agent_runs" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("agent_runs")}
+            with engine.begin() as conn:
+                if "state" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agent_runs ADD COLUMN state VARCHAR(50) DEFAULT 'pending'"))
+
+        if "models" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("models")}
+            with engine.begin() as conn:
+                if "supports_vision" not in cols:
+                    conn.execute(sa.text("ALTER TABLE models ADD COLUMN supports_vision BOOLEAN DEFAULT 0"))
+                if "source" not in cols:
+                    conn.execute(sa.text("ALTER TABLE models ADD COLUMN source VARCHAR(10) NOT NULL DEFAULT 'manual'"))
+
+        # T6 外部 MCP：plugins 表补充 source 列（builtin / external_mcp）
+        if "plugins" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("plugins")}
+            with engine.begin() as conn:
+                if "source" not in cols:
+                    conn.execute(sa.text("ALTER TABLE plugins ADD COLUMN source VARCHAR(30) NOT NULL DEFAULT 'builtin'"))
+
+        if "messages" in inspector.get_table_names():
+            cols = {c["name"] for c in inspector.get_columns("messages")}
+            with engine.begin() as conn:
+                if "attachments" not in cols:
+                    conn.execute(sa.text("ALTER TABLE messages ADD COLUMN attachments JSON"))
+
+    except Exception as e:
+        logger.error(f"Schema migration failed: {e}")
+        raise
+
+# ============================
+# 启动序列：建表 -> 迁移 -> 种子
+# ============================
+
+# 1. 迁移：补全新增列（必须先于 seed_default_plugins 等执行）
+_ensure_schema()
+
+# 2. 数据 Seed（依赖完整的 schema）
 # 自定义端点：seed 内置模板（FreeLLMAPI）+ 加载到 PROVIDERS
 from app.core.model_providers import seed_builtin_custom_providers, reload_custom_providers
 seed_builtin_custom_providers()
@@ -46,139 +193,7 @@ from seed_persona import seed_all as _seed_persona
 _seed_persona()
 
 
-def _ensure_schema():
-    """轻量迁移：为旧 SQLite 库补充新增列（create_all 不会改已有表）"""
-    from sqlalchemy import inspect
-    import sqlalchemy as sa
 
-    inspector = inspect(engine)
-    if "memories" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("memories")}
-        with engine.begin() as conn:
-            if "project_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE memories ADD COLUMN project_id INTEGER"))
-            if "is_active" not in cols:
-                conn.execute(sa.text("ALTER TABLE memories ADD COLUMN is_active BOOLEAN DEFAULT 1"))
-
-    if "chats" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("chats")}
-        with engine.begin() as conn:
-            if "project_path" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN project_path VARCHAR(500)"))
-            if "context_files" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN context_files JSON"))
-            if "is_deleted" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
-            if "deleted_at" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN deleted_at DATETIME"))
-            if "thinking_mode" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN thinking_mode VARCHAR(20) DEFAULT 'none'"))
-            if "mode" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN mode VARCHAR(10) DEFAULT 'build'"))
-            if "permission_mode" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN permission_mode VARCHAR(10) DEFAULT 'standard'"))
-            if "is_archived" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
-            if "archived_at" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN archived_at DATETIME"))
-            # 圆桌模式
-            if "roundtable_config" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN roundtable_config JSON DEFAULT '{}'"))
-            # T2 压缩止血：压缩边界（视图层裁剪锚点，messages 行永不删除）
-            if "compaction_boundary_message_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE chats ADD COLUMN compaction_boundary_message_id INTEGER"))
-
-    if "projects" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("projects")}
-        with engine.begin() as conn:
-            if "is_deleted" not in cols:
-                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_deleted BOOLEAN DEFAULT 0"))
-            if "deleted_at" not in cols:
-                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN deleted_at DATETIME"))
-            if "is_pinned" not in cols:
-                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_pinned BOOLEAN DEFAULT 0"))
-            if "is_archived" not in cols:
-                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN is_archived BOOLEAN DEFAULT 0"))
-            if "archived_at" not in cols:
-                conn.execute(sa.text("ALTER TABLE projects ADD COLUMN archived_at DATETIME"))
-
-    if "messages" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("messages")}
-        with engine.begin() as conn:
-            if "tool_calls" not in cols:
-                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN tool_calls JSON"))
-            if "timeline" not in cols:
-                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN timeline JSON"))
-            if "task_graph" not in cols:
-                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN task_graph JSON"))
-            # 圆桌模式：消息发送者
-            if "agent_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN agent_id VARCHAR(50)"))
-
-    if "agents" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("agents")}
-        with engine.begin() as conn:
-            if "status" not in cols:
-                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN status VARCHAR(20) DEFAULT 'active'"))
-            if "expression_profile" not in cols:
-                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN expression_profile VARCHAR(50)"))
-            # Phase SubAgent：子代理字段
-            if "is_sub_agent" not in cols:
-                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN is_sub_agent BOOLEAN DEFAULT 0"))
-            if "allowed_tools" not in cols:
-                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN allowed_tools JSON"))
-            if "parent_agent_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE agents ADD COLUMN parent_agent_id VARCHAR(50)"))
-
-    if "memory_items" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("memory_items")}
-        with engine.begin() as conn:
-            if "agent_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN agent_id VARCHAR(100)"))
-            if "project_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN project_id INTEGER"))
-            if "memory_type" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN memory_type VARCHAR(50) DEFAULT 'preference'"))
-            if "confidence" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN confidence FLOAT DEFAULT 0.8"))
-            if "source_chat_id" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN source_chat_id INTEGER"))
-            if "is_active" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN is_active BOOLEAN DEFAULT 1"))
-            if "last_accessed_at" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN last_accessed_at DATETIME"))
-            if "access_count" not in cols:
-                conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN access_count INTEGER DEFAULT 0"))
-
-    if "agent_runs" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("agent_runs")}
-        with engine.begin() as conn:
-            if "state" not in cols:
-                conn.execute(sa.text("ALTER TABLE agent_runs ADD COLUMN state VARCHAR(50) DEFAULT 'pending'"))
-
-    if "models" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("models")}
-        with engine.begin() as conn:
-            if "supports_vision" not in cols:
-                conn.execute(sa.text("ALTER TABLE models ADD COLUMN supports_vision BOOLEAN DEFAULT 0"))
-            if "source" not in cols:
-                conn.execute(sa.text("ALTER TABLE models ADD COLUMN source VARCHAR(10) NOT NULL DEFAULT 'manual'"))
-
-    # T6 外部 MCP：plugins 表补充 source 列（builtin / external_mcp）
-    if "plugins" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("plugins")}
-        with engine.begin() as conn:
-            if "source" not in cols:
-                conn.execute(sa.text("ALTER TABLE plugins ADD COLUMN source VARCHAR(30) NOT NULL DEFAULT 'builtin'"))
-
-    if "messages" in inspector.get_table_names():
-        cols = {c["name"] for c in inspector.get_columns("messages")}
-        with engine.begin() as conn:
-            if "attachments" not in cols:
-                conn.execute(sa.text("ALTER TABLE messages ADD COLUMN attachments JSON"))
-
-
-_ensure_schema()
 
 
 def _seed_sub_agents():
