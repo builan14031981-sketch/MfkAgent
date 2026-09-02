@@ -23,12 +23,6 @@ interface ChatHeaderProps {
   totalPromptTokens?: number;
   onCompress?: () => void;
   isCompressing?: boolean;
-  isEditingTitle: boolean;
-  editTitle: string;
-  onEditTitleChange: (value: string) => void;
-  onStartEditTitle: () => void;
-  onSaveTitle: () => void;
-  onCancelEditTitle: () => void;
   onOpenProjectContext: () => void;
   /** 已注册项目列表（供切换使用） */
   projects?: Project[];
@@ -78,12 +72,6 @@ export const ChatHeader = memo(function ChatHeader({
   totalPromptTokens,
   onCompress,
   isCompressing,
-  isEditingTitle,
-  editTitle,
-  onEditTitleChange,
-  onStartEditTitle,
-  onSaveTitle,
-  onCancelEditTitle,
   onOpenProjectContext,
   projects,
   onSwitchProject,
@@ -162,46 +150,6 @@ export const ChatHeader = memo(function ChatHeader({
       }}>
         {agent && (
           <AgentIcon id={agent.id} size={18} style={{ color: "var(--text-level-3)" }} />
-        )}
-        {isEditingTitle ? (
-          <input
-            type="text"
-            value={editTitle}
-            onChange={(e) => onEditTitleChange(e.target.value)}
-            onBlur={onSaveTitle}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onSaveTitle();
-              if (e.key === "Escape") onCancelEditTitle();
-            }}
-            autoFocus
-            style={{
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "var(--text-level-1)",
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              padding: 0,
-              margin: 0,
-              width: "200px",
-              lineHeight: "1.4",
-            }}
-          />
-        ) : (
-          <h1
-            onClick={onStartEditTitle}
-            style={{
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "var(--text-level-1)",
-              margin: 0,
-              lineHeight: "1.4",
-              cursor: "pointer",
-              transition: "color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--color-primary)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-level-1)"; }}
-          >{chat?.title || "Chat"}</h1>
         )}
       </div>
       {agent && (

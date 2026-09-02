@@ -17,9 +17,10 @@ interface ContextMenuState {
 
 interface ChatTabBarProps {
   onNewChat?: () => void;
+  onRename?: (chatId: number, newTitle: string) => void;
 }
 
-export function ChatTabBar({ onNewChat }: ChatTabBarProps) {
+export function ChatTabBar({ onNewChat, onRename }: ChatTabBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -40,6 +41,13 @@ export function ChatTabBar({ onNewChat }: ChatTabBarProps) {
     y: 0,
     chatId: null,
   });
+  // 标签重命名编辑态：editingId 为正在编辑的 chatId，editValue 为输入框当前值
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const commitRename = (chatId: number, value: string) => {
+    onRename?.(chatId, value);
+    setEditingId(null);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -299,6 +307,11 @@ export function ChatTabBar({ onNewChat }: ChatTabBarProps) {
               <div
                 key={tab.chatId}
                 onClick={() => handleSelectTab(tab.chatId)}
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setEditingId(tab.chatId);
+                  setEditValue(tab.title || "");
+                }}
                 onContextMenu={(e) => handleContextMenu(e, tab.chatId)}
                 title={tab.title || "对话"}
                 className={`chrome-tab ${isActive ? "chrome-tab--active" : "chrome-tab--inactive"}`}
@@ -310,20 +323,49 @@ export function ChatTabBar({ onNewChat }: ChatTabBarProps) {
                   <MessageSquare size={13} style={{ flexShrink: 0, color: "var(--text-level-4)" }} />
                 )}
 
-                {/* 标题截断展示 */}
-                <span
-                  style={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    flex: 1,
-                    fontSize: "12px",
-                    lineHeight: "1.2",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  {tab.title || "新对话"}
-                </span>
+                {/* 标题：双击进入内联编辑 */}
+                {editingId === tab.chatId ? (
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => commitRename(tab.chatId, editValue)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename(tab.chatId, editValue);
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onDoubleClick={(e) => e.stopPropagation()}
+                    onContextMenu={(e) => e.stopPropagation()}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      fontSize: "12px",
+                      lineHeight: "1.2",
+                      letterSpacing: "-0.01em",
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      color: "var(--text-level-1)",
+                      padding: 0,
+                      margin: 0,
+                    }}
+                  />
+                ) : (
+                  <span
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      flex: 1,
+                      fontSize: "12px",
+                      lineHeight: "1.2",
+                      letterSpacing: "-0.01em",
+                    }}
+                  >
+                    {tab.title || "新对话"}
+                  </span>
+                )}
 
                 {/* 后台流式生成状态指示器（呼吸蓝点） */}
                 {isStreaming && (

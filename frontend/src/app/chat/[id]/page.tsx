@@ -243,8 +243,6 @@ function ChatPageInner() {
     setPermissionMode(mode === "safe" || mode === "standard" || mode === "autonomous" ? mode : "standard");
   }
 
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
   const [hasAutoSent, setHasAutoSent] = useState(false);
   const autoSendLockRef = useRef(false);
   const chatInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -698,23 +696,6 @@ function ChatPageInner() {
     );
   }
 
-  const handleStartEditTitle = () => {
-    setEditTitle(currentChat?.title || "");
-    setIsEditingTitle(true);
-  };
-
-  const handleSaveTitle = async () => {
-    if (!chatId || !editTitle.trim()) return;
-    const newTitle = editTitle.trim();
-    try {
-      await updateChat(chatId, { title: newTitle });
-      useTabStore.getState().updateTabTitle(chatId, newTitle);
-      setIsEditingTitle(false);
-    } catch (err) {
-      console.error("Failed to update title:", err);
-    }
-  };
-
   // 浏览器式多标签：进入对话自动入驻顶部 TabBar 并激活
   useEffect(() => {
     if (chatId) {
@@ -763,12 +744,6 @@ function ChatPageInner() {
         totalPromptTokens={totalPromptTokens}
         onCompress={handleCompress}
         isCompressing={isCompressing}
-        isEditingTitle={isEditingTitle}
-        editTitle={editTitle}
-        onEditTitleChange={setEditTitle}
-        onStartEditTitle={handleStartEditTitle}
-        onSaveTitle={handleSaveTitle}
-        onCancelEditTitle={() => setIsEditingTitle(false)}
         onOpenProjectContext={() => setProjectContextOpen((v) => !v)}
         projects={projects}
         onSwitchProject={handleSwitchProject}

@@ -143,7 +143,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [pathname]);
 
   // 终端 cwd：取当前会话关联项目的本地路径，无则回退 null（后端用主目录）
-  const { chats, createChat } = useChat();
+  const { chats, createChat, updateChat } = useChat();
   const { projects } = useProjects(1, 100);
 
   // ── 多会话标签栏状态与快捷键 ──
@@ -199,6 +199,18 @@ export function AppLayout({ children }: AppLayoutProps) {
       router.push("/");
     }
   }, [currentChatId, chats, createChat, router]);
+
+  // 标签重命名：双击标签 → 持久化到后端 + 同步标签栏标题
+  const handleRenameTab = useCallback(async (chatId: number, newTitle: string) => {
+    const title = newTitle.trim();
+    if (!title) return;
+    try {
+      await updateChat(chatId, { title });
+      useTabStore.getState().updateTabTitle(chatId, title);
+    } catch (err) {
+      console.error("Failed to rename tab:", err);
+    }
+  }, [updateChat]);
 
   // 全局标签快捷键（Ctrl+T/N 新建，Ctrl+W 关闭，Ctrl+Tab 切换，Alt+1~9 直达）
   useEffect(() => {
@@ -536,7 +548,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </button>
           </div>
         ) : (
-          <ChatTabBar onNewChat={handleGlobalNewChat} />
+          <ChatTabBar onNewChat={handleGlobalNewChat} onRename={handleRenameTab} />
         )}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
           {children}
