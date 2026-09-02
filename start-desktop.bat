@@ -15,6 +15,8 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001 ^| findstr LISTENING') 
     taskkill /pid %%a /f >nul 2>&1
 )
 if exist "%~dp0backend\.mfkagent_port" del "%~dp0backend\.mfkagent_port"
+:: 指定项目自己的 venv Python，避免 guardian 误用系统 Python（缺依赖）
+set "MFK_PYTHON=%~dp0backend\.venv\Scripts\python.exe"
 start "Backend Guardian" /min cmd /c "powershell.exe -NoProfile -ExecutionPolicy Bypass -File %~dp0backend_guardian.ps1"
 
 echo   等待 Backend 就绪...
