@@ -33,14 +33,14 @@ const BREAKDOWN_LABELS: Record<string, string> = {
   other: "其他",
 };
 
-/** 上下文分类配色（柔和区分，不刺眼） */
+/** 上下文分类配色（统一中性色，避免花花绿绿） */
 const BREAKDOWN_COLORS: Record<string, string> = {
-  system_prompt: "#22d3ee",
-  tools: "#a78bfa",
-  memory: "#34d399",
-  messages: "#60a5fa",
-  reminder: "#fbbf24",
-  other: "#9ca3af",
+  system_prompt: "var(--text-level-2)",
+  tools: "var(--text-level-2)",
+  memory: "var(--text-level-2)",
+  messages: "var(--text-level-2)",
+  reminder: "var(--text-level-2)",
+  other: "var(--text-level-2)",
 };
 
 interface RingProgressProps {
@@ -56,7 +56,7 @@ const RingProgress = memo(function RingProgress({ ratio, color, label }: RingPro
   const cy = RING_SIZE / 2;
 
   return (
-    <div title={label} style={{ display: "flex", alignItems: "center", flexShrink: 0, cursor: "default" }}>
+    <div style={{ display: "flex", alignItems: "center", flexShrink: 0, cursor: "default" }}>
       <svg
         width={RING_SIZE}
         height={RING_SIZE}
@@ -116,7 +116,7 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const ratio = useMemo(() => {
-    if (!usage || !usage.model_max_tokens) return null;
+    if (!usage || !usage.model_max_tokens) return 0;
     const pct =
       usage.watermark_percentage != null
         ? usage.watermark_percentage
@@ -155,8 +155,6 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
     }));
   }, [usage?.context_breakdown]);
 
-  if (!usage || ratio == null) return null;
-
   const color =
     ratio >= WARNING_THRESHOLD
       ? "var(--color-error)"
@@ -171,8 +169,12 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
       ? ""
       : "";
 
-  const label = `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 本轮缓存命中 ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} (${hitRatio}%)${cacheSourceLabel}` : ""}${avgHitRatio != null ? ` | 平均缓存命中率 ${avgHitRatio}%` : ""}`;
-  const cacheLabel = `本轮前缀缓存命中: ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} prompt tokens (${hitRatio}%)${cacheSourceLabel}${avgHitRatio != null ? ` | 会话平均: ${avgHitRatio}% (${formatTokens(totalCachedTokens)} / ${formatTokens(totalPromptTokens)})` : ""}`;
+  const label = usage
+    ? `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 本轮缓存命中 ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} (${hitRatio}%)${cacheSourceLabel}` : ""}${avgHitRatio != null ? ` | 平均缓存命中率 ${avgHitRatio}%` : ""}`
+    : `${t("chat.context.dashboard")}: 发送消息后显示 (${ratio}%)`;
+  const cacheLabel = usage
+    ? `本轮前缀缓存命中: ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} prompt tokens (${hitRatio}%)${cacheSourceLabel}${avgHitRatio != null ? ` | 会话平均: ${avgHitRatio}% (${formatTokens(totalCachedTokens)} / ${formatTokens(totalPromptTokens)})` : ""}`
+    : `本轮前缀缓存命中: 发送消息后显示`;
   const showWarning = ratio >= WARNING_THRESHOLD;
   const hasBreakdown = breakdownItems.length > 0;
 
@@ -187,10 +189,6 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
         alignItems: "center",
         gap: "6px",
       }}>
-        {/* 工单E：前缀缓存命中率环（仅命中时显示，青色区分主水位环） */}
-        {hitRatio != null && (
-          <RingProgress ratio={hitRatio} color="#22d3ee" label={cacheLabel} />
-        )}
         {/* 环形进度圈：hover 显示完整文案，默认态无文字 */}
         <RingProgress ratio={ratio} color={color} label={label} />
         {/* 上下文字数：已用 / 上限（11px 次级色，数字等宽防刷新抖动） */}
@@ -202,7 +200,7 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
             fontVariantNumeric: "tabular-nums",
           }}
         >
-          {formatTokens(usage.total_tokens)} / {formatTokens(usage.model_max_tokens)}
+          {usage ? `${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)}` : "-- / --"}
         </span>
 
         {/* 40% 水位预警：紧凑压缩按钮贴身环右侧（G6-B 压缩逻辑） */}
@@ -257,8 +255,8 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
             top: "calc(100% + 6px)",
             right: 0,
             zIndex: 1000,
-            minWidth: "240px",
-            padding: "12px 14px",
+            minWidth: "200px",
+            padding: "8px 10px",
             borderRadius: "var(--radius-md)",
             background: "var(--bg-level-4)",
             border: "1px solid var(--border-primary)",
@@ -268,37 +266,26 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
             pointerEvents: "none",
           }}
         >
-          {/* 标题行：上下文容量 + 平均缓存命中率 */}
+          {/* 标题行：仅 token 数/上限/百分比，右对齐 */}
           <div style={{
             display: "flex",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             alignItems: "center",
-            marginBottom: "10px",
-            paddingBottom: "8px",
-            borderBottom: "1px solid var(--border-primary)",
+            marginBottom: "6px",
           }}>
-            <span style={{ fontWeight: 600, fontSize: "12px" }}>上下文容量</span>
-            <span style={{ color: "var(--text-level-3)", fontVariantNumeric: "tabular-nums" }}>
-              {formatTokens(usage.total_tokens)} / {formatTokens(usage.model_max_tokens)} ({ratio}%)
+            <span style={{ color: "var(--text-level-2)", fontVariantNumeric: "tabular-nums", fontSize: "11px" }}>
+              {usage ? `${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)` : `-- / -- (${ratio}%)`}
             </span>
           </div>
 
           {/* 分类占比列表 */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
             {breakdownItems.map((item) => (
-              <div key={item.key} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {/* 分类色点 */}
-                <span style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  background: item.color,
-                  flexShrink: 0,
-                }} />
+              <div key={item.key} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 {/* 分类名 */}
                 <span style={{
-                  width: "64px",
-                  color: "var(--text-level-2)",
+                  width: "56px",
+                  color: "var(--text-level-3)",
                   flexShrink: 0,
                   fontSize: "11px",
                 }}>
@@ -320,11 +307,11 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
                     transition: "width 0.3s ease",
                   }} />
                 </div>
-                {/* 百分比 + token 数 */}
+                {/* 百分比 */}
                 <span style={{
-                  width: "72px",
+                  width: "36px",
                   textAlign: "right",
-                  color: "var(--text-level-3)",
+                  color: "var(--text-level-2)",
                   fontVariantNumeric: "tabular-nums",
                   fontSize: "11px",
                   flexShrink: 0,
@@ -338,19 +325,17 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
           {/* 底部：平均缓存命中率（仅当有数据时显示） */}
           {avgHitRatio != null && (
             <div style={{
-              marginTop: "10px",
-              paddingTop: "8px",
-              borderTop: "1px solid var(--border-primary)",
+              marginTop: "6px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
             }}>
-              <span style={{ color: "var(--text-level-2)", fontSize: "11px" }}>平均缓存命中率</span>
+              <span style={{ color: "var(--text-level-3)", fontSize: "11px" }}>平均缓存命中率</span>
               <span style={{
-                color: "#22d3ee",
+                color: "var(--text-level-1)",
                 fontWeight: 600,
                 fontVariantNumeric: "tabular-nums",
-                fontSize: "12px",
+                fontSize: "11px",
               }}>
                 {avgHitRatio}%
               </span>
