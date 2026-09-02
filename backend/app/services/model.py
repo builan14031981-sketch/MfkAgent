@@ -95,21 +95,33 @@ class SingleCallResult(BaseModel):
 def extract_cached_tokens(usage: Optional[dict]) -> int:
     """T1: 提取前缀缓存命中的 prompt token 数。
 
-    兼容两种上游字段：
-      - OpenAI 系: usage.prompt_tokens_details.cached_tokens
-      - DeepSeek:  usage.prompt_cache_hit_tokens
+    兼容多种上游字段格式（按优先级取第一个非零值）：
+      - usage.cached_tokens                      （部分网关顶层直接返回）
+      - usage.prompt_cache_hit_tokens             （DeepSeek）
+      - usage.cache_read_input_tokens              （Anthropic 兼容格式）
+      - usage.cached_prompt_tokens                 （部分网关别名）
+      - usage.prompt_tokens_details.cached_tokens  （OpenAI 标准嵌套格式）
     """
     if not usage:
         return 0
-    hit = usage.get("prompt_cache_hit_tokens") or 0  # DeepSeek
-    if not hit:
-        details = usage.get("prompt_tokens_details") or {}  # OpenAI 系
-        if isinstance(details, dict):
-            hit = details.get("cached_tokens") or 0
-    try:
-        return int(hit or 0)
-    except (TypeError, ValueError):
-        return 0
+    # 顶层字段：按优先级遍历，取第一个非零值
+    for key in ("cached_tokens", "prompt_cache_hit_tokens", "cache_read_input_tokens", "cached_prompt_tokens"):
+        val = usage.get(key)
+        if val:
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                continue
+    # 嵌套字段：OpenAI 标准 prompt_tokens_details.cached_tokens
+    details = usage.get("prompt_tokens_details")
+    if isinstance(details, dict):
+        val = details.get("cached_tokens")
+        if val:
+            try:
+                return int(val)
+            except (TypeError, ValueError):
+                pass
+    return 0
 
 
 def _normalize_cache_usage(usage: Optional[dict], provider: str, model_name: str) -> Optional[dict]:

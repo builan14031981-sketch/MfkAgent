@@ -378,14 +378,26 @@ def test_apply_turn_reminder_copies_last_user_message():
 def test_extract_cached_tokens_both_providers():
     assert extract_cached_tokens(None) == 0
     assert extract_cached_tokens({}) == 0
-    # OpenAI 系
+    # OpenAI 系（嵌套格式）
     assert extract_cached_tokens({
         "prompt_tokens": 100,
         "prompt_tokens_details": {"cached_tokens": 64},
     }) == 64
     # DeepSeek
     assert extract_cached_tokens({"prompt_tokens": 100, "prompt_cache_hit_tokens": 80}) == 80
-    # 双字段并存 → 任一非零即取
+    # 顶层 cached_tokens（部分网关直接返回，如本地网关/聚合网关）
+    assert extract_cached_tokens({"prompt_tokens": 100, "cached_tokens": 50}) == 50
+    # Anthropic 兼容格式 cache_read_input_tokens
+    assert extract_cached_tokens({"prompt_tokens": 100, "cache_read_input_tokens": 70}) == 70
+    # 别名 cached_prompt_tokens
+    assert extract_cached_tokens({"prompt_tokens": 100, "cached_prompt_tokens": 55}) == 55
+    # 优先级：顶层 cached_tokens > prompt_cache_hit_tokens > 嵌套格式
+    assert extract_cached_tokens({
+        "cached_tokens": 90,
+        "prompt_cache_hit_tokens": 80,
+        "prompt_tokens_details": {"cached_tokens": 64},
+    }) == 90
+    # 双字段并存 → 按优先级取第一个非零
     assert extract_cached_tokens({
         "prompt_cache_hit_tokens": 80,
         "prompt_tokens_details": {"cached_tokens": 64},
@@ -393,6 +405,7 @@ def test_extract_cached_tokens_both_providers():
     # 无缓存字段 / 非法值
     assert extract_cached_tokens({"prompt_tokens": 100}) == 0
     assert extract_cached_tokens({"prompt_cache_hit_tokens": "abc"}) == 0
+    assert extract_cached_tokens({"cached_tokens": "not_a_number"}) == 0
 
 
 # ---------------------------------------------------------------------------

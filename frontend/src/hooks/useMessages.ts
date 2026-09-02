@@ -402,6 +402,7 @@ export function useMessages(chatId: number | null) {
                   }
                   case "token_usage": {
                     // G6-A：每轮 LLM 思考结束后的精确 Token 消耗与上下文水位
+                    // T1：cached_tokens 前缀缓存命中数；context_breakdown 上下文分类占比
                     onTokenUsage?.({
                       id: parsed.id ?? `token-usage-${Date.now()}`,
                       type: "token_usage",
@@ -410,6 +411,9 @@ export function useMessages(chatId: number | null) {
                       total_tokens: parsed.total_tokens ?? 0,
                       model_max_tokens: parsed.model_max_tokens ?? 0,
                       watermark_percentage: parsed.watermark_percentage ?? 0,
+                      cached_tokens: parsed.cached_tokens ?? 0,
+                      context_breakdown: parsed.context_breakdown ?? undefined,
+                      cache_source: parsed.cache_source ?? "none",
                     });
                     break;
                   }

@@ -24,6 +24,7 @@ from typing import List, Optional
 from types import SimpleNamespace as _NS
 import os
 import re
+import json
 
 from app.core.database import SessionLocal
 from app.models.agent import Chat, Agent, Message, MemoryItem, Setting
@@ -40,6 +41,7 @@ from app.core.agent_base_instruction import get_agent_base_instruction
 # 2026-08-16：Skill 全局注入已废弃（会话级调用改由前端 buildContent 注入），不再 import get_enabled_skills_prompt
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
+from app.core.tokens import count_tokens
 def _sanitize_prompt_mode(prompt: str, mode: str) -> str:
     if not prompt:
         return prompt
@@ -307,6 +309,18 @@ class BuiltContext:
     # 由 AgentRuntime 发送前包裹到本轮最后一条 user 消息副本末尾（不动 DB）。
     # prompt_stability_enabled=false 时为 None（旧装配路径）。
     turn_reminder: Optional[str] = None
+    # 上下文分类 token 统计（系统提示词/工具定义/记忆/历史消息/轮次提醒/其他），
+    # 供前端 ContextDashboard 展示上下文容量分类占比（对标 Z code 上下文面板）。
+    context_breakdown: Optional[dict] = None
+    # 稳定前缀 token 数（system_prompt + tools + memory + 历史消息），
+    # 用于网关不返回 cached_tokens 时估算前缀复用率（对标 Z code 的"平均缓存命中率"）。
+    # 计算口径：从第一条消息开始、到上一轮 assistant 结束的连续前缀，即"下一轮可以复用的部分"。
+    # 注意：第1轮对话（历史消息 < 2 条）时为 0，避免第1轮命中率虚高。
+    stable_prefix_tokens: Optional[int] = None
+    # 稳定前缀占总上下文的比例（0.0 - 1.0），用于跨 tokenizer 估算：
+    # tiktoken（OpenAI）统计的绝对 token 数与 Gemini/Claude 实际计费可能不一致，
+    # 但相对比例是稳定的。estimated_cached = prompt_tokens(API实际值) × stable_prefix_ratio。
+    stable_prefix_ratio: Optional[float] = None
 
 
 def get_default_model() -> str:
@@ -1262,6 +1276,65 @@ class ChatContextBuilder:
                 role, content = _msg_role_content(msg)
                 model_messages.append(ModelMessage(role=role, content=content))
 
+            # ──── 上下文分类 token 统计（对标 Z code 上下文容量面板）────
+            # 统计各组成部分的 token 数，供前端 ContextDashboard 展示分类占比。
+            # tiktoken 异常时静默降级为 None（前端不显示分类面板，不影响主流程）。
+            context_breakdown: Optional[dict] = None
+            try:
+                _sys_tokens = count_tokens(full_prompt or "", effective_model)
+                _tools_tokens = count_tokens(
+                    json.dumps(tools_arg or [], ensure_ascii=False), effective_model
+                ) if tools_arg else 0
+                _mem_tokens = count_tokens(memory_text or "", effective_model)
+                _msg_tokens = 0
+                for _m in pruned_history:
+                    _r, _c = _msg_role_content(_m)
+                    _msg_tokens += count_tokens(_c or "", effective_model)
+                _reminder_tokens = count_tokens(turn_reminder or "", effective_model) if turn_reminder else 0
+                context_breakdown = {
+                    "system_prompt": _sys_tokens,
+                    "tools": _tools_tokens,
+                    "memory": _mem_tokens,
+                    "messages": _msg_tokens,
+                    "reminder": _reminder_tokens,
+                    "other": 0,
+                }
+            except Exception as _bd_err:  # noqa: BLE001 — 统计失败不影响主流程
+                logger = __import__("logging").getLogger(__name__)
+                logger.warning("context_breakdown 统计失败，降级为 None: %s", _bd_err)
+                context_breakdown = None
+
+            # ──── 稳定前缀 token 数 + 比例（网关不返回 cached_tokens 时的估算 fallback）────
+            # 口径：system_prompt + tools + memory + 历史消息（pruned_history，到上一轮
+            # assistant 结束为止）。当前轮 user 消息 + turn_reminder 是本轮新增，不计入。
+            # 这部分是"下一轮可以复用的连续前缀"，对标 Z code 的"缓存命中率"估算。
+            # 注意：第1轮对话（历史消息 < 2 条，即尚无完整的 user+assistant 轮次）时，
+            # 没有上一轮可以复用，stable_prefix_tokens = 0，避免第1轮命中率虚高为 100%。
+            #
+            # 比例估算的原因：tiktoken（OpenAI tokenizer）统计的绝对 token 数与
+            # Gemini/Claude 实际计费可能不一致（tiktoken 通常偏多），但相对比例稳定。
+            # 前端/AgentRuntime 用 prompt_tokens(API实际值) × stable_prefix_ratio 估算
+            # cached_tokens，保证估算值不会超过 prompt_tokens，命中率不超过 100%。
+            stable_prefix_tokens: Optional[int] = None
+            stable_prefix_ratio: Optional[float] = None
+            if context_breakdown is not None:
+                # context_breakdown 的 messages 只统计了历史消息（pruned_history），
+                # 当前轮 user 消息（input.content）未被统计到任何分类。
+                # 计算 ratio 时必须把当前轮 user 加到分母，否则 ratio 会虚高到 1.0。
+                _current_user_tokens = count_tokens(input.content or "", effective_model)
+                _total_ctx = sum(context_breakdown.values()) + _current_user_tokens
+                if len(pruned_history) >= 2 and _total_ctx > 0:
+                    stable_prefix_tokens = (
+                        context_breakdown.get("system_prompt", 0)
+                        + context_breakdown.get("tools", 0)
+                        + context_breakdown.get("memory", 0)
+                        + context_breakdown.get("messages", 0)
+                    )
+                    stable_prefix_ratio = min(1.0, stable_prefix_tokens / _total_ctx)
+                else:
+                    stable_prefix_tokens = 0
+                    stable_prefix_ratio = 0.0
+
             return BuiltContext(
                 context=context,
                 messages=model_messages,
@@ -1275,6 +1348,9 @@ class ChatContextBuilder:
                 tool_context=tool_context,
                 persona_context=persona_ctx,
                 turn_reminder=turn_reminder,
+                context_breakdown=context_breakdown,
+                stable_prefix_tokens=stable_prefix_tokens,
+                stable_prefix_ratio=stable_prefix_ratio,
             )
         finally:
             db.close()

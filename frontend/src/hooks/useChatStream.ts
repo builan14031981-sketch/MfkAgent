@@ -72,6 +72,9 @@ export function useChatStream({
   const streamingError = session?.streamingError ?? null;
   const reasoningActive = session?.reasoningActive ?? false;
   const currentAgentState = session?.currentAgentState ?? null;
+  // 会话级累计：平均缓存命中率 = totalCachedTokens / totalPromptTokens
+  const totalCachedTokens = session?.totalCachedTokens ?? 0;
+  const totalPromptTokens = session?.totalPromptTokens ?? 0;
 
   /** activeChatIdRef：始终跟踪当前 UI 活跃的 chatId（用于 appendMessage/refetch 守卫） */
   const activeChatIdRef = useRef<number | null>(chatId);
@@ -289,8 +292,8 @@ export function useChatStream({
       refs.abortController?.abort();
       refs.abortController = null;
 
-      // 设置发送状态 + 重置流状态
-      store.updateSession(targetChatId, () => ({
+      // 设置发送状态 + 重置流状态（保留会话级累计 totalCachedTokens/totalPromptTokens）
+      store.updateSession(targetChatId, (prev) => ({
         isSending: true,
         timeline: [],
         tasks: [],
@@ -298,6 +301,8 @@ export function useChatStream({
         streamingError: null,
         currentAgentState: null,
         reasoningActive: false,
+        totalCachedTokens: prev.totalCachedTokens,
+        totalPromptTokens: prev.totalPromptTokens,
       }));
       refs.toolIndex.clear();
       refs.taskIndex.clear();
@@ -782,7 +787,12 @@ export function useChatStream({
           },
           // onTokenUsage
           (usage: TokenUsageEvent) => {
-            store.updateSession(targetChatId, () => ({ tokenUsage: usage }));
+            store.updateSession(targetChatId, (prev) => ({
+              tokenUsage: usage,
+              // 会话级累计：平均缓存命中率 = totalCached / totalPrompt
+              totalCachedTokens: prev.totalCachedTokens + (usage.cached_tokens ?? 0),
+              totalPromptTokens: prev.totalPromptTokens + (usage.prompt_tokens ?? 0),
+            }));
           },
           // onAgentStateUpdate
           (evt: AgentStateUpdateEvent) => {
@@ -890,6 +900,8 @@ export function useChatStream({
     timeline,
     tasks,
     tokenUsage,
+    totalCachedTokens,
+    totalPromptTokens,
     setTokenUsage: (usage: TokenUsageEvent | null) => {
       if (chatId != null) store.updateSession(chatId, () => ({ tokenUsage: usage }));
     },

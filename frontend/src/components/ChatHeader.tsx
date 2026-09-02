@@ -17,6 +17,10 @@ interface ChatHeaderProps {
   project: Project | null;
   streamingStage?: OrbStage | null;
   tokenUsage?: TokenUsageEvent | null;
+  /** 会话级累计：前缀缓存命中 token 总数（平均缓存命中率分子） */
+  totalCachedTokens?: number;
+  /** 会话级累计：prompt token 总数（平均缓存命中率分母） */
+  totalPromptTokens?: number;
   onCompress?: () => void;
   isCompressing?: boolean;
   isEditingTitle: boolean;
@@ -70,6 +74,8 @@ export const ChatHeader = memo(function ChatHeader({
   agent,
   project,
   tokenUsage,
+  totalCachedTokens,
+  totalPromptTokens,
   onCompress,
   isCompressing,
   isEditingTitle,
@@ -205,7 +211,13 @@ export const ChatHeader = memo(function ChatHeader({
           gap: "8px",
         }}>
           {/* F-Context 上下文仪表盘：Token 消耗 + 水位预警（仅流式期间有数据时显示） */}
-          <ContextDashboard usage={tokenUsage ?? null} onCompress={onCompress} isCompressing={isCompressing} />
+          <ContextDashboard
+            usage={tokenUsage ?? null}
+            totalCachedTokens={totalCachedTokens ?? 0}
+            totalPromptTokens={totalPromptTokens ?? 0}
+            onCompress={onCompress}
+            isCompressing={isCompressing}
+          />
           {project && (
             <span
               onClick={onOpenProjectContext}

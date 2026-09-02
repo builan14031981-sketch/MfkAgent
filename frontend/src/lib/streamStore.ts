@@ -21,6 +21,10 @@ export interface StreamSessionState {
   streamingError: string | null;
   reasoningActive: boolean;
   currentAgentState: AgentStateUpdateEvent | null;
+  /** 会话级累计：前缀缓存命中 token 总数（用于平均缓存命中率） */
+  totalCachedTokens: number;
+  /** 会话级累计：prompt token 总数（用于平均缓存命中率） */
+  totalPromptTokens: number;
 }
 
 /** 单个会话的非响应式引用（不触发重渲染，直接 mutate） */
@@ -45,6 +49,8 @@ function createDefaultSession(): StreamSessionState {
     streamingError: null,
     reasoningActive: false,
     currentAgentState: null,
+    totalCachedTokens: 0,
+    totalPromptTokens: 0,
   };
 }
 
