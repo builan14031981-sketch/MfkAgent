@@ -726,38 +726,40 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             </button>
           </div>
           {!collapsedProjectWorkspace && (
-          projects.length === 0 ? (
-            <button
-              onClick={() => setProjectModalOpen(true)}
-              className="sb-btn--dashed"
-            >
-              <FolderPlus style={{ width: "13px", height: "13px", flexShrink: 0 }} />
-              <span>{t("sidebar.noProjectsDesc")}</span>
-            </button>
-          ) : projects.map((project) => (
-            <ProjectNode
-              key={project.id}
-              project={project}
-              chats={projectChats.get(project.id) ?? []}
-              isCollapsed={collapsedProjects.has(project.id)}
-              isActiveProject={activeProjectId === project.id}
-              isHovered={hoveredProjectId === project.id}
-              onToggleCollapse={() => toggleProject(project.id)}
-              onHoverChange={(hovered) => setHoveredProjectId(hovered ? project.id : null)}
-              onContextMenu={handleProjectContextMenu}
-              onMoreProject={handleMoreProject}
-              onQuickCreateChat={quickCreateChat}
-              currentChatId={currentChatId}
-              streams={streams}
-              renamingChatId={renamingChatId}
-              renameValue={renameValue}
-              onRenameValueChange={setRenameValue}
-              onRenameCommit={handleRenameCommit}
-              onRenameCancel={() => setRenamingChatId(null)}
-              onChatContextMenu={handleContextMenu}
-              onChatMore={handleMoreChat}
-            />
-          ))
+            <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+              {projects.length === 0 ? (
+                <button
+                  onClick={() => setProjectModalOpen(true)}
+                  className="sb-btn--dashed"
+                >
+                  <FolderPlus style={{ width: "13px", height: "13px", flexShrink: 0 }} />
+                  <span>{t("sidebar.noProjectsDesc")}</span>
+                </button>
+              ) : projects.map((project) => (
+                <ProjectNode
+                  key={project.id}
+                  project={project}
+                  chats={projectChats.get(project.id) ?? []}
+                  isCollapsed={collapsedProjects.has(project.id)}
+                  isActiveProject={activeProjectId === project.id}
+                  isHovered={hoveredProjectId === project.id}
+                  onToggleCollapse={() => toggleProject(project.id)}
+                  onHoverChange={(hovered) => setHoveredProjectId(hovered ? project.id : null)}
+                  onContextMenu={handleProjectContextMenu}
+                  onMoreProject={handleMoreProject}
+                  onQuickCreateChat={quickCreateChat}
+                  currentChatId={currentChatId}
+                  streams={streams}
+                  renamingChatId={renamingChatId}
+                  renameValue={renameValue}
+                  onRenameValueChange={setRenameValue}
+                  onRenameCommit={handleRenameCommit}
+                  onRenameCancel={() => setRenamingChatId(null)}
+                  onChatContextMenu={handleContextMenu}
+                  onChatMore={handleMoreChat}
+                />
+              ))}
+            </div>
           )}
         </div>
 
