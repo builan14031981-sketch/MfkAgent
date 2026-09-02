@@ -41,6 +41,49 @@ def _estimate_tokens(text: str) -> int:
     return max(1, int(len(text or "") / CHARS_PER_TOKEN))
 
 
+def resolve_scope(
+    suggested: str,
+    agent_id: Optional[str] = None,
+    project_id: Optional[int] = None,
+    memory_type: Optional[str] = None,
+) -> tuple:
+    """归属判定：模型建议 scope + 上下文强制/降级（提取器与 add_memory 工具共用）。
+
+    返回 (scope, needs_attribution)：
+      - 关系型 Agent（pianai）→ 强制 agent（自隔离）
+      - memory_type == "project"（模型明确判定为项目规则）：
+          * 有项目上下文 → project
+          * 无项目上下文 → 降级 global + needs_attribution=True（待认领，不污染全局）
+      - 模型建议 project：
+          * 有项目上下文 → project
+          * 无项目上下文 → 降级 global + needs_attribution=True（待认领）
+      - 模型建议 agent 且有 agent_id → agent
+      - 模型建议 global → global（显式意图，信任）
+      - 模型未给出有效 scope → 按会话上下文兜底：有项目 → project，否则 → global
+    """
+    if agent_id and agent_id in ("pianai",):
+        return ("agent", False)
+    # 强信号：模型明确判定为项目规则，即使 suggested 是 global 也强制归属校验
+    if memory_type == "project":
+        if project_id is not None:
+            return ("project", False)
+        return ("global", True)  # 降级路径：无项目上下文，暂存全局并标记待认领
+    if suggested == "project":
+        if project_id is not None:
+            return ("project", False)
+        return ("global", True)  # 降级路径：无项目上下文，暂存全局并标记待认领
+    if suggested == "agent":
+        if agent_id:
+            return ("agent", False)
+        # 建议 agent 但无 Agent 上下文：走下方兜底
+    if suggested == "global":
+        return ("global", False)
+    # 模型未给出 scope / 建议无效：按会话上下文兜底
+    if project_id is not None:
+        return ("project", False)
+    return ("global", False)
+
+
 class MemoryService:
     async def get_memories(
         self,

@@ -414,3 +414,208 @@ class BackgroundTriggerTestCase(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ResolveScopeTestCase(unittest.TestCase):
+    """共享归属判定 resolve_scope（services/memory.py）：memory_type 强信号 + 降级路径。"""
+
+    def setUp(self):
+        from app.services.memory import resolve_scope as _r
+        self.rs = _r
+
+    def test_project_type_no_project_degrades_to_global_pending(self):
+        # 无项目上下文 + 模型判 project 类型 + suggested=global → 降级 global + 待认领
+        self.assertEqual(self.rs("global", None, None, "project"), ("global", True))
+
+    def test_project_type_no_project_even_suggested_project(self):
+        # 无项目上下文 + 模型判 project 类型 + suggested=project → 降级 global + 待认领
+        self.assertEqual(self.rs("project", None, None, "project"), ("global", True))
+
+    def test_project_type_with_project(self):
+        # 有项目上下文 + 模型判 project 类型 → project
+        self.assertEqual(self.rs("global", None, 7, "project"), ("project", False))
+        self.assertEqual(self.rs("project", None, 7, "project"), ("project", False))
+
+    def test_suggested_project_no_project_no_type(self):
+        # 无 memory_type，仅 suggested=project + 无项目 → 降级 global + 待认领
+        self.assertEqual(self.rs("project", None, None), ("global", True))
+
+    def test_suggested_project_with_project(self):
+        self.assertEqual(self.rs("project", None, 7), ("project", False))
+
+    def test_suggested_global_trusted(self):
+        # 显式 global 保持信任（不降级）
+        self.assertEqual(self.rs("global", None, None), ("global", False))
+        self.assertEqual(self.rs("global", None, 7), ("global", False))
+
+    def test_suggested_agent(self):
+        self.assertEqual(self.rs("agent", "warm", None), ("agent", False))
+        # 建议 agent 但无上下文 → 兜底
+        self.assertEqual(self.rs("agent", None, None), ("global", False))
+        self.assertEqual(self.rs("agent", None, 7), ("project", False))
+
+    def test_pianai_forced_agent(self):
+        self.assertEqual(self.rs("project", "pianai", 7), ("agent", False))
+        self.assertEqual(self.rs("global", "pianai", None, "project"), ("agent", False))
+
+    def test_empty_suggestion_fallback(self):
+        self.assertEqual(self.rs("", None, None), ("global", False))
+        self.assertEqual(self.rs("", None, 7), ("project", False))
+
+
+class ProjectTypeDowngradeTriggerTestCase(unittest.TestCase):
+    """提取器 run_memory_extraction：memory_type=project 在无项目会话下的降级待认领链路。"""
+
+    def _fake_result(self, text):
+        import types
+        return types.SimpleNamespace(content=text)
+
+    def test_project_type_global_suggestion_no_project_degrades(self):
+        async def _run():
+            from app.core.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as s:
+                s.query(MemoryItem).delete()
+                s.commit()
+            with patch(
+                "app.services.memory_extractor.model_service.call_once",
+                new_callable=AsyncMock,
+            ) as mock_call:
+                # 模型把项目规则判成 global（典型误判），memory_type=project
+                mock_call.return_value = self._fake_result(
+                    '[{"action": "add", "memory_type": "project", "confidence": 0.9, "content": "本项目技术栈为 FastAPI+SQLite", "scope": "global"}]'
+                )
+                actions = await run_memory_extraction(
+                    chat_id=200,
+                    project_id=None,  # 无项目会话
+                    user_message="我们这个项目用了 FastAPI 和 SQLite",
+                    ai_content="已了解项目技术栈。",
+                    agent_id="coder",
+                )
+            assert len(actions) == 1
+            async with AsyncSessionLocal() as s2:
+                row = s2.query(MemoryItem).filter(MemoryItem.content == "本项目技术栈为 FastAPI+SQLite").first()
+                assert row is not None
+                assert row.scope == "global"
+                assert row.needs_attribution is True  # 关键：被打上待认领标记
+                assert row.memory_type == "project"
+                s2.delete(row)
+                s2.commit()
+        import asyncio
+        asyncio.run(_run())
+
+    def test_project_type_global_suggestion_with_project_stays_project(self):
+        async def _run():
+            from app.core.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as s:
+                s.query(MemoryItem).delete()
+                s.commit()
+            with patch(
+                "app.services.memory_extractor.model_service.call_once",
+                new_callable=AsyncMock,
+            ) as mock_call:
+                mock_call.return_value = self._fake_result(
+                    '[{"action": "add", "memory_type": "project", "confidence": 0.9, "content": "项目规则：接口必须带 trace_id", "scope": "global"}]'
+                )
+                actions = await run_memory_extraction(
+                    chat_id=201,
+                    project_id=7,
+                    user_message="本项目接口必须带 trace_id",
+                    ai_content="已记录项目规则。",
+                    agent_id="coder",
+                )
+            assert len(actions) == 1
+            async with AsyncSessionLocal() as s2:
+                row = s2.query(MemoryItem).filter(MemoryItem.content == "项目规则：接口必须带 trace_id").first()
+                assert row is not None
+                assert row.scope == "project"
+                assert row.project_id == 7
+                assert row.needs_attribution is False
+                s2.delete(row)
+                s2.commit()
+        import asyncio
+        asyncio.run(_run())
+
+
+class AddMemoryDowngradeTestCase(unittest.TestCase):
+    """add_memory 工具（core/tools.py）：模型选 project 但无项目上下文 → 降级待认领。"""
+
+    def _cleanup(self):
+        from app.core.database import SessionLocal
+        db = SessionLocal()
+        try:
+            db.query(MemoryItem).filter(MemoryItem.content.like("测试:add_memory_guard%")).delete()
+            db.commit()
+        finally:
+            db.close()
+
+    def test_project_scope_without_project_degrades_to_pending(self):
+        from app.core.tools import add_memory
+        self._cleanup()
+        try:
+            result = add_memory(
+                scope="project",
+                content="测试:add_memory_guard 本项目必须用 TypeScript 重写前端",
+            )
+            assert "待认领" in result, f"降级提示缺失: {result}"
+            assert result.startswith("记忆已保存"), result
+            from app.core.database import SessionLocal
+            db = SessionLocal()
+            try:
+                row = db.query(MemoryItem).filter(MemoryItem.content.like("测试:add_memory_guard%")).first()
+                assert row is not None
+                assert row.scope == "global"
+                assert row.needs_attribution is True
+                db.delete(row)
+                db.commit()
+            finally:
+                db.close()
+        finally:
+            self._cleanup()
+
+    def test_project_scope_with_project_stays_project(self):
+        from app.core.tools import add_memory
+        self._cleanup()
+        try:
+            result = add_memory(
+                scope="project",
+                content="测试:add_memory_guard 本项目后端禁止用同步请求",
+                project_id=52,
+            )
+            assert "待认领" not in result, result
+            from app.core.database import SessionLocal
+            db = SessionLocal()
+            try:
+                row = db.query(MemoryItem).filter(MemoryItem.content.like("测试:add_memory_guard%")).first()
+                assert row is not None
+                assert row.scope == "project"
+                assert row.project_id == 52
+                assert row.needs_attribution is False
+                db.delete(row)
+                db.commit()
+            finally:
+                db.close()
+        finally:
+            self._cleanup()
+
+    def test_global_scope_trusted_without_project(self):
+        from app.core.tools import add_memory
+        self._cleanup()
+        try:
+            result = add_memory(
+                scope="global",
+                content="测试:add_memory_guard 全局规则：回复使用简体中文",
+            )
+            assert "待认领" not in result, result
+            from app.core.database import SessionLocal
+            db = SessionLocal()
+            try:
+                row = db.query(MemoryItem).filter(MemoryItem.content.like("测试:add_memory_guard%")).first()
+                assert row is not None
+                assert row.scope == "global"
+                assert row.needs_attribution is False
+                db.delete(row)
+                db.commit()
+            finally:
+                db.close()
+        finally:
+            self._cleanup()

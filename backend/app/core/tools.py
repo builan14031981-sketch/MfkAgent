@@ -341,21 +341,31 @@ def add_memory(scope: str = "agent", content: str = "", agent_id: str = None, pr
     scope：global=所有对话可见；agent=当前 Agent 专属（需 agent_id，默认）；
            project=当前项目下 Agent 共享（需 project_id）。
 
+    归属防护（与提取器共用 resolve_scope）：
+    - 模型建议 project 但会话未绑定项目 → 不报错，降级暂存 global + needs_attribution
+      （待认领，不污染全局，可在记忆管理中归入项目）
+    - 模型建议 agent 但无 Agent 上下文 → 按会话上下文兜底（有项目→project，否则→global）
+
     防乱加机制：
     - 内容长度 < 10 字拒绝（防止无意义碎片）
     - 同 scope 下已有内容相似度 > 0.8 则更新而非新增（去重）
     """
     if scope not in ("global", "agent", "project"):
         return f"错误: scope 必须是 global/agent/project，收到: {scope}"
-    if scope == "agent" and not agent_id:
-        return "错误: agent 记忆需要当前 Agent 上下文"
-    if scope == "project" and not project_id:
-        return "错误: project 记忆需要当前项目上下文"
     content = (content or "").strip()
     if not content:
         return "错误: content 不能为空"
     if len(content) < 10:
         return f"错误: 记忆内容过短（{len(content)}字），至少需要10字，防止无意义碎片记忆"
+
+    # 归属判定：模型建议 scope + 上下文强制/降级（与提取器同一套逻辑）
+    from app.services.memory import resolve_scope
+    mem_scope, needs_attr = resolve_scope(
+        suggested=scope,
+        agent_id=agent_id,
+        project_id=project_id,
+    )
+
     from difflib import SequenceMatcher
     from app.core.database import SessionLocal
     from app.models.agent import MemoryItem
@@ -363,10 +373,10 @@ def add_memory(scope: str = "agent", content: str = "", agent_id: str = None, pr
     db = SessionLocal()
     try:
         # 去重：同 scope 下查找相似内容，相似度 > 0.8 则更新
-        query = db.query(MemoryItem).filter(MemoryItem.scope == scope, MemoryItem.is_active == True)
-        if scope == "agent":
+        query = db.query(MemoryItem).filter(MemoryItem.scope == mem_scope, MemoryItem.is_active == True)
+        if mem_scope == "agent":
             query = query.filter(MemoryItem.agent_id == agent_id)
-        elif scope == "project":
+        elif mem_scope == "project":
             query = query.filter(MemoryItem.project_id == project_id)
         existing = query.all()
 
@@ -385,15 +395,17 @@ def add_memory(scope: str = "agent", content: str = "", agent_id: str = None, pr
             return f"记忆已更新（相似度{best_ratio:.2f}，id={best_match.id}）: {content[:80]}"
 
         item = MemoryItem(
-            scope=scope,
-            agent_id=agent_id if scope == "agent" else None,
-            project_id=project_id if scope == "project" else None,
+            scope=mem_scope,
+            agent_id=agent_id if mem_scope == "agent" else None,
+            project_id=project_id if mem_scope == "project" else None,
             content=content,
+            needs_attribution=needs_attr,
         )
         db.add(item)
         db.commit()
         db.refresh(item)
-        return f"记忆已保存（scope={scope}, id={item.id}）: {content[:80]}"
+        suffix = "（已暂存全局待认领，可在记忆管理中归入项目）" if needs_attr else ""
+        return f"记忆已保存（scope={mem_scope}{suffix}, id={item.id}）: {content[:80]}"
     except Exception as e:
         return f"错误: 记忆保存失败: {e}"
     finally:

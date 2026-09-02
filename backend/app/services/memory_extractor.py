@@ -106,9 +106,11 @@ class MemoryExtractor:
             "- workflow: 用户惯用的工作流程 / 步骤约定\n"
             "- project: 项目规则 / 约定（仅当对话明显涉及某个项目的固定规则）\n\n"
             "## 记忆归属（scope，每条 add 必须给出）\n"
-            "- project: 这条记忆明确属于某个特定项目的规则 / 约定\n"
+            "- project: 这条记忆明确属于某个特定项目的规则 / 约定（代码、路径、技术栈、项目约定）\n"
             "- global: 跨项目通用的偏好 / 事实 / 工作流（不特指某个项目）\n"
-            "- agent: 仅当这是 AI 与用户的专属互动记忆（关系型 Agent 的偏好）\n\n"
+            "- agent: 仅当这是 AI 与用户的专属互动记忆（关系型 Agent 的偏好）\n"
+            "提示：即使当前会话没有绑定项目，只要内容是项目规则类，仍应判 project——"
+            "系统会标记为待认领，不会丢失也不会污染全局。\n\n"
             "## 严禁保存（不要提取）\n"
             "- 临时性、一次性内容：如「今天遇到一个 Bug」「报错信息是 404」\n"
             "- 寒暄、确认语、情绪化的即时表达\n"
@@ -252,34 +254,25 @@ MEMORY_EXTRACTION_AGENT_BLOCKLIST = frozenset({
 })
 
 
-def _resolve_scope(suggested: str, agent_id: Optional[str], project_id: Optional[int]):
-    """归属判定：模型建议 scope + 上下文强制/降级。
+def _resolve_scope(
+    suggested: str,
+    agent_id: Optional[str] = None,
+    project_id: Optional[int] = None,
+    memory_type: Optional[str] = None,
+):
+    """归属判定（兼容别名）：转发到共享 resolve_scope（services/memory.py），
+    提取器与 add_memory 工具共用同一套归属/降级逻辑。
 
-    返回 (scope, needs_attribution)：
-      - 关系型 Agent（pianai）→ 强制 agent
-      - 模型建议 project：
-          * 有项目上下文 → project
-          * 无项目上下文 → 降级 global + needs_attribution=True（待认领，不污染全局）
-      - 模型建议 agent 且有 agent_id → agent
-      - 模型未给出有效 scope → 按上下文兜底：有项目 → project，否则 → global
-        （项目会话里聊的内容默认归项目；无项目时归全局）
+    新增 memory_type 强信号：模型明确判定为 project 规则时，即使 suggested 是
+    global 也会在无项目上下文下强制降级 global + needs_attribution=True。
     """
-    if agent_id and agent_id in ("pianai",):
-        return ("agent", False)
-    if suggested == "project":
-        if project_id is not None:
-            return ("project", False)
-        return ("global", True)  # 降级路径：暂存全局并标记待认领
-    if suggested == "agent":
-        if agent_id:
-            return ("agent", False)
-        # 建议 agent 但无 Agent 上下文：走下方兜底
-    if suggested == "global":
-        return ("global", False)
-    # 模型未给出 scope / 建议无效：按会话上下文兜底
-    if project_id is not None:
-        return ("project", False)
-    return ("global", False)
+    from app.services.memory import resolve_scope
+    return resolve_scope(
+        suggested=suggested or "",
+        agent_id=agent_id,
+        project_id=project_id,
+        memory_type=memory_type,
+    )
 
 
 async def run_memory_extraction(
@@ -361,11 +354,12 @@ async def run_memory_extraction(
                     if is_duplicate:
                         continue
 
-                    # 归属判定：模型建议 scope + 上下文强制/降级
+                    # 归属判定：模型建议 scope + memory_type 强信号 + 上下文强制/降级
                     mem_scope, needs_attr = _resolve_scope(
                         suggested=action.get("scope", ""),
                         agent_id=agent_id,
                         project_id=project_id,
+                        memory_type=action.get("memory_type", ""),
                     )
                     session.add(
                         MemoryItem(
