@@ -36,8 +36,10 @@ _SHORT_CONFIRMATIONS = {
 # 允许的 memory_type（与 MemoryItem.memory_type 对齐）
 VALID_MEMORY_TYPES = (
     "preference", "fact", "workflow", "project",
-    "user_preference", "interaction_pattern", "relationship_note", "current_context",
 )
+
+# 允许的 scope（模型对每条记忆输出归属建议；代码按上下文强制/降级兜底）
+VALID_SCOPES = ("global", "project", "agent")
 
 # 记忆提取模型：直接使用用户在前端配置的默认主模型，不硬编码任何特定模型名。
 # 原则：后端不假设用户启用了哪些模型，所有模型选择基于用户实际配置。
@@ -102,11 +104,11 @@ class MemoryExtractor:
             "- preference: 用户的稳定偏好 / 习惯（如「喜欢简洁的回答」）\n"
             "- fact: 长期稳定事实（如「项目使用 Python 3.14」）\n"
             "- workflow: 用户惯用的工作流程 / 步骤约定\n"
-            "- project: 项目规则 / 约定（仅当对话明显涉及某个项目的固定规则）\n"
-            "- user_preference: 用户喜欢的交流方式、表达风格（如「不喜欢被分析」「喜欢直接给答案」）\n"
-            "- interaction_pattern: 用户的交流模式（如「喜欢深入讨论」「喜欢先被倾听再给建议」）\n"
-            "- relationship_note: 用户和 AI 之间真实发生过的交流痕迹（如「讨论过换工作的事」）\n"
-            "- current_context: 用户最近关注的问题（如「最近在纠结是否离职」）\n\n"
+            "- project: 项目规则 / 约定（仅当对话明显涉及某个项目的固定规则）\n\n"
+            "## 记忆归属（scope，每条 add 必须给出）\n"
+            "- project: 这条记忆明确属于某个特定项目的规则 / 约定\n"
+            "- global: 跨项目通用的偏好 / 事实 / 工作流（不特指某个项目）\n"
+            "- agent: 仅当这是 AI 与用户的专属互动记忆（关系型 Agent 的偏好）\n\n"
             "## 严禁保存（不要提取）\n"
             "- 临时性、一次性内容：如「今天遇到一个 Bug」「报错信息是 404」\n"
             "- 寒暄、确认语、情绪化的即时表达\n"
@@ -117,9 +119,9 @@ class MemoryExtractor:
             "## 输出要求\n"
             '仅输出一个 JSON 数组，不要输出任何其他文字。数组元素格式：\n'
             '- 全新信息: {"action": "add", "memory_type": "preference|fact|workflow|project", '
-            '"confidence": 0.0-1.0, "content": "长期稳定信息的内容"}\n'
+            '"scope": "project|global|agent", "confidence": 0.0-1.0, "content": "长期稳定信息的内容"}\n'
             '- 更新已有记忆: {"action": "update", "existing_id": <已有记忆的 id>, '
-            '"memory_type": "...", "confidence": 0.0-1.0, "content": "合并后的内容"}\n'
+            '"memory_type": "...", "confidence": 0.0-1.0, "content": "合并后的内容"}（更新保持原记忆归属不变）\n'
             '- 若没有值得保存的信息，输出空数组 []\n'
             'confidence 请依据对话中的明确程度给出（明确陈述为 0.9+，一般推断为 0.6-0.8）。\n\n'
             f"## 用户消息\n{user_message}\n\n"
@@ -172,11 +174,14 @@ class MemoryExtractor:
         except (TypeError, ValueError):
             confidence = 0.8
         confidence = max(0.0, min(1.0, confidence))
+        raw_scope = item.get("scope")
+        scope = raw_scope if raw_scope in VALID_SCOPES else ""
         norm = {
             "action": action,
             "memory_type": mem_type,
             "confidence": round(confidence, 3),
             "content": content,
+            "scope": scope,
         }
         if action == "update":
             try:
@@ -247,6 +252,36 @@ MEMORY_EXTRACTION_AGENT_BLOCKLIST = frozenset({
 })
 
 
+def _resolve_scope(suggested: str, agent_id: Optional[str], project_id: Optional[int]):
+    """归属判定：模型建议 scope + 上下文强制/降级。
+
+    返回 (scope, needs_attribution)：
+      - 关系型 Agent（pianai）→ 强制 agent
+      - 模型建议 project：
+          * 有项目上下文 → project
+          * 无项目上下文 → 降级 global + needs_attribution=True（待认领，不污染全局）
+      - 模型建议 agent 且有 agent_id → agent
+      - 模型未给出有效 scope → 按上下文兜底：有项目 → project，否则 → global
+        （项目会话里聊的内容默认归项目；无项目时归全局）
+    """
+    if agent_id and agent_id in ("pianai",):
+        return ("agent", False)
+    if suggested == "project":
+        if project_id is not None:
+            return ("project", False)
+        return ("global", True)  # 降级路径：暂存全局并标记待认领
+    if suggested == "agent":
+        if agent_id:
+            return ("agent", False)
+        # 建议 agent 但无 Agent 上下文：走下方兜底
+    if suggested == "global":
+        return ("global", False)
+    # 模型未给出 scope / 建议无效：按会话上下文兜底
+    if project_id is not None:
+        return ("project", False)
+    return ("global", False)
+
+
 async def run_memory_extraction(
     chat_id: int,
     project_id: Any,
@@ -272,16 +307,24 @@ async def run_memory_extraction(
         extractor = MemoryExtractor()
 
         async with AsyncSessionLocal() as session:
-            # 关系型 Agent（当前仅 pianai）→ agent 作用域自隔离记忆
+            from sqlalchemy import or_
+            # 会话级默认作用域：仅作为 existing 去重基准；实际落库 scope 由模型判定 + 上下文强制
             if agent_id and agent_id in ("pianai",):
-                scope = "agent"
+                session_scope = "agent"
             else:
-                scope = "project" if project_id is not None else "global"
-            query = session.query(MemoryItem).filter(MemoryItem.scope == scope)
-            if scope == "project":
-                query = query.filter(MemoryItem.project_id == project_id)
-            elif scope == "agent":
-                query = query.filter(MemoryItem.agent_id == agent_id)
+                session_scope = "project" if project_id is not None else "global"
+            query = session.query(MemoryItem).filter(
+                MemoryItem.is_active == True,
+                or_(MemoryItem.scope == "global", MemoryItem.scope == session_scope),
+            )
+            if session_scope == "project":
+                query = query.filter(
+                    or_(MemoryItem.project_id == project_id, MemoryItem.project_id.is_(None))
+                )
+            elif session_scope == "agent":
+                query = query.filter(
+                    or_(MemoryItem.agent_id == agent_id, MemoryItem.agent_id.is_(None))
+                )
             existing = [
                 {
                     "id": m.id,
@@ -318,14 +361,21 @@ async def run_memory_extraction(
                     if is_duplicate:
                         continue
 
+                    # 归属判定：模型建议 scope + 上下文强制/降级
+                    mem_scope, needs_attr = _resolve_scope(
+                        suggested=action.get("scope", ""),
+                        agent_id=agent_id,
+                        project_id=project_id,
+                    )
                     session.add(
                         MemoryItem(
-                            scope=scope,
-                            agent_id=agent_id if scope == "agent" else None,
-                            project_id=project_id if scope == "project" else None,
+                            scope=mem_scope,
+                            agent_id=agent_id if mem_scope == "agent" else None,
+                            project_id=project_id if mem_scope == "project" else None,
                             content=content,
                             memory_type=action["memory_type"],
                             confidence=action["confidence"],
+                            needs_attribution=needs_attr,
                             source_chat_id=chat_id,
                         )
                     )
@@ -335,7 +385,7 @@ async def run_memory_extraction(
                         session.query(MemoryItem)
                         .filter(
                             MemoryItem.id == action["existing_id"],
-                            MemoryItem.scope == scope,
+                            MemoryItem.is_active == True,
                         )
                         .first()
                     )

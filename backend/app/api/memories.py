@@ -64,6 +64,7 @@ class MemoryItemResponse(BaseModel):
     memory_type: str = "preference"
     confidence: float = 0.8
     source_chat_id: Optional[int] = None
+    needs_attribution: bool = False
     created_at: datetime
 
     class Config:
@@ -123,6 +124,7 @@ async def list_memory_items(
     agent_id: Optional[str] = None,
     project_id: Optional[int] = None,
     q: Optional[str] = None,
+    needs_attribution: Optional[bool] = None,
 ):
     if scope is not None and scope not in SCOPES:
         raise HTTPException(status_code=400, detail="scope must be one of global/agent/project")
@@ -135,6 +137,8 @@ async def list_memory_items(
             query = query.filter(MemoryItem.agent_id == agent_id)
         if project_id is not None:
             query = query.filter(MemoryItem.project_id == project_id)
+        if needs_attribution is not None:
+            query = query.filter(MemoryItem.needs_attribution == needs_attribution)
         if q:
             like = f"%{q}%"
             query = query.filter(MemoryItem.content.like(like))
@@ -185,6 +189,36 @@ async def update_memory_item(memory_id: int, update: MemoryItemUpdate):
             item.memory_type = update.memory_type
         if update.confidence is not None:
             item.confidence = update.confidence
+        db.commit()
+        db.refresh(item)
+        return item
+    finally:
+        db.close()
+
+
+class AttributeRequest(BaseModel):
+    """待认领记忆的归属目标（body）"""
+    project_id: int
+
+
+@router.put("/{memory_id}/attribute", response_model=MemoryItemResponse)
+async def attribute_memory(memory_id: int, req: AttributeRequest):
+    """认领待归属记忆：把 needs_attribution=true 的记忆归属到指定项目。
+
+    降级路径的收口：模型判为 project 但会话未绑项目时暂存 global + 待认领，
+    用户在某个项目会话中确认归属后，将其正式转为 project 作用域。
+    """
+    db = SessionLocal()
+    try:
+        item = db.query(MemoryItem).filter(MemoryItem.id == memory_id).first()
+        if not item:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        if not item.needs_attribution:
+            raise HTTPException(status_code=400, detail="该记忆无需认领归属")
+        item.scope = "project"
+        item.project_id = req.project_id
+        item.agent_id = None
+        item.needs_attribution = False
         db.commit()
         db.refresh(item)
         return item

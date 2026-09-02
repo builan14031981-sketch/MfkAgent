@@ -784,7 +784,11 @@
     "confirm": "置信度",
     "type": "类型",
     "noSearchResults": "未找到匹配的记忆",
-    "noSearchResultsDesc": "换个关键词试试"
+    "noSearchResultsDesc": "换个关键词试试",
+    "attributionPending": "待认领归属",
+    "attributionDesc": "以下是暂存待认领的项目记忆，可归属到具体项目，或删除。",
+    "attribute": "归入项目",
+    "attributeConfirm": "确认归属"
   },
   "project": {
     "title": "Project",

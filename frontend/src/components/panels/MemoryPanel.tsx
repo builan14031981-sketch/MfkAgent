@@ -29,29 +29,21 @@ const SCOPE_OPTIONS: { value: MemoryScope; key: "scopeGlobal" | "scopeAgent" | "
   { value: "project", key: "scopeProject" },
 ];
 
-/** 记忆分类筛选 Tabs：all = 不过滤；i18n key 统一挂 settings.memory.types.*；与后端 8 种 memory_type 对齐 */
+/** 记忆分类筛选 Tabs：all = 不过滤；i18n key 统一挂 settings.memory.types.*；与后端 4 类长期记忆对齐 */
 const TYPE_FILTER_OPTIONS: { value: MemoryType | "all"; key: string }[] = [
   { value: "all", key: "settings.memory.types.all" },
   { value: "preference", key: "settings.memory.types.preference" },
   { value: "fact", key: "settings.memory.types.fact" },
   { value: "workflow", key: "settings.memory.types.workflow" },
   { value: "project", key: "settings.memory.types.project" },
-  { value: "user_preference", key: "settings.memory.types.userPreference" },
-  { value: "interaction_pattern", key: "settings.memory.types.interactionPattern" },
-  { value: "relationship_note", key: "settings.memory.types.relationshipNote" },
-  { value: "current_context", key: "settings.memory.types.currentContext" },
 ];
 
-/** 记忆类型 → 彩色 Badge 元信息（语义色变量，适配深色模式与强调色主题）；覆盖后端全部 8 种类型 */
+/** 记忆类型 → 彩色 Badge 元信息（语义色变量，适配深色模式与强调色主题）；覆盖 4 类长期记忆 */
 const TYPE_BADGE_META: Record<MemoryType, { color: string; key: string }> = {
   preference: { color: "var(--color-warning)", key: "settings.memory.types.preference" },
   fact: { color: "var(--color-info)", key: "settings.memory.types.fact" },
   workflow: { color: "var(--color-success)", key: "settings.memory.types.workflow" },
   project: { color: "var(--color-primary)", key: "settings.memory.types.project" },
-  user_preference: { color: "var(--color-warning)", key: "settings.memory.types.userPreference" },
-  interaction_pattern: { color: "var(--color-info)", key: "settings.memory.types.interactionPattern" },
-  relationship_note: { color: "var(--color-error)", key: "settings.memory.types.relationshipNote" },
-  current_context: { color: "var(--color-success)", key: "settings.memory.types.currentContext" },
 };
 
 /** 未知/脏数据类型的兜底 Badge，避免 typeMeta 为 undefined 导致渲染崩溃 */
@@ -73,7 +65,8 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
   // 记忆分类筛选：all = 全部；旧数据无 memory_type 时兜底归为 fact
   const [typeFilter, setTypeFilter] = useState<MemoryType | "all">("all");
-  const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent, selectedProject, scope);
+  const [pendingFilter, setPendingFilter] = useState(false);
+  const { memories, loading, createMemory, deleteMemory } = useMemory(selectedAgent, selectedProject, scope, "", pendingFilter);
 
   const filteredMemories = memories.filter((memory) =>
     typeFilter === "all" ? true : (memory.memory_type || "fact") === typeFilter
@@ -156,6 +149,23 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
           </button>
         ))}
       </div>
+
+      {/* 待认领归属筛选（降级路径暂存项） */}
+      <button
+        onClick={() => setPendingFilter((v) => !v)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: "6px",
+          padding: "6px 14px", marginBottom: "10px",
+          borderRadius: "var(--radius-full)",
+          border: "1px solid",
+          borderColor: pendingFilter ? "var(--color-warning)" : "var(--border-primary)",
+          background: pendingFilter ? "color-mix(in srgb, var(--color-warning) 12%, var(--bg-level-2))" : "var(--bg-level-2)",
+          cursor: "pointer", fontSize: "12px",
+          color: pendingFilter ? "var(--color-warning)" : "var(--text-level-2)",
+        }}
+      >
+        {t("memory.attributionPending")}
+      </button>
 
       {/* Agent 选择（仅 agent 作用域）：首位"全部"= 不按 agent 过滤，展示所有 Agent 记忆 */}
       {scope === "agent" && (

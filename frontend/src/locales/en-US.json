@@ -784,7 +784,11 @@
     "confirm": "Confidence",
     "type": "Type",
     "noSearchResults": "No matching memories",
-    "noSearchResultsDesc": "Try a different keyword"
+    "noSearchResultsDesc": "Try a different keyword",
+    "attributionPending": "Unattributed",
+    "attributionDesc": "Project memories awaiting attribution. Assign to a project or delete.",
+    "attribute": "Assign to project",
+    "attributeConfirm": "Confirm"
   },
   "project": {
     "title": "Project",

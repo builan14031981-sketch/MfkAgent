@@ -131,6 +131,9 @@ def _ensure_schema():
                     conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN last_accessed_at DATETIME"))
                 if "access_count" not in cols:
                     conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN access_count INTEGER DEFAULT 0"))
+                # 记忆重设计：降级路径标记（模型判 project 但无项目上下文 → 暂存 global + 待认领）
+                if "needs_attribution" not in cols:
+                    conn.execute(sa.text("ALTER TABLE memory_items ADD COLUMN needs_attribution BOOLEAN DEFAULT 0"))
 
         if "agent_runs" in inspector.get_table_names():
             cols = {c["name"] for c in inspector.get_columns("agent_runs")}

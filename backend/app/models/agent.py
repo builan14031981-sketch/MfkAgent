@@ -231,12 +231,15 @@ class Todo(Base):
 
 
 class MemoryItem(Base):
-    """统一记忆表：供 add_memory 工具 / 前端记忆 UI 使用，三作用域隔离。
+    """统一记忆表：供 add_memory 工具 / 前端记忆 UI 使用，作用域隔离。
 
     scope 取值：
       global  — 全局记忆（所有 Agent、所有项目共享）
       agent   — 当前 Agent 专属（跨项目，绑定 agent_id）
       project — 当前项目专属（项目内所有 Agent 共享，绑定 project_id）
+
+    memory_type 取值（记忆重设计精简为 4 类长期记忆）：
+      preference / fact / workflow / project（项目规则）
     """
     __tablename__ = "memory_items"
 
@@ -248,6 +251,9 @@ class MemoryItem(Base):
     memory_type = Column(String(50), default="preference")  # preference / fact / workflow / project
     confidence = Column(Float, default=0.8)                 # 提取置信度 0.0 ~ 1.0
     source_chat_id = Column(Integer, nullable=True)         # 记忆来源 Chat ID（自动提取时回填）
+    # 降级路径标记：模型判为 project 但会话未绑项目时，暂存 global + needs_attribution=true，
+    # 待用户在某个项目会话中认领归属后改为 project scope。未认领的记忆不参与上下文注入。
+    needs_attribution = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True)               # 软删标记（P0-2 衰减剪枝）
     last_accessed_at = Column(DateTime, nullable=True)      # 最近访问时间（P0-2 访问衰减）
     access_count = Column(Integer, default=0)               # 访问次数（P0-2 访问衰减）

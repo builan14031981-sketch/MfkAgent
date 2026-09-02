@@ -436,41 +436,74 @@ def _build_memory_text(db, project_id: Optional[int] = None, agent_id: Optional[
     except Exception:  # noqa: BLE001
         pass
 
+    from datetime import datetime
+    from app.services.memory import _decay_factor, _estimate_tokens
+
     sections = []
+
+    # 每作用域排序：confidence × 新鲜度降序，token 预算截断；排除待认领（needs_attribution）
+    # 与 MemoryService.get_memories 采用同一套排序/截断口径，废弃按 created_at 全量拼接
+    _PER_SCOPE_MAX_TOKENS = 1200
+
+    def _scored(items):
+        now = datetime.utcnow()
+        scored = [
+            ((m.confidence or 0.8) * _decay_factor(m.created_at, now), m)
+            for m in items
+        ]
+        scored.sort(key=lambda x: x[0], reverse=True)
+        out = []
+        budget = 0
+        for _score, m in scored:
+            tok = _estimate_tokens(m.content or "")
+            if budget + tok > _PER_SCOPE_MAX_TOKENS:
+                break
+            budget += tok
+            out.append(m)
+        return out
 
     global_items = (
         db.query(MemoryItem)
-        .filter(MemoryItem.scope == "global")
-        .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
-        .limit(30)
+        .filter(
+            MemoryItem.scope == "global",
+            MemoryItem.is_active == True,
+            MemoryItem.needs_attribution == False,
+        )
         .all()
     )
-    if global_items:
-        lines = "\n".join(f"- {m.content}" for m in global_items)
+    _g = _scored(global_items)
+    if _g:
+        lines = "\n".join(f"- {m.content}" for m in _g)
         sections.append(f"### 全局记忆 (Global Rules):\n{lines}")
 
     if agent_id is not None:
         agent_items = (
             db.query(MemoryItem)
-            .filter(MemoryItem.scope == "agent", MemoryItem.agent_id == agent_id)
-            .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
-            .limit(40)
+            .filter(
+                MemoryItem.scope == "agent",
+                MemoryItem.agent_id == agent_id,
+                MemoryItem.is_active == True,
+            )
             .all()
         )
-        if agent_items:
-            lines = "\n".join(f"- {m.content}" for m in agent_items)
+        _a = _scored(agent_items)
+        if _a:
+            lines = "\n".join(f"- {m.content}" for m in _a)
             sections.append(f"### {agent_id} 代理记忆 (Agent Rules):\n{lines}")
 
     if project_id is not None:
         project_items = (
             db.query(MemoryItem)
-            .filter(MemoryItem.scope == "project", MemoryItem.project_id == project_id)
-            .order_by(MemoryItem.created_at.desc(), MemoryItem.id.desc())
-            .limit(30)
+            .filter(
+                MemoryItem.scope == "project",
+                MemoryItem.project_id == project_id,
+                MemoryItem.is_active == True,
+            )
             .all()
         )
-        if project_items:
-            lines = "\n".join(f"- {m.content}" for m in project_items)
+        _p = _scored(project_items)
+        if _p:
+            lines = "\n".join(f"- {m.content}" for m in _p)
             sections.append(f"### 当前项目特定记忆 (Project Rules):\n{lines}")
 
     if not sections:

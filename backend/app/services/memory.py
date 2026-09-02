@@ -67,7 +67,11 @@ class MemoryService:
 
         db = SessionLocal()
         try:
-            q = db.query(MemoryItem).filter(MemoryItem.is_active == True)
+            # needs_attribution=true 的记忆是"待认领归属"的降级暂存，不参与上下文读取
+            q = db.query(MemoryItem).filter(
+                MemoryItem.is_active == True,
+                MemoryItem.needs_attribution == False,
+            )
             if scope == "all":
                 conds = [MemoryItem.scope == "global"]
                 if agent_id:

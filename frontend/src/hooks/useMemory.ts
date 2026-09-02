@@ -17,6 +17,8 @@ export function useMemory(
   projectId: number | null = null,
   scope: MemoryScope = "global",
   search: string = "",
+  /** 仅查看待认领归属的记忆（needs_attribution=true，降级路径的暂存项） */
+  onlyAttributionPending: boolean = false,
 ) {
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,8 +29,9 @@ export function useMemory(
     if (scope === "agent" && agentId) params.set("agent_id", agentId);
     if (scope === "project" && projectId != null) params.set("project_id", String(projectId));
     if (search.trim()) params.set("q", search.trim());
+    if (onlyAttributionPending) params.set("needs_attribution", "true");
     return params;
-  }, [scope, agentId, projectId, search]);
+  }, [scope, agentId, projectId, search, onlyAttributionPending]);
 
   const fetchMemories = useCallback(async () => {
     try {
@@ -77,6 +80,12 @@ export function useMemory(
     await fetchMemories();
   }
 
+  /** 认领待归属记忆：把 needs_attribution=true 的记忆归属到指定项目（转 project 作用域） */
+  async function attributeMemory(id: number, targetProjectId: number) {
+    await apiPut(`/api/memories/${id}/attribute`, { project_id: targetProjectId });
+    await fetchMemories();
+  }
+
   return {
     memories,
     loading,
@@ -85,6 +94,7 @@ export function useMemory(
     updateMemory,
     deleteMemory,
     deleteMemories,
+    attributeMemory,
     refetch: fetchMemories,
   };
 }

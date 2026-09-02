@@ -30,10 +30,6 @@ const TYPE_OPTIONS: { value: MemoryType; key: string }[] = [
   { value: "fact", key: "settings.memory.types.fact" },
   { value: "workflow", key: "settings.memory.types.workflow" },
   { value: "project", key: "settings.memory.types.project" },
-  { value: "user_preference", key: "settings.memory.types.userPreference" },
-  { value: "interaction_pattern", key: "settings.memory.types.interactionPattern" },
-  { value: "relationship_note", key: "settings.memory.types.relationshipNote" },
-  { value: "current_context", key: "settings.memory.types.currentContext" },
 ];
 
 const TYPE_BADGE_META: Record<MemoryType, { color: string; key: string }> = {
@@ -41,10 +37,6 @@ const TYPE_BADGE_META: Record<MemoryType, { color: string; key: string }> = {
   fact: { color: "var(--color-info)", key: "settings.memory.types.fact" },
   workflow: { color: "var(--color-success)", key: "settings.memory.types.workflow" },
   project: { color: "var(--color-primary)", key: "settings.memory.types.project" },
-  user_preference: { color: "var(--color-warning)", key: "settings.memory.types.userPreference" },
-  interaction_pattern: { color: "var(--color-info)", key: "settings.memory.types.interactionPattern" },
-  relationship_note: { color: "var(--color-error)", key: "settings.memory.types.relationshipNote" },
-  current_context: { color: "var(--color-success)", key: "settings.memory.types.currentContext" },
 };
 
 const UNKNOWN_TYPE_META = { color: "var(--text-level-3)", key: "settings.memory.types.unknown" };
@@ -75,9 +67,13 @@ export default function MemoryManagerPage() {
   const [createContent, setCreateContent] = useState("");
   const [createType, setCreateType] = useState<MemoryType>("fact");
   const [isCreating, setIsCreating] = useState(false);
+  // 待认领归属筛选（降级路径：模型判为项目级但会话未绑项目的暂存记忆）
+  const [pendingFilter, setPendingFilter] = useState(false);
+  const [attributingId, setAttributingId] = useState<number | null>(null);
+  const [attributeProject, setAttributeProject] = useState<number | null>(null);
 
-  const { memories, loading, createMemory, updateMemory, deleteMemory, deleteMemories } =
-    useMemory(selectedAgent, selectedProject, scope, search);
+  const { memories, loading, createMemory, updateMemory, deleteMemory, deleteMemories, attributeMemory } =
+    useMemory(selectedAgent, selectedProject, scope, search, pendingFilter);
 
   // 搜索输入防抖（500ms）
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,7 +84,7 @@ export default function MemoryManagerPage() {
   }, [searchInput]);
 
   // 切换作用域/筛选时回到第一页 + 清除选中（render 阶段调整，避免 set-state-in-effect）
-  const prevFilterKey = `${scope}|${selectedAgent}|${selectedProject}|${typeFilter}|${search}`;
+  const prevFilterKey = `${scope}|${selectedAgent}|${selectedProject}|${typeFilter}|${search}|${pendingFilter}`;
   const [lastFilterKey, setLastFilterKey] = useState(prevFilterKey);
   if (lastFilterKey !== prevFilterKey) {
     setLastFilterKey(prevFilterKey);
@@ -198,6 +194,22 @@ export default function MemoryManagerPage() {
     }
   };
 
+  /** 认领待归属记忆：第一次点击进入确认态（选目标项目），第二次确认提交 */
+  const handleAttribute = async (id: number) => {
+    if (attributingId !== id) {
+      setAttributingId(id);
+      setAttributeProject(null);
+      return;
+    }
+    if (attributeProject == null) return;
+    setAttributingId(null);
+    try {
+      await attributeMemory(id, attributeProject);
+    } catch (err) {
+      console.error("Failed to attribute memory:", err);
+    }
+  };
+
   return (
     <>
       {/* 顶部栏 */}
@@ -280,6 +292,27 @@ export default function MemoryManagerPage() {
               {t(opt.key)}
             </button>
           ))}
+        </div>
+
+        {/* 待认领归属筛选（降级路径：模型判为项目级但会话未绑项目的暂存记忆） */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => setPendingFilter((v) => !v)}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              padding: "6px 14px", borderRadius: "var(--radius-full)",
+              border: "1px solid",
+              borderColor: pendingFilter ? "var(--color-warning)" : "var(--border-primary)",
+              background: pendingFilter ? "color-mix(in srgb, var(--color-warning) 12%, var(--bg-level-2))" : "var(--bg-level-2)",
+              cursor: "pointer", fontSize: "12px",
+              color: pendingFilter ? "var(--color-warning)" : "var(--text-level-2)",
+            }}
+          >
+            {t("memory.attributionPending")}
+          </button>
+          {pendingFilter && (
+            <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>{t("memory.attributionDesc")}</span>
+          )}
         </div>
 
         {/* Agent 选择（agent 作用域） */}
@@ -616,6 +649,15 @@ export default function MemoryManagerPage() {
                           border: "1px solid var(--color-primary-light)", fontSize: "10px", fontWeight: 600,
                           lineHeight: 1.4, color: "var(--color-primary)",
                         }}>{scopeLabel(memory.scope)}</span>
+                        {memory.needs_attribution && (
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", padding: "1px 7px",
+                            borderRadius: "var(--radius-full)",
+                            background: "color-mix(in srgb, var(--color-warning) 14%, transparent)",
+                            border: "1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)",
+                            fontSize: "10px", fontWeight: 600, lineHeight: 1.4, color: "var(--color-warning)",
+                          }}>{t("memory.attributionPending")}</span>
+                        )}
                         <span style={{
                           display: "inline-flex", alignItems: "center", padding: "1px 7px",
                           borderRadius: "var(--radius-full)",
@@ -711,6 +753,56 @@ export default function MemoryManagerPage() {
                       <span style={{
                         fontSize: "12px", color: "var(--text-level-3)", fontWeight: 500,
                       }}>{Math.round((memory.confidence ?? 0.8) * 100)}%</span>
+                      {memory.needs_attribution && (
+                        attributingId === memory.id ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
+                            <select
+                              value={attributeProject ?? ""}
+                              onChange={(e) => setAttributeProject(e.target.value ? Number(e.target.value) : null)}
+                              style={{
+                                width: "120px", padding: "5px 8px", borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--border-primary)", background: "var(--bg-level-1)",
+                                fontSize: "11px", color: "var(--text-level-2)", outline: "none",
+                              }}
+                            >
+                              <option value="">{t("memory.selectProjectPlaceholder")}</option>
+                              {projects.map((project) => (
+                                <option key={project.id} value={project.id}>{project.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleAttribute(memory.id)}
+                              disabled={attributeProject == null}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: "4px",
+                                padding: "5px 10px", borderRadius: "var(--radius-sm)",
+                                border: "1px solid var(--color-warning)",
+                                background: attributeProject != null ? "var(--color-warning)" : "var(--bg-level-3)",
+                                color: attributeProject != null ? "#fff" : "var(--text-level-3)",
+                                cursor: attributeProject != null ? "pointer" : "not-allowed",
+                                fontSize: "11px", fontWeight: 500, whiteSpace: "nowrap",
+                              }}
+                            >
+                              {t("memory.attributeConfirm")}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleAttribute(memory.id)}
+                            title={t("memory.attribute")}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: "4px",
+                              padding: "4px 10px", borderRadius: "var(--radius-sm)",
+                              border: "1px solid var(--color-warning)",
+                              background: "color-mix(in srgb, var(--color-warning) 12%, var(--bg-level-2))",
+                              cursor: "pointer", color: "var(--color-warning)",
+                              fontSize: "11px", fontWeight: 500, whiteSpace: "nowrap",
+                            }}
+                          >
+                            {t("memory.attribute")}
+                          </button>
+                        )
+                      )}
                       <div style={{ display: "flex", gap: "4px" }}>
                         <button
                           onClick={() => startEdit(memory)}

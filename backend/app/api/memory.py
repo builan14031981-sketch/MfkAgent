@@ -1,3 +1,5 @@
+# ⚠️ 废弃（记忆重设计 2026-09）：本模块操作旧表 Memory（memories），已被 memory_items + /api/memories 取代。
+#    前端零引用，仅保留以兼容历史调用；不在此新增功能。请使用 app/api/memories.py。
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 from typing import List, Optional
