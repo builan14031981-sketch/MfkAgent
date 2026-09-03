@@ -22,7 +22,7 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
 import app.core.command_tools as CT
-from app.core.config import settings
+import app.core.config as config_mod
 from app.core.tool_runtime.risk_engine import (
     CommandRiskEngine,
     RiskLevel,
@@ -31,14 +31,19 @@ from app.core.tool_runtime.risk_engine import (
 )
 
 
+def _get_current_settings():
+    return getattr(config_mod, "settings")
+
+
 def _set_split_flag(value):
     """通过 Settings extra="allow" 挂载回滚开关（与 backend/.env 落地路径同语义）。"""
-    setattr(settings, "command_split_enabled", value)
+    setattr(_get_current_settings(), "command_split_enabled", value)
 
 
 def _clear_split_flag():
-    if hasattr(settings, "command_split_enabled"):
-        delattr(settings, "command_split_enabled")
+    s = _get_current_settings()
+    if hasattr(s, "command_split_enabled"):
+        delattr(s, "command_split_enabled")
 
 
 class SafeChainSplitTestCase(unittest.TestCase):

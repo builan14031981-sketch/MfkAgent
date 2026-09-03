@@ -101,6 +101,8 @@ class RuntimeEventType(str, Enum):
     TASK_SKIPPED = "task_skipped"
     # G6-A: Token 水位监控
     TOKEN_USAGE = "token_usage"
+    # 上下文预览：思考阶段提前透出上下文构成与估算水位
+    CONTEXT_PREVIEW = "context_preview"
     # 战略4: Agent 状态可视化 — 细粒度 Agent 状态更新事件
     AGENT_STATE_UPDATE = "agent_state_update"
     # Completion Loop V1: 完成验证生命周期事件

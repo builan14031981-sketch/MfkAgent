@@ -19,10 +19,11 @@ import pytest
 
 
 @pytest.fixture
-def config_module():
-    """提供 app.core.config 模块，用例结束后恢复开发模式。"""
+def config_module(monkeypatch):
+    """提供 app.core.config 模块，用例结束后先撤销环境修改，再恢复开发模式。"""
     import app.core.config as cfg
     yield cfg
+    monkeypatch.undo()
     importlib.reload(cfg)
 
 
@@ -33,10 +34,10 @@ def test_dev_mode_paths_anchored_to_backend_dir(config_module):
     assert cfg.DATA_DIR == expected_backend
     assert cfg.DATABASE_PATH == expected_backend / "mfkagent.db"
     assert cfg.PORT_FILE == expected_backend / ".mfkagent_port"
-    assert cfg.settings.UPLOAD_DIR == str(expected_backend / "uploads")
-    assert cfg.settings.CHROMA_PERSIST_DIR == str(expected_backend / "chroma_db")
+    assert Path(cfg.settings.UPLOAD_DIR).resolve() == (expected_backend / "uploads").resolve()
+    assert Path(cfg.settings.CHROMA_PERSIST_DIR).resolve() == (expected_backend / "chroma_db").resolve()
     # .env 读取位置与 BACKEND_DIR 同源（feishu.py 等写入方共用此出口）
-    assert str(cfg.Settings.Config.env_file) == str(expected_backend / ".env")
+    assert Path(cfg.Settings.Config.env_file).resolve() == (expected_backend / ".env").resolve()
 
 
 def test_frozen_mode_paths_use_appdata(config_module, monkeypatch, tmp_path):
