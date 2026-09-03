@@ -5,7 +5,7 @@ import type { ToolCall } from "@/components/ToolCallCard";
 import type { Attachment, AttachmentKind } from "@/components/FileDropZone";
 import { getFileExt } from "@/components/FileDropZone";
 import type { PermissionMode } from "@/components/chat-input/PermissionSelector";
-import type { AgentStateUpdateEvent, SubAgentEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
+import type { AgentStateUpdateEvent, ContextPreviewEvent, SubAgentEvent, TaskEvent, TaskNode, TokenUsageEvent } from "@/types/runtime";
 
 /**
  * 后端 Message.timeline 持久化的时序事件（GET /messages 随消息下发）。
@@ -148,6 +148,7 @@ export function useMessages(chatId: number | null) {
     onToolCallsBatch?: (toolCalls: ToolCall[]) => void,
     onTaskEvent?: (evt: TaskEvent) => void,
     onTokenUsage?: (evt: TokenUsageEvent) => void,
+    onContextPreview?: (evt: ContextPreviewEvent) => void,
     onAgentStateUpdate?: (evt: AgentStateUpdateEvent) => void,
     onMemorySaved?: (evt: { count: number; items: Array<{ memory_type: string; content: string }>; chat_id?: number }) => void,
     onSubAgent?: (evt: SubAgentEvent) => void,
@@ -414,6 +415,21 @@ export function useMessages(chatId: number | null) {
                       cached_tokens: parsed.cached_tokens ?? 0,
                       context_breakdown: parsed.context_breakdown ?? undefined,
                       cache_source: parsed.cache_source ?? "none",
+                    });
+                    break;
+                  }
+                  case "context_preview": {
+                    // 2026-09-03：思考阶段的上下文预览（不进入累计，仅驱动仪表盘显示）
+                    onContextPreview?.({
+                      id: parsed.id ?? `context-preview-${Date.now()}`,
+                      type: "context_preview",
+                      prompt_tokens: parsed.prompt_tokens ?? 0,
+                      total_tokens: parsed.total_tokens ?? 0,
+                      model_max_tokens: parsed.model_max_tokens ?? 0,
+                      watermark_percentage: parsed.watermark_percentage ?? 0,
+                      cached_tokens: parsed.cached_tokens ?? 0,
+                      context_breakdown: parsed.context_breakdown ?? undefined,
+                      cache_source: parsed.cache_source ?? "estimated",
                     });
                     break;
                   }

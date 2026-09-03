@@ -2,7 +2,7 @@
 
 import { memo, useMemo, useState } from "react";
 import { Minimize2, Loader2 } from "lucide-react";
-import type { TokenUsageEvent } from "@/types/runtime";
+import type { TokenUsageEvent, ContextPreviewEvent } from "@/types/runtime";
 import { useTranslation } from "@/hooks/useTranslation";
 
 const WARNING_THRESHOLD = 40;
@@ -94,6 +94,8 @@ const RingProgress = memo(function RingProgress({ ratio, color, label }: RingPro
 interface ContextDashboardProps {
   /** G6-A 最新 token_usage 事件；null 时不渲染仪表盘 */
   usage: TokenUsageEvent | null;
+  /** 2026-09-03：思考阶段的上下文预览（usage 为 null 时用它兜底显示；真实 token_usage 到达后覆盖） */
+  preview?: ContextPreviewEvent | null;
   /** 会话级累计：前缀缓存命中 token 总数（平均命中率分子） */
   totalCachedTokens?: number;
   /** 会话级累计：prompt token 总数（平均命中率分母） */
@@ -110,26 +112,31 @@ interface ContextDashboardProps {
  * - 颜色随水位变化：< 30% 绿色；30%-40% 橙色；> 40% 红色
  * - 水位 >= 40% 时环右侧出现紧凑「压缩会话」按钮（保留功能可达性）
  * - 2026-09-01 新增：前缀缓存命中率环（青色）、平均缓存命中率、hover 展开上下文分类占比面板（对标 Z code）
+ * - 2026-09-03 新增：支持 context_preview 兜底——LLM 思考/生成中（真实 token_usage 未到）先用
+ *   后端的估算预览显示上下文构成，不再等输出完才出现。
  */
-export const ContextDashboard = memo(function ContextDashboard({ usage, totalCachedTokens = 0, totalPromptTokens = 0, onCompress, isCompressing = false }: ContextDashboardProps) {
+export const ContextDashboard = memo(function ContextDashboard({ usage, preview = null, totalCachedTokens = 0, totalPromptTokens = 0, onCompress, isCompressing = false }: ContextDashboardProps) {
   const { t } = useTranslation();
   const [showBreakdown, setShowBreakdown] = useState(false);
 
+  // 数据源优先级：真实 token_usage（LLM 完成后）> 思考阶段预览（context_preview）
+  const data = usage ?? preview ?? null;
+
   const ratio = useMemo(() => {
-    if (!usage || !usage.model_max_tokens) return 0;
+    if (!data || !data.model_max_tokens) return 0;
     const pct =
-      usage.watermark_percentage != null
-        ? usage.watermark_percentage
-        : Math.round((usage.total_tokens / usage.model_max_tokens) * 100);
+      data.watermark_percentage != null
+        ? data.watermark_percentage
+        : Math.round((data.total_tokens / data.model_max_tokens) * 100);
     return Math.min(100, Math.max(0, pct));
-  }, [usage]);
+  }, [data]);
 
   // 工单E：前缀缓存命中率环（cached_tokens / prompt_tokens）
   const hitRatio = useMemo(() => {
-    if (!usage || !usage.cached_tokens || !usage.prompt_tokens) return null;
-    const pct = Math.round((usage.cached_tokens / usage.prompt_tokens) * 100);
+    if (!data || !data.cached_tokens || !data.prompt_tokens) return null;
+    const pct = Math.round((data.cached_tokens / data.prompt_tokens) * 100);
     return Math.min(100, Math.max(0, pct));
-  }, [usage]);
+  }, [data]);
 
   // 平均缓存命中率（会话级累计：totalCached / totalPrompt）
   const avgHitRatio = useMemo(() => {
@@ -140,8 +147,8 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
 
   // 上下文分类占比（仅当 context_breakdown 存在且有数据时计算）
   const breakdownItems = useMemo(() => {
-    if (!usage?.context_breakdown) return [];
-    const entries = Object.entries(usage.context_breakdown)
+    if (!data?.context_breakdown) return [];
+    const entries = Object.entries(data.context_breakdown)
       .filter(([, v]) => v > 0)
       .sort((a, b) => b[1] - a[1]);
     const total = entries.reduce((sum, [, v]) => sum + v, 0);
@@ -153,7 +160,7 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
       tokens: value,
       percent: Math.round((value / total) * 100),
     }));
-  }, [usage?.context_breakdown]);
+  }, [data?.context_breakdown]);
 
   const color =
     ratio >= WARNING_THRESHOLD
@@ -169,11 +176,11 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
       ? ""
       : "";
 
-  const label = usage
-    ? `${t("chat.context.dashboard")}: ${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 本轮缓存命中 ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} (${hitRatio}%)${cacheSourceLabel}` : ""}${avgHitRatio != null ? ` | 平均缓存命中率 ${avgHitRatio}%` : ""}`
+  const label = data
+    ? `${t("chat.context.dashboard")}: ${formatTokens(data.total_tokens)} / ${formatTokens(data.model_max_tokens)} (${ratio}%)${hitRatio != null ? ` | 本轮缓存命中 ${formatTokens(data.cached_tokens!)} / ${formatTokens(data.prompt_tokens)} (${hitRatio}%)${cacheSourceLabel}` : ""}${avgHitRatio != null ? ` | 平均缓存命中率 ${avgHitRatio}%` : ""}`
     : `${t("chat.context.dashboard")}: 发送消息后显示 (${ratio}%)`;
-  const cacheLabel = usage
-    ? `本轮前缀缓存命中: ${formatTokens(usage.cached_tokens!)} / ${formatTokens(usage.prompt_tokens)} prompt tokens (${hitRatio}%)${cacheSourceLabel}${avgHitRatio != null ? ` | 会话平均: ${avgHitRatio}% (${formatTokens(totalCachedTokens)} / ${formatTokens(totalPromptTokens)})` : ""}`
+  const cacheLabel = data
+    ? `本轮前缀缓存命中: ${formatTokens(data.cached_tokens!)} / ${formatTokens(data.prompt_tokens)} prompt tokens (${hitRatio}%)${cacheSourceLabel}${avgHitRatio != null ? ` | 会话平均: ${avgHitRatio}% (${formatTokens(totalCachedTokens)} / ${formatTokens(totalPromptTokens)})` : ""}`
     : `本轮前缀缓存命中: 发送消息后显示`;
   const showWarning = ratio >= WARNING_THRESHOLD;
   const hasBreakdown = breakdownItems.length > 0;
@@ -200,7 +207,7 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
             fontVariantNumeric: "tabular-nums",
           }}
         >
-          {usage ? `${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)}` : "-- / --"}
+          {data ? `${formatTokens(data.total_tokens)} / ${formatTokens(data.model_max_tokens)}` : "-- / --"}
         </span>
 
         {/* 40% 水位预警：紧凑压缩按钮贴身环右侧（G6-B 压缩逻辑） */}
@@ -274,7 +281,7 @@ export const ContextDashboard = memo(function ContextDashboard({ usage, totalCac
             marginBottom: "6px",
           }}>
             <span style={{ color: "var(--text-level-2)", fontVariantNumeric: "tabular-nums", fontSize: "11px" }}>
-              {usage ? `${formatTokens(usage.total_tokens)} / ${formatTokens(usage.model_max_tokens)} (${ratio}%)` : `-- / -- (${ratio}%)`}
+              {data ? `${formatTokens(data.total_tokens)} / ${formatTokens(data.model_max_tokens)} (${ratio}%)` : `-- / -- (${ratio}%)`}
             </span>
           </div>
 

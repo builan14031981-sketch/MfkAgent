@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { RuntimeEvent, TaskNode, TokenUsageEvent, AgentStateUpdateEvent } from "@/types/runtime";
+import type { RuntimeEvent, TaskNode, TokenUsageEvent, AgentStateUpdateEvent, ContextPreviewEvent } from "@/types/runtime";
 
 /**
  * 流式加载阶段（对应 ThinkingOrb 动画状态）：
@@ -18,6 +18,8 @@ export interface StreamSessionState {
   timeline: RuntimeEvent[];
   tasks: TaskNode[];
   tokenUsage: TokenUsageEvent | null;
+  /** 2026-09-03：思考阶段的上下文预览（LLM 完成前先显示；真实 token_usage 到达后覆盖，不持久化） */
+  contextPreview: ContextPreviewEvent | null;
   streamingError: string | null;
   reasoningActive: boolean;
   currentAgentState: AgentStateUpdateEvent | null;
@@ -46,6 +48,7 @@ function createDefaultSession(): StreamSessionState {
     timeline: [],
     tasks: [],
     tokenUsage: null,
+    contextPreview: null,
     streamingError: null,
     reasoningActive: false,
     currentAgentState: null,

@@ -24,6 +24,7 @@ export type RuntimeEventType =
   | "memory"
   | "memory_saved"
   | "token_usage"
+  | "context_preview"
   | "agent_state_update"
   | "roundtable_speaker"
   | "roundtable_speaker_start"
@@ -84,10 +85,33 @@ export interface TokenUsageEvent extends RuntimeEventBase {
 }
 
 /**
+ * 上下文预览事件（2026-09-03 新增）：每轮 LLM 调用前由后端先推一版，让思考/生成阶段
+ * 上下文仪表盘也能显示（此前 token_usage 只在 LLM finish 后才发，思考中无数据显示）。
+ * - 仅透出上下文构成 + 估算水位/命中率（estimated），不进入 totalCached/totalPrompt 累计；
+ * - LLM 完成后的真实 token_usage 会覆盖此预览。
+ */
+export interface ContextPreviewEvent extends RuntimeEventBase {
+  type: "context_preview";
+  /** 估算 prompt token 数（当前轮 messages 实时统计） */
+  prompt_tokens: number;
+  /** 估算总 token 数（= prompt，completion 未生成） */
+  total_tokens: number;
+  /** 模型上下文窗口上限 */
+  model_max_tokens: number;
+  /** 估算上下文水位百分比（0-100） */
+  watermark_percentage: number;
+  /** 估算前缀缓存命中 token 数（稳定前缀比例 × prompt） */
+  cached_tokens?: number;
+  /** 上下文分类 token 统计（system_prompt/tools/memory/messages/reminder/other） */
+  context_breakdown?: Record<string, number>;
+  /** 缓存命中率来源（预览恒为 estimated） */
+  cache_source?: "api" | "estimated" | "none";
+}
+
+/**
  * Agent 状态流转事件（不进入 timeline 渲染，由独立 AgentStatusCard 消费）。
  * 后端在 SSE 流中推送，用于替代单调的"正在输入..."指示器。
- */
-export interface AgentStateUpdateEvent extends RuntimeEventBase {
+ */export interface AgentStateUpdateEvent extends RuntimeEventBase {
   type: "agent_state_update";
   /** Agent 角色名（如 "Coder Agent"） */
   agent_role: string;

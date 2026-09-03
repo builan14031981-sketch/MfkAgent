@@ -35,6 +35,7 @@ from app.core.agent_runtime.completion import (
     CompletionPipeline,
 )
 from app.core.agent_runtime.completion.base import CompletionVerifier
+from app.core.tokens import count_tokens
 
 # ──── 执行循环最大轮次 ────
 MAX_ROUNDS = 10
@@ -401,6 +402,32 @@ class AgentRuntime:
             "cache_source": cache_source,
             "model_max_tokens": max_tokens,
             "watermark_percentage": watermark,
+            "context_breakdown": context_breakdown,
+        }
+
+    def _build_context_preview_event(
+        self,
+        prompt_tokens: int,
+        cached_tokens: int,
+        model_id: str,
+        context_breakdown: Optional[dict] = None,
+    ) -> dict:
+        """构建 context_preview 事件（2026-09-03）。
+
+        每轮 LLM 调用前由流式循环先 yield 一版：让思考/生成阶段的上下文仪表盘立即有数据
+        （此前 token_usage 只在 LLM finish 后才发，思考中无数据显示）。仅透出上下文构成 +
+        估算水位/命中率（estimated），不进入前端 totalCached/totalPrompt 累计；
+        LLM 完成后的真实 token_usage 事件会覆盖它。
+        """
+        return {
+            "type": "context_preview",
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": 0,
+            "total_tokens": prompt_tokens,
+            "cached_tokens": cached_tokens,
+            "cache_source": "estimated",
+            "model_max_tokens": get_model_max_tokens(model_id),
+            "watermark_percentage": compute_watermark(prompt_tokens, model_id),
             "context_breakdown": context_breakdown,
         }
 
@@ -2165,6 +2192,37 @@ class AgentRuntime:
                     collected_tool_calls: dict = {}
                     final_finish = "stop"
                     round_text = ""
+
+                    # ──── 2026-09-03: 上下文预览事件（思考阶段先展示上下文构成）────
+                    # 背景：token_usage 只在 LLM finish 时才发（usage 需流式响应结束才有），
+                    # 导致"正在思考/生成中"前端无数据、上下文仪表盘不出现、输出完才冒出来。
+                    # 这里在每轮 LLM 调用前，用当前 messages 实时估算 prompt tokens 先发一版
+                    # context_preview（仅透出上下文构成 + 估算水位/命中率，不进累计），
+                    # 让仪表盘在思考阶段即可显示；LLM 完成后的真实 token_usage 会覆盖它。
+                    if _context_breakdown is not None:
+                        try:
+                            _prompt_est = 0
+                            for _m in current_messages:
+                                _c = _m.get("content") if isinstance(_m, dict) else getattr(_m, "content", "")
+                                if isinstance(_c, str):
+                                    _prompt_est += count_tokens(_c)
+                                elif isinstance(_c, list):
+                                    for _part in _c:
+                                        if isinstance(_part, dict) and _part.get("type") == "text":
+                                            _prompt_est += count_tokens(_part.get("text", "") or "")
+                            _cached_est = 0
+                            if _stable_prefix_ratio:
+                                try:
+                                    _r = float(_stable_prefix_ratio)
+                                    if 0 < _r <= 1.0:
+                                        _cached_est = int(_prompt_est * _r)
+                                except (TypeError, ValueError):
+                                    _cached_est = 0
+                            yield self._build_context_preview_event(
+                                _prompt_est, _cached_est, context.model_id, _context_breakdown
+                            )
+                        except Exception:  # noqa: BLE001 — 预览失败不影响主流程
+                            pass
 
                     async for event in model_service.stream_once(
                         model_id=context.model_id,

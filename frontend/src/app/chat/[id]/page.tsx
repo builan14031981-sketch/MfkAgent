@@ -99,6 +99,7 @@ function ChatPageInner() {
     timeline,
     tasks,
     tokenUsage,
+    contextPreview,
     totalCachedTokens,
     totalPromptTokens,
     setTokenUsage,
@@ -740,6 +741,7 @@ function ChatPageInner() {
         project={currentProject}
         streamingStage={orbStage}
         tokenUsage={tokenUsage}
+        contextPreview={contextPreview}
         totalCachedTokens={totalCachedTokens}
         totalPromptTokens={totalPromptTokens}
         onCompress={handleCompress}

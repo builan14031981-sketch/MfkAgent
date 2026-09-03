@@ -9,7 +9,7 @@ import { showDesktopNotification } from "@/lib/notify";
 import { formatDuration } from "@/lib/format";
 import { useStreamStore, OrbStage } from "@/lib/streamStore";
 import { useArtifactStore, artifactFileName } from "@/lib/artifactStore";
-import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ThinkingIndicatorEvent, RoundtableSpeakerEvent } from "@/types/runtime";
+import type { RuntimeEvent, ApprovalRequest, TaskNode, TaskEvent, TokenUsageEvent, AgentStateUpdateEvent, ContextPreviewEvent, ThinkingIndicatorEvent, RoundtableSpeakerEvent } from "@/types/runtime";
 
 type SendMessageStream = ReturnType<typeof useMessages>["sendMessageStream"];
 type AppendMessage = ReturnType<typeof useMessages>["appendMessage"];
@@ -69,6 +69,8 @@ export function useChatStream({
   const timeline = session?.timeline ?? [];
   const tasks = session?.tasks ?? [];
   const tokenUsage = session?.tokenUsage ?? null;
+  // 2026-09-03：思考阶段的上下文预览（LLM 完成前先显示上下文构成）
+  const contextPreview = session?.contextPreview ?? null;
   const streamingError = session?.streamingError ?? null;
   const reasoningActive = session?.reasoningActive ?? false;
   const currentAgentState = session?.currentAgentState ?? null;
@@ -298,6 +300,7 @@ export function useChatStream({
         timeline: [],
         tasks: [],
         tokenUsage: null,
+        contextPreview: null,
         streamingError: null,
         currentAgentState: null,
         reasoningActive: false,
@@ -413,6 +416,7 @@ export function useChatStream({
           streamingError: null,
           reasoningActive: false,
           currentAgentState: null,
+          contextPreview: null,
           isSending: false,
         }));
         refs.toolIndex.clear();
@@ -557,6 +561,7 @@ export function useChatStream({
               isSending: false,
               reasoningActive: false,
               currentAgentState: null,
+              contextPreview: null,
             }));
             refs.toolIndex.clear();
             refs.taskIndex.clear();
@@ -578,6 +583,7 @@ export function useChatStream({
             store.updateSession(targetChatId, () => ({
               isSending: false,
               streamingError: error,
+              contextPreview: null,
             }));
           },
           personalityLevel,
@@ -794,6 +800,10 @@ export function useChatStream({
               totalPromptTokens: prev.totalPromptTokens + (usage.prompt_tokens ?? 0),
             }));
           },
+          // onContextPreview：思考阶段的上下文预览（真实 token_usage 到达后覆盖；不进入累计）
+          (preview: ContextPreviewEvent) => {
+            store.updateSession(targetChatId, () => ({ contextPreview: preview }));
+          },
           // onAgentStateUpdate
           (evt: AgentStateUpdateEvent) => {
             if (refs.agentStateTimer) {
@@ -900,6 +910,7 @@ export function useChatStream({
     timeline,
     tasks,
     tokenUsage,
+    contextPreview,
     totalCachedTokens,
     totalPromptTokens,
     setTokenUsage: (usage: TokenUsageEvent | null) => {

@@ -6,7 +6,7 @@ import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
 import type { Agent } from "@/hooks/useAgents";
 import type { OrbStage } from "@/lib/streamStore";
-import type { TokenUsageEvent } from "@/types/runtime";
+import type { TokenUsageEvent, ContextPreviewEvent } from "@/types/runtime";
 import { AgentIcon } from "@/components/AgentIcon";
 import { ContextDashboard } from "@/components/ContextDashboard";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -17,6 +17,8 @@ interface ChatHeaderProps {
   project: Project | null;
   streamingStage?: OrbStage | null;
   tokenUsage?: TokenUsageEvent | null;
+  /** 2026-09-03：思考阶段的上下文预览（LLM 完成前先显示上下文构成） */
+  contextPreview?: ContextPreviewEvent | null;
   /** 会话级累计：前缀缓存命中 token 总数（平均缓存命中率分子） */
   totalCachedTokens?: number;
   /** 会话级累计：prompt token 总数（平均缓存命中率分母） */
@@ -68,6 +70,7 @@ export const ChatHeader = memo(function ChatHeader({
   agent,
   project,
   tokenUsage,
+  contextPreview,
   totalCachedTokens,
   totalPromptTokens,
   onCompress,
@@ -158,9 +161,10 @@ export const ChatHeader = memo(function ChatHeader({
           alignItems: "center",
           gap: "8px",
         }}>
-          {/* F-Context 上下文仪表盘：Token 消耗 + 水位预警（仅流式期间有数据时显示） */}
+          {/* F-Context 上下文仪表盘：Token 消耗 + 水位预警（流式期间有数据时显示） */}
           <ContextDashboard
             usage={tokenUsage ?? null}
+            preview={contextPreview ?? null}
             totalCachedTokens={totalCachedTokens ?? 0}
             totalPromptTokens={totalPromptTokens ?? 0}
             onCompress={onCompress}
