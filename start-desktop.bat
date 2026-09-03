@@ -42,6 +42,17 @@ echo [2/3] 启动 Frontend Dev Server (port 3000)...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do (
     taskkill /pid %%a /f >nul 2>&1
 )
+:: 等待 3000 端口完全释放（taskkill 后 socket 可能未立即释放，
+:: 避免 next dev -p 3000 启动时撞上端口被占而启动失败）
+set /a r_tries=0
+:wait_port_release
+netstat -ano | findstr :3000 | findstr LISTENING >nul
+if errorlevel 1 goto port_released
+set /a r_tries+=1
+if %r_tries% geq 10 goto port_released
+ping 127.0.0.1 -n 2 >nul
+goto wait_port_release
+:port_released
 start "MfkAgent Frontend" cmd /c "cd /d %~dp0frontend && npm run dev"
 
 echo   等待 Frontend 就绪...
