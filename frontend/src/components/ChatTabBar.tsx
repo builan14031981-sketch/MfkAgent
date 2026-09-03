@@ -2,11 +2,10 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, X, MessageSquare, Copy, ArrowRightToLine, Ban, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Plus, X, Copy, ArrowRightToLine, Ban, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useTabStore } from "@/lib/tabStore";
 import { useStreamStore } from "@/lib/streamStore";
 import { useDockStore } from "@/lib/dockStore";
-import { AgentIcon } from "@/components/AgentIcon";
 
 interface ContextMenuState {
   visible: boolean;
@@ -316,12 +315,8 @@ export function ChatTabBar({ onNewChat, onRename }: ChatTabBarProps) {
                 title={tab.title || "对话"}
                 className={`chrome-tab ${isActive ? "chrome-tab--active" : "chrome-tab--inactive"}`}
               >
-                {/* Agent 图标或通用图标 */}
-                {tab.agentId ? (
-                  <AgentIcon id={tab.agentId} size={13} style={{ flexShrink: 0 }} />
-                ) : (
-                  <MessageSquare size={13} style={{ flexShrink: 0, color: "var(--text-level-4)" }} />
-                )}
+                {/* 2026-09-03：顶部标签栏不再显示 Agent 图标（与浏览器标签页 favicon 二选一，
+                    保留 favicon；Agent 身份图标仅留在 ChatHeader 发消息区）。标题 flex:1 自动填充 */}
 
                 {/* 标题：双击进入内联编辑 */}
                 {editingId === tab.chatId ? (
