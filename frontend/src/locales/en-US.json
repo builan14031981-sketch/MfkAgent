@@ -53,7 +53,10 @@
     "noSearchResults": "No matching chats",
     "pinned": "Pinned",
     "projects": "Projects",
-    "recent": "Recent"
+    "recent": "Recent",
+    "more": "More Options",
+    "archiveProject": "Archive Project",
+    "deleteProject": "Delete Project"
   },
   "home": {
     "welcome": [
@@ -564,6 +567,21 @@
         "desc": "System provided AI work partners",
         "systemPrompt": "System Prompt",
         "personality": "Personality Config",
+        "expressionProfile": "Expression Profile",
+        "personalityLevel": "Personality Level",
+        "identity": "Identity",
+        "systemPromptHint": "System prompt defines the core behavior and capabilities of this agent",
+        "foldPrompt": "Collapse",
+        "expandPrompt": "Expand",
+        "toolsHint": "Available Tools",
+        "groups": {
+          "core": "Core Team",
+          "assist": "Specialists",
+          "sub": "Sub-Agents"
+        },
+        "groupCoreDesc": "Core agents for general development, analysis and review",
+        "groupAssistDesc": "Specialists for copywriting, research, mentoring and domains",
+        "groupSubDesc": "Lightweight sub-agent roles dynamically dispatched by the main agent",
         "detail": "Details",
         "manage": "Manage Agents",
         "backToSettings": "Back to Settings",
@@ -752,6 +770,18 @@
   },
   "memory": {
     "title": "Long-term Memory",
+    "types": {
+      "all": "All",
+      "preference": "Preference",
+      "fact": "Fact",
+      "workflow": "Workflow",
+      "project": "Project Rules",
+      "userPreference": "Chat Preference",
+      "interactionPattern": "Interaction Pattern",
+      "relationshipNote": "Relationship Note",
+      "currentContext": "Recent Context",
+      "unknown": "Other"
+    },
     "selectAgent": "Select Agent",
     "selectProject": "Select Project",
     "selectProjectPlaceholder": "Choose a project...",

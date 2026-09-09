@@ -1232,6 +1232,9 @@ tool_registry = ToolRegistry()
 # 注册安全工具（所有工具都有明确的用途和限制）
 tool_registry.register(GitHubSearchTool())       # GitHub 仓库搜索
 tool_registry.register(WebSearchTool())          # 通用网页搜索（DuckDuckGo）
+# 免费实时行情（腾讯接口，无需 Key）——延迟导入避免循环依赖
+from app.services.stock_tools import QueryMarketTool  # noqa: E402
+tool_registry.register(QueryMarketTool())
 tool_registry.register(FetchUrlTool())           # 获取网页内容（有超时限制）
 tool_registry.register(DateTimeTool())           # 获取当前时间
 tool_registry.register(JsonFormatTool())         # 格式化 JSON

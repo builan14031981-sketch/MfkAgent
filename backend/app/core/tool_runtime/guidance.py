@@ -76,7 +76,7 @@ def _resolve_guidance_type(
     msg_lower = message.lower()
     if any(kw in msg_lower for kw in ["代码", "code", "编程", "函数", "bug", "修复", "修改"]):
         return "coding"
-    if any(kw in msg_lower for kw in ["搜索", "查找", "调研", "资料", "search", "research"]):
+    if any(kw in msg_lower for kw in ["搜索", "查找", "调研", "资料", "search", "research", "查", "行情", "股票", "股价", "大盘", "资讯", "新闻", "最新", "汇率", "天气"]):
         return "research"
     if any(kw in msg_lower for kw in ["文件", "读取", "写入", "创建", "file", "read", "write"]):
         return "file_operation"

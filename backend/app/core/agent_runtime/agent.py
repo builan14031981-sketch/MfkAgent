@@ -480,6 +480,8 @@ class AgentRuntime:
             "task_id": task.id,
             "action": task.action,
             "status": status,
+            # 2026-09-03：补发 assigned_agent，前端 AgentBadge 不再兜底成 "unknown"
+            "assigned_agent": getattr(task, "assigned_agent", "default_agent") or "default_agent",
         }
         if self.task_graph_state is not None:
             payload["step_index"] = self.task_graph_state.get_step_index(task.id)
@@ -1321,6 +1323,28 @@ class AgentRuntime:
                     # 更新 current_messages 中的内容
                     if current_messages and current_messages[-1].get("tool_call_id") == tc.get("id"):
                         current_messages[-1]["content"] = record["result"]
+
+            # 防死循环熔断：检查是否连续 3 次调用同一工具且均失败
+            if not record.get("success", False):
+                recent_failures = [
+                    r for r in all_tool_calls[-3:]
+                    if not r.get("success", False) and r.get("tool") == tool_name
+                ]
+                if len(recent_failures) >= 3:
+                    loop_warning = (
+                        "\n\n[系统熔断警告]: 你已连续 3 次调用此工具失败。请停止盲目重复尝试同一操作！"
+                        "请重新阅读代码/错误日志，换一种解决方案（如改用其他工具、扩大搜索范围、或检查路径与参数）。"
+                    )
+                    record["result"] = record.get("result", "") + loop_warning
+
+            # 运行时通用输出保护：单次工具输出上限 16000 字符（首尾智能保留，防止撑爆上下文）
+            tool_content = record.get("result", "")
+            if isinstance(tool_content, str) and len(tool_content) > 16000:
+                head = tool_content[:4000]
+                tail = tool_content[-10000:]
+                omitted = len(tool_content) - 14000
+                tool_content = f"{head}\n\n...[单工具输出过长（{len(tool_content)} 字符），系统已自动折叠中间 {omitted} 字符]...\n\n{tail}"
+                record["result"] = tool_content
 
             all_tool_calls.append(record)
             current_messages.append({

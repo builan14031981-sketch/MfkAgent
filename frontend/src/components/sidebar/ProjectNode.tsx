@@ -6,6 +6,7 @@ import type { Project } from "@/hooks/useProjects";
 import type { OrbStage } from "@/lib/streamStore";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChatRow } from "./ChatRow";
+import { Tooltip } from "../Tooltip";
 
 interface ProjectNodeProps {
   project: Project;
@@ -77,20 +78,20 @@ export function ProjectNode({
           display: "flex",
           alignItems: "center",
           gap: "6px",
-          padding: "7px 12px 7px 12px",
-          borderRadius: "8px",
+          padding: "4px 8px",
+          height: "28px",
+          borderRadius: "4px",
           cursor: "pointer",
           background: isActive ? "var(--sidebar-active-bg)" : (isHovered ? "var(--bg-level-4)" : "transparent"),
-          boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)" : "none",
-          transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
+          transition: "background var(--transition-fast)",
         }}
       >
-        {/* 文件夹图标：16px */}
+        {/* 文件夹图标：15px */}
         {isCollapsed ? (
           <Folder
             style={{
-              width: "16px",
-              height: "16px",
+              width: "15px",
+              height: "15px",
               color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-3)",
               flexShrink: 0,
             }}
@@ -98,15 +99,15 @@ export function ProjectNode({
         ) : (
           <FolderOpen
             style={{
-              width: "16px",
-              height: "16px",
+              width: "15px",
+              height: "15px",
               color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-3)",
               flexShrink: 0,
             }}
           />
         )}
 
-        {/* 项目名：13px / 500 weight / 活动态 primary 色 */}
+        {/* 项目名：12.5px / 500 weight */}
         <span
           style={{
             flex: 1,
@@ -114,9 +115,9 @@ export function ProjectNode({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            fontSize: "14px",
+            fontSize: "12.5px",
             fontWeight: isActive ? 600 : 500,
-            lineHeight: 1.4,
+            lineHeight: 1.3,
             color: isActive ? "var(--sidebar-active-fg)" : "var(--text-level-1)",
           }}
         >
@@ -127,8 +128,8 @@ export function ProjectNode({
         {project.is_pinned && (
           <Pin
             style={{
-              width: "var(--sidebar-icon-size-sm)",
-              height: "var(--sidebar-icon-size-sm)",
+              width: "12px",
+              height: "12px",
               flexShrink: 0,
               color: "var(--sidebar-active-fg)",
             }}
@@ -136,12 +137,12 @@ export function ProjectNode({
         )}
 
         {/* 右侧操作区：chat数量 + 新建 + 更多，容器负 margin 抵消 padding-right 贴边 */}
-        <div style={{ display: "flex", alignItems: "center", gap: "2px", marginRight: "-8px", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }}>
         {/* chat 数量角标：为 0 时不显示，tabular-nums 等宽缩放稳定 */}
         {chats.length > 0 && (
           <span
             style={{
-              fontSize: "12px",
+              fontSize: "11px",
               lineHeight: "var(--line-height-normal)",
               color: "var(--text-level-4)",
               flexShrink: 0,
@@ -154,82 +155,86 @@ export function ProjectNode({
           </span>
         )}
 
-        {/* 悬停显示 +：快速新建会话（22×22 / 圆角 radius-sm） */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onQuickCreateChat(project.id);
-          }}
-          title={t("sidebar.newChatInProject")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "var(--sidebar-btn-size)",
-            height: "var(--sidebar-btn-size)",
-            borderRadius: "var(--radius-sm)",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            color: "var(--text-level-3)",
-            flexShrink: 0,
-            opacity: isHovered ? 1 : 0,
-            transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
-            outline: "none",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-level-3)";
-            e.currentTarget.style.color = "var(--sidebar-active-fg)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--text-level-3)";
-          }}
-        >
-          <Plus
-            style={{
-              width: "var(--sidebar-icon-size-sm)",
-              height: "var(--sidebar-icon-size-sm)",
+        {/* 悬停显示 +：快速新建会话（20×20 / 圆角 3px） */}
+        <Tooltip content={t("sidebar.newChatInProject")} side="top">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickCreateChat(project.id);
             }}
-          />
-        </button>
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "20px",
+              height: "20px",
+              borderRadius: "3px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "var(--text-level-3)",
+              flexShrink: 0,
+              opacity: isHovered ? 1 : 0,
+              transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
+              outline: "none",
+              padding: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-3)";
+              e.currentTarget.style.color = "var(--sidebar-active-fg)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-level-3)";
+            }}
+          >
+            <Plus
+              style={{
+                width: "13px",
+                height: "13px",
+              }}
+            />
+          </button>
+        </Tooltip>
 
-        {/* 悬停显示 ...：更多操作（22×22 / 圆角 radius-sm） */}
-        <button
-          onClick={(e) => onMoreProject(e, project.id)}
-          title={t("sidebar.more")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "var(--sidebar-btn-size)",
-            height: "var(--sidebar-btn-size)",
-            borderRadius: "var(--radius-sm)",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            color: "var(--text-level-3)",
-            flexShrink: 0,
-            opacity: isHovered ? 1 : 0,
-            transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
-            outline: "none",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-level-3)";
-            e.currentTarget.style.color = "var(--text-level-1)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--text-level-3)";
-          }}
-        >
-          <MoreHorizontal
+        {/* 悬停显示 ...：更多操作（20×20 / 圆角 3px） */}
+        <Tooltip content={t("sidebar.more")} side="top">
+          <button
+            onClick={(e) => onMoreProject(e, project.id)}
             style={{
-              width: "var(--sidebar-icon-size-sm)",
-              height: "var(--sidebar-icon-size-sm)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "20px",
+              height: "20px",
+              borderRadius: "3px",
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "var(--text-level-3)",
+              flexShrink: 0,
+              opacity: isHovered ? 1 : 0,
+              transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
+              outline: "none",
+              padding: 0,
             }}
-          />
-        </button>
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-level-3)";
+              e.currentTarget.style.color = "var(--sidebar-active-fg)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-level-3)";
+            }}
+          >
+            <MoreHorizontal
+              style={{
+                width: "13px",
+                height: "13px",
+              }}
+            />
+          </button>
+        </Tooltip>
         </div>
       </div>
 

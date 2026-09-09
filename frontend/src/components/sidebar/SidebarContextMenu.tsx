@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useLayoutEffect } from "react";
 import { Edit2, Pin, PinOff, Trash2, FolderOpen, Archive, ExternalLink } from "lucide-react";
 import type { Chat } from "@/hooks/useChat";
 import type { Project } from "@/hooks/useProjects";
@@ -48,6 +48,24 @@ export function SidebarContextMenu({
 }: SidebarContextMenuProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ x: state.x, y: state.y });
+
+  // 视口边界碰撞检测：防止右键菜单超出屏幕底部或右侧
+  useLayoutEffect(() => {
+    if (!state.visible || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let nextX = state.x;
+    let nextY = state.y;
+    if (nextX + rect.width > vw - 12) {
+      nextX = Math.max(12, vw - rect.width - 12);
+    }
+    if (nextY + rect.height > vh - 12) {
+      nextY = Math.max(12, vh - rect.height - 12);
+    }
+    setPos({ x: nextX, y: nextY });
+  }, [state.visible, state.x, state.y]);
 
   // 点击外部关闭右键菜单
   useEffect(() => {
@@ -67,14 +85,19 @@ export function SidebarContextMenu({
   const menuItemStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
-    gap: "6px",
+    gap: "8px",
     width: "100%",
-    padding: "3px 8px",
+    height: "28px",
+    padding: "0 8px",
     border: "none",
+    background: "transparent",
     cursor: "pointer",
-    fontSize: "12px",
-    color: "var(--text-level-2)",
-    borderRadius: "var(--radius-sm)",
+    fontSize: "12.5px",
+    color: "var(--text-level-1)",
+    borderRadius: "4px",
+    textAlign: "left",
+    outline: "none",
+    transition: "background var(--transition-fast), color var(--transition-fast)",
   };
 
   return (
@@ -83,17 +106,16 @@ export function SidebarContextMenu({
       onMouseDown={(e) => e.stopPropagation()}
       style={{
         position: "fixed",
-        left: state.x,
-        top: state.y,
+        left: pos.x,
+        top: pos.y,
         background: "var(--bg-level-2)",
         border: "1px solid var(--border-primary)",
-        borderRadius: "var(--radius-md)",
-        boxShadow: "var(--shadow-lg)",
-        padding: "3px",
+        borderRadius: "6px",
+        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08)",
+        padding: "4px",
         zIndex: 1000,
-        minWidth: "130px",
-        opacity: 0,
-        animation: "contextMenuOpen 0.15s ease forwards",
+        minWidth: "160px",
+        animation: "contextMenuOpen 0.12s ease forwards",
       }}
     >
       {isChat ? (
@@ -106,7 +128,7 @@ export function SidebarContextMenu({
               className="ctx-menu-item"
               style={menuItemStyle}
             >
-              <ExternalLink style={{ width: "13px", height: "13px" }} />
+              <ExternalLink style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
               <span>在顶部新标签页打开</span>
             </button>
           )}
@@ -117,7 +139,7 @@ export function SidebarContextMenu({
             className="ctx-menu-item"
             style={menuItemStyle}
           >
-            <Edit2 style={{ width: "13px", height: "13px" }} />
+            <Edit2 style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
             <span>{t("sidebar.rename")}</span>
           </button>
           <button
@@ -129,12 +151,12 @@ export function SidebarContextMenu({
           >
             {state.chatId != null && chats.find((c) => c.id === state.chatId)?.is_pinned ? (
               <>
-                <PinOff style={{ width: "13px", height: "13px" }} />
+                <PinOff style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
                 <span>{t("sidebar.unpin")}</span>
               </>
             ) : (
               <>
-                <Pin style={{ width: "13px", height: "13px" }} />
+                <Pin style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
                 <span>{t("sidebar.pin")}</span>
               </>
             )}
@@ -146,13 +168,13 @@ export function SidebarContextMenu({
             className="ctx-menu-item"
             style={menuItemStyle}
           >
-            <Archive style={{ width: "13px", height: "13px" }} />
+            <Archive style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
             <span>{t("sidebar.archive")}</span>
           </button>
           <div style={{
             height: "1px",
             background: "var(--border-secondary)",
-            margin: "3px 0",
+            margin: "4px 2px",
           }} />
           <button
             onClick={() => {
@@ -161,7 +183,7 @@ export function SidebarContextMenu({
             className="ctx-menu-item"
             style={{ ...menuItemStyle, color: "var(--color-error)" }}
           >
-            <Trash2 style={{ width: "13px", height: "13px" }} />
+            <Trash2 style={{ width: "14px", height: "14px", flexShrink: 0 }} />
             <span>{t("sidebar.delete")}</span>
           </button>
         </>
@@ -174,14 +196,9 @@ export function SidebarContextMenu({
             className="ctx-menu-item"
             style={menuItemStyle}
           >
-            <FolderOpen style={{ width: "13px", height: "13px" }} />
+            <FolderOpen style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
             <span>{t("sidebar.openProjectFolder")}</span>
           </button>
-          <div style={{
-            height: "1px",
-            background: "var(--border-secondary)",
-            margin: "3px 0",
-          }} />
           <button
             onClick={() => {
               if (state.projectId != null) onPinProject(state.projectId);
@@ -191,12 +208,12 @@ export function SidebarContextMenu({
           >
             {state.projectId != null && projects.find((p) => p.id === state.projectId)?.is_pinned ? (
               <>
-                <PinOff style={{ width: "13px", height: "13px" }} />
+                <PinOff style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
                 <span>{t("sidebar.unpin")}</span>
               </>
             ) : (
               <>
-                <Pin style={{ width: "13px", height: "13px" }} />
+                <Pin style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
                 <span>{t("sidebar.pin")}</span>
               </>
             )}
@@ -208,13 +225,13 @@ export function SidebarContextMenu({
             className="ctx-menu-item"
             style={menuItemStyle}
           >
-            <Archive style={{ width: "13px", height: "13px" }} />
+            <Archive style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
             <span>{t("sidebar.archive")}</span>
           </button>
           <div style={{
             height: "1px",
             background: "var(--border-secondary)",
-            margin: "3px 0",
+            margin: "4px 2px",
           }} />
           <button
             onClick={() => {
@@ -223,7 +240,7 @@ export function SidebarContextMenu({
             className="ctx-menu-item"
             style={{ ...menuItemStyle, color: "var(--color-error)" }}
           >
-            <Trash2 style={{ width: "13px", height: "13px" }} />
+            <Trash2 style={{ width: "14px", height: "14px", flexShrink: 0 }} />
             <span>{t("sidebar.delete")}</span>
           </button>
         </>

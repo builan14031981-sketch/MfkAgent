@@ -12,7 +12,7 @@ Phase H (super_enhance_20260818):
 import fnmatch
 import os
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from app.core.sandbox import SandboxViolation, resolve_sandbox_path
 from app.core.sanitize import sanitize_filename
@@ -211,18 +211,61 @@ def find_files(
     return f"找到 {len(matches)} 个匹配文件（上限 {max_results}）：\n" + "\n".join(matches)
 
 
+def _find_tolerant_replacement(content: str, old_text: str, new_text: str) -> Optional[Tuple[str, str]]:
+    """尝试容错匹配替换：换行符归一化 / 行级缩进容错。
+    返回 (updated_content, strategy_name) 或 None。
+    """
+    # 策略 1: 换行符归一化 (CRLF <-> LF)
+    c_norm = content.replace("\r\n", "\n")
+    o_norm = old_text.replace("\r\n", "\n")
+    n_norm = new_text.replace("\r\n", "\n")
+    if c_norm.count(o_norm) == 1:
+        has_crlf = "\r\n" in content
+        updated_norm = c_norm.replace(o_norm, n_norm, 1)
+        if has_crlf:
+            updated_norm = updated_norm.replace("\n", "\r\n")
+        return updated_norm, "换行符归一化匹配"
+
+    # 策略 2: 行级空白与缩进容错匹配
+    old_lines = [line.strip() for line in o_norm.split("\n") if line.strip()]
+    if not old_lines:
+        return None
+
+    c_lines = content.splitlines(keepends=True)
+    c_stripped = [line.strip() for line in c_lines]
+
+    m = len(old_lines)
+    matches = []
+    for i in range(len(c_lines) - m + 1):
+        window = [line for line in c_stripped[i : i + m] if line]
+        if window == old_lines:
+            matches.append((i, i + m))
+
+    if len(matches) == 1:
+        start_idx, end_idx = matches[0]
+        before = "".join(c_lines[:start_idx])
+        after = "".join(c_lines[end_idx:])
+        sep = "\r\n" if "\r\n" in content else "\n"
+        n_clean = new_text.rstrip("\r\n")
+        updated = before + n_clean + (sep if after else "") + after
+        return updated, "行级缩进容错匹配"
+
+    return None
+
+
 def edit_file(
     project_path: str,
     relative_path: str,
     old_text: str,
     new_text: str,
 ) -> str:
-    """增量替换文件中的一段文本（唯一匹配），写后回读校验。
+    """增量替换文件中的一段文本（唯一匹配），支持换行符/缩进容错匹配，写后回读校验。
 
-    Phase H: 精确替换而非整文件重写：
-      - old_text 必须与文件内容完全一致（含缩进/空白）
-      - 匹配 0 次 → 报错（不落盘）；匹配多次 → 报错要求提供更多上下文消歧
-      - 写后立即回读比对（防 R5 实证的"write_file 内容与落盘不一致"浪费多轮）
+    Phase H + 生产级容错增强：
+      - 优先精确替换
+      - 精确匹配未命中时，自动进入换行符标准化 (CRLF/LF) 与缩进行容错匹配
+      - 仍无法唯一匹配或出现多处歧义 → 明确报错
+      - 写后立即回读比对检验落盘
     """
     if not old_text:
         raise ToolExecutionError("old_text 不能为空")
@@ -232,19 +275,26 @@ def edit_file(
     with open(target, "r", encoding="utf-8") as f:
         content = f.read()
 
+    match_strategy = "精确匹配"
     count = content.count(old_text)
-    if count == 0:
-        raise ToolExecutionError(
-            f"在 {relative_path} 中未找到要替换的文本。请确认 old_text 与文件内容完全一致"
-            "（注意缩进、空白、换行符），可先 read_file 读取文件再构造精确片段。"
-        )
-    if count > 1:
+    if count == 1:
+        updated = content.replace(old_text, new_text, 1)
+    elif count == 0:
+        # 尝试容错匹配
+        tolerant_res = _find_tolerant_replacement(content, old_text, new_text)
+        if tolerant_res is not None:
+            updated, match_strategy = tolerant_res
+        else:
+            raise ToolExecutionError(
+                f"在 {relative_path} 中未找到要替换的文本。请确认 old_text 与文件内容大体一致，"
+                "可先 read_file 读取文件再构造精确片段。"
+            )
+    else:
         raise ToolExecutionError(
             f"old_text 在 {relative_path} 中出现 {count} 次，存在歧义。"
             "请扩大 old_text 范围（包含相邻行）使匹配唯一。"
         )
 
-    updated = content.replace(old_text, new_text)
     with open(target, "w", encoding="utf-8") as f:
         f.write(updated)
     with open(target, "r", encoding="utf-8") as f:
@@ -252,7 +302,7 @@ def edit_file(
     if verify != updated:
         raise ToolExecutionError(f"写入校验失败：{relative_path} 落盘内容与预期不一致，请重试")
     return (
-        f"已更新 {relative_path}：替换 1 处（{len(content)} → {len(updated)} 字符），"
+        f"已更新 {relative_path}：通过[{match_strategy}]替换 1 处（{len(content)} → {len(updated)} 字符），"
         "写入回读校验通过。"
     )
 

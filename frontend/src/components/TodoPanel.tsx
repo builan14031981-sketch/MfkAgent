@@ -13,6 +13,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { Check, Trash2, ChevronRight, ListTodo, Plus } from "lucide-react";
 import { useTodos, type Todo } from "@/hooks/useTodos";
 import { useTranslation } from "@/hooks/useTranslation";
+import { Tooltip } from "./Tooltip";
 
 const TODO_COLLAPSED_KEY = "mfk_todo_collapsed";
 const TODO_SHOW_COMPLETED_KEY = "mfk_todo_show_completed";
@@ -184,16 +185,16 @@ export function TodoPanel({
       style={{
         display: "flex",
         flexDirection: "column",
-        background: "var(--bg-level-2)",
-        border: "1px solid var(--border-primary)",
-        borderRadius: "var(--radius-lg)",
-        padding: "4px 6px",
-        boxShadow: "var(--shadow-sm)",
+        background: collapsed ? "transparent" : "var(--bg-level-2)",
+        border: collapsed ? "1px solid transparent" : "1px solid var(--border-primary)",
+        borderRadius: "4px",
+        padding: "1px 2px",
+        transition: "background 0.15s ease, border-color 0.15s ease",
       }}
     >
       {/* 折叠 Header */}
       {!hideHeader && (
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
           <button
             onClick={() => {
               setCollapsed((c) => {
@@ -209,12 +210,13 @@ export function TodoPanel({
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
+              gap: "5px",
               flex: 1,
               minWidth: 0,
-              padding: "5px 8px",
+              height: "26px",
+              padding: "0 6px",
               border: "none",
-              borderRadius: "var(--radius-md)",
+              borderRadius: "4px",
               background: "transparent",
               cursor: "pointer",
               outline: "none",
@@ -237,12 +239,12 @@ export function TodoPanel({
                 transition: "transform var(--transition-fast)",
               }}
             />
-            <ListTodo style={{ width: "13px", height: "13px", color: "var(--color-primary)", flexShrink: 0 }} />
+            <ListTodo style={{ width: "14px", height: "14px", color: "var(--text-level-3)", flexShrink: 0 }} />
             <span
               style={{
                 fontSize: "12px",
-                fontWeight: 600,
-                color: "var(--text-level-1)",
+                fontWeight: 500,
+                color: "var(--text-level-2)",
                 whiteSpace: "nowrap",
               }}
             >
@@ -252,15 +254,15 @@ export function TodoPanel({
               <span
                 style={{
                   marginLeft: "auto",
-                  minWidth: "16px",
-                  height: "16px",
-                  padding: "0 5px",
-                  borderRadius: "8px",
-                  background: "var(--color-primary)",
-                  color: "#ffffff",
+                  minWidth: "15px",
+                  height: "15px",
+                  padding: "0 4px",
+                  borderRadius: "3px",
+                  background: "var(--bg-level-4)",
+                  color: "var(--text-level-2)",
                   fontSize: "10px",
                   fontWeight: 600,
-                  lineHeight: "16px",
+                  lineHeight: "15px",
                   textAlign: "center",
                   flexShrink: 0,
                 }}
@@ -270,38 +272,40 @@ export function TodoPanel({
             )}
           </button>
 
-          <button
-            onClick={() => {
-              setCollapsed(false);
-              requestAnimationFrame(() => inputRef.current?.focus());
-            }}
-            title={t("todo.add")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "22px",
-              height: "22px",
-              borderRadius: "var(--radius-md)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              color: "var(--text-level-4)",
-              flexShrink: 0,
-              padding: 0,
-              outline: "none",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-level-3)";
-              e.currentTarget.style.color = "var(--color-primary)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--text-level-4)";
-            }}
-          >
-            <Plus style={{ width: "13px", height: "13px" }} />
-          </button>
+          <Tooltip content={t("todo.add")} side="top">
+            <button
+              onClick={() => {
+                setCollapsed(false);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "22px",
+                height: "22px",
+                borderRadius: "4px",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--text-level-4)",
+                flexShrink: 0,
+                padding: 0,
+                outline: "none",
+                transition: "background 0.12s ease, color 0.12s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-3)";
+                e.currentTarget.style.color = "var(--text-level-1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--text-level-4)";
+              }}
+            >
+              <Plus style={{ width: "13px", height: "13px" }} />
+            </button>
+          </Tooltip>
         </div>
       )}
 
@@ -317,129 +321,14 @@ export function TodoPanel({
           transition: "max-height 0.2s ease, opacity 0.2s ease",
         }}
       >
-        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, padding: "2px 2px" }}>
-          {loading ? (
-            <div style={{ padding: "6px 8px", textAlign: "center" }}>
-              <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>{t("common.loading")}</span>
-            </div>
-          ) : (
-            todos.map((todo) => {
-              const isCompleting = completingIds.has(todo.id);
-              return (
-                <PendingRow
-                  key={todo.id}
-                  todo={todo}
-                  isCompleting={isCompleting}
-                  onComplete={handleToggleComplete}
-                  onDelete={handleDelete}
-                  t={t}
-                />
-              );
-            })
-          )}
-
-          {/* 已完成列表折叠头 */}
-          {completedTodos.length > 0 && (
-            <div
-              style={{
-                borderTop: "1px solid var(--border-secondary)",
-                margin: "4px 4px 2px",
-                paddingTop: "4px",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <button
-                  onClick={handleToggleCompleted}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    color: "var(--text-level-4)",
-                    fontSize: "11px",
-                    padding: "2px 4px",
-                    borderRadius: "var(--radius-sm)",
-                    outline: "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--text-level-2)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-level-4)";
-                  }}
-                >
-                  <ChevronRight
-                    style={{
-                      width: "10px",
-                      height: "10px",
-                      transform: showCompleted ? "rotate(90deg)" : "rotate(0deg)",
-                      transition: "transform 0.15s ease",
-                    }}
-                  />
-                  <span>
-                    {showCompleted
-                      ? t("todo.hideCompleted")
-                      : `${t("todo.viewCompleted")} (${completedTodos.length})`}
-                  </span>
-                </button>
-
-                <button
-                  onClick={handleClearCompleted}
-                  title={t("todo.clearCompleted")}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "3px",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    color: "var(--text-level-4)",
-                    fontSize: "10.5px",
-                    padding: "2px 4px",
-                    borderRadius: "var(--radius-sm)",
-                    outline: "none",
-                    opacity: 0.8,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--color-error)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "var(--text-level-4)";
-                  }}
-                >
-                  <Trash2 style={{ width: "10px", height: "10px" }} />
-                  <span>{t("todo.clearCompleted")}</span>
-                </button>
-              </div>
-
-              {showCompleted &&
-                completedTodos.map((todo) => {
-                  const isReverting = revertingIds.has(todo.id);
-                  return (
-                    <CompletedRow
-                      key={todo.id}
-                      todo={todo}
-                      isReverting={isReverting}
-                      onRevert={handleToggleRevert}
-                      onDelete={handleDelete}
-                      t={t}
-                    />
-                  );
-                })}
-            </div>
-          )}
-        </div>
-
-        {/* 底部内嵌输入框 */}
+        {/* 顶部新增待办输入框：置顶第一行，触手可及 */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "6px",
             padding: "4px 8px 4px 6px",
-            borderTop: "1px solid var(--border-secondary)",
+            borderBottom: "1px solid var(--border-secondary)",
             flexShrink: 0,
           }}
         >
@@ -481,8 +370,8 @@ export function TodoPanel({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: "18px",
-                height: "18px",
+                width: "20px",
+                height: "20px",
                 borderRadius: "var(--radius-sm)",
                 border: "none",
                 background: "var(--color-primary)",
@@ -493,8 +382,125 @@ export function TodoPanel({
                 outline: "none",
               }}
             >
-              <Check style={{ width: "11px", height: "11px", strokeWidth: 3 }} />
+              <Check style={{ width: "12px", height: "12px", strokeWidth: 2.5 }} />
             </button>
+          )}
+        </div>
+
+        {/* 待办列表内容区 */}
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, padding: "2px 2px" }}>
+          {loading ? (
+            <div style={{ padding: "6px 8px", textAlign: "center" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-level-4)" }}>{t("common.loading")}</span>
+            </div>
+          ) : (
+            todos.map((todo) => {
+              const isCompleting = completingIds.has(todo.id);
+              return (
+                <PendingRow
+                  key={todo.id}
+                  todo={todo}
+                  isCompleting={isCompleting}
+                  onComplete={handleToggleComplete}
+                  onDelete={handleDelete}
+                  t={t}
+                />
+              );
+            })
+          )}
+
+          {/* 已完成列表折叠头 */}
+          {completedTodos.length > 0 && (
+            <div
+              style={{
+                borderTop: "1px solid var(--border-secondary)",
+                margin: "4px 4px 2px",
+                paddingTop: "4px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <button
+                  onClick={handleToggleCompleted}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    color: "var(--text-level-3)",
+                    fontSize: "11px",
+                    padding: "2px 4px",
+                    borderRadius: "var(--radius-sm)",
+                    outline: "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--text-level-1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-level-3)";
+                  }}
+                >
+                  <ChevronRight
+                    style={{
+                      width: "12px",
+                      height: "12px",
+                      transform: showCompleted ? "rotate(90deg)" : "rotate(0deg)",
+                      transition: "transform 0.15s ease",
+                    }}
+                  />
+                  <span>
+                    {showCompleted
+                      ? t("todo.hideCompleted")
+                      : `${t("todo.viewCompleted")} (${completedTodos.length})`}
+                  </span>
+                </button>
+
+                <Tooltip content={t("todo.clearCompleted")} side="top">
+                  <button
+                    onClick={handleClearCompleted}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      color: "var(--text-level-3)",
+                      fontSize: "11px",
+                      padding: "2px 4px",
+                      borderRadius: "var(--radius-sm)",
+                      outline: "none",
+                      opacity: 0.8,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--color-error)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--text-level-3)";
+                    }}
+                  >
+                    <Trash2 style={{ width: "12px", height: "12px" }} />
+                    <span>{t("todo.clearCompleted")}</span>
+                  </button>
+                </Tooltip>
+              </div>
+
+              {showCompleted &&
+                completedTodos.map((todo) => {
+                  const isReverting = revertingIds.has(todo.id);
+                  return (
+                    <CompletedRow
+                      key={todo.id}
+                      todo={todo}
+                      isReverting={isReverting}
+                      onRevert={handleToggleRevert}
+                      onDelete={handleDelete}
+                      t={t}
+                    />
+                  );
+                })}
+            </div>
           )}
         </div>
       </div>
@@ -537,36 +543,37 @@ function PendingRow({
       }}
     >
       {/* 圆形 Checkbox */}
-      <button
-        onClick={() => onComplete(todo.id)}
-        disabled={isCompleting}
-        title={t("todo.complete")}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "15px",
-          height: "15px",
-          borderRadius: "50%",
-          border: isCompleting ? "1.5px solid var(--color-primary)" : "1.5px solid var(--text-level-4)",
-          background: isCompleting ? "color-mix(in srgb, var(--color-primary) 15%, transparent)" : "transparent",
-          cursor: "pointer",
-          flexShrink: 0,
-          padding: 0,
-          outline: "none",
-          transition: "all 0.15s ease",
-        }}
-      >
-        {isCompleting && <Check style={{ width: "9px", height: "9px", color: "var(--color-primary)" }} />}
-      </button>
+      <Tooltip content={t("todo.complete")} side="top">
+        <button
+          onClick={() => onComplete(todo.id)}
+          disabled={isCompleting}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "16px",
+            height: "16px",
+            borderRadius: "50%",
+            border: isCompleting ? "1.5px solid var(--color-primary)" : "1.5px solid var(--text-level-3)",
+            background: isCompleting ? "color-mix(in srgb, var(--color-primary) 15%, transparent)" : "transparent",
+            cursor: "pointer",
+            flexShrink: 0,
+            padding: 0,
+            outline: "none",
+            transition: "all 0.15s ease",
+          }}
+        >
+          {isCompleting && <Check style={{ width: "10.5px", height: "10.5px", color: "var(--color-primary)", strokeWidth: 2.5 }} />}
+        </button>
+      </Tooltip>
 
       {/* 文本 */}
       <span
         style={{
           flex: 1,
-          fontSize: "12px",
+          fontSize: "12.5px",
           lineHeight: 1.4,
-          color: "var(--text-level-2)",
+          color: "var(--text-level-1)",
           textDecoration: isCompleting ? "line-through" : "none",
           wordBreak: "break-word",
           minWidth: 0,
@@ -576,31 +583,32 @@ function PendingRow({
       </span>
 
       {/* 垃圾桶按钮：Hover 显形 */}
-      <button
-        onClick={() => onDelete(todo.id)}
-        onMouseEnter={() => setDelHovered(true)}
-        onMouseLeave={() => setDelHovered(false)}
-        title={t("common.delete")}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "18px",
-          height: "18px",
-          borderRadius: "var(--radius-sm)",
-          border: "none",
-          background: delHovered ? "color-mix(in srgb, var(--color-error) 15%, transparent)" : "transparent",
-          cursor: "pointer",
-          color: delHovered ? "var(--color-error)" : "var(--text-level-4)",
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.12s ease, color 0.12s ease, background 0.12s ease",
-          flexShrink: 0,
-          padding: 0,
-          outline: "none",
-        }}
-      >
-        <Trash2 style={{ width: "11px", height: "11px" }} />
-      </button>
+      <Tooltip content={t("common.delete")} side="top">
+        <button
+          onClick={() => onDelete(todo.id)}
+          onMouseEnter={() => setDelHovered(true)}
+          onMouseLeave={() => setDelHovered(false)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "20px",
+            height: "20px",
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            background: delHovered ? "color-mix(in srgb, var(--color-error) 15%, transparent)" : "transparent",
+            cursor: "pointer",
+            color: delHovered ? "var(--color-error)" : "var(--text-level-3)",
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.12s ease, color 0.12s ease, background 0.12s ease",
+            flexShrink: 0,
+            padding: 0,
+            outline: "none",
+          }}
+        >
+          <Trash2 style={{ width: "13px", height: "13px" }} />
+        </button>
+      </Tooltip>
     </div>
   );
 }
@@ -639,36 +647,36 @@ function CompletedRow({
         marginBottom: "2px",
       }}
     >
-      <button
-        onClick={() => onRevert(todo.id)}
-        disabled={isReverting}
-        title="点击撤回待办"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "14px",
-          height: "14px",
-          borderRadius: "50%",
-          border: isReverting ? "1.5px solid var(--text-level-4)" : "1.5px solid var(--color-primary)",
-          background: isReverting ? "transparent" : "color-mix(in srgb, var(--color-primary) 12%, transparent)",
-          cursor: "pointer",
-          flexShrink: 0,
-          padding: 0,
-          outline: "none",
-        }}
-      >
-        {!isReverting && <Check style={{ width: "9px", height: "9px", color: "var(--color-primary)" }} />}
-      </button>
+      <Tooltip content="撤回待办" side="top">
+        <button
+          onClick={() => onRevert(todo.id)}
+          disabled={isReverting}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "16px",
+            height: "16px",
+            borderRadius: "50%",
+            border: isReverting ? "1.5px solid var(--text-level-3)" : "1.5px solid var(--color-primary)",
+            background: isReverting ? "transparent" : "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+            cursor: "pointer",
+            flexShrink: 0,
+            padding: 0,
+            outline: "none",
+          }}
+        >
+          {!isReverting && <Check style={{ width: "10.5px", height: "10.5px", color: "var(--color-primary)", strokeWidth: 2.5 }} />}
+        </button>
+      </Tooltip>
 
       <span
         onDoubleClick={() => onRevert(todo.id)}
-        title="双击撤回待办"
         style={{
           flex: 1,
-          fontSize: "11.5px",
+          fontSize: "12px",
           lineHeight: 1.4,
-          color: isReverting ? "var(--text-level-2)" : "var(--text-level-4)",
+          color: isReverting ? "var(--text-level-1)" : "var(--text-level-4)",
           textDecoration: isReverting ? "none" : "line-through",
           wordBreak: "break-word",
           minWidth: 0,
@@ -678,31 +686,32 @@ function CompletedRow({
         {todo.title}
       </span>
 
-      <button
-        onClick={() => onDelete(todo.id)}
-        onMouseEnter={() => setDelHovered(true)}
-        onMouseLeave={() => setDelHovered(false)}
-        title={t("common.delete")}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "18px",
-          height: "18px",
-          borderRadius: "var(--radius-sm)",
-          border: "none",
-          background: delHovered ? "color-mix(in srgb, var(--color-error) 15%, transparent)" : "transparent",
-          cursor: "pointer",
-          color: delHovered ? "var(--color-error)" : "var(--text-level-4)",
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.12s ease, color 0.12s ease, background 0.12s ease",
-          flexShrink: 0,
-          padding: 0,
-          outline: "none",
-        }}
-      >
-        <Trash2 style={{ width: "10px", height: "10px" }} />
-      </button>
+      <Tooltip content={t("common.delete")} side="top">
+        <button
+          onClick={() => onDelete(todo.id)}
+          onMouseEnter={() => setDelHovered(true)}
+          onMouseLeave={() => setDelHovered(false)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "20px",
+            height: "20px",
+            borderRadius: "var(--radius-sm)",
+            border: "none",
+            background: delHovered ? "color-mix(in srgb, var(--color-error) 15%, transparent)" : "transparent",
+            cursor: "pointer",
+            color: delHovered ? "var(--color-error)" : "var(--text-level-3)",
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.12s ease, color 0.12s ease, background 0.12s ease",
+            flexShrink: 0,
+            padding: 0,
+            outline: "none",
+          }}
+        >
+          <Trash2 style={{ width: "13px", height: "13px" }} />
+        </button>
+      </Tooltip>
     </div>
   );
 }

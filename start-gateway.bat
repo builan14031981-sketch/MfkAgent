@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 title CLIProxyAPI 网关一键启动
 
@@ -12,6 +12,7 @@ set "GATEWAY_PATH=C:\CLIProxyAPI\cli-proxy-api.exe"
 set "GATEWAY_DIR=C:\CLIProxyAPI"
 set "GATEWAY_PORT=8317"
 set "GATEWAY_URL=http://127.0.0.1:8317/management.html"
+set "PROXY_PORT=10808"
 :: ============================
 
 :: [1/3] 启动 V2Ray 代理
@@ -21,15 +22,32 @@ tasklist /fi "imagename eq v2rayN.exe" 2>nul | findstr /i "v2rayN.exe" >nul
 if %errorlevel% equ 0 goto v2ray_running
 if not exist "%V2RAY_PATH%" goto v2ray_notfound
 start "" "%V2RAY_PATH%"
-echo   V2Ray 已启动
-echo   等待代理初始化 3秒...
-timeout /t 3 /nobreak >nul
-goto v2ray_done
+echo   V2Ray 已启动，等待代理端口就绪...
+goto v2ray_wait
 :v2ray_notfound
 echo   [警告] 未找到 V2Ray，请手动确认代理已开启
-goto v2ray_done
+goto v2ray_wait
 :v2ray_running
-echo   V2Ray 已在运行，跳过
+echo   V2Ray 已在运行
+:v2ray_wait
+:: 轮询等待 SOCKS 端口真正就绪。
+:: v2rayN 启动到 xray core 监听 10808 存在数秒延迟（实测可达 6 秒），
+:: 且"已在运行"分支也可能遇到 xray 未就绪/正在重启，必须等端口而非等进程，
+:: 否则网关启动时连接 10808 会被拒绝、模型清单拉取失败。
+echo   等待 SOCKS 端口 %PROXY_PORT% 就绪（最多 30 秒）...
+set /a tries=0
+:wait_socks
+netstat -ano | findstr ":%PROXY_PORT% " | findstr LISTENING >nul
+if not errorlevel 1 goto socks_ready
+set /a tries+=1
+if %tries% geq 30 goto socks_timeout
+timeout /t 1 /nobreak >nul
+goto wait_socks
+:socks_timeout
+echo   [警告] 代理端口 %PROXY_PORT% 未在 30 秒内就绪，请检查 V2Ray 是否正常
+goto v2ray_done
+:socks_ready
+echo   代理端口 %PROXY_PORT% 已就绪
 :v2ray_done
 
 :: [2/3] 启动 CLIProxyAPI 网关

@@ -782,12 +782,10 @@ export function useChatStream({
                 return { tasks: next };
               });
               // Phase 3 T3/T8: 任务完成/失败通知（仅用户离开时触发）
-              if (isUserAway()) {
-                if (evt.type === "task_completed") {
-                  showDesktopNotification("任务完成", node.action || "子任务已完成", { beep: "success", silent: true, persistent: false });
-                } else if (evt.type === "task_failed") {
-                  showDesktopNotification("任务失败", node.error || node.action || "子任务执行失败", { beep: "error", silent: true, persistent: true, chatId: targetChatId });
-                }
+              // 2026-09-03 修复：子任务逐个完成不再弹桌面通知（多步骤清单每完成一步弹一次太吵），
+              // 仅保留「失败」提醒（异常值得打断）；整轮完成通知由 onComplete 统一弹出。
+              if (isUserAway() && evt.type === "task_failed") {
+                showDesktopNotification("任务失败", node.error || node.action || "子任务执行失败", { beep: "error", silent: true, persistent: true, chatId: targetChatId });
               }
             }
           },

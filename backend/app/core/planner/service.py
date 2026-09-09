@@ -59,10 +59,9 @@ _STEP_TEMPLATES: Dict[str, List[PlanStep]] = {
         PlanStep("查看历史记录确认上下文", ["git_log"]),
         PlanStep("执行提交/恢复等操作", ["git_commit", "git_restore"]),
     ],
+    # 搜索操作降为单步：多步模板（搜索→筛选→汇总）会诱导模型逐步骤重复向用户输出回答
     "web_search": [
-        PlanStep("搜索相关资料", ["web_search"]),
-        PlanStep("阅读并筛选关键来源", ["fetch_url"]),
-        PlanStep("汇总为结论", []),
+        PlanStep("搜索并整理用户所需信息", ["web_search", "query_market", "fetch_url"]),
     ],
     # 记忆操作降为单步：多步模板会诱导模型逐条重复调用 add_memory，
     # 且步骤名含“写入”曾触发 rule_write_detected 误判（见 completion/rules.py）

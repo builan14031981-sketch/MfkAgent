@@ -8,6 +8,7 @@ import type { OrbStage } from "@/lib/streamStore";
 import { ThinkingOrb } from "thinking-orbs";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatRelativeTime, formatFullTime, useNowTick } from "@/lib/timeFormat";
+import { Tooltip } from "../Tooltip";
 
 interface ChatRowProps {
   chat: Chat;
@@ -60,14 +61,14 @@ export const ChatRow = memo(function ChatRow({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        // 豆包风格：行高更大，圆角更明显
-        padding: `7px 12px 7px ${indented ? "32px" : "12px"}`,
-        borderRadius: "8px",
+        // ZCode 风格：紧凑规整，28px 标准行高
+        padding: `4px 8px 4px ${indented ? "24px" : "8px"}`,
+        height: "28px",
+        borderRadius: "4px",
         background: isActive ? "var(--sidebar-active-bg)" : "transparent",
-        boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06)" : "none",
         cursor: "pointer",
-        marginBottom: "2px",
-        transition: "background var(--transition-fast), box-shadow var(--transition-fast)",
+        marginBottom: "1px",
+        transition: "background var(--transition-fast)",
       }}
       onClick={() => !isRenaming && router.push(`/chat/${chat.id}`)}
       onContextMenu={(e) => onContextMenu(e, chat.id)}
@@ -80,7 +81,7 @@ export const ChatRow = memo(function ChatRow({
           : "transparent";
       }}
       onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.98)";
+        e.currentTarget.style.transform = "scale(0.99)";
       }}
       onMouseUp={(e) => {
         e.currentTarget.style.transform = "scale(1)";
@@ -90,7 +91,7 @@ export const ChatRow = memo(function ChatRow({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "6px",
           flex: 1,
           overflow: "hidden",
           minWidth: 0,
@@ -99,8 +100,8 @@ export const ChatRow = memo(function ChatRow({
         {isPinned && (
           <Pin
             style={{
-              width: "var(--sidebar-icon-size-sm)",
-              height: "var(--sidebar-icon-size-sm)",
+              width: "12px",
+              height: "12px",
               flexShrink: 0,
               color: "var(--sidebar-active-fg)",
             }}
@@ -124,109 +125,89 @@ export const ChatRow = memo(function ChatRow({
               autoFocus
               style={{
                 width: "100%",
-                fontSize: "13px",
-                lineHeight: "var(--line-height-normal)",
-                color: "var(--text-level-2)",
+                fontSize: "12.5px",
+                lineHeight: "1.2",
+                color: "var(--text-level-1)",
                 background: "var(--bg-level-2)",
                 border: "1px solid var(--sidebar-active-fg)",
-                borderRadius: "var(--radius-xs)",
-                padding: "2px 6px",
+                borderRadius: "3px",
+                padding: "1px 4px",
                 outline: "none",
               }}
             />
           ) : (
-            <>
-              <span
-                style={{
-                  display: "block",
-                  fontSize: "14px",
-                  fontWeight: isActive ? 600 : 500,
-                  lineHeight: 1.4,
-                  color: isActive
-                    ? "var(--sidebar-active-fg)"
-                    : "var(--text-level-1)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {chat.title}
-              </span>
-              {chat.summary && (
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: "11px",
-                    lineHeight: 1.3,
-                    color: "var(--text-level-4)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    marginTop: "1px",
-                  }}
-                >
-                  {chat.summary}
-                </span>
-              )}
-            </>
+            <span
+              style={{
+                display: "block",
+                fontSize: "12.5px",
+                fontWeight: isActive ? 600 : 400,
+                lineHeight: 1.3,
+                color: isActive
+                  ? "var(--sidebar-active-fg)"
+                  : "var(--text-level-1)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {chat.title}
+            </span>
           )}
         </div>
       </div>
       {/* 右侧操作区：时间 + 更多按钮，容器负 margin 抵消 padding-right 贴边 */}
-      <div style={{ display: "flex", alignItems: "center", gap: "4px", marginRight: "-8px", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }}>
       {/* 2026-08-20：最后交互时间移到整行最右侧，tabular-nums 缩放稳定，重命名时隐藏 */}
       {!isRenaming && chat.updated_at && (
-        <span
-          title={formatFullTime(chat.updated_at)}
-          style={{
-            fontSize: "10px",
-            lineHeight: 1,
-            color: "var(--text-level-4)",
-            fontVariantNumeric: "tabular-nums",
-            whiteSpace: "nowrap",
-            flexShrink: 0,
-          }}
-        >
-          {formatRelativeTime(chat.updated_at, t, now)}
-        </span>
+        <Tooltip content={formatFullTime(chat.updated_at)} side="top">
+          <span
+            style={{
+              fontSize: "10px",
+              lineHeight: 1,
+              color: "var(--text-level-4)",
+              fontVariantNumeric: "tabular-nums",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              cursor: "default",
+            }}
+          >
+            {formatRelativeTime(chat.updated_at, t, now)}
+          </span>
+        </Tooltip>
       )}
-      {/* ... 按钮：22×22 / 圆角 radius-sm / 默认 opacity 0 */}
-      <button
-        onClick={(e) => onMore(e, chat.id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "var(--sidebar-btn-size)",
-          height: "var(--sidebar-btn-size)",
-          borderRadius: "var(--radius-sm)",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          color: "var(--text-level-3)",
-          flexShrink: 0,
-          opacity: 0,
-          transition: "opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast)",
-          outline: "none",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.opacity = "1";
-          e.currentTarget.style.background = "var(--bg-level-3)";
-          e.currentTarget.style.color = "var(--text-level-1)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = "0";
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = "var(--text-level-3)";
-        }}
-      >
-        <MoreHorizontal
+      {/* ... 按钮：20×20 / 圆角 3px / 默认 opacity 0 */}
+      <Tooltip content={t("sidebar.more")} side="top">
+        <button
+          onClick={(e) => onMore(e, chat.id)}
           style={{
-            width: "var(--sidebar-icon-size-sm)",
-            height: "var(--sidebar-icon-size-sm)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "20px",
+            height: "20px",
+            borderRadius: "3px",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            color: "var(--text-level-3)",
+            opacity: 0,
+            transition: "opacity var(--transition-fast), background var(--transition-fast)",
+            outline: "none",
+            padding: 0,
           }}
-        />
-      </button>
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-level-3)";
+            e.currentTarget.style.color = "var(--text-level-1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "var(--text-level-3)";
+          }}
+          className="sb-btn--more"
+        >
+          <MoreHorizontal style={{ width: "13px", height: "13px" }} />
+        </button>
+      </Tooltip>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { Plus, X, Copy, ArrowRightToLine, Ban, PanelRightClose, PanelRightOpen }
 import { useTabStore } from "@/lib/tabStore";
 import { useStreamStore } from "@/lib/streamStore";
 import { useDockStore } from "@/lib/dockStore";
+import { Tooltip } from "./Tooltip";
 
 interface ContextMenuState {
   visible: boolean;
@@ -378,13 +379,14 @@ export function ChatTabBar({ onNewChat, onRename }: ChatTabBarProps) {
                 )}
 
                 {/* 标签关闭按钮 */}
-                <button
-                  onClick={(e) => handleCloseTab(e, tab.chatId)}
-                  title="关闭标签页 (Ctrl+W)"
-                  className="chrome-tab-close"
-                >
-                  <X style={{ width: "11px", height: "11px" }} />
-                </button>
+                <Tooltip content="关闭标签页" shortcut="Ctrl+W" side="bottom">
+                  <button
+                    onClick={(e) => handleCloseTab(e, tab.chatId)}
+                    className="chrome-tab-close"
+                  >
+                    <X style={{ width: "13px", height: "13px" }} />
+                  </button>
+                </Tooltip>
 
                 {/* 非活跃标签间的微弱分割线 */}
                 {!isActive && !nextIsActive && <div className="chrome-tab-divider" />}
@@ -395,40 +397,42 @@ export function ChatTabBar({ onNewChat, onRename }: ChatTabBarProps) {
 
         {/* 新建标签页按钮 */}
         {onNewChat && (
-          <button
-            onClick={onNewChat}
-            title="新建对话标签 (Ctrl+N / Ctrl+T)"
-            className="chrome-tab-new"
-          >
-            <Plus style={{ width: "15px", height: "15px" }} />
-          </button>
+          <Tooltip content="新建对话" shortcut="Ctrl+T" side="bottom">
+            <button
+              onClick={onNewChat}
+              className="chrome-tab-new"
+            >
+              <Plus style={{ width: "15px", height: "15px" }} />
+            </button>
+          </Tooltip>
         )}
 
         {/* 竖向极细分割线 */}
         <div style={{ width: "1px", height: "14px", background: "var(--border-primary)", margin: "0 2px", alignSelf: "center" }} />
 
         {/* 右侧面板展开/收起切换按钮（与左侧侧边栏控制对称） */}
-        <button
-          onClick={() => {
-            if (isDockOpen) {
-              closeDock();
-            } else {
-              openDock();
-            }
-          }}
-          title={isDockOpen ? "收起右侧面板" : "展开右侧面板 (终端/产出物/浏览器)"}
-          className="chrome-tab-new"
-          style={{
-            color: isDockOpen ? "var(--color-primary)" : "var(--text-level-3)",
-            background: isDockOpen ? "color-mix(in srgb, var(--color-primary) 10%, transparent)" : "transparent",
-          }}
-        >
-          {isDockOpen ? (
-            <PanelRightClose style={{ width: "15px", height: "15px" }} />
-          ) : (
-            <PanelRightOpen style={{ width: "15px", height: "15px" }} />
-          )}
-        </button>
+        <Tooltip content={isDockOpen ? "收起右侧面板" : "展开右侧面板"} shortcut="Ctrl+`" side="bottom">
+          <button
+            onClick={() => {
+              if (isDockOpen) {
+                closeDock();
+              } else {
+                openDock();
+              }
+            }}
+            className="chrome-tab-new"
+            style={{
+              color: isDockOpen ? "var(--color-primary)" : "var(--text-level-3)",
+              background: isDockOpen ? "color-mix(in srgb, var(--color-primary) 10%, transparent)" : "transparent",
+            }}
+          >
+            {isDockOpen ? (
+              <PanelRightClose style={{ width: "15px", height: "15px" }} />
+            ) : (
+              <PanelRightOpen style={{ width: "15px", height: "15px" }} />
+            )}
+          </button>
+        </Tooltip>
       </div>
 
       {/* 右键上下文菜单 */}

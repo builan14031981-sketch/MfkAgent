@@ -23,7 +23,7 @@ import os
 import re
 import subprocess
 import time
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from app.core.tools import ToolExecutionError
 from app.core.sandbox import (
@@ -82,6 +82,63 @@ def _split_command(command: str) -> List[str]:
     return args
 
 
+def _truncate_output(text: str, max_chars: int = MAX_OUTPUT_CHARS) -> str:
+    """智能首尾截断输出：保留前 35% 启动参数与后 65% Traceback/最终报错结果。"""
+    if not text or len(text) <= max_chars:
+        return text
+    head_size = int(max_chars * 0.35)
+    tail_size = max_chars - head_size - 80
+    omitted = len(text) - head_size - tail_size
+    return f"{text[:head_size]}\n\n...[输出过长已折叠，中间省略 {omitted} 字符]...\n\n{text[-tail_size:]}"
+
+
+def _run_argv_pipeline(
+    command: str,
+    work_dir: str,
+    timeout: int,
+    env: Optional[dict] = None,
+) -> Tuple[int, str, str, str]:
+    """执行命令：对安全链式命令（如 npm test && npm run build）进行多段顺序执行。
+
+    Returns:
+        (returncode, stdout, stderr, display_cmd)
+    """
+    from app.core.tool_runtime.risk_engine import _try_parse_chain
+
+    parsed = _try_parse_chain(command)
+    if parsed is not None:
+        kind, segments = parsed
+        if len(segments) > 1:
+            all_stdout: List[str] = []
+            all_stderr: List[str] = []
+            last_rc = 0
+            for seg in segments:
+                seg_argv = _split_command(seg)
+                if not seg_argv:
+                    continue
+                proc = run_subprocess(seg_argv, cwd=work_dir, timeout=timeout, env=env)
+                last_rc = proc.returncode
+                out = decode_subprocess_output(proc.stdout) or ""
+                err = decode_subprocess_output(proc.stderr) or ""
+                if out:
+                    all_stdout.append(out)
+                if err:
+                    all_stderr.append(err)
+                if last_rc != 0:
+                    break
+            return last_rc, "\n".join(all_stdout), "\n".join(all_stderr), command
+
+    # 单段普通命令
+    argv = _split_command(command)
+    proc = run_subprocess(argv, cwd=work_dir, timeout=timeout, env=env)
+    return (
+        proc.returncode,
+        decode_subprocess_output(proc.stdout) or "",
+        decode_subprocess_output(proc.stderr) or "",
+        " ".join(argv),
+    )
+
+
 def run_command(
     project_path: str,
     command: str,
@@ -107,9 +164,6 @@ def run_command(
     if _CD_ESCAPE_RE.search(command):
         return "错误: 不支持 cd 切换到项目外目录（工作目录已锚定在项目内），请直接使用项目内相对命令"
 
-    # 解析命令行（支持双引号含空格参数）
-    argv = _split_command(command)
-
     # 确定工作目录：显式 cwd 优先（沙箱解析）→ 项目根（绑定项目时）→ 当前目录（系统级命令）
     if cwd and cwd.strip():
         try:
@@ -131,23 +185,20 @@ def run_command(
 
     timeout = max(1, min(int(timeout or TIMEOUT), 120))
     try:
-        proc = run_subprocess(argv, cwd=work_dir, timeout=timeout)
-    except FileNotFoundError:
-        return f"错误: 找不到命令 '{argv[0]}'（可能未安装或不在 PATH）"
+        rc, out, err, disp_cmd = _run_argv_pipeline(command, work_dir=work_dir, timeout=timeout)
+    except FileNotFoundError as e:
+        return f"错误: 找不到命令（可能未安装或不在 PATH）: {e}"
     except subprocess.TimeoutExpired:
         return f"错误: 命令执行超时（>{timeout}s），已终止"
     except Exception as e:
         return f"错误: 命令执行失败: {e}"
 
-    out = decode_subprocess_output(proc.stdout)
-    err = decode_subprocess_output(proc.stderr)
     combined = (out + ("\n" + err if err else "")).strip()
     if not combined:
         combined = "(无输出)"
 
-    prefix = f"$ {' '.join(argv)}\n[exit code {proc.returncode}]\n"
-    if len(combined) > MAX_OUTPUT_CHARS:
-        combined = combined[:MAX_OUTPUT_CHARS] + f"\n...(输出已截断，共 {len(combined)} 字符)"
+    prefix = f"$ {disp_cmd}\n[exit code {rc}]\n"
+    combined = _truncate_output(combined, max_chars=MAX_OUTPUT_CHARS)
     return prefix + combined
 
 
@@ -298,7 +349,7 @@ def execute_command(
 
     timeout = max(1, min(int(timeout or EXECUTE_TIMEOUT), 300))
     argv = _split_command(command)
-
+    first_cmd = argv[0] if argv else command
     start = time.monotonic()
     try:
         from app.core.proxy import resolve_proxy_env
@@ -312,11 +363,9 @@ def execute_command(
         exit_code = proc.returncode
         success = (exit_code == 0)
 
-        # 输出截断
-        if len(stdout) > EXECUTE_MAX_OUTPUT:
-            stdout = stdout[:EXECUTE_MAX_OUTPUT] + f"\n...(stdout 已截断，共 {len(stdout)} 字符)"
-        if len(stderr) > EXECUTE_MAX_OUTPUT:
-            stderr = stderr[:EXECUTE_MAX_OUTPUT] + f"\n...(stderr 已截断，共 {len(stderr)} 字符)"
+        # 智能首尾截断
+        stdout = _truncate_output(stdout, max_chars=EXECUTE_MAX_OUTPUT)
+        stderr = _truncate_output(stderr, max_chars=EXECUTE_MAX_OUTPUT)
 
         # Phase 4 T1: 写审计日志（双重 try/except 兜底，失败不影响主流程）
         try:
@@ -352,13 +401,13 @@ def execute_command(
                 exit_code=-1,
                 output_size=0,
                 success=False,
-                error_message=f"找不到命令 '{argv[0] if argv else ''}'（可能未安装或不在 PATH）",
+                error_message=f"找不到命令 '{first_cmd}'（可能未安装或不在 PATH）",
                 chat_id=chat_id,
                 agent_run_id=agent_run_id,
             )
         except Exception as audit_err:
             logger.warning("[execute_command] 审计日志写入异常（已吞掉）: %s", audit_err)
-        return json.dumps({"stdout": "", "stderr": f"找不到命令 '{argv[0]}'（可能未安装或不在 PATH）", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
+        return json.dumps({"stdout": "", "stderr": f"找不到命令 '{first_cmd}'（可能未安装或不在 PATH）", "exit_code": -1, "execution_time": round(elapsed_ms / 1000, 3)}, ensure_ascii=False)
     except subprocess.TimeoutExpired:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         try:

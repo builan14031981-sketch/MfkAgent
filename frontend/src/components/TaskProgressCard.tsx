@@ -40,7 +40,25 @@ function StatusIcon({ status }: { status: TaskStatus }) {
 /** Agent 角色 Badge（V2：统一中性灰阶，不再按角色分色） */
 function AgentBadge({ agent }: { agent: string }) {
   const colors = DEFAULT_BADGE;
-  const label = agent.replace(/_agent$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) || agent;
+  // 2026-09-03：unknown/default_agent 等兜底值显示为友好名「通用」，避免裸显 "Unknown" / "Default"
+  const safeAgent = (agent || "").trim();
+  const genericAgent = safeAgent === "unknown" || safeAgent === "unknown_agent" || safeAgent === "default_agent" || safeAgent === "default";
+  if (!safeAgent || genericAgent) {
+    return (
+      <span style={{
+        fontSize: "10px",
+        fontWeight: 600,
+        padding: "1px 6px",
+        borderRadius: "var(--radius-xs)",
+        background: colors.bg,
+        color: colors.color,
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+        lineHeight: "16px",
+      }}>通用</span>
+    );
+  }
+  const label = safeAgent.replace(/_agent$/, "").replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()) || safeAgent;
   return (
     <span style={{
       fontSize: "10px",

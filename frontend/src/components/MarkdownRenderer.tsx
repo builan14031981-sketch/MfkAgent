@@ -306,6 +306,114 @@ function isSummaryParagraph(text: string): boolean {
 
 /** 图片语法行（![alt](src)）：行级渲染为可点击放大的图片 */
 const IMAGE_LINE_RE = /^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/;
+// ──────────────────────────────────────────────────────────────────────────
+// Markdown 表格解析（GFM 管道表格）
+// ──────────────────────────────────────────────────────────────────────────
+
+/** 表格分隔行（| --- | --- | 或 | :--- | ---: | 等） */
+const TABLE_SEP_RE = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$/;
+
+/** 判断一行是否为表格数据行（含 | 且非分隔行） */
+function isTableRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return false;
+  if (TABLE_SEP_RE.test(trimmed)) return false;
+  return /^\s*\|.+\|\s*$/.test(trimmed) || /^\s*[^|]+\|/.test(trimmed);
+}
+
+/** 解析单元格内容：按 | 切分，去首尾空 */
+function splitTableCells(line: string): string[] {
+  const inner = line.trim().replace(/^\|/, "").replace(/\|$/, "");
+  return inner.split("|").map((c) => c.trim());
+}
+
+/** 判断是否为表格分隔行（用于定位表头） */
+function isTableSepRow(line: string): boolean {
+  return TABLE_SEP_RE.test(line.trim());
+}
+
+/** 渲染 Markdown 表格为带样式的 <table>（横向滚动容器内） */
+function TableBlock({ header, rows }: { header: string[]; rows: string[][] }) {
+  return (
+    <div style={{ margin: "8px 0", overflowX: "auto", maxWidth: "100%" }}>
+      <table
+        style={{
+          borderCollapse: "collapse",
+          width: "100%",
+          fontSize: "13px",
+          lineHeight: 1.5,
+          color: "var(--text-level-2)",
+        }}
+      >
+        {header.length > 0 && (
+          <thead>
+            <tr>
+              {header.map((h, hi) => (
+                <th
+                  key={hi}
+                  style={{
+                    textAlign: "left",
+                    padding: "6px 10px",
+                    borderBottom: "2px solid var(--border-primary)",
+                    fontWeight: 600,
+                    color: "var(--text-level-1)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {renderInline(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        )}
+        <tbody>
+          {rows.map((row, ri) => (
+            <tr key={ri}>
+              {row.map((cell, ci) => (
+                <td
+                  key={ci}
+                  style={{
+                    padding: "6px 10px",
+                    borderBottom: "1px solid var(--border-primary)",
+                    verticalAlign: "top",
+                  }}
+                >
+                  {renderInline(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** 从 startIdx 开始收集连续表格行，返回 { header, rows, consumed } */
+function parseTableBlock(lines: string[], startIdx: number): { header: string[]; rows: string[][]; consumed: number } | null {
+  if (startIdx >= lines.length) return null;
+  const first = lines[startIdx].trim();
+  if (!isTableRow(first)) return null;
+  // 第二行必须是分隔行（否则不是表格）
+  if (startIdx + 1 >= lines.length || !isTableSepRow(lines[startIdx + 1])) return null;
+
+  const header = splitTableCells(first);
+  const rows: string[][] = [];
+  let idx = startIdx + 2;
+  while (idx < lines.length) {
+    const line = lines[idx].trim();
+    if (line === "") break;
+    if (isTableSepRow(line)) { idx++; continue; }
+    if (isTableRow(line)) {
+      rows.push(splitTableCells(line));
+      idx++;
+    } else {
+      break;
+    }
+  }
+  return { header, rows, consumed: idx - startIdx };
+}
+
 
 /** 允许渲染的图片协议：http(s) 或站内相对路径（/ 开头），防止任意协议/本地盘符注入 */
 function isRenderableImageSrc(src: string): boolean {
@@ -513,6 +621,16 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content }: Mark
           out.push(<p key={key++} className="md-paragraph">{renderInline(trimmed)}</p>);
         }
         i++;
+        continue;
+      }
+
+      // Markdown 表格（GFM 管道表格）：表头 + 分隔行 + 数据行
+      const tableBlock = parseTableBlock(lines, i);
+      if (tableBlock) {
+        flushQuote();
+        flushParagraph();
+        out.push(<TableBlock key={key++} header={tableBlock.header} rows={tableBlock.rows} />);
+        i += tableBlock.consumed;
         continue;
       }
 

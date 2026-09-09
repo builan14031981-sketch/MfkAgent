@@ -53,7 +53,10 @@
     "noSearchResults": "没有匹配的对话",
     "pinned": "置顶",
     "projects": "项目",
-    "recent": "最近对话"
+    "recent": "最近对话",
+    "more": "更多操作",
+    "archiveProject": "归档项目",
+    "deleteProject": "删除项目"
   },
   "home": {
     "welcome": [
@@ -564,6 +567,21 @@
         "desc": "系统提供的 AI 工作伙伴",
         "systemPrompt": "系统提示词",
         "personality": "人格配置",
+        "expressionProfile": "表达配置",
+        "personalityLevel": "性格强度",
+        "identity": "身份设定",
+        "systemPromptHint": "系统提示词（决定该 Agent 的核心行为与专业能力）",
+        "foldPrompt": "折叠",
+        "expandPrompt": "展开",
+        "toolsHint": "可用工具",
+        "groups": {
+          "core": "核心团队",
+          "assist": "协作专家",
+          "sub": "子代理"
+        },
+        "groupCoreDesc": "通用开发、分析与审查核心智能体",
+        "groupAssistDesc": "文案、研究、导师等垂直领域专家",
+        "groupSubDesc": "由主智能体动态委派执行的后台轻量角色",
         "detail": "详情",
         "manage": "管理 Agent 列表",
         "backToSettings": "返回设置",
@@ -752,6 +770,18 @@
   },
   "memory": {
     "title": "长期记忆",
+    "types": {
+      "all": "全部",
+      "preference": "偏好",
+      "fact": "事实",
+      "workflow": "工作流",
+      "project": "项目规则",
+      "userPreference": "交流偏好",
+      "interactionPattern": "交流模式",
+      "relationshipNote": "交流痕迹",
+      "currentContext": "近期关注",
+      "unknown": "其他"
+    },
     "selectAgent": "选择 Agent",
     "selectProject": "选择项目",
     "selectProjectPlaceholder": "选择一个项目...",

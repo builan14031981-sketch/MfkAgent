@@ -824,7 +824,7 @@ TOOL_RISK_POLICY: Dict[str, Tuple[Verdict, RiskLevel, str]] = {
 READ_ONLY_TOOLS = frozenset({
     "read_file", "list_files", "find_files", "search_files",
     "git_status", "git_diff", "git_log", "git_branch_list", "git_remote", "git_fetch",
-    "web_search", "fetch_url", "github_search",
+    "web_search", "fetch_url", "github_search", "query_market",
     "date_time", "json_format",
     # 规格校验：只读文件做正则断言，无副作用，自动放行（弱模型防偏差护栏）
     "verify_spec",

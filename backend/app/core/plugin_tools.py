@@ -19,7 +19,7 @@ from typing import Set
 
 # 每个插件包含的工具（覆盖 PermissionFilter.BASE_TOOLS 全集，保证默认全开与现状一致）
 PLUGIN_TOOL_MAP: dict[str, Set[str]] = {
-    "web_search": {"web_search", "fetch_url", "github_search"},
+    "web_search": {"web_search", "fetch_url", "github_search", "query_market"},
     "code_execution": {"run_command", "execute_command"},
     "file_operations": {"read_file", "write_file", "list_files", "search_files", "find_files", "edit_file", "apply_patch"},
     "git": {

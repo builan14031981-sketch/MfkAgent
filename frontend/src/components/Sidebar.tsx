@@ -31,6 +31,7 @@ import { ProjectNode } from "./sidebar/ProjectNode";
 import { SidebarContextMenu, SidebarContextMenuState } from "./sidebar/SidebarContextMenu";
 import { ProjectCreateForm } from "./sidebar/ProjectCreateForm";
 import { TodoPanel } from "./TodoPanel";
+import { Tooltip } from "./Tooltip";
 
 // ── localStorage keys ──
 const COLLAPSED_PROJECTS_KEY = "mfk_sidebar_collapsed_projects";
@@ -110,6 +111,13 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
   const [collapsedProjectWorkspace, setCollapsedProjectWorkspace] = useState(false);
   const projectWorkspaceRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && /mac/i.test(navigator.platform || "")) {
+      setIsMac(true);
+    }
+  }, []);
 
   // 客户端挂载后从 localStorage 同步 UI 折叠状态（避免 SSR hydration mismatch）
   useEffect(() => {
@@ -521,50 +529,66 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
     }}>
       {/* 内容缩放包装：框架固定，只缩放内容 */}
       <div data-zoomable="sidebar-content" style={{ width: "100%", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {/* 顶部品牌区 */}
-      <div style={{ padding: "14px 12px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: "15px", fontWeight: 700, color: "var(--text-level-1)", letterSpacing: "-0.01em" }}>
+      {/* 顶部工具栏（极简端庄对齐） */}
+      <div style={{
+        padding: "10px 10px 6px 12px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        minHeight: "32px",
+      }}>
+        <span style={{
+          fontSize: "13.5px",
+          fontWeight: 600,
+          color: "var(--text-level-1)",
+          letterSpacing: "-0.01em",
+        }}>
           MfkAgent
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
           {onToggleSidebar && (
-            <button
-              onClick={onToggleSidebar}
-              className="sb-btn"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "28px",
-                height: "28px",
-                padding: 0,
-                borderRadius: "var(--radius-sm)",
-                color: "var(--text-level-4)",
-                flexShrink: 0,
-              }}
-              title={t("sidebar.collapse")}
-            >
-              <PanelLeftClose size={16} />
-            </button>
+            <Tooltip content={t("sidebar.collapse")} side="bottom">
+              <button
+                onClick={onToggleSidebar}
+                className="sb-btn"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "24px",
+                  height: "24px",
+                  padding: 0,
+                  borderRadius: "4px",
+                  color: "var(--text-level-3)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  outline: "none",
+                  transition: "background var(--transition-fast), color var(--transition-fast)",
+                }}
+              >
+                <PanelLeftClose size={15} strokeWidth={2} />
+              </button>
+            </Tooltip>
           )}
         </div>
       </div>
 
-      {/* 新建任务按钮 (最高优先级入口) */}
-      <div style={{ padding: "0 12px 8px" }}>
+      {/* 新建任务主入口：独立规整、浅色中性、清晰易找 */}
+      <div style={{ padding: "0 10px 6px" }}>
         <button
           ref={newTaskBtnRef}
           onClick={() => router.push("/")}
           style={{
             width: "100%",
+            height: "30px",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            padding: "7px 10px",
-            borderRadius: "var(--radius-md)",
-            fontSize: "13px",
-            fontWeight: 600,
+            justifyContent: "space-between",
+            padding: "0 10px",
+            borderRadius: "4px",
+            fontSize: "12.5px",
+            fontWeight: 500,
             color: "var(--text-level-1)",
             background: "var(--bg-level-2)",
             border: "1px solid var(--border-primary)",
@@ -572,38 +596,55 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
             outline: "none",
             transition: "background var(--transition-fast), border-color var(--transition-fast)",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-2)"; e.currentTarget.style.borderColor = "var(--border-primary)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-level-3)";
+            e.currentTarget.style.borderColor = "color-mix(in srgb, var(--color-primary) 50%, var(--border-primary))";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "var(--bg-level-2)";
+            e.currentTarget.style.borderColor = "var(--border-primary)";
+          }}
         >
-          <Plus style={{ width: "14px", height: "14px" }} />
-          <span>{t("sidebar.newTask")}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <Plus size={14} strokeWidth={2} style={{ color: "var(--text-level-3)" }} />
+            <span>{t("sidebar.newTask")}</span>
+          </div>
+          <kbd
+            style={{
+              fontSize: "10.5px",
+              fontFamily: "inherit",
+              padding: "1px 4px",
+              borderRadius: "3px",
+              background: "var(--bg-level-3)",
+              border: "1px solid var(--border-primary)",
+              color: "var(--text-level-4)",
+              fontWeight: 500,
+              lineHeight: "12px",
+            }}
+          >
+            {isMac ? "⌘N" : "Ctrl N"}
+          </kbd>
         </button>
       </div>
 
-      {/* 待办面板（常驻内嵌气泡卡片，位于新建任务与搜索框之间） */}
-      <div style={{ padding: "0 12px 8px" }}>
-        <TodoPanel />
-      </div>
-
-      {/* 搜索框：实时过滤聊天标题 */}
-      <div style={{ padding: "0 12px 8px" }}>
+      {/* 搜索框：紧凑型，与列表规整对齐 */}
+      <div style={{ padding: "2px 10px 6px" }}>
         <div style={{
           display: "flex",
           alignItems: "center",
           gap: "6px",
-          padding: "5px 8px",
-          borderRadius: "var(--radius-md)",
+          padding: "0 8px",
+          height: "28px",
+          borderRadius: "4px",
           background: "var(--bg-level-2)",
           border: "1px solid var(--border-primary)",
-          boxShadow: "var(--shadow-sm)",
-          transition: "background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast)",
+          boxShadow: "none",
+          transition: "border-color var(--transition-fast), background var(--transition-fast)",
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-level-3)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-level-2)"; }}
         onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; }}
         onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border-primary)"; }}
         >
-          <Search style={{ width: "14px", height: "14px", color: "var(--text-level-4)", flexShrink: 0 }} />
+          <Search style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
           <input
             type="text"
             value={searchQuery}
@@ -615,11 +656,11 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               outline: "none",
               background: "transparent",
               fontSize: "12px",
-              color: "var(--text-level-2)",
+              color: "var(--text-level-1)",
               minWidth: 0,
             }}
           />
-          {searchQuery && (
+          {searchQuery ? (
             <button
               onClick={() => setSearchQuery("")}
               style={{
@@ -632,14 +673,35 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",
-                color: "var(--text-level-4)",
+                color: "var(--text-level-3)",
                 flexShrink: 0,
               }}
             >
               <X style={{ width: "12px", height: "12px" }} />
             </button>
+          ) : (
+            <kbd
+              style={{
+                fontSize: "10px",
+                fontFamily: "inherit",
+                padding: "1px 4px",
+                borderRadius: "3px",
+                background: "var(--bg-level-3)",
+                color: "var(--text-level-4)",
+                border: "1px solid var(--border-primary)",
+                lineHeight: "12px",
+                flexShrink: 0,
+              }}
+            >
+              {isMac ? "⌘K" : "Ctrl K"}
+            </kbd>
           )}
         </div>
+      </div>
+
+      {/* 待办面板（轻量便签胶囊） */}
+      <div style={{ padding: "0 10px 6px" }}>
+        <TodoPanel />
       </div>
 
       {/* 聊天列表 */}
@@ -669,11 +731,10 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
           <div style={{ marginBottom: "12px" }}>
             <div style={{
               padding: "0 8px 4px",
-              fontSize: "11px",
+              fontSize: "11.5px",
               fontWeight: 600,
-              color: "var(--text-level-4)",
-              letterSpacing: "0.05em",
-              textTransform: "uppercase",
+              color: "var(--text-level-3)",
+              letterSpacing: "0.02em",
             }}>
               {t("sidebar.pinned")}
             </div>
@@ -694,7 +755,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "5px",
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -702,28 +763,28 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
               }}
             >
               {collapsedProjectWorkspace ? (
-                <ChevronRight style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
+                <ChevronRight style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
               ) : (
-                <ChevronDown style={{ width: "12px", height: "12px", color: "var(--text-level-4)", flexShrink: 0 }} />
+                <ChevronDown style={{ width: "13px", height: "13px", color: "var(--text-level-3)", flexShrink: 0 }} />
               )}
               <span style={{
                 fontSize: "12px",
                 fontWeight: 600,
-                color: "var(--text-level-4)",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
+                color: "var(--text-level-3)",
+                letterSpacing: "0.02em",
               }}>
                 {t("sidebar.projects")}
               </span>
             </button>
-            <button
-              onClick={() => setProjectModalOpen(true)}
-              className="sb-btn--icon-sm"
-              title={t("sidebar.openProject")}
-              style={{ opacity: 0.6 }}
-            >
-              <FolderPlus style={{ width: "12px", height: "12px" }} />
-            </button>
+            <Tooltip content="打开工作区" side="right">
+              <button
+                onClick={() => setProjectModalOpen(true)}
+                className="sb-btn--icon-sm"
+                style={{ opacity: 0.8 }}
+              >
+                <FolderPlus style={{ width: "14px", height: "14px" }} />
+              </button>
+            </Tooltip>
           </div>
           {!collapsedProjectWorkspace && (
             <div style={{ maxHeight: "320px", overflowY: "auto" }}>
@@ -732,7 +793,7 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
                   onClick={() => setProjectModalOpen(true)}
                   className="sb-btn--dashed"
                 >
-                  <FolderPlus style={{ width: "13px", height: "13px", flexShrink: 0 }} />
+                  <FolderPlus style={{ width: "14px", height: "14px", flexShrink: 0 }} />
                   <span>{t("sidebar.noProjectsDesc")}</span>
                 </button>
               ) : projects.map((project) => (
@@ -767,11 +828,10 @@ export function Sidebar({ currentChatId, onSettingsClick, collapsed, onToggleSid
         <div>
           <div style={{
             padding: "0 8px 4px",
-            fontSize: "11px",
+            fontSize: "11.5px",
             fontWeight: 600,
-            color: "var(--text-level-4)",
-            letterSpacing: "0.05em",
-            textTransform: "uppercase",
+            color: "var(--text-level-3)",
+            letterSpacing: "0.02em",
           }}>
             {t("sidebar.recent")}
           </div>

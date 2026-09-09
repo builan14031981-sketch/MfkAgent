@@ -1264,6 +1264,7 @@ class ChatContextBuilder:
                 chat_id=input.chat_id,
                 project_id=chat.project_id,
                 project_path=effective_chat.project_path,
+                max_tool_rounds=30 if effective_chat.project_path else None,
                 memory_context={
                     "agent_id": chat.agent_id,
                     "project_id": chat.project_id,

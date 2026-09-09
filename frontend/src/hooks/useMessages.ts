@@ -389,7 +389,7 @@ export function useMessages(chatId: number | null) {
                       task_id: parsed.task_id,
                       action: parsed.action ?? "",
                       status: parsed.status ?? (parsed.type === "task_started" ? "running" : parsed.type === "task_completed" ? "completed" : "failed"),
-                      assigned_agent: parsed.assigned_agent ?? "unknown",
+                      assigned_agent: parsed.assigned_agent ?? "default_agent",
                       error: parsed.error,
                       started_at: parsed.started_at,
                       ended_at: parsed.ended_at,

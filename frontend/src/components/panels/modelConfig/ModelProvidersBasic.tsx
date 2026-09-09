@@ -265,9 +265,9 @@ export function ModelProvidersBasic() {
             {t("settings.model.providers.desc")}
           </p>
 
-          {/* 免费额度组（可折叠，默认展开） */}
+          {/* 热门原厂梯队组（可折叠，默认展开） */}
           <button
-            onClick={toggleFreeExpanded}
+            onClick={toggleHotExpanded}
             style={{
               width: "100%",
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,

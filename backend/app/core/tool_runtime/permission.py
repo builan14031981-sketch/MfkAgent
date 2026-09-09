@@ -64,7 +64,7 @@ class PermissionFilter:
         "github_list_issues", "github_read_issue",
         "github_list_pull_requests", "github_read_pull_request",
         "search_files",
-        "web_search", "fetch_url", "github_search",
+        "web_search", "fetch_url", "github_search", "query_market",
         "add_memory", "manage_todos", "ask_user_choice", "get_datetime", "format_json",
         # Phase SubAgent: 委派子任务给专门化子代理（子代理自身工具集被收窄）
         "delegate_sub_agent",
