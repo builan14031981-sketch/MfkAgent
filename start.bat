@@ -1,70 +1,62 @@
 @echo off
 chcp 65001 >nul
 title MfkAgent 一键启动
-echo ========================================
-echo   MfkAgent 一键启动（含进程守护）
-echo ========================================
 
-:: 后端 Python 解释器
-if not defined PYTHON set "PYTHON=python"
-
+echo ========================================
+echo   MfkAgent 智能工作站 一键启动
+echo ========================================
 echo.
-echo [1/3] 启动 Backend 守护进程 (port 8001)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001 ^| findstr LISTENING') do (
-    echo   清理旧进程 PID %%a ...
+
+:: 1. 自动定位 Python 解释器
+set "MFK_PYTHON=%~dp0backend\.venv\Scripts\python.exe"
+if not exist "%MFK_PYTHON%" (
+    set "MFK_PYTHON=python"
+)
+
+:: 2. 清理旧端口占用并启动后端
+echo [1/2] 正在启动后端服务 (端口 8001)...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8001 ^| findstr LISTENING 2^>nul') do (
     taskkill /pid %%a /f >nul 2>&1
 )
 if exist "%~dp0backend\.mfkagent_port" del "%~dp0backend\.mfkagent_port"
 
-start "Backend Guardian" /min cmd /c "powershell.exe -NoProfile -ExecutionPolicy Bypass -File %~dp0backend_guardian.ps1"
-echo   Backend 守护进程已启动
+cd /d "%~dp0backend"
+start "MfkAgent Backend" /min "%MFK_PYTHON%" main.py
 
-:: 等待后端端口就绪
-echo.
-echo   等待 Backend 启动...
+:: 等待后端就绪
 set /a tries=0
-:wait_port
-netstat -ano | findstr :8001 | findstr LISTENING >nul
-if not errorlevel 1 goto port_ready
+:wait_backend
+netstat -ano | findstr :8001 | findstr LISTENING >nul 2>&1
+if not errorlevel 1 goto backend_ready
 set /a tries+=1
-if %tries% geq 30 (
-    echo   警告: Backend 启动超时，继续启动前端
-    goto start_frontend
-)
+if %tries% geq 20 goto backend_ready
 ping 127.0.0.1 -n 2 >nul
-goto wait_port
+goto wait_backend
 
-:port_ready
-echo   Backend 已就绪 (port 8001)
+:backend_ready
+echo   后端服务已就绪！
 
-:start_frontend
+:: 3. 启动前端界面
 echo.
-echo [2/3] 启动 Frontend (port 3000)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do (
-    echo   清理旧进程 PID %%a ...
+echo [2/2] 正在启动前端客户端...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING 2^>nul') do (
     taskkill /pid %%a /f >nul 2>&1
 )
-start "MfkAgent Frontend" cmd /c "cd /d %~dp0frontend && npm run dev"
-echo   Frontend 已启动
 
-echo.
-echo [3/3] 等待所有服务就绪...
-ping 127.0.0.1 -n 4 >nul
+cd /d "%~dp0frontend"
+start "MfkAgent Frontend" /min cmd /c "npm run dev"
 
-echo.
-echo ========================================
-echo   MfkAgent 启动完成！
-echo.
-echo   前端界面: http://localhost:3000
-echo   后端 API: http://127.0.0.1:8001
-echo.
-echo   守护进程说明:
-echo   - Backend 有独立守护进程在后台常驻
-echo   - 进程意外退出后 3 秒自动重启
-echo ========================================
-echo.
-echo 正在打开浏览器...
+:: 等待前端并打开浏览器
+ping 127.0.0.1 -n 3 >nul
 start http://localhost:3000
+
 echo.
-echo 按任意键关闭本启动窗口（服务将继续在后台运行）...
-pause >nul
+echo ========================================
+echo   启动完成！
+echo   访问地址: http://localhost:3000
+echo   后端接口: http://127.0.0.1:8001
+echo ========================================
+echo.
+echo 本窗口可关闭，后台服务将继续运行。
+timeout /t 5 >nul
+exit

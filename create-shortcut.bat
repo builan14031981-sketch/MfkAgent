@@ -1,5 +1,0 @@
-@echo off
-chcp 65001 >nul
-echo Creating desktop shortcut...
-cscript //nologo "%~dp0create-shortcut.vbs"
-pause
