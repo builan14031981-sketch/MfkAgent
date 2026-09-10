@@ -62,6 +62,16 @@ opencode.json
 backend/seed_siliconflow_key.py
 backend/test_siliconflow_api.py
 
+# Local workspace dedicated startup & utility scripts
+start-gateway.bat
+stop-gateway.bat
+start-desktop.bat
+start-mobile.bat
+create-shortcut.bat
+create-shortcut.vbs
+backend_guardian.ps1
+gateway_local_steps.bat
+
 # Scratch / tool self-test artifacts
 CE1/
 
