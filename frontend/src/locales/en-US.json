@@ -271,7 +271,10 @@
     "searchPlaceholder": "Search settings...",
     "searchNoResult": "No matching settings found. Try another keyword",
     "searchHits": "{count} settings matched",
-    "developerMode": "Developer Mode",
+    "developerMode": "Advanced Mode",
+    "advancedMode": "Advanced Mode",
+    "advancedModeTip": "Show Base URL override, custom models and deep configuration",
+    "close": "Close (Esc)",
     "shortcuts": {
       "title": "Shortcuts"
     },
@@ -428,6 +431,15 @@
     },
     "model": {
       "title": "Model",
+      "multimodal": {
+        "title": "Multimodal Capabilities (Image & Vision)",
+        "desc": "Manage image generation models and fallback vision recognition channels",
+        "badgeConfigured": "Ready",
+        "badgePartial": "Partial",
+        "badgeNotConfigured": "Not configured",
+        "collapse": "Collapse multimodal settings",
+        "expand": "Expand multimodal settings"
+      },
       "defaultModel": {
         "title": "Default Model",
         "desc": "Default AI model for new chats"

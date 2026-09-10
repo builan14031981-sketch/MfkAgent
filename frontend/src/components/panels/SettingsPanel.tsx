@@ -11,7 +11,7 @@
  */
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Database, Keyboard, Search, X, Smartphone } from "lucide-react";
+import { Monitor, Cpu, Brain, Info, Blocks, ShieldAlert, Database, Keyboard, Search, X } from "lucide-react";
 import { useSettingsStore } from "@/lib/store";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useModels } from "@/hooks/useModels";
@@ -22,8 +22,8 @@ import { SettingsToast } from "@/components/SettingsToast";
 import { Panel } from "./Panel";
 import { AgentListPanel } from "./AgentListPanel";
 import { SubAgentPanel } from "./SubAgentPanel";
+import { MemoryPanel } from "./MemoryPanel";
 import { ArchivePanel } from "./ArchivePanel";
-import { PairSection } from "./PairSection";
 import { BasicSettingsView, type SettingSectionId } from "./BasicSettingsView";
 import { AdvancedSettingsView } from "./AdvancedSettingsView";
 import { SwitchButton } from "@/components/SwitchButton";
@@ -34,8 +34,8 @@ interface SettingsPanelProps {
   onClose: () => void;
 }
 
-/** 设置面板内部视图状态机：主设置 / Agent 列表 / Agent 编辑 / 子代理列表 / 子代理编辑 / 子代理新建 */
-type ViewState = "main_settings" | "agent_list" | "agent_edit" | "sub_agent_list" | "sub_agent_edit" | "sub_agent_create";
+/** 设置面板内部视图状态机：主设置 / Agent 列表 / Agent 编辑 / 子代理列表 / 子代理编辑 / 子代理新建 / 记忆管理 */
+type ViewState = "main_settings" | "agent_list" | "agent_edit" | "sub_agent_list" | "sub_agent_edit" | "sub_agent_create" | "memory_manage";
 
 /** 含深水区参数的 section（model/ai）：基础区下方直接追加高级区，无折叠 */
 const SECTIONS_WITH_ADVANCED: SettingSectionId[] = ["model", "ai"];
@@ -59,15 +59,22 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
       return "general";
     }
   });
-  // 开发者模式：默认关（小白视图只显示基础区）；开 = 全量展示深水区参数（Base URL/自定义模型/子代理等）。
-  // 借鉴 Codex Developer mode / Windsurf Advanced Settings 的行业做法，localStorage 持久化。
-  const [developerMode, setDeveloperMode] = useState(() => {
-    try { return localStorage.getItem("mfk_settings_developer_mode") === "1"; }
-    catch { return false; }
+  // 高级模式：默认关（普通视图只显示基础区）；开 = 展示深水区参数（Base URL/自定义模型/进阶代理等）。
+  const [advancedMode, setAdvancedMode] = useState(() => {
+    try {
+      const v = localStorage.getItem("mfk_settings_advanced_mode");
+      if (v !== null) return v === "1";
+      return localStorage.getItem("mfk_settings_developer_mode") === "1";
+    } catch {
+      return false;
+    }
   });
-  const handleDeveloperMode = (v: boolean) => {
-    setDeveloperMode(v);
-    try { localStorage.setItem("mfk_settings_developer_mode", v ? "1" : "0"); } catch { /* noop */ }
+  const handleAdvancedMode = (v: boolean) => {
+    setAdvancedMode(v);
+    try {
+      localStorage.setItem("mfk_settings_advanced_mode", v ? "1" : "0");
+      localStorage.setItem("mfk_settings_developer_mode", v ? "1" : "0");
+    } catch { /* noop */ }
   };
   const [currentView, setCurrentView] = useState<ViewState>("main_settings");
   const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
@@ -128,7 +135,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     { id: "archive", label: t("settings.archive.title"), icon: Database },
     { id: "about", label: t("settings.about.title"), icon: Info },
     { id: "shortcuts", label: t("settings.shortcuts.title"), icon: Keyboard },
-    { id: "pair", label: t("settings.pair.title"), icon: Smartphone },
   ];
 
   // ── 设置搜索：过滤左侧导航 + 命中字段计数（导航级，不侵入字段渲染）──
@@ -177,15 +183,17 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
   const viewTitle =
     currentView === "main_settings"
       ? t("settings.title")
-      : currentView === "agent_list"
-        ? t("settings.ai.agents.title")
-        : currentView === "sub_agent_list"
-          ? t("settings.ai.subAgents.title")
-          : currentView === "sub_agent_create"
-            ? t("settings.ai.subAgents.create")
-            : currentView === "sub_agent_edit"
-              ? (subAgentsList.find((s) => s.id === editingSubAgentId)?.name ?? t("settings.ai.subAgents.title"))
-              : (agents.find((a) => a.id === editingAgentId)?.name ?? t("settings.ai.agents.title"));
+      : currentView === "memory_manage"
+        ? "长期记忆管理"
+        : currentView === "agent_list"
+          ? t("settings.ai.agents.title")
+          : currentView === "sub_agent_list"
+            ? t("settings.ai.subAgents.title")
+            : currentView === "sub_agent_create"
+              ? t("settings.ai.subAgents.create")
+              : currentView === "sub_agent_edit"
+                ? (subAgentsList.find((s) => s.id === editingSubAgentId)?.name ?? t("settings.ai.subAgents.title"))
+                : (agents.find((a) => a.id === editingAgentId)?.name ?? t("settings.ai.agents.title"));
 
   const goToMainSettings = () => {
     setDirection(-1);
@@ -204,6 +212,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     setCurrentView("sub_agent_list");
   };
 
+  // 标准分层返回逻辑：三级回二级，二级回主设置
+  const handleBack =
+    currentView === "main_settings"
+      ? undefined
+      : currentView === "agent_edit"
+        ? goToAgentList
+        : currentView === "sub_agent_edit" || currentView === "sub_agent_create"
+          ? goToSubAgentList
+          : goToMainSettings;
+
   const viewVariants = {
     enter: (dir: number) => ({ opacity: 0, x: dir * 24 }),
     center: { opacity: 1, x: 0 },
@@ -221,17 +239,36 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
     t,
   };
 
-  // 含深水区参数的 section（model/ai）：基础区下方追加高级区；仅在开发者模式下渲染
-  const hasAdvanced = SECTIONS_WITH_ADVANCED.includes(activeSection) && developerMode;
+  // 含深水区参数的 section（model/ai）：基础区下方追加高级区；仅在高级模式下渲染
+  const hasAdvanced = SECTIONS_WITH_ADVANCED.includes(activeSection) && advancedMode;
 
   return (
-    <Panel isOpen={isOpen} onClose={handleClose} title={viewTitle} width="700px" height="min(680px, 82vh)" variant="center"
+    <Panel isOpen={isOpen} onClose={handleClose} onBack={handleBack} title={viewTitle} width="860px" height="min(720px, 86vh)" variant="center"
       headerExtra={
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, color: developerMode ? "var(--color-primary)" : "var(--text-level-3)", fontWeight: developerMode ? 500 : 400, userSelect: "none" }}>
-            {t("settings.developerMode")}
+        <div
+          title={t("settings.advancedModeTip")}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "4px 10px",
+            borderRadius: "var(--radius-full)",
+            background: advancedMode ? "color-mix(in srgb, var(--color-primary) 10%, var(--bg-level-2))" : "var(--bg-level-2)",
+            border: `1px solid ${advancedMode ? "color-mix(in srgb, var(--color-primary) 30%, var(--border-primary))" : "var(--border-secondary)"}`,
+            transition: "all var(--transition-fast)",
+            cursor: "pointer",
+            userSelect: "none",
+          }}
+          onClick={() => handleAdvancedMode(!advancedMode)}
+        >
+          <span style={{
+            fontSize: "12px",
+            color: advancedMode ? "var(--color-primary)" : "var(--text-level-3)",
+            fontWeight: advancedMode ? 600 : 400,
+          }}>
+            {t("settings.advancedMode")}
           </span>
-          <SwitchButton checked={developerMode} onChange={handleDeveloperMode} />
+          <SwitchButton checked={advancedMode} onChange={handleAdvancedMode} />
         </div>
       }
     >
@@ -250,16 +287,16 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
               style={{ height: "100%" }}
             >
               <div style={{ display: "flex", gap: "24px", minHeight: "400px", height: "100%", overflow: "hidden" }}>
-                {/* 左侧导航 - 固定不滚动 */}
+                {/* 左侧导航 - 固定不滚动 (VS Code 规矩风格) */}
                 <nav style={{
-                  width: "168px", flexShrink: 0,
+                  width: "184px", flexShrink: 0,
                   borderRight: "1px solid var(--border-primary)",
-                  paddingRight: "16px", marginRight: "16px",
+                  paddingRight: "16px",
                   height: "100%", overflow: "hidden",
                   display: "flex", flexDirection: "column",
                 }}>
                   {/* 设置搜索框：导航级过滤 */}
-                  <div style={{ position: "relative", marginBottom: "10px", flexShrink: 0 }}>
+                  <div style={{ position: "relative", marginBottom: "12px", flexShrink: 0 }}>
                     <Search style={{
                       position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)",
                       width: "13px", height: "13px", color: "var(--text-level-4)", pointerEvents: "none",
@@ -274,6 +311,7 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                         borderRadius: "var(--radius-sm)",
                         background: "var(--bg-level-2)",
                         fontSize: "12px", color: "var(--text-level-2)",
+                        height: "32px",
                       }}
                     />
                     {searchQuery && (
@@ -296,50 +334,65 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                       {t("settings.searchNoResult")}
                     </p>
                   )}
-                  <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", scrollbarGutter: "stable" }}>
-                  {filteredNav.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveSection(item.id);
-                        // 切 Tab 时重置 Skill 详情，返回扩展主页
-                        setEditingSkillId(null);
-                        try { localStorage.setItem("mfk_settings_active_section", item.id); } catch { /* noop */ }
-                      }}
-                      className={activeSection === item.id ? "mf-nav-item is-active" : "mf-nav-item"}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "8px",
-                        width: "100%", padding: "10px 12px",
-                        borderRadius: "var(--radius-md)", border: "none",
-                        cursor: "pointer", fontSize: "14px",
-                        color: activeSection === item.id ? "var(--text-level-1)" : "var(--text-level-3)",
-                        textAlign: "left", marginBottom: "4px",
-                      }}
-                    >
-                      <item.icon
-                        style={{
-                          width: "16px", height: "16px",
-                          color: activeSection === item.id ? "var(--color-primary)" : "currentColor",
-                          transition: "color var(--transition-fast)",
+                  <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+                  {filteredNav.map((item) => {
+                    const isActive = activeSection === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveSection(item.id);
+                          setEditingSkillId(null);
+                          try { localStorage.setItem("mfk_settings_active_section", item.id); } catch { /* noop */ }
                         }}
-                      />
-                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
-                      {q && matchFields(item.id).length > 0 && (
-                        <span style={{ fontSize: "10px", color: "var(--color-primary)", flexShrink: 0 }}>
-                          {matchFields(item.id).length}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                        className={isActive ? "mf-nav-item is-active" : "mf-nav-item"}
+                        style={{
+                          position: "relative",
+                          display: "flex", alignItems: "center", gap: "9px",
+                          width: "100%", height: "34px", padding: "0 10px 0 12px",
+                          borderRadius: "var(--radius-sm)", border: "none",
+                          cursor: "pointer", fontSize: "13px",
+                          fontWeight: isActive ? 500 : 400,
+                          color: isActive ? "var(--text-level-1)" : "var(--text-level-3)",
+                          background: isActive ? "var(--bg-level-3)" : "transparent",
+                          textAlign: "left", marginBottom: "2px",
+                          transition: "all var(--transition-fast)",
+                        }}
+                      >
+                        {/* 温润细腻的左侧微指示条：不刺眼、收敛内敛 */}
+                        {isActive && (
+                          <span style={{
+                            position: "absolute", left: "2px", top: "9px", bottom: "9px",
+                            width: "2px", borderRadius: "1px",
+                            background: "var(--color-primary)",
+                            opacity: 0.85,
+                          }} />
+                        )}
+                        <item.icon
+                          style={{
+                            width: "15px", height: "15px",
+                            color: isActive ? "var(--text-level-1)" : "var(--text-level-4)",
+                            transition: "color var(--transition-fast)",
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+                        {q && matchFields(item.id).length > 0 && (
+                          <span style={{ fontSize: "10px", color: "var(--color-primary)", flexShrink: 0 }}>
+                            {matchFields(item.id).length}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                   </div>
                 </nav>
 
-                {/* 右侧内容 - 独立滚动 */}
+                {/* 右侧内容 - 独立滚动（悬浮极简细条，绝无宽槽占位） */}
                 <div style={{
                   flex: 1, minWidth: 0,
                   overflowY: "auto", overflowX: "hidden",
-                  height: "100%", paddingRight: "4px",
-                  scrollbarGutter: "stable",
+                  height: "100%", paddingRight: "6px",
                 }}>
                   {/* 搜索命中提示（导航级计数，不侵入字段渲染） */}
                   {q && activeHits.length > 0 && (
@@ -356,9 +409,6 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   {/* 归档 Tab：独立面板（归档列表 + 归档目录配置） */}
                   {activeSection === "archive" ? (
                     <ArchivePanel />
-                  ) : activeSection === "pair" ? (
-                    /* 连接手机 Tab：独立面板（扫码配对 + 设备吊销），与归档同模式 */
-                    <PairSection />
                   ) : (
                     <>
                       {/* 基础区块（默认展示） */}
@@ -395,6 +445,10 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                               setDirection(1);
                               setCurrentView("sub_agent_list");
                             }}
+                            onOpenMemoryManage={() => {
+                              setDirection(1);
+                              setCurrentView("memory_manage");
+                            }}
                           />
                         </div>
                       )}
@@ -402,6 +456,19 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                   )}
                 </div>
               </div>
+            </motion.div>
+          ) : currentView === "memory_manage" ? (
+            <motion.div
+              key="memory_manage"
+              custom={direction}
+              variants={viewVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={viewTransition}
+              style={{ height: "100%", overflowY: "auto", overflowX: "hidden" }}
+            >
+              <MemoryPanel embedded isOpen onClose={handleClose} />
             </motion.div>
           ) : currentView.startsWith("sub_agent") ? (
             <motion.div

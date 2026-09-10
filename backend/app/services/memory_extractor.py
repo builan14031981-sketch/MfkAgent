@@ -292,8 +292,9 @@ async def run_memory_extraction(
 
     任何异常都被捕获并记录日志，绝不影响用户聊天响应。
     """
-    # 写作类 Agent 跳过记忆提取：避免无项目绑定时误存 global 记忆污染其他 Agent
-    if agent_id and agent_id in MEMORY_EXTRACTION_AGENT_BLOCKLIST:
+    # 子代理（无状态单次执行单元）与黑名单 Agent 彻底绝缘长期记忆提取：避免产生残留或污染全局
+    if agent_id and (str(agent_id).startswith("sub_") or str(agent_id) in MEMORY_EXTRACTION_AGENT_BLOCKLIST):
+        logger.info("[memory_extractor] 子代理或黑名单 Agent (%s) 跳过记忆提取", agent_id)
         return []
 
     try:

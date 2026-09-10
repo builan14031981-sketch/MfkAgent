@@ -136,51 +136,9 @@ export function AgentListPanel({ editingAgentId, onSelectAgent, onBackToSettings
 
   return (
     <>
-      {/* 返回设置（视图右上角，一级设置时也显示） */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-        <button
-          onClick={onBackToSettings}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            padding: "6px 12px",
-            borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--border-primary)",
-            background: "var(--bg-level-2)",
-            cursor: "pointer",
-            fontSize: "13px",
-            fontWeight: "500",
-            color: "var(--text-level-1)",
-          }}
-        >
-          <ChevronLeft style={{ width: "15px", height: "15px" }} />
-          {t("settings.ai.agents.backToSettings")}
-        </button>
-      </div>
-
       {active ? (
         <div>
-          {/* 返回列表（仅详情视图显示） */}
-          <button
-            onClick={() => onBackToList()}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              padding: "5px 10px",
-              marginBottom: "12px",
-              borderRadius: "var(--radius-sm)",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              fontSize: "12px",
-              color: "var(--text-level-3)",
-            }}
-          >
-            <ChevronLeft style={{ width: "14px", height: "14px" }} />
-            {t("settings.ai.agents.backToAgentList")}
-          </button>
+          {/* Block 1 基本信息 */}
 
           {/* Block 1 基本信息 */}
           <div style={{

@@ -271,7 +271,10 @@
     "searchPlaceholder": "搜索设置...",
     "searchNoResult": "没有匹配的设置，换个关键词试试",
     "searchHits": "命中 {count} 项设置",
-    "developerMode": "开发者模式",
+    "developerMode": "高级模式",
+    "advancedMode": "高级模式",
+    "advancedModeTip": "显示 Base URL 覆盖、自定义模型与深水区参数",
+    "close": "关闭 (Esc)",
     "shortcuts": {
       "title": "快捷键"
     },
@@ -428,6 +431,15 @@
     },
     "model": {
       "title": "模型",
+      "multimodal": {
+        "title": "多模态扩展（生图与识图）",
+        "desc": "管理 AI 的文生图模型与备用视觉识图 (BYOK) 回退通道",
+        "badgeConfigured": "已就绪",
+        "badgePartial": "部分就绪",
+        "badgeNotConfigured": "未配置",
+        "collapse": "收起多模态设置",
+        "expand": "展开多模态设置"
+      },
       "defaultModel": {
         "title": "默认模型",
         "desc": "新聊天默认使用的 AI 模型"

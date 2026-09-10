@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { X, ChevronLeft } from "lucide-react";
 
 interface PanelProps {
   isOpen: boolean;
@@ -10,11 +11,13 @@ interface PanelProps {
   width?: string;
   height?: string;
   variant?: "center" | "bottom-left";
-  /** 头部标题右侧的自定义区域（如设置面板右上角的开发者模式开关） */
+  /** 头部标题右侧的自定义区域（如设置面板右上角的高级模式开关） */
   headerExtra?: React.ReactNode;
+  /** 返回上一级视图回调（存在时在标题左侧渲染标准返回键） */
+  onBack?: () => void;
 }
 
-export function Panel({ isOpen, onClose, title, children, width = "700px", height, variant = "center", headerExtra }: PanelProps) {
+export function Panel({ isOpen, onClose, title, children, width = "700px", height, variant = "center", headerExtra, onBack }: PanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,16 +101,94 @@ export function Panel({ isOpen, onClose, title, children, width = "700px", heigh
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "20px 24px 16px",
+          padding: "16px 22px 14px",
           borderBottom: "1px solid var(--border-secondary)",
+          gap: "12px",
+          flexShrink: 0,
         }}>
-          <h2 style={{
-            fontSize: "16px",
-            fontWeight: "600",
-            color: "var(--text-level-1)",
-            margin: 0,
-          }}>{title}</h2>
-          {headerExtra}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="返回上一级"
+                title="返回上一级"
+                className="mf-icon-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  height: "28px",
+                  padding: "0 8px 0 6px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--border-primary)",
+                  background: "var(--bg-level-2)",
+                  color: "var(--text-level-2)",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  transition: "all var(--transition-fast)",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-level-3)";
+                  e.currentTarget.style.color = "var(--text-level-1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--bg-level-2)";
+                  e.currentTarget.style.color = "var(--text-level-2)";
+                }}
+              >
+                <ChevronLeft style={{ width: "14px", height: "14px" }} />
+                <span>返回</span>
+              </button>
+            )}
+            <h2 style={{
+              fontSize: "16px",
+              fontWeight: "600",
+              color: "var(--text-level-1)",
+              margin: 0,
+              lineHeight: 1.3,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}>{title}</h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+            {headerExtra}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="关闭"
+              title="关闭 (Esc)"
+              className="mf-icon-btn"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "28px",
+                height: "28px",
+                padding: 0,
+                borderRadius: "var(--radius-sm)",
+                border: "none",
+                background: "transparent",
+                color: "var(--text-level-3)",
+                cursor: "pointer",
+                transition: "background var(--transition-fast), color var(--transition-fast)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-level-3)";
+                e.currentTarget.style.color = "var(--text-level-1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--text-level-3)";
+              }}
+            >
+              <X style={{ width: "16px", height: "16px" }} />
+            </button>
+          </div>
         </div>
         {/* 面板内容 */}
         <div style={{

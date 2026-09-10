@@ -89,7 +89,7 @@ _CONTENT = """# AGENTS.md — MfkAgent 仓库指引
 
 ### 前端结构（`frontend/src/`）
 
-- `app/`：App Router 页面（`chat/[id]`、`projects/[id]`、`memories`、`pair` 等）。
+- `app/`：App Router 页面（`chat/[id]`、`projects/[id]`、`memories` 等）。
 - `components/`：UI 组件（hero 主题 `themes/`、面板 `panels/`、聊天组件、agent 图标等）。
 - `hooks/`：数据请求 hooks（useChat / useProjects / useMemory / …）。
 - `lib/`：工具库与状态（`api.ts`、`store.ts`、`theme.ts`、`artifactStore.ts` 等）。
@@ -101,7 +101,7 @@ _CONTENT = """# AGENTS.md — MfkAgent 仓库指引
 - `external_skills/`：外部 Skill 资产（提交文件数量最多的目录）。
 - `scripts/`：根级工具脚本（`build_greetings.py` 生成欢迎语、`generate_agents_md.py` 生成本文件）。
 - `docs/`：架构 / 设计文档（部分入库）。
-- `安卓/`：安卓端相关资产。
+- `归档/`：历史归档资产（如安卓端、旧版文档等，主线代码严禁反向依赖）。
 
 ## 三、非显性约束（务必遵守）
 
@@ -114,6 +114,11 @@ _CONTENT = """# AGENTS.md — MfkAgent 仓库指引
    - 各 worktree 共享同一仓库对象库，`.venv` 按 worktree 各自独立；新 worktree 未建 `.venv` 时，可用主 worktree 的 venv 解释器跑测试（代码取自当前 worktree 目录）。
 5. **测试库隔离**：后端测试跑在 conftest 自举的临时 SQLite 上，**不要**在测试中强依赖业务库或真实外部 API。
 6. **生成物由脚本产出**：`backend/app/data/greetings.json` ← `scripts/build_greetings.py`；`AGENTS.md` ← `scripts/generate_agents_md.py`。手改生成物会被重跑覆盖，改动应落到脚本。
+7. **剪枝优先于修饰（严禁复活已归档模块）**：安卓端及手机配对（Pair）已被永久归档至 `归档/安卓/`。严禁在任何重构中顺从遗留代码盲目保留或复活已归档模块；遇死代码必须坚决连根拔起，严禁为死代码涂脂抹粉。
+8. **子代理绝对绝缘长期记忆**：子代理（`sub_*`）是主 Agent 委派调用的单次无状态工具执行单元，绝对不需要记忆，严禁接入长期记忆系统。系统主智能体严格收敛为 6 大核心预设（`general`, `coder`, `frontend_ui`, `g`, `pianai`, `spark`）。
+9. **沉浸式内聚交互与极简视觉规范**：
+   - 设置面板内的二级与三级视图必须在弹窗内通过状态机切换闭环，一页点进点出，标题栏标配 `[< 返回]` 键，严禁跳出弹窗打开外部整页。
+   - 遵循克制内敛的极简规范：指示线使用 2px 极细微线；图标采用中性色；严禁使用粗大高饱和彩色背景方块；全局滚动条保持 4px 悬浮极简细条。
 """
 # fmt: on
 

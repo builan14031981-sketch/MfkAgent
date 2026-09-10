@@ -5,7 +5,7 @@
  * 配置保存到后端 .env，供 Agent 飞书工具（feishu_*）使用。
  */
 import { useFeishu, FeishuTestResult } from "@/hooks/useFeishu";
-import { Check, Loader2, Shield, RefreshCw, Send, Users } from "lucide-react";
+import { Check, Loader2, Shield, RefreshCw, Send, Users, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 const inputStyle: React.CSSProperties = {
@@ -59,6 +59,21 @@ export function FeishuSettingsPanel() {
   const [testText, setTestText] = useState("你好，这是 MfkAgent 通过飞书工具发送的测试消息");
   const [sendLoading, setSendLoading] = useState(false);
   const [sendOk, setSendOk] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("mfk_feishu_panel_collapsed") !== "false";
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("mfk_feishu_panel_collapsed", String(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
 
   // 首帧用当前配置回填隐藏/只读展示（secret 不回填，仅提示已配置）
   const currentAppId = config?.app_id || "";
@@ -90,33 +105,73 @@ export function FeishuSettingsPanel() {
   };
 
   return (
-    <div>
-      {/* 标题行 */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-        <div>
-          <h3 style={{
-            fontSize: "14px", fontWeight: "500", color: "var(--text-level-1)", margin: 0,
-            display: "flex", alignItems: "center", gap: "8px",
-          }}>
-            <Shield style={{ width: "16px", height: "16px" }} />
-            飞书集成
-          </h3>
-          <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "4px 0 0 0" }}>
-            配置飞书应用凭证，让 Agent 可读写你的多维表格。
-          </p>
+    <div
+      style={{
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--border-primary)",
+        background: "var(--bg-level-2)",
+        overflow: "hidden",
+      }}
+    >
+      {/* 标题与摘要行（支持点击折叠/展开） */}
+      <div
+        onClick={toggleCollapsed}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "12px 14px",
+          cursor: "pointer",
+          userSelect: "none",
+          gap: "12px",
+          background: isCollapsed ? "transparent" : "var(--bg-level-1)",
+          borderBottom: isCollapsed ? "none" : "1px solid var(--border-secondary)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-level-1)" }}>
+                飞书集成 (Feishu Integration)
+              </span>
+              <StatusBadge state={statusState} />
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--text-level-3)", margin: "2px 0 0 0" }}>
+              {isCollapsed && currentAppId
+                ? `已绑定 App ID：${currentAppId} · 点击展开可修改凭证或测试连接`
+                : "配置飞书开放平台应用凭证，让 Agent 可读写你的飞书多维表格"}
+            </p>
+          </div>
         </div>
-        <StatusBadge state={statusState} />
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+          <span style={{ fontSize: "12px", color: "var(--text-level-3)" }}>
+            {isCollapsed ? "展开配置" : "收起"}
+          </span>
+          <ChevronDown
+            style={{
+              width: "14px",
+              height: "14px",
+              color: "var(--text-level-4)",
+              transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)",
+              transition: "transform var(--transition-fast)",
+            }}
+          />
+        </div>
       </div>
 
       {/* 配置表单 */}
-      <div style={{
-        marginTop: "12px",
-        padding: "12px",
-        borderRadius: "var(--radius-md)",
-        background: "var(--bg-level-2)",
-        border: "1px solid var(--border-primary)",
-      }}>
-        {loading ? (
+      {!isCollapsed && (
+        <div style={{
+          padding: "14px",
+          background: "var(--bg-level-2)",
+        }}>
+          <div style={{
+            padding: "12px",
+            borderRadius: "var(--radius-md)",
+            background: "var(--bg-level-1)",
+            border: "1px solid var(--border-primary)",
+          }}>
+            {loading ? (
           <p style={{ fontSize: "13px", color: "var(--text-level-3)" }}>加载配置中…</p>
         ) : (
           <>
@@ -286,6 +341,8 @@ export function FeishuSettingsPanel() {
             )}
           </div>
         </div>
+      )}
+      </div>
       )}
     </div>
   );

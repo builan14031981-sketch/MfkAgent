@@ -50,6 +50,11 @@ export default function MemoryManagerPage() {
   const { agents } = useAgents();
   const { projects } = useProjects();
 
+  // 记忆系统铁律：子代理（sub_*）无状态，绝不需要记忆；仅针对核心主 Agent
+  const mainAgents = useMemo(() => {
+    return agents.filter((a) => !a.id.startsWith("sub_") && a.status === "active");
+  }, [agents]);
+
   const [scope, setScope] = useState<MemoryScope>("global");
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [selectedProject, setSelectedProject] = useState<number | null>(projects[0]?.id ?? null);
@@ -332,7 +337,7 @@ export default function MemoryManagerPage() {
                 color: selectedAgent === "" ? "var(--color-primary)" : "var(--text-level-2)",
               }}
             >{t("memory.types.all")}</button>
-            {agents.map((agent) => (
+            {mainAgents.map((agent) => (
               <button
                 key={agent.id}
                 onClick={() => setSelectedAgent(agent.id)}

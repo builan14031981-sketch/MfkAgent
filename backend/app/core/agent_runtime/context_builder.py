@@ -38,6 +38,7 @@ from app.core.persona_quirks import build_conversation_state
 from app.core.character_presets import detect_preset_switch
 from app.core.identity_principle import get_identity_principle
 from app.core.agent_base_instruction import get_agent_base_instruction
+from app.core.invariants import get_invariants_prompt
 # 2026-08-16：Skill 全局注入已废弃（会话级调用改由前端 buildContent 注入），不再 import get_enabled_skills_prompt
 from app.core.tool_runtime import tool_runtime
 from app.core.tool_runtime.guidance import get_tool_guidance
@@ -476,7 +477,7 @@ def _build_memory_text(db, project_id: Optional[int] = None, agent_id: Optional[
         lines = "\n".join(f"- {m.content}" for m in _g)
         sections.append(f"### 全局记忆 (Global Rules):\n{lines}")
 
-    if agent_id is not None:
+    if agent_id is not None and not str(agent_id).startswith("sub_"):
         agent_items = (
             db.query(MemoryItem)
             .filter(
@@ -785,6 +786,10 @@ class ChatContextBuilder:
 
         # ⓪b Agent Base Instruction（所有 Agent 共享的基础行为规则）
         full_prompt += get_agent_base_instruction()
+
+        # ⓪c 项目不变量通道（Architectural Invariants，置顶防注意力稀释）
+        _proj_path = getattr(effective_chat, "project_path", None)
+        full_prompt += "\n\n" + get_invariants_prompt(_proj_path)
 
         # ① identity（纯角色，零行为指令）
         full_prompt += system_prompt

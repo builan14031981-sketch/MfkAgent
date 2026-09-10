@@ -269,11 +269,11 @@ async function createWindow() {
     console.warn("[Electron] setIcon failed:", e.message);
   }
 
-  // 关闭按钮最小化到托盘（托盘「退出」才真正退出）
-  mainWindow.on("close", (e) => {
-    if (!app.isQuitting) {
-      e.preventDefault();
-      mainWindow.hide();
+  // 关闭按钮直接彻底退出应用（用户偏好：按叉叉直接退出，不最小化到托盘后台）
+  mainWindow.on("close", () => {
+    app.isQuitting = true;
+    if (tray) {
+      try { tray.destroy(); } catch (e) {}
     }
   });
 
@@ -555,7 +555,7 @@ function registerIpcHandlers() {
 }
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin" && app.isQuitting) {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });

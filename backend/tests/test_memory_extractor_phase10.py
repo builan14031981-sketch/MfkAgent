@@ -407,6 +407,27 @@ class BackgroundTriggerTestCase(unittest.TestCase):
             assert actions == []
         asyncio.run(_run())
 
+    def test_sub_agent_skips_memory_extraction(self):
+        """子代理（无状态单次执行单元）完全跳过记忆自动提取，不发起模型调用也不入库。"""
+        import asyncio
+
+        async def _run():
+            with patch(
+                "app.services.memory_extractor.model_service.call_once",
+                new_callable=AsyncMock,
+            ) as mock_call:
+                actions = await run_memory_extraction(
+                    chat_id=1,
+                    project_id=None,
+                    user_message="我以后希望回答简洁一些",
+                    ai_content="好的，以后我会保持简洁。",
+                    agent_id="sub_code_reviewer",
+                )
+                assert actions == []
+                mock_call.assert_not_called()
+
+        asyncio.run(_run())
+
     def _fake_result(self, content):
         from app.services.model import SingleCallResult
         return SingleCallResult(content=content, finish_reason="stop", usage=None)

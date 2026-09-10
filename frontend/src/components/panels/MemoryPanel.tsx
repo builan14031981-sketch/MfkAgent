@@ -54,6 +54,11 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
   const { projects } = useProjects();
   const { t } = useTranslation();
   const router = useRouter();
+
+  // 记忆系统铁律：子代理无状态，不参与长期记忆；仅面向核心主 Agent
+  const mainAgents = agents.filter(
+    (a) => !a.id.startsWith("sub_") && a.status === "active"
+  );
   const [scope, setScope] = useState<MemoryScope>("global");
   // "" = 全部 Agent（不按 agent 过滤，后端返回 scope=agent 的所有记忆）；
   // 具体 agent_id = 仅查看该 Agent 的记忆
@@ -194,7 +199,7 @@ export function MemoryPanel({ isOpen, onClose, embedded = false }: MemoryPanelPr
             >
               <span>{t("memory.types.all")}</span>
             </button>
-            {agents.map((agent) => (
+            {mainAgents.map((agent) => (
               <button
                 key={agent.id}
                 onClick={() => setSelectedAgent(agent.id)}

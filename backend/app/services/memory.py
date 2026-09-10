@@ -61,6 +61,10 @@ def resolve_scope(
       - 模型建议 global → global（显式意图，信任）
       - 模型未给出有效 scope → 按会话上下文兜底：有项目 → project，否则 → global
     """
+    # 子代理是无状态临时执行单元，绝对绝缘 agent 专属记忆
+    if agent_id and str(agent_id).startswith("sub_"):
+        agent_id = None
+
     if agent_id and agent_id in ("pianai",):
         return ("agent", False)
     # 强信号：模型明确判定为项目规则，即使 suggested 是 global 也强制归属校验
@@ -110,6 +114,10 @@ class MemoryService:
 
         db = SessionLocal()
         try:
+            # 子代理是无状态临时执行单元，绝不接入 agent 专属记忆
+            if agent_id and str(agent_id).startswith("sub_"):
+                agent_id = None
+
             # needs_attribution=true 的记忆是"待认领归属"的降级暂存，不参与上下文读取
             q = db.query(MemoryItem).filter(
                 MemoryItem.is_active == True,
@@ -189,7 +197,7 @@ class MemoryService:
             return None
         if scope not in ("global", "agent", "project"):
             return None
-        if scope == "agent" and not agent_id:
+        if scope == "agent" and (not agent_id or str(agent_id).startswith("sub_")):
             return None
         if scope == "project" and not project_id:
             return None

@@ -8,6 +8,9 @@ from app.models.agent import Agent
 
 router = APIRouter()
 
+# 核心主智能体权威白名单（系统 6 大预设主 Agent；其余专用测试/外部/子代理一律不混入基础主列表）
+CORE_AGENT_IDS = {"general", "coder", "frontend_ui", "g", "pianai", "spark"}
+
 # Agent 展示优先级：核心研发 Agent 置顶，其余辅助 Agent 按定义顺序排列（唯一权威排序源）
 AGENT_ORDER = {
     "general": 0,
@@ -91,7 +94,18 @@ async def list_agents():
             *[(Agent.agent_id == key, idx) for key, idx in AGENT_ORDER.items()],
             else_=99,
         )
-        agents = db.query(Agent).order_by(order_expr, Agent.id.asc()).all()
+        # 严格隔离：仅返回系统核心 6 大预设智能体，坚决剔除子代理（sub_*）与废弃/隐藏项
+        agents = (
+            db.query(Agent)
+            .filter(
+                (Agent.is_sub_agent.is_(False) | Agent.is_sub_agent.is_(None)),
+                ~Agent.agent_id.startswith("sub_"),
+                Agent.status == "active",
+                Agent.agent_id.in_(CORE_AGENT_IDS),
+            )
+            .order_by(order_expr, Agent.id.asc())
+            .all()
+        )
         return [_to_info(a) for a in agents]
     finally:
         db.close()

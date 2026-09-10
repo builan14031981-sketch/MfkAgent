@@ -925,15 +925,15 @@ function GuardrailsView({ t }: { t: (key: string) => string }) {
 export function SecurityView(props: SettingsViewProps) {
   const { settings, saving, onUpdate, t } = props;
   const currentPermission = (settings?.agent_permission_mode as "safe" | "standard" | "autonomous") || "standard";
-  // 折叠态持久化：默认展开，用户收起后写入 localStorage（"0" = 收起）
+  // 折叠态持久化：默认收起（保持页面紧凑纯净，按需展开）
   const [open, setOpen] = useState(() => {
-    try { return localStorage.getItem("mfk_security_troubleshoot_open") !== "0"; }
-    catch { return true; }
+    try { return localStorage.getItem("mfk_security_troubleshoot_open") === "1"; }
+    catch { return false; }
   });
   const [troubleshootTab, setTroubleshootTab] = useState<TroubleshootTab>("matrix");
   const [guardOpen, setGuardOpen] = useState(() => {
-    try { return localStorage.getItem("mfk_security_guard_open") !== "0"; }
-    catch { return true; }
+    try { return localStorage.getItem("mfk_security_guard_open") === "1"; }
+    catch { return false; }
   });
   const [guardTab, setGuardTab] = useState<GuardTab>("approvals");
 

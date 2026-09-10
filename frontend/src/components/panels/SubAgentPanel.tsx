@@ -173,13 +173,9 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
 
   return (
     <>
-      {/* 返回设置 */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-        <button onClick={onBackToSettings} style={{ ...ghostBtn, display: "flex", alignItems: "center", gap: "4px" }}>
-          <ChevronLeft style={{ width: "15px", height: "15px" }} />
-          {t("settings.ai.agents.backToSettings")}
-        </button>
-        {view === "list" && (
+      {/* 列表页顶部操作条（返回已统一归口到标题栏左上角） */}
+      {view === "list" && (
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "12px" }}>
           <button
             onClick={() => onSelect("__create__")}
             style={{ ...primaryBtn, display: "flex", alignItems: "center", gap: "5px" }}
@@ -187,14 +183,7 @@ export function SubAgentPanel({ editingId, onSelect, onBackToSettings, onBackToL
             <Plus style={{ width: "13px", height: "13px" }} />
             新建角色模板
           </button>
-        )}
-      </div>
-
-      {view !== "list" && (
-        <button onClick={onBackToList} style={{ ...ghostBtn, display: "flex", alignItems: "center", gap: "4px", marginBottom: "12px" }}>
-          <ChevronLeft style={{ width: "14px", height: "14px" }} />
-          {t("settings.ai.agents.backToAgentList")}
-        </button>
+        </div>
       )}
 
       {view === "list" ? (

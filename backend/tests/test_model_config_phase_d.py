@@ -97,16 +97,14 @@ def test_providers_registry():
     data = _get("/api/models/providers")
     providers = data["providers"]
     ids = {p["id"] for p in providers}
-    # 当前注册表（model_providers.PROVIDERS，14 家）：早期 11 家中的 freellmapi/spark
-    # 已从注册表移除，新增 doubao/hunyuan/sensenova/siliconflow/openai/anthropic。
+    # 当前注册表（model_providers.PROVIDERS，已移除 wenxin）
     expected = {"deepseek", "qwen", "google", "glm", "moonshot",
-                "mimo", "wenxin", "minimax", "siliconflow", "openai",
+                "mimo", "minimax", "siliconflow", "openai",
                 "anthropic", "doubao", "hunyuan", "sensenova"}
     assert expected <= ids, f"缺少 provider: {expected - ids}"
     by_id = {p["id"]: p for p in providers}
     assert by_id["qwen"]["free"] is True, "qwen 应标记免费"
     assert by_id["deepseek"]["free"] is False, "deepseek 不应标记免费"
-    assert by_id["wenxin"]["models"], "文心应带模型清单"
     assert by_id["minimax"]["models"] and by_id["siliconflow"]["models"] and by_id["doubao"]["models"]
     assert by_id["deepseek"]["has_key"] is True, "deepseek 已配 Key"
     assert by_id["mimo"]["has_key"] is False, "mimo 未配 Key"

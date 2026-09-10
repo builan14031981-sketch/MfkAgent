@@ -536,15 +536,15 @@ optgroup {
   filter: none;
 }
 
-/* 滚动条样式 - 低调薄条，hover 时才显形 */
+/* 滚动条样式 - 4px 极简悬浮细条，绝无粗长槽 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text-level-4) 40%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--text-level-4) 30%, transparent) transparent;
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -552,13 +552,13 @@ optgroup {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-level-4) 40%, transparent);
+  background: color-mix(in srgb, var(--text-level-4) 30%, transparent);
   border-radius: var(--radius-full);
   transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text-level-3) 75%, transparent);
+  background: color-mix(in srgb, var(--text-level-3) 60%, transparent);
 }
 
 /* 隐藏滚动条但保留滚动能力（用于下拉菜单等紧凑弹层） */

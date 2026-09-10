@@ -45,8 +45,11 @@ class MemoryItemCreate(BaseModel):
 
     @model_validator(mode="after")
     def check_context(self):
-        if self.scope == "agent" and not self.agent_id:
-            raise ValueError("agent scope 需要 agent_id")
+        if self.scope == "agent":
+            if not self.agent_id:
+                raise ValueError("agent scope 需要 agent_id")
+            if self.agent_id.startswith("sub_"):
+                raise ValueError("子代理为无状态单次执行单元，不支持配置长期记忆")
         if self.scope == "project" and not self.project_id:
             raise ValueError("project scope 需要 project_id")
         if self.scope == "global":
