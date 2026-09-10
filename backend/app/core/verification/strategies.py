@@ -16,6 +16,7 @@
 
 import os
 import re
+import json
 from typing import Optional
 
 from app.core.verification.models import (
@@ -25,6 +26,22 @@ from app.core.verification.models import (
     NEED_RETRY,
 )
 from app.core.sandbox import SandboxViolation, resolve_sandbox_path
+
+# 致命未捕获异常特征扫描（防止脚本吞异常后假性退出码 0 粉饰太平）
+_FATAL_ERROR_PATTERNS = [
+    r"Traceback \(most recent call last\):",
+    r"\bSyntaxError:",
+    r"\bIndentationError:",
+    r"\bNameError: name '.*' is not defined",
+    r"\bModuleNotFoundError: No module named",
+    r"\bImportError: cannot import name",
+    r"\bReferenceError: .* is not defined",
+    r"\bFATAL ERROR:",
+]
+_FATAL_ERROR_RE = re.compile("|".join(_FATAL_ERROR_PATTERNS))
+
+# 文本搜索/审计类命令豁免扫描（避免正常查询关键字误报）
+_EXEMPT_COMMAND_PREFIXES = ("grep", "rg", "findstr", "git log", "git show", "cat", "type")
 
 
 def _resolve_path(project_path: Optional[str], relative_path: str) -> Optional[str]:
@@ -94,28 +111,56 @@ def verify_write_file(record: dict, project_path: Optional[str]) -> Verification
 
 
 def verify_run_command(record: dict, project_path: Optional[str]) -> VerificationResult:
-    """run_command 验证：解析内嵌 exit code。
+    """run_command / execute_command 验证：解析退出码并进行致命未捕获异常扫描。
 
-    - [exit code 0]          → passed
-    - [exit code N>0]        → need_retry（命令失败，回喂模型重试）
-    - 无退出码标记且工具失败   → failed
-    - 无退出码标记且未知       → failed（无法程序化判定）
+    - [exit code 0] 且无未捕获异常 → passed
+    - [exit code 0] 但含有未捕获崩溃特征 → need_retry（拦截脚本吞异常假性成功）
+    - [exit code N>0]              → need_retry（命令失败，回喂模型重试）
+    - 无退出码标记且工具失败         → failed
+    - 无退出码标记且未知             → failed（无法程序化判定）
     """
     text = record.get("result", "") or ""
-    m = re.search(r"\[exit code (\d+)\]", text)
+    code = None
+    output_body = text
 
-    if m:
-        code = int(m.group(1))
+    # 1. 尝试从 execute_command 的 JSON 输出结构解析
+    if text.strip().startswith("{") and text.strip().endswith("}"):
+        try:
+            data = json.loads(text)
+            if isinstance(data, dict) and "exit_code" in data:
+                code = int(data.get("exit_code", -1))
+                output_body = (str(data.get("stdout", "")) + "\n" + str(data.get("stderr", ""))).strip()
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 2. 尝试从 run_command 的文本格式 [exit code N] 解析
+    if code is None:
+        m = re.search(r"\[exit code (-?\d+)\]", text)
+        if m:
+            code = int(m.group(1))
+
+    cmd_arg = str((record.get("arguments") or {}).get("command", "")).strip().lower()
+
+    if code is not None:
         if code == 0:
+            # 退出码为 0 时进行致命未捕获异常扫描（排除查询类命令）
+            is_exempt = any(cmd_arg.startswith(prefix) for prefix in _EXEMPT_COMMAND_PREFIXES)
+            if not is_exempt and _FATAL_ERROR_RE.search(output_body):
+                return VerificationResult(
+                    NEED_RETRY,
+                    "验证失败: 命令退出码虽为 0，但输出中包含致命未捕获异常（Traceback/SyntaxError/ModuleNotFound 等），禁止误判为成功，请检查并修复错误",
+                    evidence={"exit_code": code, "fatal_error_detected": True, "output": output_body[:2000]},
+                    strategy="run_command",
+                )
             return VerificationResult(
-                PASSED, "验证通过: 命令退出码 0",
+                PASSED, "验证通过: 命令退出码 0 且无未捕获崩溃",
                 evidence={"exit_code": code},
                 strategy="run_command",
             )
         return VerificationResult(
             NEED_RETRY,
             f"验证失败: 命令退出码非零 ({code})",
-            evidence={"exit_code": code, "output": text[:2000]},
+            evidence={"exit_code": code, "output": output_body[:2000]},
             strategy="run_command",
         )
 
@@ -292,6 +337,7 @@ def default_verify(record: dict, project_path: Optional[str]) -> VerificationRes
 VERIFIERS = {
     "write_file": verify_write_file,
     "run_command": verify_run_command,
+    "execute_command": verify_run_command,
     "replace_in_file": verify_replace_in_file,
     "apply_patch": verify_apply_patch,
     "git_commit": verify_git_commit,
