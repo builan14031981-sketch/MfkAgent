@@ -1,216 +1,47 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { getHeroTheme, pickRandomHeroTheme, nextHeroTheme, HERO_THEMES } from "@/themes/registry";
+import { useState, useCallback } from "react";
+import { HERO_THEMES } from "@/themes/registry";
 import type { HeroTheme } from "@/themes/types";
-import { useSettingsStore } from "@/lib/store";
 
-const STORAGE_THEME = "mfk_hero_theme";
-const STORAGE_ENABLED = "mfk_hero_theme_enabled";
-const STORAGE_FAVORITES = "mfk_hero_favorites";
-
-/** 默认收藏（保证开箱即有快速切换入口；收藏数量无上限） */
-const DEFAULT_FAVORITES = ["cyber-terminal", "ai-awakening"];
-
-/** 会话级决策标志：每次应用启动只随机一次；手动选择/手动随机后不再被启动随机覆盖 */
-let sessionDecided = false;
-
-/** 解析收藏字符串（过滤无效主题；数量无上限） */
-function parseFavorites(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed.filter((id): id is string => typeof id === "string" && !!getHeroTheme(id));
-    }
-  } catch {
-    /* ignore */
-  }
-  return [];
-}
-
-/** 读取本地缓存收藏；从未设置时播种默认收藏（"[]"= 用户已清空，不重新播种） */
-function readLocalFavorites(): string[] {
-  const raw = localStorage.getItem(STORAGE_FAVORITES);
-  if (raw === null) return DEFAULT_FAVORITES.filter((id) => !!getHeroTheme(id));
-  return parseFavorites(raw);
-}
-
-function persistFavorites(favorites: string[]) {
-  try {
-    localStorage.setItem(STORAGE_FAVORITES, JSON.stringify(favorites));
-  } catch {
-    /* ignore */
-  }
-}
+const APPLE_THEME = HERO_THEMES[0];
 
 /**
- * ThemeManager：
- * - 每次应用启动从「设置指定范围」中随机选择一个启动主题（默认全部主题）
- * - 用户手动选择后，本会话内不再被启动随机覆盖
- * - 收藏机制：首页快速切换只展示收藏主题（上限 MAX_FAVORITES）
- * - 收藏持久化：后端 Settings（本地 SQLite，hero_favorites）为权威源，
- *   localStorage 作为本地缓存，跨重启/跨标签记住用户个人喜好
- * - 可随时关闭动画 / 通过设置关闭整个入口
- * - 规则控制走 Settings（后端）
+ * useHeroTheme:
+ * 已收敛锁定为 Apple Minimal 极简主题，隐藏其他所有主题及切换交互。
  */
 export function useHeroTheme() {
-  const { settings, updateSetting } = useSettingsStore();
-  const [theme, setThemeState] = useState<HeroTheme | undefined>(undefined);
+  const [theme] = useState<HeroTheme>(APPLE_THEME);
   const [enabled, setEnabledState] = useState(true);
-  const [favorites, setFavoritesState] = useState<string[]>([]);
+  const [favorites] = useState<string[]>([APPLE_THEME.id]);
 
-  /** 是否启用首页主题入口（设置：hero_entry，默认开启） */
-  const entryEnabled = settings?.hero_entry !== "0";
-  /** 是否开启启动随机（设置：hero_random，默认开启） */
-  const randomEnabled = settings?.hero_random !== "0";
-  /** 随机范围（设置：hero_random_scope，默认全部） */
-  const randomScope = settings?.hero_random_scope === "favorites" ? "favorites" : "all";
-
-  const persistTheme = useCallback((id: string) => {
-    try {
-      localStorage.setItem(STORAGE_THEME, id);
-    } catch {
-      /* ignore */
-    }
+  const setEnabled = useCallback((val: boolean) => {
+    setEnabledState(val);
   }, []);
 
-  // 挂载时决策：等待设置就绪后按规则执行（随机范围 / 是否随机）；
-  // 设置接口加载失败时 1.2s 兜底，按默认规则（随机全部）出主题
-  useEffect(() => {
-    // 已决策过（客户端导航返回首页导致重挂载）：从 localStorage 恢复上次状态，
-    // 避免 theme=undefined 使主题按钮消失（台词按钮不受影响，因数据每次重新拉取）
-    if (sessionDecided) {
-      try {
-        const savedId = localStorage.getItem(STORAGE_THEME);
-        const saved = getHeroTheme(savedId);
-        if (saved) setThemeState(saved);
-        setEnabledState(localStorage.getItem(STORAGE_ENABLED) !== "0");
-        setFavoritesState(readLocalFavorites());
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
+  const setTheme = useCallback((_themeOrId: string | HeroTheme) => {
+    // 强制锁定 Apple 主题，不再切换至其他主题
+  }, []);
 
-    const decide = (randomOn: boolean, scope: "all" | "favorites") => {
-      let savedId: string | null = null;
-      let savedEnabled = true;
-      let localFavs: string[] = [];
-      try {
-        savedId = localStorage.getItem(STORAGE_THEME);
-        savedEnabled = localStorage.getItem(STORAGE_ENABLED) !== "0";
-        localFavs = readLocalFavorites();
-      } catch {
-        /* ignore */
-      }
-
-      // 收藏：后端 Settings（本地 SQLite）为权威源，localStorage 为缓存
-      let favs = localFavs;
-      const remoteRaw = settings?.hero_favorites ?? null;
-      if (remoteRaw) {
-        const remote = parseFavorites(remoteRaw);
-        if (remote.length > 0) favs = remote;
-      }
-      persistFavorites(favs);
-
-      // 首次使用（后端尚无收藏记录）：写入默认收藏，生成本地个人喜好配置
-      if (settings !== null && (!remoteRaw || remoteRaw === "[]")) {
-        updateSetting("hero_favorites", JSON.stringify(favs)).catch(() => {});
-      }
-
-      setEnabledState(savedEnabled);
-      setFavoritesState(favs);
-
-      let chosen: HeroTheme | undefined;
-      if (randomOn) {
-        const pool =
-          scope === "favorites" && favs.length > 0
-            ? HERO_THEMES.filter((t) => favs.includes(t.id))
-            : HERO_THEMES;
-        chosen = pickRandomHeroTheme(pool);
-      } else {
-        chosen = getHeroTheme(savedId) ?? getHeroTheme(favs[0]) ?? HERO_THEMES[0];
-      }
-      if (chosen) {
-        sessionDecided = true;
-        setThemeState(chosen);
-        persistTheme(chosen.id);
-      }
-    };
-
-    if (settings !== null) {
-      decide(randomEnabled, randomScope);
-      return;
-    }
-    // settings 加载超时兜底：不随机，用上次保存的主题/默认主题，避免用户关闭随机后仍被强制随机
-    const t = setTimeout(() => decide(false, "all"), 1200);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]);
-
-  const setTheme = useCallback((id: string) => {
-    const next = getHeroTheme(id);
-    if (!next) return;
-    sessionDecided = true;
-    setThemeState(next);
-    persistTheme(next.id);
-  }, [persistTheme]);
-
-  const cycleTheme = useCallback(() => {
-    setThemeState((prev) => {
-      const next = nextHeroTheme(prev);
-      persistTheme(next.id);
-      return next;
-    });
-  }, [persistTheme]);
-
-  /** 立即随机一次（首页快捷随机，范围跟随设置） */
   const shuffle = useCallback(() => {
-    const pool =
-      randomScope === "favorites" && favorites.length > 0
-        ? HERO_THEMES.filter((t) => favorites.includes(t.id))
-        : HERO_THEMES;
-    const next = pickRandomHeroTheme(pool);
-    sessionDecided = true;
-    setThemeState(next);
-    persistTheme(next.id);
-  }, [favorites, randomScope, persistTheme]);
-
-  const setEnabled = useCallback((value: boolean) => {
-    setEnabledState(value);
-    try {
-      localStorage.setItem(STORAGE_ENABLED, value ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
+    // 锁定 Apple 主题，不再随机
   }, []);
 
-  const isFavorite = useCallback((id: string) => favorites.includes(id), [favorites]);
-
-  const toggleFavorite = useCallback((id: string) => {
-    const has = favorites.includes(id);
-    const next = has ? favorites.filter((f) => f !== id) : [...favorites, id];
-    setFavoritesState(next);
-    persistFavorites(next);
-    // 同步到后端 Settings（本地 SQLite），生成用户个人喜好配置
-    updateSetting("hero_favorites", JSON.stringify(next)).catch(() => {});
-  }, [favorites, updateSetting]);
-
-  const favoriteThemes = HERO_THEMES.filter((t) => favorites.includes(t.id));
+  const toggleFavorite = useCallback((_id: string) => {
+    // 锁定状态，无需收藏操作
+  }, []);
 
   return {
     theme,
     enabled,
-    entryEnabled,
-    favorites,
-    favoriteThemes,
-    isFavorite,
-    toggleFavorite,
+    entryEnabled: true,
     setEnabled,
     setTheme,
-    cycleTheme,
     shuffle,
-    themes: HERO_THEMES,
+    favorites,
+    favoriteThemes: [APPLE_THEME],
+    isFavorite: () => true,
+    toggleFavorite,
+    themes: [APPLE_THEME],
   };
 }
