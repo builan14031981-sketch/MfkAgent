@@ -71,6 +71,12 @@ create-shortcut.bat
 create-shortcut.vbs
 backend_guardian.ps1
 gateway_local_steps.bat
+uninstall.bat
+
+# Large binary installers & build specs
+MfkAgent-*.exe
+*.spec
+backend/build/
 
 # Scratch / tool self-test artifacts
 CE1/
