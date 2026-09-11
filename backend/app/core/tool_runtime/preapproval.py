@@ -272,6 +272,13 @@ def _segment_match_reason(segment: str, project_path: Optional[str]) -> Optional
                 return f"python -m {mod}"
             if mod == "pip":
                 return _pip_install_allowed(argv[3:], project_path)
+        # 项目内安全测试脚本直跑（如 python tests.py, python test_*.py）
+        if len(argv) >= 2:
+            target = argv[1].strip("'\"")
+            if target.endswith(".py") and ".." not in target and not target.startswith(("/", "\\")):
+                base = os.path.basename(target.replace("\\", "/")).lower()
+                if base in ("tests.py", "test.py") or base.startswith("test_") or base.endswith("_test.py") or base.endswith("_tests.py"):
+                    return f"python {base}"
         return None
 
     # pip / pip3

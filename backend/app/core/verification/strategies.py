@@ -186,9 +186,9 @@ def verify_replace_in_file(record: dict, project_path: Optional[str]) -> Verific
     - 替换成功            → passed
     """
     args = record.get("arguments") or {}
-    rel = args.get("relative_path")
-    old_str = args.get("old_str")
-    new_str = args.get("new_str")
+    rel = args.get("relative_path") or args.get("path")
+    old_str = args.get("old_str") or args.get("old_text")
+    new_str = args.get("new_str") or args.get("new_text")
 
     if not rel:
         return VerificationResult(
@@ -336,6 +336,7 @@ def default_verify(record: dict, project_path: Optional[str]) -> VerificationRes
 # 工具名 → 验证策略路由表
 VERIFIERS = {
     "write_file": verify_write_file,
+    "edit_file": verify_replace_in_file,
     "run_command": verify_run_command,
     "execute_command": verify_run_command,
     "replace_in_file": verify_replace_in_file,

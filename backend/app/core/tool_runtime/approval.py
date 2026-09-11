@@ -78,7 +78,7 @@ class ApprovalRegistry:
             loop = future.get_loop()
         except Exception:
             loop = None
-        if loop is not None:
+        if loop is not None and not loop.is_closed():
             loop.call_soon_threadsafe(_resolve_future, future, action)
         else:
             _resolve_future(future, action)

@@ -206,6 +206,18 @@ def _allow_powershell(command: str, argv: List[str]) -> bool:
     return any(kw in cmd_lower for kw in _PS_READONLY_CMDLETS)
 
 
+def _is_safe_test_script_arg(arg: str) -> bool:
+    """判断参数是否为安全的测试脚本命名（不含路径逃逸与绝对路径）"""
+    clean = (arg or "").strip("'\"")
+    if not clean.endswith(".py"):
+        return False
+    # 严禁路径逃逸（..）与绝对路径（/ 或 \ 或 C:）
+    if ".." in clean or clean.startswith("/") or clean.startswith("\\") or (len(clean) > 1 and clean[1] == ":"):
+        return False
+    base = os.path.basename(clean.replace("\\", "/")).lower()
+    return base in ("tests.py", "test.py") or base.startswith("test_") or base.endswith("_test.py") or base.endswith("_tests.py")
+
+
 def _allow_python(argv: List[str]) -> bool:
     if argv[0] != "python":
         return False
@@ -214,6 +226,9 @@ def _allow_python(argv: List[str]) -> bool:
     if argv[1] in ("--version", "-V"):
         return True
     if argv[1] == "-m" and len(argv) >= 3 and argv[2] in _ALLOWED_PY_MODULES:
+        return True
+    # 放行本地安全命名的测试脚本运行
+    if len(argv) >= 2 and _is_safe_test_script_arg(argv[1]):
         return True
 
     return False
@@ -749,11 +764,14 @@ class CommandRiskEngine:
         if not allowed_sub:
             return True
 
-        # python -m 模块白名单
-        if cmd == "python" and len(argv) >= 2 and argv[1] == "-m":
-            if len(argv) >= 3:
-                return argv[2] in _ALLOWED_PY_MODULES
-            return True
+        # python -m 模块白名单 或 测试脚本
+        if cmd == "python" and len(argv) >= 2:
+            if argv[1] == "-m":
+                if len(argv) >= 3:
+                    return argv[2] in _ALLOWED_PY_MODULES
+                return True
+            if _is_safe_test_script_arg(argv[1]):
+                return True
 
         # python --version / -V → 安全
         if cmd == "python" and len(argv) >= 2 and argv[1] in ("--version", "-V"):

@@ -66,7 +66,7 @@ def rule_write_detected(ctx: CompletionContext) -> Optional[List[str]]:
     if any(k in goal for k in ("记忆", "记住", "memory")) and "文件" not in goal:
         return None
     write_keywords = (
-        "write_file", "replace_in_file", "apply_patch", "delete_file",
+        "write_file", "edit_file", "replace_in_file", "apply_patch", "delete_file",
         "add_memory", "manage_todos",
     )
     if not any(r.get("tool") in write_keywords for r in (ctx.tool_records or [])):

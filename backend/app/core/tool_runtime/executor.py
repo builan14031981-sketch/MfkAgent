@@ -626,6 +626,8 @@ def _make_pending_approval(
     """
     command = _describe_tool_command(func_name, func_args)
     chat_id = ctx.get("chat_id")
+    # 自主模式通常为无人工值守或自动化运行：若触发未获豁免的审批，缩减等待为快速超时（10秒），避免300秒死等阻塞
+    approval_timeout = 10.0 if ctx.get("permission_mode") == "autonomous" else None
     approval_id, info = approval_registry.register(
         tool_call_id=tool_call_id,
         tool=func_name,
@@ -633,6 +635,7 @@ def _make_pending_approval(
         risk_level=decision.risk_level.value,
         risk_reason=decision.reason,
         chat_id=chat_id,
+        timeout=approval_timeout,
     )
 
     if emit:

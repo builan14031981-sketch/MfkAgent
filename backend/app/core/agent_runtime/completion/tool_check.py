@@ -106,7 +106,23 @@ class ToolVerification(CompletionVerifier):
             vr = self._verifier.verify(record, ctx.project_path)
             detail.append({"tool": tool_name, "verdict": vr.status})
             if not vr.passed:
-                missing_items.append(f"{tool_name}: {vr.message}")
+                # 检查在失败命令后是否发生过代码写入（典型如排查场景：先复现失败，再修改代码）
+                has_subsequent_write = False
+                try:
+                    cmd_idx = records.index(record) if record in records else -1
+                    if cmd_idx >= 0:
+                        for sub in records[cmd_idx + 1:]:
+                            sub_tool = sub.get("tool") or sub.get("name") or ""
+                            if sub_tool in ("write_file", "edit_file", "replace_in_file", "apply_patch") and sub.get("status") == "success":
+                                has_subsequent_write = True
+                                break
+                except Exception:
+                    has_subsequent_write = False
+
+                if has_subsequent_write:
+                    missing_items.append(f"{tool_name}: 历史命令退出码非零且后续已有代码修改，请再次执行测试命令验证最新修改")
+                else:
+                    missing_items.append(f"{tool_name}: {vr.message}")
 
         if missing_items:
             return CompletionVerificationResult(

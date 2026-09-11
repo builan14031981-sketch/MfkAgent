@@ -42,10 +42,18 @@ class ToolExecutionStrategy:
     """工具执行策略引擎"""
     
     # 写入类工具
-    WRITE_TOOLS = {"write_file", "replace_in_file", "apply_patch", "delete_file"}
+    WRITE_TOOLS = {"write_file", "edit_file", "replace_in_file", "apply_patch", "delete_file"}
     
-    # 验证类工具
-    VERIFY_TOOLS = {"run_command"}
+    # 验证类工具（包含项目沙箱执行命令）
+    VERIFY_TOOLS = {"run_command", "execute_command"}
+
+    # 无需代码级验证的文档/静态配置扩展名
+    EXEMPT_VERIFY_EXTENSIONS = {
+        ".md", ".markdown", ".txt", ".rst", ".json", ".yml", ".yaml",
+        ".toml", ".ini", ".cfg", ".gitignore", ".gitattributes",
+        ".svg", ".png", ".jpg", ".jpeg", ".ico", ".license",
+    }
+    EXEMPT_VERIFY_BASENAMES = {"license", "notice", "readme", "dockerfile", "makefile"}
     
     # 危险命令模式
     DANGEROUS_COMMAND_PATTERNS = [
@@ -155,12 +163,26 @@ class ToolExecutionStrategy:
         
         # Rule 2: write-after-verify
         if tool_name in self.WRITE_TOOLS and success:
+            target_path = (
+                tool_args.get("relative_path")
+                or tool_args.get("path")
+                or tool_args.get("file_path")
+                or ""
+            ).strip().lower()
+
+            # 纯文档/静态配置等非源码资产豁免代码级验证提示
+            import os
+            base_name = os.path.basename(target_path)
+            _, ext = os.path.splitext(target_path)
+            if ext in self.EXEMPT_VERIFY_EXTENSIONS or base_name in self.EXEMPT_VERIFY_BASENAMES:
+                return None
+
             self.pending_verification = True
             return StrategyResult(
                 status=StrategyStatus.NEED_FEEDBACK,
-                reason="文件修改已完成，但尚未验证",
+                reason="代码文件修改已完成，但尚未验证",
                 rule_name="write-after-verify",
-                suggestion="请执行验证步骤（如 run_command 运行测试或编译检查）"
+                suggestion="请执行验证步骤（如 execute_command 运行 pytest、npm test 或编译检查）"
             )
         
         # 验证工具执行后重置 pending_verification

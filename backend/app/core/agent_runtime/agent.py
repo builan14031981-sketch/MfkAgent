@@ -81,7 +81,7 @@ def is_cache_aware_compaction_enabled() -> bool:
 DEFAULT_MAX_COMPLETION_RETRY = 3
 
 # ──── Phase 11: 写操作工具集合（用于强制自查判定）────
-WRITE_TOOLS = {"write_file", "replace_in_file", "apply_patch", "delete_file", "run_command"}
+WRITE_TOOLS = {"write_file", "edit_file", "replace_in_file", "apply_patch", "delete_file", "run_command"}
 
 # ──── Phase 11: 倒数预警与自查提示文本 ────
 COUNTDOWN_WARNING = "[系统提示]: 你的工具调用轮次即将达到上限，请在下一轮结束工具调用并向用户总结最终结果。"
@@ -1597,11 +1597,18 @@ class AgentRuntime:
 
     # 探索型任务关键词（预算收紧，防探索任务吃光轮次，Round 2 P6）
     _EXPLORE_TASK_KEYWORDS = ("确认", "查看", "了解", "探索", "定位", "检查", "分析", "阅读")
+    # 复合执行/修复/自验关键词（豁免收紧，确保有足够轮次完成复现、修改与测试）
+    _EXEC_TASK_EXEMPT_KEYWORDS = ("复现", "验证", "修复", "修改", "解决", "测试", "写", "实现", "开发")
 
     @classmethod
     def _task_round_budget(cls, action: str, base: int) -> int:
-        """按任务类型差异化轮次预算：探索类收紧到 6，执行类保持默认。"""
-        if action and any(k in action for k in cls._EXPLORE_TASK_KEYWORDS):
+        """按任务类型差异化轮次预算：纯探索类收紧到 6，执行与修复类保持充足预算。"""
+        if not action:
+            return base
+        # 若包含复合执行/复现/修复/测试意图，严禁截断为 6 轮
+        if any(k in action for k in cls._EXEC_TASK_EXEMPT_KEYWORDS):
+            return base
+        if any(k in action for k in cls._EXPLORE_TASK_KEYWORDS):
             return max(3, min(6, base))
         return base
 
@@ -2183,7 +2190,11 @@ class AgentRuntime:
             last_compress_round = 0
             last_round_usage = None
             try:
-                for round_no in range(task_budget + 1):
+                round_no = -1
+                while True:
+                    round_no += 1
+                    if round_no > task_budget:
+                        break
                     # G6-B Auto: 水位超阈值自动压缩历史（基于上一轮 usage，首轮跳过）
                     if (
                         round_no > 0
@@ -2204,7 +2215,9 @@ class AgentRuntime:
                                     ),
                                 })
 
-                    round_tools = context.tools if round_no < task_budget else None
+                    # 完成验证重试期间或未达预算上限时，完整保留工具赋予模型修复能力
+                    in_completion_retry = (completion_retry_count > 0)
+                    round_tools = context.tools if (round_no < task_budget or in_completion_retry) else None
 
                     # ──── Phase 11: 倒数预警（第 task_budget - 1 轮，即最后一轮有工具时）────
                     if round_no == task_budget - 2:
@@ -2378,6 +2391,8 @@ class AgentRuntime:
                                        "retry_count": completion_retry_count, "max_retry": max_completion_retry}
                                 if completion_retry_count < max_completion_retry:
                                     completion_retry_count += 1
+                                    # 动态为完成验证重试延展预算，确保进入下一轮真实重试并恢复工具
+                                    task_budget = max(task_budget, round_no + 3)
                                     current_messages.append({"role": "assistant", "content": round_text or None})
                                     current_messages.append({
                                         "role": "user",
@@ -2469,6 +2484,8 @@ class AgentRuntime:
                                        "retry_count": completion_retry_count, "max_retry": max_completion_retry}
                                 if completion_retry_count < max_completion_retry:
                                     completion_retry_count += 1
+                                    # 动态为完成验证重试延展预算，确保进入下一轮真实重试并恢复工具
+                                    task_budget = max(task_budget, round_no + 3)
                                     current_messages.append({"role": "assistant", "content": round_text or None})
                                     current_messages.append({
                                         "role": "user",
