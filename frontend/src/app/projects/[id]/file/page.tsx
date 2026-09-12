@@ -1,21 +1,35 @@
 "use client";
 
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams, usePathname } from "next/navigation";
 import {
   ArrowLeft,
   File,
   Copy,
   Check,
 } from "lucide-react";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { useProjects } from "@/hooks/useProjects";
 import { useFileContent } from "@/hooks/useFileContent";
 import { useTranslation } from "@/hooks/useTranslation";
 
+function FilePageSkeleton() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", background: "var(--bg-level-2)" }}>
+      <div style={{ height: "60px", borderBottom: "1px solid var(--border-primary)", background: "var(--bg-level-1)", padding: "0 24px", display: "flex", alignItems: "center", gap: "16px" }}>
+        <div style={{ width: "70px", height: "28px", borderRadius: "6px", background: "var(--bg-level-3)", opacity: 0.6 }} />
+        <div style={{ width: "140px", height: "16px", borderRadius: "4px", background: "var(--bg-level-3)", opacity: 0.5 }} />
+      </div>
+      <div style={{ flex: 1, padding: "24px 32px" }}>
+        <div style={{ height: "240px", borderRadius: "12px", background: "var(--bg-level-1)", border: "1px solid var(--border-primary)", opacity: 0.4 }} />
+      </div>
+    </div>
+  );
+}
+
 // 静态导出：动态路由需在 [id]/layout.tsx 提供 generateStaticParams（占位参数）。
 export default function FileContentPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FilePageSkeleton />}>
       <FileContentPageInner />
     </Suspense>
   );
@@ -25,7 +39,24 @@ function FileContentPageInner() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const projectId = Number(params.id);
+  const pathname = usePathname();
+
+  // 稳健解析真实 projectId：避免静态导出占位符 "0" 引发的请求错误与闪变
+  const projectId = useMemo(() => {
+    if (pathname) {
+      const m = pathname.match(/\/projects\/(\d+)/);
+      if (m && Number(m[1]) > 0) return Number(m[1]);
+    }
+    if (typeof window !== "undefined") {
+      const m = window.location.pathname.match(/\/projects\/(\d+)/);
+      if (m && Number(m[1]) > 0) return Number(m[1]);
+    }
+    if (params?.id && params.id !== "0" && !isNaN(Number(params.id)) && Number(params.id) > 0) {
+      return Number(params.id);
+    }
+    return 0;
+  }, [pathname, params?.id]);
+
   const filePath = searchParams.get("path") || "";
   const { t } = useTranslation();
 

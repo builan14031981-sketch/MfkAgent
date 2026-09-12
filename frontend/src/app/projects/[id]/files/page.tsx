@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useMemo } from "react";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import {
   ArrowLeft,
   Folder,
@@ -17,7 +17,24 @@ import { useTranslation } from "@/hooks/useTranslation";
 export default function ProjectFilesPage() {
   const router = useRouter();
   const params = useParams();
-  const projectId = Number(params.id);
+  const pathname = usePathname();
+
+  // 稳健解析真实 projectId：避免静态导出占位符 "0" 引发向后端打 0 请求与闪变
+  const projectId = useMemo(() => {
+    if (pathname) {
+      const m = pathname.match(/\/projects\/(\d+)/);
+      if (m && Number(m[1]) > 0) return Number(m[1]);
+    }
+    if (typeof window !== "undefined") {
+      const m = window.location.pathname.match(/\/projects\/(\d+)/);
+      if (m && Number(m[1]) > 0) return Number(m[1]);
+    }
+    if (params?.id && params.id !== "0" && !isNaN(Number(params.id)) && Number(params.id) > 0) {
+      return Number(params.id);
+    }
+    return 0;
+  }, [pathname, params?.id]);
+
   const { t } = useTranslation();
 
   const { projects } = useProjects();

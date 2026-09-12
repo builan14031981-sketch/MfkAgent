@@ -24,19 +24,27 @@ export interface PaginatedResponse<T> {
 // 跨实例同步事件：任一实例变更 projects 后广播，所有实例立即重新拉取
 export const PROJECTS_CHANGED_EVENT = "mfk-projects-changed";
 
+// 内存级 SWR 缓存：项目列表首次拉取后常驻内存，侧边栏与聊天顶栏秒显关联项目
+let _cachedProjects: Project[] = [];
+let _cachedTotal = 0;
+let _hasLoadedProjects = false;
+
 export function useProjects(page: number = 1, limit: number = 50) {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<Project[]>(_cachedProjects);
+  const [total, setTotal] = useState(_cachedTotal);
+  const [loading, setLoading] = useState(!_hasLoadedProjects);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!_hasLoadedProjects) setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       const data = await apiGet<PaginatedResponse<Project>>(`/api/projects?${params}`);
       setProjects(data.items);
       setTotal(data.total);
+      _cachedProjects = data.items;
+      _cachedTotal = data.total;
+      _hasLoadedProjects = true;
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");

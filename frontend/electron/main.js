@@ -417,6 +417,13 @@ function registerAppProtocol() {
           if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
             return electronNet.fetch(pathToFileURL(candidate).toString());
           }
+          let sub = "files";
+          if (reqPath.includes("/file")) sub = "file";
+          else if (reqPath.includes("/search")) sub = "search";
+          const defaultProjTxt = path.join(outDir, "projects", "0", sub, "index.txt");
+          if (fs.existsSync(defaultProjTxt)) {
+            return electronNet.fetch(pathToFileURL(defaultProjTxt).toString());
+          }
         }
         // 数据请求未命中模版时，返回 404（Next.js 可安全跳过 prefetch，绝不退化硬重载）
         return new Response("Not Found", { status: 404, headers: { "Content-Type": "text/plain" } });
@@ -445,9 +452,12 @@ function registerAppProtocol() {
         }
 
         if (reqPath.startsWith("projects/")) {
-          const projFilesFallback = path.join(outDir, "projects", "0", "files", "index.html");
-          if (fs.existsSync(projFilesFallback)) {
-            return electronNet.fetch(pathToFileURL(projFilesFallback).toString());
+          let sub = "files";
+          if (reqPath.includes("/file/") || reqPath.endsWith("/file")) sub = "file";
+          else if (reqPath.includes("/search/") || reqPath.endsWith("/search")) sub = "search";
+          const projFallback = path.join(outDir, "projects", "0", sub, "index.html");
+          if (fs.existsSync(projFallback)) {
+            return electronNet.fetch(pathToFileURL(projFallback).toString());
           }
         }
 
