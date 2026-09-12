@@ -17,9 +17,10 @@ const { cropSelection } = require("./image-processor");
 
 /**
  * 启动截图流程
+ * @param {Function} [onSelectionDone] 选区完成回调（用户确认或取消选区的一瞬间调用，用于零延迟瞬间恢复主窗口）
  * @returns {Promise<{filePath:string, dataUrl:string, width:number, height:number}|null>}
  */
-async function startScreenshot() {
+async function startScreenshot(onSelectionDone) {
   try {
     // 1. 先捕获所有显示器的全屏图像（全内存，零磁盘 I/O）
     //    此时主窗口已由调用方隐藏，遮罩窗口尚未显示，截图内容干净
@@ -30,6 +31,13 @@ async function startScreenshot() {
 
     // 2. 显示遮罩窗口，等待用户拖选区域并确认
     const selection = await showOverlayWindow();
+
+    // 体验极致优化：用户一旦确认或取消，立刻在第一时间通知主窗口恢复显示！
+    // 彻底消灭遮罩消失到主窗口弹出的视觉空白与"软件失踪"卡顿感
+    if (typeof onSelectionDone === "function") {
+      try { onSelectionDone(); } catch (e) {}
+    }
+
     if (!selection) {
       // 用户取消（ESC / 右键 / 取消按钮）
       return null;

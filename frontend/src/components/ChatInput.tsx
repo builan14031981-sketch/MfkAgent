@@ -286,19 +286,31 @@ export const ChatInput = memo(function ChatInput({
         if (result?.cancelled) console.log("[Screenshot] cancelled by user");
         return;
       }
-      // 性能优化：利用 Chromium 原生 C++ fetch(dataUrl) 瞬时创建 Blob，避免 JS 主线程 atob 循环卡顿
       const dataUrl: string = result.dataUrl;
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], `screenshot_${Date.now()}.png`, { type: blob.type || "image/png" });
+      const screenshotId = `screenshot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-      // 瞬时添加到本地截图预览列表
+      // 极致性能优化（0ms秒弹）：
+      // 1. 优先立即添加预览项到渲染状态，缩略图卡片零延迟瞬间在会话输入框上方弹出！
+      const placeholderFile = new File([], `screenshot_${Date.now()}.png`, { type: "image/png" });
       const newItem: ScreenshotItem = {
-        id: `screenshot_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        id: screenshotId,
         dataUrl,
-        file,
+        file: placeholderFile,
       };
       setScreenshots((prev) => [...prev, newItem]);
+
+      // 2. 异步在后台并行执行 Blob/File 组装，完全不阻塞界面的瞬时呈现
+      fetch(dataUrl)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const realFile = new File([blob], `screenshot_${Date.now()}.png`, { type: blob.type || "image/png" });
+          setScreenshots((prev) =>
+            prev.map((item) => (item.id === screenshotId ? { ...item, file: realFile } : item))
+          );
+        })
+        .catch((err) => {
+          console.error("[Screenshot] background file assembly failed:", err);
+        });
     } catch (err) {
       console.error("[Screenshot] handleScreenshot failed:", err);
     }
