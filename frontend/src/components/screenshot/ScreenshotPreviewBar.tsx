@@ -70,6 +70,7 @@ function ScreenshotThumbnail({ item, onRemove, onPreview }: ScreenshotThumbnailP
         flexShrink: 0,
         boxShadow: hovered ? "0 2px 8px rgba(0,0,0,0.15)" : "none",
         transition: "box-shadow 0.15s",
+        animation: "scaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

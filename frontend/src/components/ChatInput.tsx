@@ -325,11 +325,27 @@ export const ChatInput = memo(function ChatInput({
   const canSend = (value.trim().length > 0 || screenshots.length > 0) && !disabled;
 
   // 统一发送：把 screenshots 传给父组件，由父组件统一上传和发送
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     if (!canSend) return;
 
-    // 把 screenshots 传给父组件（父组件 handleSend 会先上传截图再发送消息）
-    const screenshotsToSend = screenshots.length > 0 ? [...screenshots] : undefined;
+    // 安全守护：确保所有截图均为有效完整文件，若后台并行组装尚未就绪则兜底等待完成，绝不发送 0 字节空文件
+    const safeScreenshots = await Promise.all(
+      screenshots.map(async (item) => {
+        if (item.file && item.file.size > 0) return item;
+        try {
+          const res = await fetch(item.dataUrl);
+          const blob = await res.blob();
+          const realFile = new File([blob], item.file?.name || `screenshot_${Date.now()}.png`, {
+            type: blob.type || "image/png",
+          });
+          return { ...item, file: realFile };
+        } catch {
+          return item;
+        }
+      })
+    );
+
+    const screenshotsToSend = safeScreenshots.length > 0 ? safeScreenshots : undefined;
     setScreenshots([]);
     clearDraft();
     onSend(screenshotsToSend);
