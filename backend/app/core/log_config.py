@@ -2,6 +2,7 @@
 
 import logging
 import os
+import sys
 from logging.handlers import TimedRotatingFileHandler
 
 from app.core.config import DATA_DIR
@@ -31,16 +32,17 @@ def init_logging() -> None:
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)
 
-    # 终端处理器
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    console_handler.setLevel(logging.INFO)
-
-    # 配置根 logger
+    # 根 logger 配置：挂载文件 handler，确保 app.log 始终生效
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     root.addHandler(file_handler)
-    root.addHandler(console_handler)
+
+    # 终端处理器（仅在控制台可用时附加，避免 --noconsole 模式下 StreamHandler 异常）
+    if sys.stderr is not None and getattr(sys.stderr, "isatty", lambda: False)():
+        console_handler = logging.StreamHandler(sys.stderr)
+        console_handler.setFormatter(formatter)
+        console_handler.setLevel(logging.INFO)
+        root.addHandler(console_handler)
 
     logging.getLogger(__name__).info("Logging initialized: %s", LOG_FILE)
 

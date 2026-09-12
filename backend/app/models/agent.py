@@ -159,6 +159,9 @@ class Agent(Base):
     identity = Column(Text)
     capabilities = Column(JSON, default=list)
     status = Column(String(20), default="active")  # active / legacy / inactive
+    # 模型列：对齐生产库 agents 表结构（chat.py 裸 SQL SELECT model FROM agents 依赖此列）。
+    # 旧生产库已有该列，ORM create_all 生成的新库缺少会导致 OperationalError，此处补列以兼容。
+    model = Column(String(50), nullable=True)
     # 默认人格推荐值：创建 Chat 时的 personality 快照来源。NULL = 该 Agent 默认无人格（不注入 personality prompt）
     default_personality_level = Column(Integer, nullable=True)
     # Expression Profile V1：表达风格配置（companion / warm / professional / coder / creative）

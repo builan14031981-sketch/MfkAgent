@@ -1,3 +1,22 @@
+import sys
+import io
+
+# ── PyInstaller --noconsole 模式守护 ──
+# Windows GUI/无控制台模式下 sys.stdout 和 sys.stderr 默认为 None，
+# 会导致 uvicorn 的 ColourizedFormatter (sys.stdout.isatty()) 崩溃并抛出 AttributeError。
+class _SafeNullStream(io.StringIO):
+    def isatty(self) -> bool:
+        return False
+    def flush(self) -> None:
+        pass
+    def write(self, s: str) -> int:
+        return len(s)
+
+if sys.stdout is None:
+    sys.stdout = _SafeNullStream()
+if sys.stderr is None:
+    sys.stderr = _SafeNullStream()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -111,6 +130,9 @@ def _ensure_schema():
                     conn.execute(sa.text("ALTER TABLE agents ADD COLUMN allowed_tools JSON"))
                 if "parent_agent_id" not in cols:
                     conn.execute(sa.text("ALTER TABLE agents ADD COLUMN parent_agent_id VARCHAR(50)"))
+                # P0 修复：对齐生产库 agents.model 列（chat.py 裸 SQL SELECT model FROM agents 依赖）
+                if "model" not in cols:
+                    conn.execute(sa.text("ALTER TABLE agents ADD COLUMN model VARCHAR(50)"))
 
         if "memory_items" in inspector.get_table_names():
             cols = {c["name"] for c in inspector.get_columns("memory_items")}
@@ -199,8 +221,8 @@ _seed_persona()
 
 
 
-def _seed_sub_agents():
-    """幂等补种子：仅插入缺失的内置子代理（不触碰已有 Agent 数据，不覆盖用户修改）。"""
+def _seed_preset_agents():
+    """幂等补种子与自愈：插入缺失的预设智能体（含 6 大核心主 Agent 及内置子代理），不触碰已有 Agent 数据，不覆盖用户修改。"""
     from app.core.database import SessionLocal
     from app.models.agent import Agent
     from seed_agents import PRESET_AGENTS
@@ -208,22 +230,20 @@ def _seed_sub_agents():
     db = SessionLocal()
     try:
         for agent_data in PRESET_AGENTS:
-            if not agent_data.get("is_sub_agent"):
-                continue
             existing = db.query(Agent).filter(Agent.agent_id == agent_data["agent_id"]).first()
             if existing:
                 continue
             db.add(Agent(**agent_data))
-            print(f"[seed] Created sub-agent: {agent_data['name']}")
+            print(f"[seed] Created preset agent: {agent_data['name']} ({agent_data['agent_id']})")
         db.commit()
     except Exception:
         db.rollback()
-        print("[seed] _seed_sub_agents failed (non-fatal)")
+        print("[seed] _seed_preset_agents failed (non-fatal)")
     finally:
         db.close()
 
 
-_seed_sub_agents()
+_seed_preset_agents()
 
 # 2026-08-11：app.api 导入下移至此——迁移完成后才可触碰带新增列的 models 表
 from app.api import models, agents, chat, memory, memories, projects, settings as settings_api, backup, knowledge, fonts, tools, plugins, trash, greetings, devtools, runs, todos, skills, mcp, archive, security as security_api, sub_agents, proxy as proxy_api, terminal as terminal_api, browser as browser_api, feishu as feishu_api, workflows, autotasks, defense_ppt  # noqa: E402
@@ -413,7 +433,7 @@ app = FastAPI(
 # 桌面版 Electron（file:// 无 Origin 头）不受影响。
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS + ["capacitor://localhost", "https://localhost", "http://localhost"],
+    allow_origins=settings.ALLOWED_ORIGINS + ["capacitor://localhost", "https://localhost", "http://localhost", "app://local"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -568,6 +588,28 @@ if __name__ == "__main__":
     if mfk_port:
         port = int(mfk_port)
         logger.info("Phase8 port: 使用 Electron 传入端口 MFK_PORT=%d", port)
+
+        # Windows 平台守护：当由 Electron 拉起时，启动内核级父进程同步看门狗。
+        # 无论 Electron 是正常关闭、点叉、崩溃还是被强杀，父进程句柄失效瞬间触发微秒级自杀，杜绝残留僵尸进程。
+        if sys.platform == "win32":
+            def _electron_parent_watchdog():
+                import ctypes
+                ppid = os.getppid()
+                if ppid <= 1:
+                    return
+                kernel32 = ctypes.windll.kernel32
+                SYNCHRONIZE = 0x00100000
+                handle = kernel32.OpenProcess(SYNCHRONIZE, False, ppid)
+                if not handle:
+                    return
+                kernel32.WaitForSingleObject(handle, 0xFFFFFFFF)
+                kernel32.CloseHandle(handle)
+                # Electron 父进程已死，后端立刻自尽退出，杜绝任何僵尸残留
+                os._exit(0)
+
+            import threading
+            _wd_thread = threading.Thread(target=_electron_parent_watchdog, daemon=True)
+            _wd_thread.start()
     else:
         port = find_available_port(start_port=8001)
     write_port_file(port)
@@ -578,6 +620,13 @@ if __name__ == "__main__":
     try:
         if mfk_host != "127.0.0.1":
             logger.warning("MfkAgent 后端以 MFK_HOST=%s 启动：局域网可访问，请确保已配对设备管理（/api/mobile）", mfk_host)
-        uvicorn.run(app, host=mfk_host, port=port, reload=False)
+        import copy
+        from uvicorn.config import LOGGING_CONFIG
+        safe_log_config = copy.deepcopy(LOGGING_CONFIG)
+        if "formatters" in safe_log_config:
+            for fmt_name, fmt_cfg in safe_log_config["formatters"].items():
+                if isinstance(fmt_cfg, dict) and "use_colors" in fmt_cfg:
+                    fmt_cfg["use_colors"] = False
+        uvicorn.run(app, host=mfk_host, port=port, reload=False, log_config=safe_log_config)
     finally:
         clear_port_file()
