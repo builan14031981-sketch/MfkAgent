@@ -18,7 +18,9 @@
 /out/
 
 # production
-/build
+# 注意：排除目录本身（/build）会使 ! 例外失效（父目录被排除后无法重新包含其中文件），
+# 必须用 /build/* 只排除内容，installer.nsh 才能被重新包含入库
+/build/*
 !/build/installer.nsh
 
 # misc
