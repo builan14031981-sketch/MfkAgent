@@ -125,12 +125,14 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
         provider_def = _mp.PROVIDER_MAP.get(provider_id)
         if not provider_def:
             continue
+        is_custom_provider = provider_id.startswith("custom_")
         for model_id in model_ids:
             if not isinstance(model_id, str) or not model_id.strip():
                 continue
             mid = model_id.strip()
-            # 只处理远程模型（非内置）
-            if mid not in builtin_ids:
+            # 自定义端点（如本地网关 custom_2）下的模型即使与官方重名（如 claude-sonnet-4-6）
+            # 也必须入库覆盖；官方内置 provider 仅非内置扩展模型入库
+            if is_custom_provider or mid not in builtin_ids:
                 enabled_remote.add((provider_id, mid))
 
     # 获取所有现有 CustomModel
@@ -171,8 +173,9 @@ def _sync_custom_models(db, enabled_models_json: str) -> None:
     # 清理：source='sync' 且已移出候选池的行直接删除（替代旧版 enabled=False 幽灵残留）。
     # source='manual' 的行任何情况下不触碰（修复旧版无差别禁用的存量 Bug）。
     for model_id, cm in existing.items():
-        if model_id in builtin_ids:
-            continue  # 内置模型不触碰
+        is_custom_provider = cm.provider and cm.provider.startswith("custom_")
+        if model_id in builtin_ids and not is_custom_provider:
+            continue  # 官方内置模型不触碰（但自定义端点代理的同名模型需跟随其候选池管理）
         if getattr(cm, "source", "manual") == "manual":
             continue  # 手动创建的第三方接入绝不触碰
         if (cm.provider, model_id) not in enabled_remote:
