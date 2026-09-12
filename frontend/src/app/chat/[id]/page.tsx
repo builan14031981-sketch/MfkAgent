@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams, usePathname } from "next/navigation";
 import { useAgents } from "@/hooks/useAgents";
 import { useModels, Model } from "@/hooks/useModels";
 import { useProjects } from "@/hooks/useProjects";
@@ -50,7 +50,29 @@ function ChatPageInner() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const chatId = params.id ? Number(params.id) : null;
+  const pathname = usePathname();
+
+  // 稳健解析真实 chatId：
+  // 静态导出（output: export）模式下，Next.js 服务端预生成的 params.id 为占位符 "0"，
+  // 且在 JS 中 0 是 falsy（导致 if (!chatId) 误判为无效 ID 阻断渲染）。
+  // 优先从客户端响应式路径 pathname（如 /chat/123）或 searchParams 读取真实有效数值：
+  const chatId = useMemo(() => {
+    if (pathname) {
+      const m = pathname.match(/\/chat\/(\d+)/);
+      if (m && Number(m[1]) > 0) return Number(m[1]);
+    }
+    if (typeof window !== "undefined") {
+      const m = window.location.pathname.match(/\/chat\/(\d+)/);
+      if (m && Number(m[1]) > 0) return Number(m[1]);
+      const q = searchParams.get("id");
+      if (q && Number(q) > 0) return Number(q);
+    }
+    if (params?.id && params.id !== "0" && !isNaN(Number(params.id)) && Number(params.id) > 0) {
+      return Number(params.id);
+    }
+    return null;
+  }, [pathname, params?.id, searchParams]);
+
   const { t } = useTranslation();
 
   const [input, setInput] = useState("");

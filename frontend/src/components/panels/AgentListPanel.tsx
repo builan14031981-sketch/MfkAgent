@@ -37,7 +37,7 @@ function personalityLabel(v: number | null | undefined): string {
 
 /** 预设 Agent 管理视图（分组列表 / 详情 同一容器），由 SettingsPanel 以 ViewState 控制显隐与导航 */
 export function AgentListPanel({ editingAgentId, onSelectAgent, onBackToSettings, onBackToList }: AgentListPanelProps) {
-  const { agents } = useAgents();
+  const { agents, loading } = useAgents();
   const { t } = useTranslation();
   const [subAgents, setSubAgents] = useState<SubAgent[]>([]);
   const [promptExpanded, setPromptExpanded] = useState(false);
@@ -69,9 +69,33 @@ export function AgentListPanel({ editingAgentId, onSelectAgent, onBackToSettings
   const renderGroup = (
     title: string,
     desc: string,
-    list: Array<{ id: string; name: string; description: string; subdesc?: string }>
+    list: Array<{ id: string; name: string; description: string; subdesc?: string }>,
+    emptyPlaceholder?: string
   ) => {
-    if (list.length === 0) return null;
+    if (list.length === 0) {
+      if (!emptyPlaceholder) return null;
+      return (
+        <div>
+          <div style={{ margin: "0 0 6px 0" }}>
+            <p style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-level-1)", margin: 0 }}>{title}</p>
+            <p style={{ fontSize: "11px", color: "var(--text-level-4)", margin: "1px 0 0 0" }}>{desc}</p>
+          </div>
+          <div
+            style={{
+              padding: "16px 12px",
+              borderRadius: "var(--radius-md)",
+              background: "var(--bg-level-2)",
+              border: "1px dashed var(--border-primary)",
+              color: "var(--text-level-3)",
+              fontSize: "12px",
+              textAlign: "center",
+            }}
+          >
+            {emptyPlaceholder}
+          </div>
+        </div>
+      );
+    }
     return (
       <div>
         <div style={{ margin: "0 0 6px 0" }}>
@@ -319,25 +343,34 @@ export function AgentListPanel({ editingAgentId, onSelectAgent, onBackToSettings
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {renderGroup(
-            t("settings.ai.agents.groups.core"),
-            t("settings.ai.agents.groupCoreDesc"),
-            coreAgents.map((a) => ({ id: a.id, name: a.name, description: a.description }))
-          )}
-          {renderGroup(
-            t("settings.ai.agents.groups.assist"),
-            t("settings.ai.agents.groupAssistDesc"),
-            assistAgents.map((a) => ({ id: a.id, name: a.name, description: a.description }))
-          )}
-          {renderGroup(
-            t("settings.ai.agents.groups.sub"),
-            t("settings.ai.agents.groupSubDesc"),
-            activeSubs.map((s) => ({
-              id: s.id,
-              name: s.name,
-              description: s.description,
-              subdesc: s.allowed_tools.length > 0 ? `${t("settings.ai.agents.toolsHint")} ${s.allowed_tools.length} 项` : undefined,
-            }))
+          {loading && agents.length === 0 ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: "var(--text-level-3)", fontSize: "12px" }}>
+              {t("common.loading")}
+            </div>
+          ) : (
+            <>
+              {renderGroup(
+                t("settings.ai.agents.groups.core"),
+                t("settings.ai.agents.groupCoreDesc"),
+                coreAgents.map((a) => ({ id: a.id, name: a.name, description: a.description })),
+                !loading && coreAgents.length === 0 ? t("settings.ai.agents.emptyCore") : undefined
+              )}
+              {renderGroup(
+                t("settings.ai.agents.groups.assist"),
+                t("settings.ai.agents.groupAssistDesc"),
+                assistAgents.map((a) => ({ id: a.id, name: a.name, description: a.description }))
+              )}
+              {renderGroup(
+                t("settings.ai.agents.groups.sub"),
+                t("settings.ai.agents.groupSubDesc"),
+                activeSubs.map((s) => ({
+                  id: s.id,
+                  name: s.name,
+                  description: s.description,
+                  subdesc: s.allowed_tools.length > 0 ? `${t("settings.ai.agents.toolsHint")} ${s.allowed_tools.length} 项` : undefined,
+                }))
+              )}
+            </>
           )}
         </div>
       )}

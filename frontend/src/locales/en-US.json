@@ -601,7 +601,8 @@
         "parameters": "Parameters",
         "modelGlobal": "Model is selected per chat; agents are not bound to a default model.",
         "capabilities": "Capabilities",
-        "capabilitiesHint": "Capability tags influence behavior tendencies, not tool permissions."
+        "capabilitiesHint": "Capability tags influence behavior tendencies, not tool permissions.",
+        "emptyCore": "No core agents available"
       },
       "subAgents": {
         "title": "Sub-Agents",

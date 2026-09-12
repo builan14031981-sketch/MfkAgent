@@ -136,6 +136,8 @@ HIDDEN_IMPORTS = [
     "app.services.memory_extractor",
     "app.models",
     "app.models.agent",
+    "seed_agents",
+    "seed_persona",
 ]
 
 # ── 数据文件（嵌入 exe）──

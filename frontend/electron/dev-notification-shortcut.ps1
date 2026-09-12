@@ -16,7 +16,7 @@ param(
 # ============================================================
 
 $ErrorActionPreference = "Stop"
-$AUMID = "com.mfkagent.app"
+$AUMID = "com.mfkagent.app.dev"
 $shortcutName = "MfkAgent Dev.lnk"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $shortcutPath = Join-Path $startMenuDir $shortcutName

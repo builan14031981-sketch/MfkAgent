@@ -9,12 +9,80 @@
 """
 
 import os
+import io
+import struct
 import subprocess
 from pathlib import Path
 from PIL import Image, ImageDraw
 
 REPO_ROOT = Path(r"E:\智慧项目\Mfkagent")
 USER_SRC = Path(r"C:\Users\Asus\Pictures\图标.png")
+
+
+def create_standard_windows_ico(image_pil: Image.Image, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]) -> bytes:
+    """生成 100% 符合 Windows GDI/Shell 规范的标准多分辨率 ICO 文件。
+    128x128 及以下采用未压缩 32位 BGRA BMP DIB + AND 掩码（保证所有 Windows 任务栏/快捷方式原生识别）；
+    256x256 采用标准 PNG 压缩。
+    """
+    entries = []
+    images_data = []
+
+    ico_header = struct.pack("<HHH", 0, 1, len(sizes))
+
+    for (w, h) in sizes:
+        resized = image_pil.resize((w, h), Image.Resampling.LANCZOS).convert("RGBA")
+        if w >= 256 and h >= 256:
+            buf = io.BytesIO()
+            resized.save(buf, format="PNG")
+            data = buf.getvalue()
+        else:
+            biSize = 40
+            biWidth = w
+            biHeight = 2 * h  # DIB 高度需包含 XOR 与 AND 掩码
+            biPlanes = 1
+            biBitCount = 32
+            biCompression = 0
+            xor_size = w * h * 4
+            and_row_bytes = ((w + 31) // 32) * 4
+            and_size = and_row_bytes * h
+            biSizeImage = xor_size + and_size
+
+            bmp_header = struct.pack(
+                "<IIIHHIIIIII",
+                biSize, biWidth, biHeight, biPlanes, biBitCount,
+                biCompression, biSizeImage, 0, 0, 0, 0
+            )
+
+            pixel_bytes = bytearray()
+            for y in range(h - 1, -1, -1):
+                for x in range(w):
+                    r, g, b, a = resized.getpixel((x, y))
+                    pixel_bytes.extend([b, g, r, a])
+
+            and_mask = bytearray(and_size)
+            data = bmp_header + bytes(pixel_bytes) + bytes(and_mask)
+
+        images_data.append(data)
+        bw = 0 if w >= 256 else w
+        bh = 0 if h >= 256 else h
+        entries.append({
+            "w": bw, "h": bh,
+            "bColorCount": 0, "bReserved": 0,
+            "wPlanes": 1, "wBitCount": 32,
+            "size": len(data)
+        })
+
+    offset = 6 + len(sizes) * 16
+    entry_bytes = bytearray()
+    for e, d in zip(entries, images_data):
+        entry_bytes.extend(struct.pack(
+            "<BBBBHHII",
+            e["w"], e["h"], e["bColorCount"], e["bReserved"],
+            e["wPlanes"], e["wBitCount"], e["size"], offset
+        ))
+        offset += len(d)
+
+    return ico_header + bytes(entry_bytes) + b"".join(images_data)
 
 
 def process_icon():
@@ -80,26 +148,45 @@ def process_icon():
     for p, img, is_ico, sizes in targets:
         p.parent.mkdir(parents=True, exist_ok=True)
         if is_ico:
-            img.save(str(p), format="ICO", sizes=sizes)
+            ico_bytes = create_standard_windows_ico(img, sizes=sizes)
+            p.write_bytes(ico_bytes)
         else:
             img.save(str(p), format="PNG")
         print(f"  -> 已成功输出原版圆角图标: {p.relative_to(REPO_ROOT)}")
 
     # 刷新桌面快捷方式
     desktop = Path(os.environ.get("USERPROFILE", "C:/Users/Asus")) / "Desktop"
-    for lnk_name in ["MfkAgent.lnk", "MfkAgent (原版圆角图标).lnk"]:
-        lnk = desktop / lnk_name
-        ps = f'''
-        $ws = New-Object -ComObject WScript.Shell
-        $s = $ws.CreateShortcut("{str(lnk)}")
-        $s.TargetPath = "E:\\智慧项目\\Mfkagent\\start-desktop.bat"
-        $s.WorkingDirectory = "E:\\智慧项目\\Mfkagent"
-        $s.IconLocation = "E:\\智慧项目\\Mfkagent\\frontend\\public\\icon.ico, 0"
-        $s.Description = "MfkAgent 智能工作站"
-        $s.Save()
-        '''
-        subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True)
-        print(f"  -> 已更新桌面快捷方式: {lnk}")
+    installed_exe = Path(r"E:\Program Files\MFK\MfkAgent\MfkAgent.exe")
+
+    # 正式版快捷方式：优先指向真实安装目录的 MfkAgent.exe
+    lnk_main = desktop / "MfkAgent.lnk"
+    if installed_exe.exists():
+        target_path = str(installed_exe)
+        working_dir = str(installed_exe.parent)
+        icon_location = f"{installed_exe},0"
+    else:
+        target_path = str(REPO_ROOT / "start-desktop.bat")
+        working_dir = str(REPO_ROOT)
+        icon_location = f"{REPO_ROOT / 'frontend' / 'public' / 'icon.ico'},0"
+
+    ps_main = f'''
+    $ws = New-Object -ComObject WScript.Shell
+    $s = $ws.CreateShortcut("{str(lnk_main)}")
+    $s.TargetPath = "{target_path}"
+    $s.WorkingDirectory = "{working_dir}"
+    $s.IconLocation = "{icon_location}"
+    $s.Description = "MfkAgent 智能工作站"
+    $s.Save()
+    '''
+    subprocess.run(["powershell", "-NoProfile", "-Command", ps_main], capture_output=True)
+    print(f"  -> 已规范更新桌面正式版快捷方式: {lnk_main} (指向 {target_path})")
+
+    # 清理桌面多余混淆的批处理旧快捷方式
+    for stale_name in ["MfkAgent (原版圆角图标).lnk", "MfkAgent - 副本.lnk", "MfkAgent - 副本 - 副本.lnk", "MfkAgent - 副本 - 副本 (2).lnk"]:
+        stale_lnk = desktop / stale_name
+        if stale_lnk.exists():
+            stale_lnk.unlink()
+            print(f"  -> 已清理桌面历史冗余快捷方式: {stale_name}")
 
     # 发送 Windows 桌面图标刷新信号
     refresh_cmd = '''

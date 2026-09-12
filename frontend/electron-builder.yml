@@ -17,8 +17,7 @@ files:
   - electron/main.js
   - electron/preload.js
   - electron/screenshot/**/*
-  - electron/assets/app-icon.png
-  - electron/assets/tray-icon.png
+  - electron/assets/**/*
   - package.json
 
 # ── 额外资源（打包到 resources/backend）──
@@ -53,6 +52,7 @@ nsis:
   uninstallDisplayName: MfkAgent
   installerIcon: public/icon.ico
   uninstallerIcon: public/icon.ico
+  include: build/installer.nsh
 
 # ── 绿色免安装版 ──
 portable:

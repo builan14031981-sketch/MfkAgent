@@ -11,20 +11,10 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
 
-  // 资源使用相对路径（./_next/...），保证 file:// 协议下 Electron 能正确加载
-  // 不设置则生成 /_next/... 绝对路径，file:// 下会 404
-  // 仅生产构建（next build / 静态导出）时设 "./"；开发模式（next dev）不设，
-  // 否则 Next.js 16 的 next/font 会因 assetPrefix 非 "/" 开头报 500 错误
-  //
-  // 安卓端 M1（2026-08-29）：BUILD_TARGET=mobile 时改用绝对路径 —— Capacitor WebView
-  // 以 https://localhost 为根加载，相对前缀在二级路由（如 /connect/）下会解析成
-  // /connect/_next/... 导致 404 白屏（Electron 只从根加载不受影响，故保留 ./）
-  assetPrefix:
-    process.env.NODE_ENV === "production"
-      ? process.env.BUILD_TARGET === "mobile"
-        ? undefined
-        : "./"
-      : undefined,
+  // 静态导出路径配置：
+  // 桌面端采用特权自定义协议 app://local/，安卓端采用 https://localhost/，均以根域加载。
+  // 采用标准绝对路径（undefined 即 /_next/...），彻底消除相对路径 ./ 在多级路由下的资源 404 白屏。
+  assetPrefix: undefined,
 
   // 目录风格 URL（生成 index.html 而非 /about.html 的目录形式）
   trailingSlash: true,

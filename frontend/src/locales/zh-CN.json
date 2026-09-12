@@ -601,7 +601,8 @@
         "parameters": "参数配置",
         "modelGlobal": "模型选择在每次聊天中独立配置，Agent 不绑定默认模型",
         "capabilities": "能力",
-        "capabilitiesHint": "能力倾向标签影响 Agent 的行为倾向，不影响工具权限"
+        "capabilitiesHint": "能力倾向标签影响 Agent 的行为倾向，不影响工具权限",
+        "emptyCore": "暂无核心智能体数据"
       },
       "subAgents": {
         "title": "子代理",

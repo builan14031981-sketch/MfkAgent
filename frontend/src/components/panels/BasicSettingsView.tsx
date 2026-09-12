@@ -63,7 +63,7 @@ const PROVIDER_NAMES: Record<string, string> = {
 };
 
 /** 预设 Agent 排序优先级 */
-const AGENT_ORDER = ["coder", "frontend_ui", "backend", "general", "analyst", "writer"];
+const AGENT_ORDER = ["general", "coder", "frontend_ui", "g", "pianai", "spark"];
 
 /** 视觉主题定义 */
 const VISUAL_THEMES: Array<{

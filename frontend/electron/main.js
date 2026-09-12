@@ -1,4 +1,5 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, shell, Notification } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, shell, Notification, protocol, net: electronNet } = require("electron");
+const { pathToFileURL } = require("url");
 const path = require("path");
 const http = require("http");
 const net = require("net");
@@ -23,11 +24,27 @@ app.on("second-instance", () => {
   }
 });
 
+// ── 注册特权自定义协议 app:// ──
+// 彻底解决 Next.js 静态导出在 file:// 协议下二级路由静态资源 404 及 CORS 限制
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "app",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+]);
+
 // ── Windows 通知身份（Toast 归属）：与 electron-builder appId 保持一致 ──
 // 必须在 app.whenReady() 前调用；未设置时 Windows Toast 会归到 "Electron" 默认身份，
 // 导致通知不显示应用名/图标且无法进入系统通知设置管理
 if (process.platform === "win32") {
-  app.setAppUserModelId("com.mfkagent.app");
+  const isDev = process.env.ELECTRON_DEV === "true";
+  app.setAppUserModelId(isDev ? "com.mfkagent.app.dev" : "com.mfkagent.app");
 }
 
 const BACKEND_HOST = "127.0.0.1";
@@ -190,28 +207,29 @@ async function startBackend() {
 
 /** 干净终结后端进程树：Windows taskkill /T /F + POSIX SIGTERM/SIGKILL */
 function stopBackend() {
-  if (!backendProcess) return;
-  const pid = backendProcess.pid;
-  console.log(`[Electron] Stopping backend process tree (pid=${pid})`);
-  try {
-    if (process.platform === "win32") {
-      // /T 终止整个进程树（含子进程），/F 强制终止
-      spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
-    } else {
-      try {
-        process.kill(-pid, "SIGTERM");
-      } catch {
+  if (backendProcess) {
+    const pid = backendProcess.pid;
+    console.log(`[Electron] Stopping backend process tree (pid=${pid})`);
+    try {
+      if (process.platform === "win32") {
+        // /T 终止整个进程树（含子进程），/F 强制终止
+        spawnSync("taskkill", ["/pid", String(pid), "/T", "/F"], { stdio: "ignore" });
+      } else {
         try {
-          process.kill(pid, "SIGTERM");
+          process.kill(-pid, "SIGTERM");
         } catch {
-          process.kill(pid, "SIGKILL");
+          try {
+            process.kill(pid, "SIGTERM");
+          } catch {
+            process.kill(pid, "SIGKILL");
+          }
         }
       }
+    } catch (err) {
+      console.error("[Electron] Failed to stop backend:", err.message);
     }
-  } catch (err) {
-    console.error("[Electron] Failed to stop backend:", err.message);
+    backendProcess = null;
   }
-  backendProcess = null;
 }
 
 function waitForDevServer(url, maxRetries = 60) {
@@ -247,13 +265,17 @@ function waitForDevServer(url, maxRetries = 60) {
 }
 
 async function createWindow() {
+  const appIconPath = process.platform === "win32"
+    ? path.join(__dirname, "assets", "app-icon.ico")
+    : path.join(__dirname, "assets", "app-icon.png");
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
     title: "MfkAgent",
-    icon: nativeImage.createFromPath(path.join(__dirname, "assets", "app-icon.png")),
+    icon: nativeImage.createFromPath(appIconPath),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -264,7 +286,7 @@ async function createWindow() {
 
   // 强制设置窗口图标（Windows dev 模式下任务栏可能读 electron.exe 默认图标，setIcon 覆盖）
   try {
-    mainWindow.setIcon(nativeImage.createFromPath(path.join(__dirname, "assets", "app-icon.png")));
+    mainWindow.setIcon(nativeImage.createFromPath(appIconPath));
   } catch (e) {
     console.warn("[Electron] setIcon failed:", e.message);
   }
@@ -275,6 +297,8 @@ async function createWindow() {
     if (tray) {
       try { tray.destroy(); } catch (e) {}
     }
+    const { closeOverlayWindow } = require("./screenshot/overlay-window");
+    try { closeOverlayWindow(); } catch (e) {}
   });
 
   mainWindow.webContents.on("did-fail-load", (event, code, desc, url) => {
@@ -295,8 +319,9 @@ async function createWindow() {
 
   mainWindow.webContents.on("will-navigate", (event, url) => {
     const currentUrl = mainWindow.webContents.getURL();
-    // 仅拦截非同源的外部跳转
+    // 仅拦截非同源的外部跳转（放行 app://local 内部导航）
     try {
+      if (url.startsWith("app://local")) return;
       const currentOrigin = new URL(currentUrl).origin;
       const targetOrigin = new URL(url).origin;
       if (currentOrigin !== targetOrigin) {
@@ -334,11 +359,78 @@ async function createWindow() {
       mainWindow.show();
     }
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../out/index.html"));
+    mainWindow.loadURL("app://local/index.html");
   }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
+    const { closeOverlayWindow } = require("./screenshot/overlay-window");
+    try { closeOverlayWindow(); } catch (e) {}
+    // 主窗口已彻底关闭，强制退出整个应用生命周期，杜绝隐藏后台窗口导致进程死锁
+    app.quit();
+  });
+}
+
+/** 注册 app:// 协议处理器：将请求精准映射到 out 目录并提供 SPA 路由兜底 */
+function registerAppProtocol() {
+  const outDir = path.join(__dirname, "../out");
+
+  protocol.handle("app", async (request) => {
+    try {
+      const url = new URL(request.url);
+      let reqPath = decodeURIComponent(url.pathname);
+      if (reqPath.startsWith("/")) reqPath = reqPath.slice(1);
+
+      // 根请求或空路径 -> index.html
+      if (!reqPath || reqPath === "/") {
+        return electronNet.fetch(pathToFileURL(path.join(outDir, "index.html")).toString());
+      }
+
+      // 1. 直接命中目标文件（如 _next/static/..., icon.png, 等）
+      let targetFile = path.join(outDir, reqPath);
+      if (fs.existsSync(targetFile) && fs.statSync(targetFile).isFile()) {
+        return electronNet.fetch(pathToFileURL(targetFile).toString());
+      }
+
+      // 2. 尝试目录下的 index.html（例如 chat/0/ -> chat/0/index.html）
+      let htmlCandidate = path.join(outDir, reqPath, "index.html");
+      if (fs.existsSync(htmlCandidate) && fs.statSync(htmlCandidate).isFile()) {
+        return electronNet.fetch(pathToFileURL(htmlCandidate).toString());
+      }
+
+      // 3. 尝试追加 .html
+      let directHtml = path.join(outDir, reqPath + ".html");
+      if (fs.existsSync(directHtml) && fs.statSync(directHtml).isFile()) {
+        return electronNet.fetch(pathToFileURL(directHtml).toString());
+      }
+
+      // 4. 路由 fallback：对于动态路由 /chat/*，优先 fallback 到 chat/0/index.html 模版，让客户端 React 水合接管
+      if (reqPath.startsWith("chat/")) {
+        const chatFallback = path.join(outDir, "chat", "0", "index.html");
+        if (fs.existsSync(chatFallback)) {
+          return electronNet.fetch(pathToFileURL(chatFallback).toString());
+        }
+      }
+
+      // 5. 对于 /projects/*，如果具体页面未找到，fallback 到对应模版或根 index.html
+      if (reqPath.startsWith("projects/")) {
+        const projFilesFallback = path.join(outDir, "projects", "0", "files", "index.html");
+        if (fs.existsSync(projFilesFallback)) {
+          return electronNet.fetch(pathToFileURL(projFilesFallback).toString());
+        }
+      }
+
+      // 6. SPA 终极回退：返回根 index.html
+      const fallbackRoot = path.join(outDir, "index.html");
+      if (fs.existsSync(fallbackRoot)) {
+        return electronNet.fetch(pathToFileURL(fallbackRoot).toString());
+      }
+
+      return new Response("Not Found", { status: 404 });
+    } catch (err) {
+      console.error("[Electron protocol:app error]", err);
+      return new Response("Internal Error", { status: 500 });
+    }
   });
 }
 
@@ -369,6 +461,7 @@ function ensureDevNotificationShortcut() {
 }
 
 app.whenReady().then(async () => {
+  registerAppProtocol();
   ensureDevNotificationShortcut();
   await startBackend();
   registerIpcHandlers();
@@ -381,6 +474,11 @@ app.whenReady().then(async () => {
 // 应用退出前干净终结后端进程树（同步阻塞，保证退出时无残留进程）
 app.on("before-quit", () => {
   app.isQuitting = true;
+  const { closeOverlayWindow } = require("./screenshot/overlay-window");
+  try { closeOverlayWindow(); } catch (e) {}
+  if (tray) {
+    try { tray.destroy(); } catch (e) {}
+  }
   stopBackend();
 });
 
