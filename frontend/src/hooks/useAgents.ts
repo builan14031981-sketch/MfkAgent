@@ -89,17 +89,23 @@ export function triggerAgentsRefresh() {
   }
 }
 
+// 内存级 SWR 缓存：全局 Agents 列表常驻内存，切换会话秒显头像和标题
+let _cachedAgents: Agent[] = [];
+let _hasLoadedAgents = false;
+
 export function useAgents() {
-  const [rawAgents, setRawAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rawAgents, setRawAgents] = useState<Agent[]>(_cachedAgents);
+  const [loading, setLoading] = useState(!_hasLoadedAgents);
   const [error, setError] = useState<string | null>(null);
   const locale = useSettingsStore((s) => s.settings?.language ?? "zh-CN");
 
   const fetchAgents = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!_hasLoadedAgents) setLoading(true);
       const data = await apiGet<Agent[]>("/api/agents");
       setRawAgents(data);
+      _cachedAgents = data;
+      _hasLoadedAgents = true;
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");

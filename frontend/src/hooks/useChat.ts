@@ -39,20 +39,28 @@ export interface PaginatedResponse<T> {
 // 跨实例同步事件：任一实例变更 chats 后广播，所有实例（Sidebar / Chat 页 / 首页）立即重新拉取
 export const CHATS_CHANGED_EVENT = "mfk-chats-changed";
 
+// 内存级 SWR 缓存：会话列表首次拉取后常驻内存，后续组件挂载直接 0ms 呈现，杜绝空等白屏
+let _cachedChats: Chat[] = [];
+let _cachedTotal = 0;
+let _hasLoadedChats = false;
+
 export function useChat(projectId?: number | null, page: number = 1, limit: number = 50) {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [chats, setChats] = useState<Chat[]>(_cachedChats);
+  const [total, setTotal] = useState(_cachedTotal);
+  const [loading, setLoading] = useState(!_hasLoadedChats);
   const [error, setError] = useState<string | null>(null);
 
   const fetchChats = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!_hasLoadedChats) setLoading(true);
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (projectId) params.append("project_id", String(projectId));
       const data = await apiGet<PaginatedResponse<Chat>>(`/api/chat?${params}`);
       setChats(data.items);
       setTotal(data.total);
+      _cachedChats = data.items;
+      _cachedTotal = data.total;
+      _hasLoadedChats = true;
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");

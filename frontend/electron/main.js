@@ -371,7 +371,7 @@ async function createWindow() {
   });
 }
 
-/** 注册 app:// 协议处理器：将请求精准映射到 out 目录并提供 SPA 路由兜底 */
+/** 注册 app:// 协议处理器：精准区分数据请求(RSC/txt)与页面导航(HTML)，彻底杜绝SPA单页路由降级硬刷新 */
 function registerAppProtocol() {
   const outDir = path.join(__dirname, "../out");
 
@@ -381,49 +381,81 @@ function registerAppProtocol() {
       let reqPath = decodeURIComponent(url.pathname);
       if (reqPath.startsWith("/")) reqPath = reqPath.slice(1);
 
-      // 根请求或空路径 -> index.html
+      // 根请求或空路径 -> 根 index.html
       if (!reqPath || reqPath === "/") {
         return electronNet.fetch(pathToFileURL(path.join(outDir, "index.html")).toString());
       }
 
-      // 1. 直接命中目标文件（如 _next/static/..., icon.png, 等）
-      let targetFile = path.join(outDir, reqPath);
+      // 1. 静态实体文件直接命中（_next/static/..., icon.png, public/fonts/... 等）
+      const targetFile = path.join(outDir, reqPath);
       if (fs.existsSync(targetFile) && fs.statSync(targetFile).isFile()) {
         return electronNet.fetch(pathToFileURL(targetFile).toString());
       }
 
-      // 2. 尝试目录下的 index.html（例如 chat/0/ -> chat/0/index.html）
-      let htmlCandidate = path.join(outDir, reqPath, "index.html");
-      if (fs.existsSync(htmlCandidate) && fs.statSync(htmlCandidate).isFile()) {
-        return electronNet.fetch(pathToFileURL(htmlCandidate).toString());
-      }
+      // 判断请求类型：静态资产 vs Next.js RSC 数据请求 vs 浏览器页面导航
+      const isStaticExt = /\.(js|css|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot|json|map)$/i.test(reqPath);
+      const isRscDataRequest = reqPath.endsWith(".txt") || url.searchParams.has("_rsc");
 
-      // 3. 尝试追加 .html
-      let directHtml = path.join(outDir, reqPath + ".html");
-      if (fs.existsSync(directHtml) && fs.statSync(directHtml).isFile()) {
-        return electronNet.fetch(pathToFileURL(directHtml).toString());
-      }
-
-      // 4. 路由 fallback：对于动态路由 /chat/*，优先 fallback 到 chat/0/index.html 模版，让客户端 React 水合接管
-      if (reqPath.startsWith("chat/")) {
-        const chatFallback = path.join(outDir, "chat", "0", "index.html");
-        if (fs.existsSync(chatFallback)) {
-          return electronNet.fetch(pathToFileURL(chatFallback).toString());
+      // 2. Next.js 客户端路由数据请求（.txt / _rsc）：
+      // 严禁将 .html 假装成数据返回给 Next.js（会导致 RSC JSON 语法解析失败并触发 window.location 整页硬重载闪白）
+      if (isRscDataRequest) {
+        // 动态路由模版映射：将 chat/<id> 映射为 chat/0 对应模板 txt
+        if (reqPath.startsWith("chat/")) {
+          const templatedPath = reqPath.replace(/^chat\/[^/]+/, "chat/0");
+          const candidate = path.join(outDir, templatedPath);
+          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+            return electronNet.fetch(pathToFileURL(candidate).toString());
+          }
+          const defaultChatTxt = path.join(outDir, "chat", "0", "index.txt");
+          if (fs.existsSync(defaultChatTxt)) {
+            return electronNet.fetch(pathToFileURL(defaultChatTxt).toString());
+          }
         }
-      }
-
-      // 5. 对于 /projects/*，如果具体页面未找到，fallback 到对应模版或根 index.html
-      if (reqPath.startsWith("projects/")) {
-        const projFilesFallback = path.join(outDir, "projects", "0", "files", "index.html");
-        if (fs.existsSync(projFilesFallback)) {
-          return electronNet.fetch(pathToFileURL(projFilesFallback).toString());
+        if (reqPath.startsWith("projects/")) {
+          const templatedPath = reqPath.replace(/^projects\/[^/]+/, "projects/0");
+          const candidate = path.join(outDir, templatedPath);
+          if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+            return electronNet.fetch(pathToFileURL(candidate).toString());
+          }
         }
+        // 数据请求未命中模版时，返回 404（Next.js 可安全跳过 prefetch，绝不退化硬重载）
+        return new Response("Not Found", { status: 404, headers: { "Content-Type": "text/plain" } });
       }
 
-      // 6. SPA 终极回退：返回根 index.html
-      const fallbackRoot = path.join(outDir, "index.html");
-      if (fs.existsSync(fallbackRoot)) {
-        return electronNet.fetch(pathToFileURL(fallbackRoot).toString());
+      // 3. 非静态扩展名（普通页面访问 / 刷新 / 初始加载）：
+      if (!isStaticExt) {
+        // 尝试目录下的 index.html（例如 /memories -> /memories/index.html）
+        const htmlCandidate = path.join(outDir, reqPath, "index.html");
+        if (fs.existsSync(htmlCandidate) && fs.statSync(htmlCandidate).isFile()) {
+          return electronNet.fetch(pathToFileURL(htmlCandidate).toString());
+        }
+
+        // 尝试追加 .html
+        const directHtml = path.join(outDir, reqPath + ".html");
+        if (fs.existsSync(directHtml) && fs.statSync(directHtml).isFile()) {
+          return electronNet.fetch(pathToFileURL(directHtml).toString());
+        }
+
+        // 动态路由 HTML fallback
+        if (reqPath.startsWith("chat/")) {
+          const chatFallback = path.join(outDir, "chat", "0", "index.html");
+          if (fs.existsSync(chatFallback)) {
+            return electronNet.fetch(pathToFileURL(chatFallback).toString());
+          }
+        }
+
+        if (reqPath.startsWith("projects/")) {
+          const projFilesFallback = path.join(outDir, "projects", "0", "files", "index.html");
+          if (fs.existsSync(projFilesFallback)) {
+            return electronNet.fetch(pathToFileURL(projFilesFallback).toString());
+          }
+        }
+
+        // SPA 终极页面回退：根 index.html
+        const fallbackRoot = path.join(outDir, "index.html");
+        if (fs.existsSync(fallbackRoot)) {
+          return electronNet.fetch(pathToFileURL(fallbackRoot).toString());
+        }
       }
 
       return new Response("Not Found", { status: 404 });

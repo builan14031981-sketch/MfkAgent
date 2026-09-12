@@ -37,10 +37,55 @@ import { selectDirectory } from "@/lib/selectDirectory";
 // 2026-08-11：项目上下文面板开关态持久化 key（与侧边栏 mfk_sidebar_collapsed 同一模式）
 const PROJECT_CONTEXT_OPEN_KEY = "mfk_project_context_open";
 
+// 聊天页极简平滑过渡骨架态：与真实聊天界面1:1对齐，消除路由跳转瞬间 fallback={null} 造成的整页泛白与闪屏
+function ChatPageSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        width: "100%",
+        background: "var(--bg-level-2)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          height: "44px",
+          borderBottom: "1px solid var(--border-primary)",
+          background: "var(--bg-level-1)",
+          display: "flex",
+          alignItems: "center",
+          padding: "0 16px",
+          gap: "12px",
+        }}
+      >
+        <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--bg-level-3)", opacity: 0.6 }} />
+        <div style={{ width: "120px", height: "14px", borderRadius: "4px", background: "var(--bg-level-3)", opacity: 0.6 }} />
+      </div>
+      <div style={{ flex: 1 }} />
+      <div style={{ padding: "12px 16px", display: "flex", justifyContent: "center" }}>
+        <div
+          style={{
+            maxWidth: "768px",
+            width: "100%",
+            height: "88px",
+            borderRadius: "var(--radius-lg, 12px)",
+            background: "var(--bg-level-1)",
+            border: "1px solid var(--border-primary)",
+            opacity: 0.4,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // 静态导出：动态路由需在 [id]/layout.tsx 提供 generateStaticParams（占位参数）。
 export default function ChatPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<ChatPageSkeleton />}>
       <ChatPageInner />
     </Suspense>
   );
@@ -74,6 +119,11 @@ function ChatPageInner() {
   }, [pathname, params?.id, searchParams]);
 
   const { t } = useTranslation();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
@@ -691,6 +741,10 @@ function ChatPageInner() {
   }, [chatId, isCompressing, setMessages, setTokenUsage]);
 
   if (!chatId) {
+    // 路由过渡/客户端水合保护：尚未 mounted 或当前路径依然在 /chat/ 下时保持平滑骨架，绝不闪现错误卡片
+    if (!mounted || (typeof window !== "undefined" && window.location.pathname.includes("/chat/"))) {
+      return <ChatPageSkeleton />;
+    }
     return (
       <div style={{
         display: "flex",

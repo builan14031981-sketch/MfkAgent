@@ -50,12 +50,15 @@ export function triggerModelsRefresh() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// useModels Hook：本地 state + 订阅全局 trigger
+// useModels Hook：本地 state + 订阅全局 trigger + 内存级 SWR 缓存
 // ════════════════════════════════════════════════════════════════════
 
+let _cachedModels: Model[] = [];
+let _hasLoadedModels = false;
+
 export function useModels() {
-  const [models, setModels] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [models, setModels] = useState<Model[]>(_cachedModels);
+  const [loading, setLoading] = useState(!_hasLoadedModels);
   const [error, setError] = useState<string | null>(null);
 
   // 订阅全局刷新触发器
@@ -63,9 +66,11 @@ export function useModels() {
 
   const fetchModels = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!_hasLoadedModels) setLoading(true);
       const data = await apiGet<Model[]>("/api/models/models");
       setModels(data);
+      _cachedModels = data;
+      _hasLoadedModels = true;
       setError(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Unknown error");
